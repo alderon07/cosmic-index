@@ -6,7 +6,7 @@ import { SearchBar } from "@/components/search-bar";
 import { SmallBodyFilterPanel, SmallBodyFilters } from "@/components/filter-panel";
 import { Pagination, PaginationInfo } from "@/components/pagination";
 import { SmallBodyData, PaginatedResponse } from "@/lib/types";
-import { Globe } from "lucide-react";
+import { CircleDot } from "lucide-react";
 
 export default function SmallBodiesPage() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -86,7 +86,7 @@ export default function SmallBodiesPage() {
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-2">
           <div className="w-10 h-10 rounded-lg bg-secondary/20 flex items-center justify-center">
-            <Globe className="w-5 h-5 text-secondary" />
+            <CircleDot className="w-5 h-5 text-secondary" />
           </div>
         <h1 className="font-display text-3xl md:text-4xl text-foreground">
           Small Bodies
@@ -167,7 +167,7 @@ export default function SmallBodiesPage() {
       {/* Empty State */}
       {!isLoading && data && data.objects.length === 0 && (
         <div className="p-12 text-center">
-          <Globe className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+          <CircleDot className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
           <h3 className="font-display text-xl text-foreground mb-2">
             No small bodies found
           </h3>

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Sparkles, Globe, Telescope, ArrowRight, Orbit, Rocket } from "lucide-react";
+import { Circle, CircleDot, Telescope, ArrowRight, Orbit, Rocket } from "lucide-react";
 
 export default function HomePage() {
   return (
@@ -48,7 +48,7 @@ export default function HomePage() {
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <Link href="/exoplanets">
                 <Button size="lg" className="glow-orange font-display gap-2">
-                  <Sparkles className="w-5 h-5" />
+                  <Circle className="w-5 h-5" />
                   Explore Exoplanets
                 </Button>
               </Link>
@@ -58,7 +58,7 @@ export default function HomePage() {
                   variant="outline"
                   className="font-display gap-2"
                 >
-                  <Globe className="w-5 h-5" />
+                  <CircleDot className="w-5 h-5" />
                   Browse Small Bodies
                 </Button>
               </Link>
@@ -78,7 +78,7 @@ export default function HomePage() {
           <Card className="bg-card border-border/50 bezel scanlines overflow-hidden group hover:border-primary/50 transition-colors">
             <CardHeader className="pb-4">
               <div className="w-12 h-12 rounded-lg bg-primary/20 flex items-center justify-center mb-4 group-hover:glow-orange transition-all">
-                <Sparkles className="w-6 h-6 text-primary" />
+                <Circle className="w-6 h-6 text-primary" />
               </div>
               <CardTitle className="font-display text-2xl">Exoplanets</CardTitle>
             </CardHeader>
@@ -97,7 +97,7 @@ export default function HomePage() {
                   Multiple discovery methods
                 </li>
                 <li className="flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-secondary" />
+                  <Circle className="w-4 h-4 text-secondary" />
                   Physical & orbital data
                 </li>
               </ul>
@@ -114,7 +114,7 @@ export default function HomePage() {
           <Card className="bg-card border-border/50 bezel scanlines overflow-hidden group hover:border-secondary/50 transition-colors">
             <CardHeader className="pb-4">
               <div className="w-12 h-12 rounded-lg bg-secondary/20 flex items-center justify-center mb-4 group-hover:glow-amber transition-all">
-                <Globe className="w-6 h-6 text-secondary" />
+                <CircleDot className="w-6 h-6 text-secondary" />
               </div>
               <CardTitle className="font-display text-2xl">
                 Small Bodies
@@ -127,7 +127,7 @@ export default function HomePage() {
               </p>
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li className="flex items-center gap-2">
-                  <Globe className="w-4 h-4 text-primary" />
+                  <CircleDot className="w-4 h-4 text-primary" />
                   1,000,000+ asteroids & comets
                 </li>
                 <li className="flex items-center gap-2">
@@ -135,7 +135,7 @@ export default function HomePage() {
                   Near-Earth Objects (NEOs)
                 </li>
                 <li className="flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-primary" />
+                  <Orbit className="w-4 h-4 text-primary" />
                   Orbit classifications
                 </li>
               </ul>

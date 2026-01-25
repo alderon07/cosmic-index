@@ -6,7 +6,7 @@ import { SearchBar } from "@/components/search-bar";
 import { ExoplanetFilterPanel, ExoplanetFilters } from "@/components/filter-panel";
 import { Pagination, PaginationInfo } from "@/components/pagination";
 import { ExoplanetData, PaginatedResponse } from "@/lib/types";
-import { Sparkles } from "lucide-react";
+import { Circle } from "lucide-react";
 
 export default function ExoplanetsPage() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -69,7 +69,7 @@ export default function ExoplanetsPage() {
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-2">
           <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
-            <Sparkles className="w-5 h-5 text-primary" />
+            <Circle className="w-5 h-5 text-primary" />
           </div>
         <h1 className="font-display text-3xl md:text-4xl text-foreground">
           Exoplanets
@@ -146,7 +146,7 @@ export default function ExoplanetsPage() {
       {/* Empty State */}
       {!isLoading && data && data.objects.length === 0 && (
         <div className="p-12 text-center">
-          <Sparkles className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+          <Circle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
           <h3 className="font-display text-xl text-foreground mb-2">
             No exoplanets found
           </h3>

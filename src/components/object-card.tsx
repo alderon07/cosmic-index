@@ -33,9 +33,7 @@ export function ObjectCard({ object }: ObjectCardProps) {
 
   const typeVariant = isExoplanet(object)
     ? "default"
-    : isSmallBody(object) && object.bodyKind === "comet"
-    ? "secondary"
-    : "outline";
+    : "secondary";
 
   // Get first 3-4 key facts
   const displayFacts = object.keyFacts.slice(0, 4);
