@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { fetchSmallBodies } from "@/lib/jpl-sbdb";
+import { fetchSmallBodies, isContractMismatch, isUpstreamFailure } from "@/lib/jpl-sbdb";
 import { SmallBodyQuerySchema } from "@/lib/types";
 import { getCacheControlHeader, CACHE_TTL } from "@/lib/cache";
 import { checkRateLimit, getClientIdentifier, getRateLimitHeaders } from "@/lib/rate-limit";
@@ -53,36 +53,59 @@ export async function GET(request: NextRequest) {
     // Log error with request ID for debugging (server-side only)
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
     const errorType = error instanceof Error ? error.constructor.name : "Unknown";
-    
+
     console.error(`[${requestId}] Error fetching small bodies:`, {
       type: errorType,
       message: errorMessage,
       stack: error instanceof Error ? error.stack : undefined,
     });
 
-    // Determine appropriate error message and status based on error type
-    let status = 500;
-    let userMessage = "Failed to fetch small bodies. Please try again later.";
+    // Honest error classification
+    // 1. Upstream failure (5xx/timeout) -> 503 "temporarily unavailable"
+    // 2. Contract mismatch (400/422/parse errors) -> return empty results, not an error
+    // 3. Request cancelled -> don't surface as error
+    // 4. Other errors -> 500
 
-    if (error instanceof Error) {
-      if (error.message.includes("timed out")) {
-        status = 504;
-        userMessage = "Request to external service timed out. Please try again.";
-      } else if (error.message.includes("JPL API error")) {
-        status = 502;
-        userMessage = "External service error. Please try again later.";
-      } else if (error.message.includes("parse") || error.message.includes("Invalid")) {
-        status = 502;
-        userMessage = "Invalid response from external service. Please try again later.";
-      }
+    if (error instanceof Error && error.message.includes("cancelled")) {
+      // User cancelled the request - not an error
+      return NextResponse.json(
+        { objects: [], total: 0, page: 1, limit: 20, hasMore: false },
+        { status: 200 }
+      );
     }
 
+    if (isUpstreamFailure(error)) {
+      return NextResponse.json(
+        {
+          error: "Search temporarily unavailable. Please try again.",
+          requestId,
+        },
+        { status: 503 }
+      );
+    }
+
+    if (isContractMismatch(error)) {
+      // Contract mismatch - return empty results rather than failing
+      // This prevents user-facing errors on API contract changes
+      console.warn(`[${requestId}] Contract mismatch, returning empty results:`, errorMessage);
+      return NextResponse.json(
+        { objects: [], total: 0, page: 1, limit: 20, hasMore: false },
+        {
+          status: 200,
+          headers: {
+            "Cache-Control": getCacheControlHeader(CACHE_TTL.SMALL_BODIES_BROWSE),
+          },
+        }
+      );
+    }
+
+    // Unknown error
     return NextResponse.json(
-      { 
-        error: userMessage,
-        requestId, // Include request ID for support/debugging
+      {
+        error: "Failed to fetch small bodies. Please try again later.",
+        requestId,
       },
-      { status }
+      { status: 500 }
     );
   }
 }

@@ -12,7 +12,20 @@ import { z } from "zod";
 
 const BASE_URL = "https://exoplanetarchive.ipac.caltech.edu/TAP/sync";
 
-// ---- Pagination guardrails (the “fix”) ----
+// Escape single quotes for ADQL strings (doubles them)
+function escapeAdqlString(input: string): string {
+  return input.replace(/'/g, "''");
+}
+
+// Sanitize input for LIKE queries - escape quotes and strip wildcards
+// Stripping wildcards is simpler than escaping (users rarely need literal % or _)
+function sanitizeForLike(input: string): string {
+  return input
+    .replace(/'/g, "''") // Escape quotes
+    .replace(/[%_]/g, ""); // Strip wildcards entirely
+}
+
+// ---- Pagination guardrails (the "fix") ----
 // TAP sync doesn’t give you a true OFFSET. Your previous approach fetched (offset+limit)
 // which becomes insane for deep pages in prod.
 //
@@ -42,7 +55,8 @@ function hasAnyNarrowingFilter(params: ExoplanetQueryParams): boolean {
 }
 
 // Build ADQL query for browsing exoplanets
-function buildBrowseQuery(
+// Exported for testing
+export function buildBrowseQuery(
   params: ExoplanetQueryParams
 ): { query: string; limit: number; offset: number; page: number } {
   const conditions: string[] = ["default_flag=1"];
@@ -50,12 +64,12 @@ function buildBrowseQuery(
   const { page, limit, offset } = clampPagination(params);
 
   if (params.query) {
-    const safeQuery = params.query.replace(/'/g, "''");
+    const safeQuery = sanitizeForLike(params.query);
     conditions.push(`pl_name like '%${safeQuery}%'`);
   }
 
   if (params.discoveryMethod) {
-    const safeMethod = params.discoveryMethod.replace(/'/g, "''");
+    const safeMethod = escapeAdqlString(params.discoveryMethod);
     conditions.push(`discoverymethod='${safeMethod}'`);
   }
 
@@ -94,12 +108,12 @@ function buildCountQuery(params: ExoplanetQueryParams): string {
   const conditions: string[] = ["default_flag=1"];
 
   if (params.query) {
-    const safeQuery = params.query.replace(/'/g, "''");
+    const safeQuery = sanitizeForLike(params.query);
     conditions.push(`pl_name like '%${safeQuery}%'`);
   }
 
   if (params.discoveryMethod) {
-    const safeMethod = params.discoveryMethod.replace(/'/g, "''");
+    const safeMethod = escapeAdqlString(params.discoveryMethod);
     conditions.push(`discoverymethod='${safeMethod}'`);
   }
 
@@ -125,7 +139,7 @@ function buildCountQuery(params: ExoplanetQueryParams): string {
 
 // Build ADQL query for detail
 function buildDetailQuery(name: string): string {
-  const safeName = name.replace(/'/g, "''");
+  const safeName = escapeAdqlString(name);
   return `select pl_name,hostname,discoverymethod,disc_year,pl_orbper,pl_rade,pl_masse,sy_dist,pl_eqt from ps where pl_name='${safeName}' and default_flag=1`;
 }
 
@@ -320,17 +334,17 @@ export async function fetchExoplanetBySlug(slug: string): Promise<ExoplanetData 
   const cacheKey = `${CACHE_KEYS.EXOPLANET_DETAIL}:${slug}`;
 
   return withCache(cacheKey, CACHE_TTL.EXOPLANETS_DETAIL, async () => {
-    const escapeAdqlString = (s: string) => s.replace(/'/g, "''");
-
     const searchName = slug.replace(/-([b-z])$/i, " $1").toUpperCase();
 
+    // Try exact match first (escape for equality comparison)
     let query =
       `select pl_name,hostname,discoverymethod,disc_year,pl_orbper,pl_rade,pl_masse,sy_dist,pl_eqt ` +
       `from ps where lower(pl_name)=lower('${escapeAdqlString(searchName)}') and default_flag=1`;
     let results = await executeTAPQuery(query, { maxrec: 1 });
 
     if (results.length === 0) {
-      const fuzzyName = escapeAdqlString(slug.replace(/-/g, " "));
+      // Try fuzzy match (sanitize for LIKE query - strips wildcards)
+      const fuzzyName = sanitizeForLike(slug.replace(/-/g, " "));
       query =
         `select pl_name,hostname,discoverymethod,disc_year,pl_orbper,pl_rade,pl_masse,sy_dist,pl_eqt ` +
         `from ps where lower(pl_name) like lower('%${fuzzyName}%') and default_flag=1`;
@@ -338,7 +352,8 @@ export async function fetchExoplanetBySlug(slug: string): Promise<ExoplanetData 
     }
 
     if (results.length === 0) {
-      const safeSlug = escapeAdqlString(slug);
+      // Try with raw slug (sanitize for LIKE query)
+      const safeSlug = sanitizeForLike(slug);
       query =
         `select pl_name,hostname,discoverymethod,disc_year,pl_orbper,pl_rade,pl_masse,sy_dist,pl_eqt ` +
         `from ps where lower(pl_name) like lower('%${safeSlug}%') and default_flag=1`;

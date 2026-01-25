@@ -17,7 +17,7 @@ export default function SmallBodiesPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (signal?: AbortSignal) => {
     setIsLoading(true);
     setError(null);
 
@@ -31,23 +31,42 @@ export default function SmallBodiesPage() {
       params.set("page", page.toString());
       params.set("limit", limit.toString());
 
-      const response = await fetch(`/api/small-bodies?${params.toString()}`);
+      const response = await fetch(`/api/small-bodies?${params.toString()}`, {
+        signal,
+      });
+
+      // If request was aborted, don't update state
+      if (signal?.aborted) return;
 
       if (!response.ok) {
-        throw new Error("Failed to fetch small bodies");
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to fetch small bodies");
       }
 
       const result: PaginatedResponse<SmallBodyData> = await response.json();
       setData(result);
     } catch (err) {
+      // Ignore abort errors (user navigated away or query changed)
+      if (err instanceof Error && err.name === "AbortError") {
+        return;
+      }
       setError(err instanceof Error ? err.message : "An error occurred");
     } finally {
-      setIsLoading(false);
+      // Only set loading false if not aborted
+      if (!signal?.aborted) {
+        setIsLoading(false);
+      }
     }
   }, [searchQuery, filters, page, limit]);
 
+  // Use AbortController to cancel in-flight requests when query/filters/page change
   useEffect(() => {
-    fetchData();
+    const controller = new AbortController();
+    fetchData(controller.signal);
+
+    return () => {
+      controller.abort(); // Cancel on cleanup (re-render or unmount)
+    };
   }, [fetchData]);
 
   // Reset to page 1 when search or filters change
@@ -119,7 +138,7 @@ export default function SmallBodiesPage() {
         <div className="p-6 bg-destructive/10 border border-destructive/50 rounded-lg text-center">
           <p className="text-destructive">{error}</p>
           <button
-            onClick={fetchData}
+            onClick={() => fetchData()}
             className="mt-4 text-sm text-primary hover:underline"
           >
             Try again

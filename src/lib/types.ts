@@ -145,10 +145,18 @@ export const SmallBodyDataSchema = CosmicObjectSchema.extend({
   absoluteMagnitude: z.number().optional(),
 });
 
-// Query Parameter Schemas
+// Query Parameter Schemas with NFKC normalization and length limits
+
+// Helper to normalize unicode and trim/limit strings
+const normalizedString = (maxLength: number) =>
+  z
+    .string()
+    .transform((s) => s.normalize("NFKC")) // Normalize weird Unicode
+    .pipe(z.string().trim().max(maxLength));
+
 export const ExoplanetQuerySchema = z.object({
-  query: z.string().optional(),
-  discoveryMethod: z.string().optional(),
+  query: normalizedString(128).optional(),
+  discoveryMethod: normalizedString(64).optional(),
   yearFrom: z.coerce.number().int().min(1900).max(2100).optional(),
   yearTo: z.coerce.number().int().min(1900).max(2100).optional(),
   hasRadius: z.coerce.boolean().optional(),
@@ -158,7 +166,7 @@ export const ExoplanetQuerySchema = z.object({
 });
 
 export const SmallBodyQuerySchema = z.object({
-  query: z.string().optional(),
+  query: normalizedString(100).optional(),
   kind: z.enum(["asteroid", "comet"]).optional(),
   neo: z.coerce.boolean().optional(),
   pha: z.coerce.boolean().optional(),
@@ -195,8 +203,21 @@ export const JPLSmallBodyRawSchema = z.object({
 
 // Utility function to create URL-safe slugs
 export function createSlug(name: string): string {
-  const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  const slug = name
+    .toLowerCase()
+    .normalize("NFKC") // Handle Unicode normalization
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .substring(0, 80); // Limit slug length
   return slug;
+}
+
+// Sanitize incoming slug parameters (for lookup)
+export function sanitizeSlug(input: string): string {
+  return input
+    .toLowerCase()
+    .replace(/[^a-z0-9-]/g, "")
+    .substring(0, 80);
 }
 
 // Format number with optional precision
@@ -219,6 +240,29 @@ export const DISCOVERY_METHODS = [
   "Disk Kinematics",
   "Astrometry",
 ] as const;
+
+// Track unknown discovery methods to log only once
+const loggedUnknownMethods = new Set<string>();
+
+// Normalize discovery method with soft enum - accepts unknown values but logs them
+export function normalizeDiscoveryMethod(method: string): string {
+  const trimmed = method.trim();
+  const normalized = trimmed.toLowerCase();
+
+  // Try to match known methods (case-insensitive)
+  for (const known of DISCOVERY_METHODS) {
+    if (known.toLowerCase() === normalized) {
+      return known;
+    }
+  }
+
+  // Unknown method - log once, then accept
+  if (!loggedUnknownMethods.has(normalized)) {
+    loggedUnknownMethods.add(normalized);
+    console.warn(`[Exoplanet] Unknown discovery method encountered: ${trimmed}`);
+  }
+  return trimmed;
+}
 
 // Small body orbit classes
 export const ORBIT_CLASSES = {
