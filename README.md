@@ -1,36 +1,204 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🌌 Cosmic Index
 
-## Getting Started
+A retrofuturistic web encyclopedia for exploring cosmic objects beyond our solar system. Browse and search through thousands of confirmed exoplanets from NASA's Exoplanet Archive and over a million asteroids and comets from JPL's Small-Body Database.
 
-First, run the development server:
+![Next.js](https://img.shields.io/badge/Next.js-16.1-black?logo=next.js)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?logo=typescript)
+![React](https://img.shields.io/badge/React-19.2-blue?logo=react)
 
+## ✨ Features
+
+### Exoplanets
+- **5,000+ confirmed exoplanets** from NASA's Exoplanet Archive
+- Search by name or designation
+- Filter by discovery method, discovery year, and physical properties
+- View detailed information including orbital period, radius, mass, distance, and equilibrium temperature
+- Multiple discovery methods: Transit, Radial Velocity, Imaging, Microlensing, and more
+
+### Small Bodies
+- **1,000,000+ asteroids and comets** from JPL's Small-Body Database
+- Search asteroids and comets by name or designation
+- Filter by type (asteroid/comet), Near-Earth Object (NEO) status, and Potentially Hazardous Asteroid (PHA) classification
+- Track orbit classifications: Amor, Apollo, Aten, Atira, Main Belt, Trans-Neptunian, and more
+- View physical properties including diameter and absolute magnitude
+
+### General Features
+- 🎨 **Retrofuturistic UI** with scanlines, bezels, and glow effects
+- 🔍 **Advanced search and filtering** capabilities
+- 📄 **Pagination** for efficient browsing of large datasets
+- 💾 **Redis caching** for improved performance (optional, via Upstash)
+- 📱 **Responsive design** for all device sizes
+- ⚡ **Fast API responses** with rate limiting and timeout handling
+
+## 🛠️ Tech Stack
+
+- **Framework**: [Next.js 16.1](https://nextjs.org/) with App Router
+- **Language**: TypeScript 5.0
+- **UI Library**: React 19.2
+- **Styling**: Tailwind CSS 4 with custom retrofuturistic theme
+- **UI Components**: Radix UI primitives
+- **Icons**: Lucide React
+- **Validation**: Zod
+- **Caching**: Upstash Redis (optional)
+- **Runtime**: Bun (or Node.js)
+
+## 📊 Data Sources
+
+### NASA Exoplanet Archive
+- **API**: [NASA Exoplanet Archive TAP Service](https://exoplanetarchive.ipac.caltech.edu/docs/TAP/usingTAP.html)
+- **Data**: Confirmed exoplanets with physical and orbital properties
+- **Update Frequency**: Daily
+
+### JPL Small-Body Database
+- **API**: [JPL Small-Body Database Query API](https://ssd-api.jpl.nasa.gov/doc/sbdb.html)
+- **Data**: Asteroids, comets, and other small solar system bodies
+- **Update Frequency**: Regular updates from JPL
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+- [Bun](https://bun.sh/) (recommended) or Node.js 20+
+- Optional: Upstash Redis account for caching
+
+### Installation
+
+1. Clone the repository:
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
+git clone https://github.com/yourusername/cosmic-index.git
+cd cosmic-index
+```
+
+2. Install dependencies:
+```bash
+bun install
+```
+
+3. (Optional) Set up environment variables:
+```bash
+cp .env.example .env.local
+```
+
+Add your Upstash Redis credentials if you want to enable caching:
+```env
+UPSTASH_REDIS_REST_URL=your_redis_url
+UPSTASH_REDIS_REST_TOKEN=your_redis_token
+```
+
+4. Run the development server:
+```bash
 bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+5. Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 📁 Project Structure
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```
+cosmic-index/
+├── src/
+│   ├── app/                    # Next.js App Router pages
+│   │   ├── api/                # API routes
+│   │   │   ├── exoplanets/     # Exoplanet API endpoints
+│   │   │   └── small-bodies/   # Small body API endpoints
+│   │   ├── exoplanets/         # Exoplanet pages
+│   │   └── small-bodies/       # Small body pages
+│   ├── components/             # React components
+│   │   ├── ui/                 # Reusable UI components
+│   │   ├── filter-panel.tsx    # Filtering interface
+│   │   ├── object-card.tsx     # Object display cards
+│   │   ├── object-detail.tsx   # Detailed object view
+│   │   ├── pagination.tsx      # Pagination controls
+│   │   └── search-bar.tsx      # Search input
+│   └── lib/                    # Core libraries
+│       ├── nasa-exoplanet.ts   # NASA Exoplanet Archive client
+│       ├── jpl-sbdb.ts         # JPL Small-Body Database client
+│       ├── cache.ts            # Redis caching utilities
+│       ├── rate-limit.ts       # Rate limiting
+│       ├── types.ts            # TypeScript types and schemas
+│       └── utils.ts            # Utility functions
+├── scripts/                    # Utility scripts
+└── public/                     # Static assets
+```
 
-## Learn More
+## 🔌 API Endpoints
 
-To learn more about Next.js, take a look at the following resources:
+### Exoplanets
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- `GET /api/exoplanets` - List exoplanets with filtering and pagination
+  - Query parameters:
+    - `query` - Search by name
+    - `discoveryMethod` - Filter by discovery method
+    - `yearFrom` / `yearTo` - Filter by discovery year range
+    - `hasRadius` / `hasMass` - Filter by data availability
+    - `page` - Page number (default: 1)
+    - `limit` - Results per page (default: 20, max: 100)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- `GET /api/exoplanets/[id]` - Get detailed exoplanet information
 
-## Deploy on Vercel
+### Small Bodies
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- `GET /api/small-bodies` - List small bodies with filtering and pagination
+  - Query parameters:
+    - `query` - Search by name or designation (regex pattern)
+    - `kind` - Filter by type: `asteroid` or `comet`
+    - `neo` - Filter Near-Earth Objects (boolean)
+    - `pha` - Filter Potentially Hazardous Asteroids (boolean)
+    - `page` - Page number (default: 1)
+    - `limit` - Results per page (default: 20, max: 100)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `GET /api/small-bodies/[id]` - Get detailed small body information
+
+## 🎨 Design System
+
+The project features a custom retrofuturistic design system with:
+
+- **Color Palette**: Primary, secondary, accent, and radium-teal colors
+- **Typography**: Custom display font with Nixie-style numbers
+- **Effects**: Scanlines, bezels, glow effects, and animated starfields
+- **Components**: Card-based layouts with hover states and transitions
+
+## 🧪 Development
+
+### Available Scripts
+
+- `bun dev` - Start development server with Turbopack
+- `bun build` - Build for production
+- `bun start` - Start production server
+- `bun lint` - Run ESLint
+- `bun sbdb:diag` - Run JPL SBDB diagnostic script
+
+### Testing
+
+Integration tests are available in `src/lib/__tests__/`:
+- `nasa-exoplanet.test.ts` - NASA Exoplanet Archive integration tests
+- `jpl-sbdb.integration.test.ts` - JPL Small-Body Database integration tests
+
+## 🚢 Deployment
+
+The easiest way to deploy is using [Vercel](https://vercel.com):
+
+1. Push your code to GitHub
+2. Import your repository in Vercel
+3. Add environment variables if using Redis caching
+4. Deploy!
+
+The project is optimized for Vercel's platform and works out of the box.
+
+## 📝 License
+
+This project is open source and available under the [MIT License](LICENSE).
+
+## 🙏 Acknowledgments
+
+- [NASA Exoplanet Archive](https://exoplanetarchive.ipac.caltech.edu/) for exoplanet data
+- [JPL Small-Body Database](https://ssd.jpl.nasa.gov/) for small body data
+- Built with [Next.js](https://nextjs.org/) and [React](https://react.dev/)
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+---
+
+**Explore the cosmos** 🌟
