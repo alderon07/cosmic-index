@@ -26,17 +26,21 @@ function sanitizeForLike(input: string): string {
 }
 
 // ---- Pagination guardrails (the "fix") ----
-// TAP sync doesn’t give you a true OFFSET. Your previous approach fetched (offset+limit)
+// TAP sync doesn’t give you a true OFFSET. The old approach fetched (offset+limit)
 // which becomes insane for deep pages in prod.
 //
-// This “fix” makes pagination predictable:
+// This makes pagination predictable:
 // 1) Clamp page to a sane max
 // 2) Refuse deep offsets unless the user narrows filters (query/method/year/etc)
-const MAX_PAGE = 500;            // pick your poison
-const MAX_OFFSET = 10_000;       // hard cap on offset-based paging
+const MAX_PAGE = 500; // pick your poison
+const MAX_OFFSET = 10_000; // hard cap on offset-based paging
 const DEFAULT_LIMIT = 20;
 
-function clampPagination(params: ExoplanetQueryParams): { page: number; limit: number; offset: number } {
+function clampPagination(params: ExoplanetQueryParams): {
+  page: number;
+  limit: number;
+  offset: number;
+} {
   const limit = Math.max(1, Math.min(params.limit ?? DEFAULT_LIMIT, 100));
   const page = Math.max(1, Math.min(params.page ?? 1, MAX_PAGE));
   const offset = (page - 1) * limit;
@@ -92,7 +96,7 @@ export function buildBrowseQuery(
   const whereClause = conditions.join(" and ");
 
   return {
-    // Important: add a stable secondary sort so paging is deterministic
+    // Important: stable secondary sort so paging is deterministic
     query:
       `select pl_name,hostname,discoverymethod,disc_year,pl_orbper,pl_rade,pl_masse,sy_dist,pl_eqt,sy_snum,sy_pnum,st_spectype,st_teff,st_mass,st_rad,st_lum,ra,dec ` +
       `from ps where ${whereClause} ` +
@@ -140,55 +144,108 @@ function buildCountQuery(params: ExoplanetQueryParams): string {
 // Build ADQL query for detail
 function buildDetailQuery(name: string): string {
   const safeName = escapeAdqlString(name);
-  return `select pl_name,hostname,discoverymethod,disc_year,pl_orbper,pl_rade,pl_masse,sy_dist,pl_eqt,sy_snum,sy_pnum,st_spectype,st_teff,st_mass,st_rad,st_lum,ra,dec from ps where pl_name='${safeName}' and default_flag=1`;
+  return (
+    `select pl_name,hostname,discoverymethod,disc_year,pl_orbper,pl_rade,pl_masse,sy_dist,pl_eqt,sy_snum,sy_pnum,st_spectype,st_teff,st_mass,st_rad,st_lum,ra,dec ` +
+    `from ps where pl_name='${safeName}' and default_flag=1`
+  );
 }
 
 // Execute TAP query against NASA Exoplanet Archive (TAP sync) using TAP-standard params.
 // Using POST avoids prod/dev encoding differences and URL length limits.
-async function executeTAPQuery(query: string, options?: { maxrec?: number }): Promise<unknown[]> {
-  const body = new URLSearchParams({
-    REQUEST: "doQuery",
-    LANG: "ADQL",
-    FORMAT: "json",
-    QUERY: query,
-  });
+// Adds timeout + retry to prevent flaky prod timeouts.
+async function executeTAPQuery(
+  query: string,
+  options?: { maxrec?: number }
+): Promise<unknown[]> {
+  const makeBody = () => {
+    const body = new URLSearchParams({
+      REQUEST: "doQuery",
+      LANG: "ADQL",
+      FORMAT: "json",
+      QUERY: query,
+    });
+    if (options?.maxrec !== undefined) body.set("MAXREC", String(options.maxrec));
+    return body;
+  };
 
-  if (options?.maxrec !== undefined) {
-    body.set("MAXREC", String(options.maxrec));
+  const MAX_ATTEMPTS = 3;
+  const TIMEOUT_MS = 12_000;
+  const BASE_DELAY_MS = 400;
+
+  let lastErr: unknown;
+
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
+
+    try {
+      const response = await fetch(BASE_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          Accept: "application/json",
+          "User-Agent": "cosmic-index/1.0",
+        },
+        body: makeBody(),
+        cache: "no-store",
+        signal: controller.signal,
+      });
+
+      const text = await response.text().catch(() => "");
+
+      if (!response.ok) {
+        const err = new Error(
+          `NASA TAP error: ${response.status} ${response.statusText}\nQuery: ${query}\nBody: ${text.slice(
+            0,
+            1200
+          )}`
+        );
+        // Retry only on 5xx
+        if (response.status >= 500 && attempt < MAX_ATTEMPTS) throw err;
+        throw err;
+      }
+
+      let data: unknown;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        throw new Error(`NASA TAP returned non-JSON.\nBody: ${text.slice(0, 1200)}`);
+      }
+
+      if (!Array.isArray(data)) {
+        throw new Error(`NASA TAP unexpected response shape.\nBody: ${text.slice(0, 1200)}`);
+      }
+
+      return data as unknown[];
+    } catch (err: any) {
+      lastErr = err;
+      const code = err?.cause?.code ?? err?.code;
+      const isAbort = err?.name === "AbortError";
+      const isConnectTimeout = code === "UND_ERR_CONNECT_TIMEOUT";
+
+      const shouldRetry =
+        attempt < MAX_ATTEMPTS &&
+        (isAbort || isConnectTimeout || typeof code === "string" || /fetch failed/i.test(err?.message));
+
+      if (!shouldRetry) {
+        throw new Error(
+          `NASA TAP connection failed.\nAttempt ${attempt}/${MAX_ATTEMPTS}\n` +
+            `Error: ${err?.message ?? String(err)}\n` +
+            (code ? `Code: ${code}\n` : "")
+        );
+      }
+
+      // backoff + jitter
+      const delay = BASE_DELAY_MS * Math.pow(2, attempt - 1) + Math.floor(Math.random() * 150);
+      await new Promise((r) => setTimeout(r, delay));
+    } finally {
+      clearTimeout(timeout);
+    }
   }
 
-  const response = await fetch(BASE_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-      Accept: "application/json",
-      "User-Agent": "cosmic-index/1.0",
-    },
-    body,
-    // If you want caching later, swap this for next:{revalidate:...}
-    cache: "no-store",
-  });
-
-  const text = await response.text().catch(() => "");
-
-  if (!response.ok) {
-    throw new Error(
-      `NASA TAP error: ${response.status} ${response.statusText}\nQuery: ${query}\nBody: ${text.slice(0, 1200)}`
-    );
-  }
-
-  let data: unknown;
-  try {
-    data = JSON.parse(text);
-  } catch {
-    throw new Error(`NASA TAP returned non-JSON.\nBody: ${text.slice(0, 1200)}`);
-  }
-
-  if (!Array.isArray(data)) {
-    throw new Error(`NASA TAP unexpected response shape.\nBody: ${text.slice(0, 1200)}`);
-  }
-
-  return data as unknown[];
+  throw new Error(
+    `NASA TAP failed after retries.\nError: ${String((lastErr as any)?.message ?? lastErr)}`
+  );
 }
 
 // Transform raw NASA data to ExoplanetData
@@ -196,19 +253,39 @@ function transformExoplanet(raw: z.infer<typeof NASAExoplanetRawSchema>): Exopla
   const keyFacts: KeyFact[] = [];
 
   if (raw.pl_rade !== null) {
-    keyFacts.push({ label: "Radius", value: formatNumber(raw.pl_rade), unit: "Earth radii" });
+    keyFacts.push({
+      label: "Radius",
+      value: formatNumber(raw.pl_rade),
+      unit: "Earth radii",
+    });
   }
   if (raw.pl_masse !== null) {
-    keyFacts.push({ label: "Mass", value: formatNumber(raw.pl_masse), unit: "Earth masses" });
+    keyFacts.push({
+      label: "Mass",
+      value: formatNumber(raw.pl_masse),
+      unit: "Earth masses",
+    });
   }
   if (raw.pl_orbper !== null) {
-    keyFacts.push({ label: "Orbital Period", value: formatNumber(raw.pl_orbper, 1), unit: "days" });
+    keyFacts.push({
+      label: "Orbital Period",
+      value: formatNumber(raw.pl_orbper, 1),
+      unit: "days",
+    });
   }
   if (raw.sy_dist !== null) {
-    keyFacts.push({ label: "Distance", value: formatNumber(raw.sy_dist, 1), unit: "parsecs" });
+    keyFacts.push({
+      label: "Distance",
+      value: formatNumber(raw.sy_dist, 1),
+      unit: "parsecs",
+    });
   }
   if (raw.pl_eqt !== null) {
-    keyFacts.push({ label: "Equilibrium Temp", value: formatNumber(raw.pl_eqt, 0), unit: "K" });
+    keyFacts.push({
+      label: "Equilibrium Temp",
+      value: formatNumber(raw.pl_eqt, 0),
+      unit: "K",
+    });
   }
 
   let summary = `${raw.pl_name} is an exoplanet`;
@@ -219,10 +296,15 @@ function transformExoplanet(raw: z.infer<typeof NASAExoplanetRawSchema>): Exopla
 
   if (raw.pl_rade !== null) {
     const sizeDesc =
-      raw.pl_rade < 1.5 ? "Earth-sized" :
-      raw.pl_rade < 2.5 ? "Super-Earth" :
-      raw.pl_rade < 4 ? "Mini-Neptune" :
-      raw.pl_rade < 10 ? "Neptune-sized" : "Jupiter-sized";
+      raw.pl_rade < 1.5
+        ? "Earth-sized"
+        : raw.pl_rade < 2.5
+        ? "Super-Earth"
+        : raw.pl_rade < 4
+        ? "Mini-Neptune"
+        : raw.pl_rade < 10
+        ? "Neptune-sized"
+        : "Jupiter-sized";
     summary += ` It is a ${sizeDesc} world.`;
   }
 
@@ -275,16 +357,17 @@ export async function fetchExoplanets(
 
     // Pagination fix: refuse deep offsets unless narrowed.
     if (browseParams.offset > MAX_OFFSET && !hasAnyNarrowingFilter(params)) {
-      // You can throw to force UI to show “refine search”, or return empty.
-      // Throw is usually better so the UI can message the user.
       throw new Error(
-        `Pagination too deep (page ${browseParams.page}). Add a search or filters (year/method/etc) to narrow results.`
+        `Pagination too deep (page ${browseParams.page}, limit ${browseParams.limit}). Add a search or filters (year/method/etc) to narrow results.`
       );
     }
 
     // TAP sync doesn’t support true OFFSET. We fetch enough rows to cover (offset+limit),
-    // but ONLY up to MAX_OFFSET + limit, keeping it bounded and predictable.
-    const boundedMaxrec = Math.min(browseParams.offset + browseParams.limit, MAX_OFFSET + browseParams.limit);
+    // but only up to MAX_OFFSET + limit, keeping it bounded and predictable.
+    const boundedMaxrec = Math.min(
+      browseParams.offset + browseParams.limit,
+      MAX_OFFSET + browseParams.limit
+    );
 
     const [dataResults, countResults] = await Promise.all([
       executeTAPQuery(browseParams.query, { maxrec: boundedMaxrec }),
@@ -292,7 +375,10 @@ export async function fetchExoplanets(
     ]);
 
     // Slice results to handle pagination (skip offset records)
-    const slicedResults = dataResults.slice(browseParams.offset, browseParams.offset + browseParams.limit);
+    const slicedResults = dataResults.slice(
+      browseParams.offset,
+      browseParams.offset + browseParams.limit
+    );
 
     const objects = slicedResults
       .map((row) => {
@@ -305,8 +391,13 @@ export async function fetchExoplanets(
       })
       .filter((obj): obj is ExoplanetData => obj !== null);
 
-    const totalRow = countResults[0] as { total?: number } | undefined;
-    const total = totalRow?.total ?? objects.length;
+    const totalRow = countResults[0] as any;
+    const total =
+      typeof totalRow?.total === "number"
+        ? totalRow.total
+        : typeof totalRow?.total === "string"
+        ? parseInt(totalRow.total, 10)
+        : objects.length;
 
     const page = browseParams.page;
     const limit = browseParams.limit;
