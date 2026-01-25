@@ -1,26 +1,283 @@
 @import "tailwindcss";
+@import "tw-animate-css";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@custom-variant dark (&:is(.dark *));
+
+/* Warm Analog Atompunk Theme - Fonts loaded via Next.js in layout.tsx */
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-display: 'Space Grotesk', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  /* Custom Atompunk Colors */
+  --color-reactor-orange: hsl(17 100% 60%);
+  --color-amber-glow: hsl(40 100% 58%);
+  --color-uranium-green: hsl(82 100% 67%);
+  --color-radium-teal: hsl(179 70% 55%);
+  --color-void-black: hsl(40 15% 3%);
+  --color-console-brown: hsl(30 12% 9%);
+  --color-panel-bronze: hsl(30 15% 14%);
+  --color-brass-light: hsl(40 35% 74%);
+  --color-patina-gray: hsl(35 10% 44%);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+:root {
+  --radius: 0.5rem;
+
+  /* Warm Analog Atompunk Theme */
+  --background: hsl(40 15% 3%);           /* Void Black */
+  --foreground: hsl(40 35% 74%);          /* Brass Light */
+
+  --card: hsl(30 12% 9%);                 /* Console Brown */
+  --card-foreground: hsl(40 35% 74%);
+
+  --popover: hsl(30 15% 14%);             /* Panel Bronze */
+  --popover-foreground: hsl(40 35% 74%);
+
+  --primary: hsl(17 100% 60%);            /* Reactor Orange */
+  --primary-foreground: hsl(40 15% 3%);
+
+  --secondary: hsl(40 100% 58%);          /* Amber Glow */
+  --secondary-foreground: hsl(40 15% 3%);
+
+  --muted: hsl(30 15% 14%);
+  --muted-foreground: hsl(35 10% 44%);    /* Patina Gray */
+
+  --accent: hsl(82 100% 67%);             /* Uranium Green */
+  --accent-foreground: hsl(40 15% 3%);
+
+  --destructive: hsl(0 100% 63%);         /* Alert Red */
+  --destructive-foreground: hsl(40 35% 74%);
+
+  --border: hsl(30 15% 20%);
+  --input: hsl(30 15% 18%);
+  --ring: hsl(17 100% 60%);
+
+  /* Custom atompunk tokens */
+  --glow-orange: 255, 107, 53;
+  --glow-amber: 255, 182, 39;
+  --glow-uranium: 181, 255, 87;
+  --radium-teal: hsl(179 70% 55%);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* Atompunk Visual Effects */
+@layer utilities {
+  /* Reactor Orange Glow */
+  .glow-orange {
+    box-shadow: 0 0 20px rgba(var(--glow-orange), 0.4),
+                0 0 40px rgba(var(--glow-orange), 0.2);
+  }
+
+  /* Amber Instrument Glow */
+  .glow-amber {
+    box-shadow: 0 0 15px rgba(var(--glow-amber), 0.5);
+  }
+
+  /* Uranium Active State Glow */
+  .glow-uranium {
+    box-shadow: 0 0 25px rgba(var(--glow-uranium), 0.4);
+  }
+
+  /* Radium Teal Glow */
+  .glow-teal {
+    box-shadow: 0 0 20px rgba(61, 219, 217, 0.4);
+  }
+
+  /* Scan-line overlay (CRT effect) */
+  .scanlines {
+    position: relative;
+  }
+
+  .scanlines::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0, 0, 0, 0.03) 2px,
+      rgba(0, 0, 0, 0.03) 4px
+    );
+    pointer-events: none;
+    z-index: 10;
+  }
+
+  /* Vignette effect */
+  .vignette {
+    position: relative;
+  }
+
+  .vignette::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(
+      ellipse at center,
+      transparent 0%,
+      transparent 60%,
+      rgba(13, 12, 10, 0.4) 100%
+    );
+    pointer-events: none;
+    z-index: 5;
+  }
+
+  /* Instrument bezel (inset shadow) */
+  .bezel {
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.4),
+                inset 0 -1px 2px rgba(212, 196, 168, 0.1);
+  }
+
+  /* Nixie tube number styling */
+  .nixie {
+    font-family: var(--font-mono);
+    letter-spacing: 0.1em;
+    text-shadow: 0 0 10px rgba(var(--glow-orange), 0.8),
+                 0 0 20px rgba(var(--glow-orange), 0.4);
+  }
+
+  /* Panel gradient background */
+  .panel-gradient {
+    background: linear-gradient(
+      180deg,
+      hsl(30 15% 14%) 0%,
+      hsl(30 15% 11%) 100%
+    );
+  }
+
+  /* Reactor gradient */
+  .reactor-gradient {
+    background: linear-gradient(
+      135deg,
+      hsl(17 100% 60%) 0%,
+      hsl(40 100% 58%) 50%,
+      hsl(45 100% 65%) 100%
+    );
+  }
+
+  /* Hero background gradient */
+  .hero-gradient {
+    background: linear-gradient(
+      180deg,
+      hsl(40 15% 3%) 0%,
+      hsl(30 12% 9%) 50%,
+      hsl(30 15% 11%) 100%
+    );
+  }
+
+  /* Radium shimmer gradient */
+  .radium-shimmer {
+    background: linear-gradient(
+      135deg,
+      hsl(82 100% 67%) 0%,
+      hsl(179 70% 55%) 100%
+    );
+  }
+
+  /* Animated pulse for loading states */
+  .pulse-glow {
+    animation: pulse-glow 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse-glow {
+    0%, 100% {
+      box-shadow: 0 0 15px rgba(var(--glow-orange), 0.3);
+    }
+    50% {
+      box-shadow: 0 0 30px rgba(var(--glow-orange), 0.6);
+    }
+  }
+
+  /* Data stream loading animation */
+  .data-stream {
+    animation: data-stream 1.5s ease-in-out infinite;
+    background: linear-gradient(
+      90deg,
+      hsl(30 15% 14%) 0%,
+      hsl(30 15% 20%) 50%,
+      hsl(30 15% 14%) 100%
+    );
+    background-size: 200% 100%;
+  }
+
+  @keyframes data-stream {
+    0% {
+      background-position: 200% 0;
+    }
+    100% {
+      background-position: -200% 0;
+    }
+  }
+
+  /* Font utilities */
+  .font-display {
+    font-family: var(--font-display);
+  }
+
+  .font-mono {
+    font-family: var(--font-mono);
+  }
+}
+
+/* Custom scrollbar for atompunk theme */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: hsl(30 12% 9%);
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(30 15% 25%);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(17 100% 60%);
+}
+
+/* Selection color */
+::selection {
+  background: rgba(255, 107, 53, 0.3);
+  color: hsl(40 35% 74%);
 }

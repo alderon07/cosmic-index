@@ -1,0 +1,243 @@
+import { z } from "zod";
+
+// Object Types
+export type ObjectType = "EXOPLANET" | "SMALL_BODY";
+export type DataSource = "NASA_EXOPLANET_ARCHIVE" | "JPL_SBDB";
+export type SmallBodyKind = "asteroid" | "comet";
+
+// Key Fact Interface
+export interface KeyFact {
+  label: string;
+  value: string;
+  unit?: string;
+}
+
+// Source Link Interface
+export interface SourceLink {
+  label: string;
+  url: string;
+}
+
+// Base Cosmic Object Interface
+export interface CosmicObject {
+  id: string;                    // URL-safe slug
+  type: ObjectType;
+  displayName: string;
+  aliases: string[];
+  source: DataSource;
+  sourceId: string;              // Original upstream ID
+  summary: string;               // Auto-generated description
+  keyFacts: KeyFact[];
+  links: SourceLink[];
+  discoveredYear?: number;
+  raw?: Record<string, unknown>; // Debug data
+}
+
+// Exoplanet-specific Interface
+export interface ExoplanetData extends CosmicObject {
+  type: "EXOPLANET";
+  hostStar: string;
+  discoveryMethod: string;
+  orbitalPeriodDays?: number;
+  radiusEarth?: number;
+  massEarth?: number;
+  distanceParsecs?: number;
+  equilibriumTempK?: number;
+}
+
+// Small Body-specific Interface
+export interface SmallBodyData extends CosmicObject {
+  type: "SMALL_BODY";
+  bodyKind: SmallBodyKind;
+  orbitClass: string;
+  isNeo: boolean;
+  isPha: boolean;
+  diameterKm?: number;
+  absoluteMagnitude?: number;
+}
+
+// Union type for all cosmic objects
+export type AnyCosmicObject = ExoplanetData | SmallBodyData;
+
+// API Response Types
+export interface PaginatedResponse<T> {
+  objects: T[];
+  total: number;
+  page: number;
+  limit: number;
+  hasMore: boolean;
+}
+
+export interface ExoplanetListResponse extends PaginatedResponse<ExoplanetData> {}
+export interface SmallBodyListResponse extends PaginatedResponse<SmallBodyData> {}
+
+// Query Parameters
+export interface ExoplanetQueryParams {
+  query?: string;
+  discoveryMethod?: string;
+  yearFrom?: number;
+  yearTo?: number;
+  hasRadius?: boolean;
+  hasMass?: boolean;
+  page?: number;
+  limit?: number;
+}
+
+export interface SmallBodyQueryParams {
+  query?: string;
+  kind?: SmallBodyKind;
+  neo?: boolean;
+  pha?: boolean;
+  page?: number;
+  limit?: number;
+}
+
+// Zod Schemas for Validation
+
+// Key Fact Schema
+export const KeyFactSchema = z.object({
+  label: z.string(),
+  value: z.string(),
+  unit: z.string().optional(),
+});
+
+// Source Link Schema
+export const SourceLinkSchema = z.object({
+  label: z.string(),
+  url: z.string().url(),
+});
+
+// Base Cosmic Object Schema
+export const CosmicObjectSchema = z.object({
+  id: z.string(),
+  type: z.enum(["EXOPLANET", "SMALL_BODY"]),
+  displayName: z.string(),
+  aliases: z.array(z.string()),
+  source: z.enum(["NASA_EXOPLANET_ARCHIVE", "JPL_SBDB"]),
+  sourceId: z.string(),
+  summary: z.string(),
+  keyFacts: z.array(KeyFactSchema),
+  links: z.array(SourceLinkSchema),
+  discoveredYear: z.number().optional(),
+  raw: z.record(z.string(), z.unknown()).optional(),
+});
+
+// Exoplanet Schema
+export const ExoplanetDataSchema = CosmicObjectSchema.extend({
+  type: z.literal("EXOPLANET"),
+  hostStar: z.string(),
+  discoveryMethod: z.string(),
+  orbitalPeriodDays: z.number().optional(),
+  radiusEarth: z.number().optional(),
+  massEarth: z.number().optional(),
+  distanceParsecs: z.number().optional(),
+  equilibriumTempK: z.number().optional(),
+});
+
+// Small Body Schema
+export const SmallBodyDataSchema = CosmicObjectSchema.extend({
+  type: z.literal("SMALL_BODY"),
+  bodyKind: z.enum(["asteroid", "comet"]),
+  orbitClass: z.string(),
+  isNeo: z.boolean(),
+  isPha: z.boolean(),
+  diameterKm: z.number().optional(),
+  absoluteMagnitude: z.number().optional(),
+});
+
+// Query Parameter Schemas
+export const ExoplanetQuerySchema = z.object({
+  query: z.string().optional(),
+  discoveryMethod: z.string().optional(),
+  yearFrom: z.coerce.number().int().min(1900).max(2100).optional(),
+  yearTo: z.coerce.number().int().min(1900).max(2100).optional(),
+  hasRadius: z.coerce.boolean().optional(),
+  hasMass: z.coerce.boolean().optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+});
+
+export const SmallBodyQuerySchema = z.object({
+  query: z.string().optional(),
+  kind: z.enum(["asteroid", "comet"]).optional(),
+  neo: z.coerce.boolean().optional(),
+  pha: z.coerce.boolean().optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+});
+
+// NASA Exoplanet Archive Raw Response Schema
+export const NASAExoplanetRawSchema = z.object({
+  pl_name: z.string(),
+  hostname: z.string().nullable(),
+  discoverymethod: z.string().nullable(),
+  disc_year: z.number().nullable(),
+  pl_orbper: z.number().nullable(),
+  pl_rade: z.number().nullable(),
+  pl_masse: z.number().nullable(),
+  sy_dist: z.number().nullable(),
+  pl_eqt: z.number().nullable(),
+});
+
+// JPL SBDB Raw Response Schema
+export const JPLSmallBodyRawSchema = z.object({
+  spkid: z.string().optional(),
+  full_name: z.string().optional(),
+  kind: z.string().optional(),
+  pdes: z.string().optional(),
+  name: z.string().nullable().optional(),
+  neo: z.string().optional(),
+  pha: z.string().optional(),
+  class: z.string().optional(),
+  diameter: z.string().nullable().optional(),
+  H: z.string().nullable().optional(),
+});
+
+// Utility function to create URL-safe slugs
+export function createSlug(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+// Format number with optional precision
+export function formatNumber(value: number | undefined | null, precision: number = 2): string {
+  if (value === undefined || value === null) return "Unknown";
+  return value.toFixed(precision);
+}
+
+// Discovery methods for filtering
+export const DISCOVERY_METHODS = [
+  "Transit",
+  "Radial Velocity",
+  "Imaging",
+  "Microlensing",
+  "Eclipse Timing Variations",
+  "Pulsar Timing",
+  "Transit Timing Variations",
+  "Orbital Brightness Modulation",
+  "Pulsation Timing Variations",
+  "Disk Kinematics",
+  "Astrometry",
+] as const;
+
+// Small body orbit classes
+export const ORBIT_CLASSES = {
+  // Asteroids
+  AMO: "Amor",
+  APO: "Apollo",
+  ATE: "Aten",
+  IEO: "Atira",
+  MBA: "Main Belt",
+  TNO: "Trans-Neptunian",
+  CEN: "Centaur",
+  TJN: "Jupiter Trojan",
+  // Comets
+  COM: "Comet",
+  HTC: "Halley-type Comet",
+  ETc: "Encke-type Comet",
+  JFc: "Jupiter-family Comet",
+  JFC: "Jupiter-family Comet",
+  CTc: "Chiron-type Comet",
+} as const;
