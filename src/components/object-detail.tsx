@@ -165,7 +165,7 @@ export function ObjectDetail({ object }: ObjectDetailProps) {
       {/* Detailed Sections */}
       <Accordion
         type="multiple"
-        defaultValue={["physical", "orbital", "discovery"]}
+        defaultValue={["physical", "orbital", "host-star", "discovery"]}
         className="space-y-2"
       >
         {isExoplanet(object) && (
@@ -233,8 +233,95 @@ export function ObjectDetail({ object }: ObjectDetailProps) {
                       Distance from Earth
                     </p>
                     <p className="font-mono text-lg">
-                      {object.distanceParsecs
-                        ? `${object.distanceParsecs.toFixed(1)} parsecs`
+                      {object.distanceParsecs != null
+                        ? `${object.distanceParsecs.toFixed(1)} pc (~${(object.distanceParsecs * 3.26156).toFixed(0)} ly)`
+                        : "Unknown"}
+                    </p>
+                  </div>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem
+              value="host-star"
+              className="bg-card border border-border/50 rounded-lg px-4 bezel"
+            >
+              <AccordionTrigger className="font-display hover:no-underline">
+                Host Star
+              </AccordionTrigger>
+              <AccordionContent className="pb-4">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  <div>
+                    <p className="text-xs text-muted-foreground">
+                      Spectral Type
+                    </p>
+                    <p className="font-mono text-lg">
+                      {object.spectralType ?? "Unknown"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">
+                      Temperature
+                    </p>
+                    <p className="font-mono text-lg">
+                      {object.starTempK != null
+                        ? `${object.starTempK.toFixed(0)} K`
+                        : "Unknown"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">
+                      Mass (Solar)
+                    </p>
+                    <p className="font-mono text-lg">
+                      {object.starMassSolar != null
+                        ? `${object.starMassSolar.toFixed(2)} M☉`
+                        : "Unknown"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">
+                      Radius (Solar)
+                    </p>
+                    <p className="font-mono text-lg">
+                      {object.starRadiusSolar != null
+                        ? `${object.starRadiusSolar.toFixed(2)} R☉`
+                        : "Unknown"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">
+                      Luminosity
+                    </p>
+                    <p className="font-mono text-lg">
+                      {object.starLuminosity != null
+                        ? `${object.starLuminosity.toFixed(2)} log L☉`
+                        : "Unknown"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">
+                      Planets in System
+                    </p>
+                    <p className="font-mono text-lg">
+                      {object.planetsInSystem ?? "Unknown"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">
+                      Stars in System
+                    </p>
+                    <p className="font-mono text-lg">
+                      {object.starsInSystem ?? "Unknown"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">
+                      Coordinates (RA, Dec)
+                    </p>
+                    <p className="font-mono text-lg">
+                      {object.ra != null && object.dec != null
+                        ? `${object.ra.toFixed(4)}°, ${object.dec.toFixed(4)}°`
                         : "Unknown"}
                     </p>
                   </div>

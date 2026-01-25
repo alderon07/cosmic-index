@@ -94,7 +94,7 @@ export function buildBrowseQuery(
   return {
     // Important: add a stable secondary sort so paging is deterministic
     query:
-      `select pl_name,hostname,discoverymethod,disc_year,pl_orbper,pl_rade,pl_masse,sy_dist,pl_eqt ` +
+      `select pl_name,hostname,discoverymethod,disc_year,pl_orbper,pl_rade,pl_masse,sy_dist,pl_eqt,sy_snum,sy_pnum,st_spectype,st_teff,st_mass,st_rad,st_lum,ra,dec ` +
       `from ps where ${whereClause} ` +
       `order by disc_year desc, pl_name asc`,
     limit,
@@ -140,7 +140,7 @@ function buildCountQuery(params: ExoplanetQueryParams): string {
 // Build ADQL query for detail
 function buildDetailQuery(name: string): string {
   const safeName = escapeAdqlString(name);
-  return `select pl_name,hostname,discoverymethod,disc_year,pl_orbper,pl_rade,pl_masse,sy_dist,pl_eqt from ps where pl_name='${safeName}' and default_flag=1`;
+  return `select pl_name,hostname,discoverymethod,disc_year,pl_orbper,pl_rade,pl_masse,sy_dist,pl_eqt,sy_snum,sy_pnum,st_spectype,st_teff,st_mass,st_rad,st_lum,ra,dec from ps where pl_name='${safeName}' and default_flag=1`;
 }
 
 // Execute TAP query against NASA Exoplanet Archive (TAP sync) using TAP-standard params.
@@ -249,6 +249,17 @@ function transformExoplanet(raw: z.infer<typeof NASAExoplanetRawSchema>): Exopla
     massEarth: raw.pl_masse ?? undefined,
     distanceParsecs: raw.sy_dist ?? undefined,
     equilibriumTempK: raw.pl_eqt ?? undefined,
+    // Host star properties
+    starsInSystem: raw.sy_snum ?? undefined,
+    planetsInSystem: raw.sy_pnum ?? undefined,
+    spectralType: raw.st_spectype ?? undefined,
+    starTempK: raw.st_teff ?? undefined,
+    starMassSolar: raw.st_mass ?? undefined,
+    starRadiusSolar: raw.st_rad ?? undefined,
+    starLuminosity: raw.st_lum ?? undefined,
+    // Coordinates
+    ra: raw.ra ?? undefined,
+    dec: raw.dec ?? undefined,
     raw: raw as Record<string, unknown>,
   };
 }
@@ -338,7 +349,7 @@ export async function fetchExoplanetBySlug(slug: string): Promise<ExoplanetData 
 
     // Try exact match first (escape for equality comparison)
     let query =
-      `select pl_name,hostname,discoverymethod,disc_year,pl_orbper,pl_rade,pl_masse,sy_dist,pl_eqt ` +
+      `select pl_name,hostname,discoverymethod,disc_year,pl_orbper,pl_rade,pl_masse,sy_dist,pl_eqt,sy_snum,sy_pnum,st_spectype,st_teff,st_mass,st_rad,st_lum,ra,dec ` +
       `from ps where lower(pl_name)=lower('${escapeAdqlString(searchName)}') and default_flag=1`;
     let results = await executeTAPQuery(query, { maxrec: 1 });
 
@@ -346,7 +357,7 @@ export async function fetchExoplanetBySlug(slug: string): Promise<ExoplanetData 
       // Try fuzzy match (sanitize for LIKE query - strips wildcards)
       const fuzzyName = sanitizeForLike(slug.replace(/-/g, " "));
       query =
-        `select pl_name,hostname,discoverymethod,disc_year,pl_orbper,pl_rade,pl_masse,sy_dist,pl_eqt ` +
+        `select pl_name,hostname,discoverymethod,disc_year,pl_orbper,pl_rade,pl_masse,sy_dist,pl_eqt,sy_snum,sy_pnum,st_spectype,st_teff,st_mass,st_rad,st_lum,ra,dec ` +
         `from ps where lower(pl_name) like lower('%${fuzzyName}%') and default_flag=1`;
       results = await executeTAPQuery(query, { maxrec: 1 });
     }
@@ -355,7 +366,7 @@ export async function fetchExoplanetBySlug(slug: string): Promise<ExoplanetData 
       // Try with raw slug (sanitize for LIKE query)
       const safeSlug = sanitizeForLike(slug);
       query =
-        `select pl_name,hostname,discoverymethod,disc_year,pl_orbper,pl_rade,pl_masse,sy_dist,pl_eqt ` +
+        `select pl_name,hostname,discoverymethod,disc_year,pl_orbper,pl_rade,pl_masse,sy_dist,pl_eqt,sy_snum,sy_pnum,st_spectype,st_teff,st_mass,st_rad,st_lum,ra,dec ` +
         `from ps where lower(pl_name) like lower('%${safeSlug}%') and default_flag=1`;
       results = await executeTAPQuery(query, { maxrec: 1 });
     }

@@ -43,6 +43,17 @@ export interface ExoplanetData extends CosmicObject {
   massEarth?: number;
   distanceParsecs?: number;
   equilibriumTempK?: number;
+  // Host star properties
+  starsInSystem?: number;
+  planetsInSystem?: number;
+  spectralType?: string;
+  starTempK?: number;
+  starMassSolar?: number;
+  starRadiusSolar?: number;
+  starLuminosity?: number;
+  // Coordinates
+  ra?: number;
+  dec?: number;
 }
 
 // Small Body-specific Interface
@@ -132,6 +143,17 @@ export const ExoplanetDataSchema = CosmicObjectSchema.extend({
   massEarth: z.number().optional(),
   distanceParsecs: z.number().optional(),
   equilibriumTempK: z.number().optional(),
+  // Host star properties
+  starsInSystem: z.number().optional(),
+  planetsInSystem: z.number().optional(),
+  spectralType: z.string().optional(),
+  starTempK: z.number().optional(),
+  starMassSolar: z.number().optional(),
+  starRadiusSolar: z.number().optional(),
+  starLuminosity: z.number().optional(),
+  // Coordinates
+  ra: z.number().optional(),
+  dec: z.number().optional(),
 });
 
 // Small Body Schema
@@ -185,6 +207,17 @@ export const NASAExoplanetRawSchema = z.object({
   pl_masse: z.number().nullable(),
   sy_dist: z.number().nullable(),
   pl_eqt: z.number().nullable(),
+  // Host star properties
+  sy_snum: z.number().nullable(),
+  sy_pnum: z.number().nullable(),
+  st_spectype: z.string().nullable(),
+  st_teff: z.number().nullable(),
+  st_mass: z.number().nullable(),
+  st_rad: z.number().nullable(),
+  st_lum: z.number().nullable(),
+  // Coordinates
+  ra: z.number().nullable(),
+  dec: z.number().nullable(),
 });
 
 // JPL SBDB Raw Response Schema
