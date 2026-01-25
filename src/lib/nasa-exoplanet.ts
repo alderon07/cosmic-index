@@ -431,27 +431,69 @@ export async function fetchExoplanetByName(name: string): Promise<ExoplanetData 
   });
 }
 
+// Convert slug back to potential exoplanet name formats
+// Exoplanet names typically follow patterns like "G 192-15 b" or "HD 209458 b"
+// Slugs convert all non-alphanumeric to hyphens: "g-192-15-b" or "hd-209458-b"
+function slugToNameVariants(slug: string): string[] {
+  const variants: string[] = [];
+
+  // Pattern 1: "G 192-15 b" format (letter-space-numbers-hyphen-numbers-space-letter)
+  // Match: letter-hyphen-numbers-hyphen-numbers-hyphen-letter
+  const pattern1 = /^([a-z])-(\d+)-(\d+)-([a-z])$/i;
+  if (pattern1.test(slug)) {
+    const match = slug.match(pattern1)!;
+    variants.push(
+      `${match[1].toUpperCase()} ${match[2]}-${match[3]} ${match[4].toLowerCase()}`
+    );
+  }
+
+  // Pattern 2: "HD 209458 b" format (letters-space-numbers-space-letter)
+  // Match: letters-hyphen-numbers-hyphen-letter
+  const pattern2 = /^([a-z]+)-(\d+)-([a-z])$/i;
+  if (pattern2.test(slug)) {
+    const match = slug.match(pattern2)!;
+    variants.push(
+      `${match[1].toUpperCase()} ${match[2]} ${match[3].toLowerCase()}`
+    );
+  }
+
+  // Pattern 3: Original logic - replace last hyphen before letter with space
+  variants.push(slug.replace(/-([b-z])$/i, " $1").toUpperCase());
+
+  // Pattern 4: Replace all hyphens with spaces
+  variants.push(slug.replace(/-/g, " ").toUpperCase());
+
+  return variants;
+}
+
 // Fetch exoplanet by slug (tries to find matching name)
 export async function fetchExoplanetBySlug(slug: string): Promise<ExoplanetData | null> {
   const cacheKey = `${CACHE_KEYS.EXOPLANET_DETAIL}:${slug}`;
 
   return withCache(cacheKey, CACHE_TTL.EXOPLANETS_DETAIL, async () => {
-    const searchName = slug.replace(/-([b-z])$/i, " $1").toUpperCase();
+    const nameVariants = slugToNameVariants(slug);
 
-    // Try exact match first (escape for equality comparison)
+    // Try exact matches with each variant
+    for (const searchName of nameVariants) {
+      const query =
+        `select pl_name,hostname,discoverymethod,disc_year,pl_orbper,pl_rade,pl_masse,sy_dist,pl_eqt,sy_snum,sy_pnum,st_spectype,st_teff,st_mass,st_rad,st_lum,ra,dec ` +
+        `from ps where lower(pl_name)=lower('${escapeAdqlString(searchName)}') and default_flag=1`;
+      const results = await executeTAPQuery(query, { maxrec: 1 });
+
+      if (results.length > 0) {
+        const parsed = NASAExoplanetRawSchema.safeParse(results[0]);
+        if (parsed.success) {
+          return transformExoplanet(parsed.data);
+        }
+      }
+    }
+
+    // Try fuzzy matches as fallback
+    const fuzzyName = sanitizeForLike(slug.replace(/-/g, " "));
     let query =
       `select pl_name,hostname,discoverymethod,disc_year,pl_orbper,pl_rade,pl_masse,sy_dist,pl_eqt,sy_snum,sy_pnum,st_spectype,st_teff,st_mass,st_rad,st_lum,ra,dec ` +
-      `from ps where lower(pl_name)=lower('${escapeAdqlString(searchName)}') and default_flag=1`;
+      `from ps where lower(pl_name) like lower('%${fuzzyName}%') and default_flag=1`;
     let results = await executeTAPQuery(query, { maxrec: 1 });
-
-    if (results.length === 0) {
-      // Try fuzzy match (sanitize for LIKE query - strips wildcards)
-      const fuzzyName = sanitizeForLike(slug.replace(/-/g, " "));
-      query =
-        `select pl_name,hostname,discoverymethod,disc_year,pl_orbper,pl_rade,pl_masse,sy_dist,pl_eqt,sy_snum,sy_pnum,st_spectype,st_teff,st_mass,st_rad,st_lum,ra,dec ` +
-        `from ps where lower(pl_name) like lower('%${fuzzyName}%') and default_flag=1`;
-      results = await executeTAPQuery(query, { maxrec: 1 });
-    }
 
     if (results.length === 0) {
       // Try with raw slug (sanitize for LIKE query)
