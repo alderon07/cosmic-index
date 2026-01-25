@@ -12,116 +12,168 @@ import { z } from "zod";
 
 const BASE_URL = "https://exoplanetarchive.ipac.caltech.edu/TAP/sync";
 
+// ---- Pagination guardrails (the “fix”) ----
+// TAP sync doesn’t give you a true OFFSET. Your previous approach fetched (offset+limit)
+// which becomes insane for deep pages in prod.
+//
+// This “fix” makes pagination predictable:
+// 1) Clamp page to a sane max
+// 2) Refuse deep offsets unless the user narrows filters (query/method/year/etc)
+const MAX_PAGE = 500;            // pick your poison
+const MAX_OFFSET = 10_000;       // hard cap on offset-based paging
+const DEFAULT_LIMIT = 20;
+
+function clampPagination(params: ExoplanetQueryParams): { page: number; limit: number; offset: number } {
+  const limit = Math.max(1, Math.min(params.limit ?? DEFAULT_LIMIT, 100));
+  const page = Math.max(1, Math.min(params.page ?? 1, MAX_PAGE));
+  const offset = (page - 1) * limit;
+  return { page, limit, offset };
+}
+
+function hasAnyNarrowingFilter(params: ExoplanetQueryParams): boolean {
+  return Boolean(
+    params.query ||
+      params.discoveryMethod ||
+      params.yearFrom !== undefined ||
+      params.yearTo !== undefined ||
+      params.hasRadius ||
+      params.hasMass
+  );
+}
+
 // Build ADQL query for browsing exoplanets
-function buildBrowseQuery(params: ExoplanetQueryParams): string {
-  const conditions: string[] = ["default_flag = 1"];
+function buildBrowseQuery(
+  params: ExoplanetQueryParams
+): { query: string; limit: number; offset: number; page: number } {
+  const conditions: string[] = ["default_flag=1"];
+
+  const { page, limit, offset } = clampPagination(params);
 
   if (params.query) {
-    // Escape single quotes in the search query
     const safeQuery = params.query.replace(/'/g, "''");
-    conditions.push(`pl_name LIKE '%${safeQuery}%'`);
+    conditions.push(`pl_name like '%${safeQuery}%'`);
   }
 
   if (params.discoveryMethod) {
     const safeMethod = params.discoveryMethod.replace(/'/g, "''");
-    conditions.push(`discoverymethod = '${safeMethod}'`);
+    conditions.push(`discoverymethod='${safeMethod}'`);
   }
 
   if (params.yearFrom !== undefined) {
-    conditions.push(`disc_year >= ${params.yearFrom}`);
+    conditions.push(`disc_year>=${params.yearFrom}`);
   }
 
   if (params.yearTo !== undefined) {
-    conditions.push(`disc_year <= ${params.yearTo}`);
+    conditions.push(`disc_year<=${params.yearTo}`);
   }
 
   if (params.hasRadius) {
-    conditions.push("pl_rade IS NOT NULL");
+    conditions.push("pl_rade is not null");
   }
 
   if (params.hasMass) {
-    conditions.push("pl_masse IS NOT NULL");
+    conditions.push("pl_masse is not null");
   }
 
-  const whereClause = conditions.join(" AND ");
-  const offset = ((params.page || 1) - 1) * (params.limit || 20);
+  const whereClause = conditions.join(" and ");
 
-  return `
-    SELECT pl_name, hostname, discoverymethod, disc_year,
-           pl_orbper, pl_rade, pl_masse, sy_dist, pl_eqt
-    FROM ps
-    WHERE ${whereClause}
-    ORDER BY disc_year DESC
-    LIMIT ${params.limit || 20} OFFSET ${offset}
-  `.trim();
+  return {
+    // Important: add a stable secondary sort so paging is deterministic
+    query:
+      `select pl_name,hostname,discoverymethod,disc_year,pl_orbper,pl_rade,pl_masse,sy_dist,pl_eqt ` +
+      `from ps where ${whereClause} ` +
+      `order by disc_year desc, pl_name asc`,
+    limit,
+    offset,
+    page,
+  };
 }
 
 // Build ADQL query for counting total results
 function buildCountQuery(params: ExoplanetQueryParams): string {
-  const conditions: string[] = ["default_flag = 1"];
+  const conditions: string[] = ["default_flag=1"];
 
   if (params.query) {
     const safeQuery = params.query.replace(/'/g, "''");
-    conditions.push(`pl_name LIKE '%${safeQuery}%'`);
+    conditions.push(`pl_name like '%${safeQuery}%'`);
   }
 
   if (params.discoveryMethod) {
     const safeMethod = params.discoveryMethod.replace(/'/g, "''");
-    conditions.push(`discoverymethod = '${safeMethod}'`);
+    conditions.push(`discoverymethod='${safeMethod}'`);
   }
 
   if (params.yearFrom !== undefined) {
-    conditions.push(`disc_year >= ${params.yearFrom}`);
+    conditions.push(`disc_year>=${params.yearFrom}`);
   }
 
   if (params.yearTo !== undefined) {
-    conditions.push(`disc_year <= ${params.yearTo}`);
+    conditions.push(`disc_year<=${params.yearTo}`);
   }
 
   if (params.hasRadius) {
-    conditions.push("pl_rade IS NOT NULL");
+    conditions.push("pl_rade is not null");
   }
 
   if (params.hasMass) {
-    conditions.push("pl_masse IS NOT NULL");
+    conditions.push("pl_masse is not null");
   }
 
-  const whereClause = conditions.join(" AND ");
-
-  return `
-    SELECT COUNT(*) as total
-    FROM ps
-    WHERE ${whereClause}
-  `.trim();
+  const whereClause = conditions.join(" and ");
+  return `select count(*) as total from ps where ${whereClause}`;
 }
 
 // Build ADQL query for detail
 function buildDetailQuery(name: string): string {
   const safeName = name.replace(/'/g, "''");
-  return `
-    SELECT *
-    FROM ps
-    WHERE pl_name = '${safeName}' AND default_flag = 1
-  `.trim();
+  return `select pl_name,hostname,discoverymethod,disc_year,pl_orbper,pl_rade,pl_masse,sy_dist,pl_eqt from ps where pl_name='${safeName}' and default_flag=1`;
 }
 
-// Execute TAP query against NASA API
-async function executeTAPQuery(query: string): Promise<unknown[]> {
-  const url = new URL(BASE_URL);
-  url.searchParams.set("query", query);
-  url.searchParams.set("format", "json");
-
-  const response = await fetch(url.toString(), {
-    headers: {
-      Accept: "application/json",
-    },
+// Execute TAP query against NASA Exoplanet Archive (TAP sync) using TAP-standard params.
+// Using POST avoids prod/dev encoding differences and URL length limits.
+async function executeTAPQuery(query: string, options?: { maxrec?: number }): Promise<unknown[]> {
+  const body = new URLSearchParams({
+    REQUEST: "doQuery",
+    LANG: "ADQL",
+    FORMAT: "json",
+    QUERY: query,
   });
 
-  if (!response.ok) {
-    throw new Error(`NASA API error: ${response.status} ${response.statusText}`);
+  if (options?.maxrec !== undefined) {
+    body.set("MAXREC", String(options.maxrec));
   }
 
-  const data = await response.json();
+  const response = await fetch(BASE_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      Accept: "application/json",
+      "User-Agent": "cosmic-index/1.0",
+    },
+    body,
+    // If you want caching later, swap this for next:{revalidate:...}
+    cache: "no-store",
+  });
+
+  const text = await response.text().catch(() => "");
+
+  if (!response.ok) {
+    throw new Error(
+      `NASA TAP error: ${response.status} ${response.statusText}\nQuery: ${query}\nBody: ${text.slice(0, 1200)}`
+    );
+  }
+
+  let data: unknown;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    throw new Error(`NASA TAP returned non-JSON.\nBody: ${text.slice(0, 1200)}`);
+  }
+
+  if (!Array.isArray(data)) {
+    throw new Error(`NASA TAP unexpected response shape.\nBody: ${text.slice(0, 1200)}`);
+  }
+
   return data as unknown[];
 }
 
@@ -132,34 +184,23 @@ function transformExoplanet(raw: z.infer<typeof NASAExoplanetRawSchema>): Exopla
   if (raw.pl_rade !== null) {
     keyFacts.push({ label: "Radius", value: formatNumber(raw.pl_rade), unit: "Earth radii" });
   }
-
   if (raw.pl_masse !== null) {
     keyFacts.push({ label: "Mass", value: formatNumber(raw.pl_masse), unit: "Earth masses" });
   }
-
   if (raw.pl_orbper !== null) {
     keyFacts.push({ label: "Orbital Period", value: formatNumber(raw.pl_orbper, 1), unit: "days" });
   }
-
   if (raw.sy_dist !== null) {
     keyFacts.push({ label: "Distance", value: formatNumber(raw.sy_dist, 1), unit: "parsecs" });
   }
-
   if (raw.pl_eqt !== null) {
     keyFacts.push({ label: "Equilibrium Temp", value: formatNumber(raw.pl_eqt, 0), unit: "K" });
   }
 
-  // Generate summary
   let summary = `${raw.pl_name} is an exoplanet`;
-  if (raw.hostname) {
-    summary += ` orbiting the star ${raw.hostname}`;
-  }
-  if (raw.disc_year) {
-    summary += `, discovered in ${raw.disc_year}`;
-  }
-  if (raw.discoverymethod) {
-    summary += ` using the ${raw.discoverymethod} method`;
-  }
+  if (raw.hostname) summary += ` orbiting the star ${raw.hostname}`;
+  if (raw.disc_year) summary += `, discovered in ${raw.disc_year}`;
+  if (raw.discoverymethod) summary += ` using the ${raw.discoverymethod} method`;
   summary += ".";
 
   if (raw.pl_rade !== null) {
@@ -205,14 +246,30 @@ export async function fetchExoplanets(
   const cacheKey = `${CACHE_KEYS.EXOPLANET_BROWSE}:${hashParams(params as Record<string, unknown>)}`;
 
   return withCache(cacheKey, CACHE_TTL.EXOPLANETS_BROWSE, async () => {
-    // Execute queries in parallel
+    const browseParams = buildBrowseQuery(params);
+
+    // Pagination fix: refuse deep offsets unless narrowed.
+    if (browseParams.offset > MAX_OFFSET && !hasAnyNarrowingFilter(params)) {
+      // You can throw to force UI to show “refine search”, or return empty.
+      // Throw is usually better so the UI can message the user.
+      throw new Error(
+        `Pagination too deep (page ${browseParams.page}). Add a search or filters (year/method/etc) to narrow results.`
+      );
+    }
+
+    // TAP sync doesn’t support true OFFSET. We fetch enough rows to cover (offset+limit),
+    // but ONLY up to MAX_OFFSET + limit, keeping it bounded and predictable.
+    const boundedMaxrec = Math.min(browseParams.offset + browseParams.limit, MAX_OFFSET + browseParams.limit);
+
     const [dataResults, countResults] = await Promise.all([
-      executeTAPQuery(buildBrowseQuery(params)),
-      executeTAPQuery(buildCountQuery(params)),
+      executeTAPQuery(browseParams.query, { maxrec: boundedMaxrec }),
+      executeTAPQuery(buildCountQuery(params), { maxrec: 1 }),
     ]);
 
-    // Parse and transform results
-    const objects = dataResults
+    // Slice results to handle pagination (skip offset records)
+    const slicedResults = dataResults.slice(browseParams.offset, browseParams.offset + browseParams.limit);
+
+    const objects = slicedResults
       .map((row) => {
         const parsed = NASAExoplanetRawSchema.safeParse(row);
         if (!parsed.success) {
@@ -226,8 +283,8 @@ export async function fetchExoplanets(
     const totalRow = countResults[0] as { total?: number } | undefined;
     const total = totalRow?.total ?? objects.length;
 
-    const page = params.page || 1;
-    const limit = params.limit || 20;
+    const page = browseParams.page;
+    const limit = browseParams.limit;
 
     return {
       objects,
@@ -244,11 +301,9 @@ export async function fetchExoplanetByName(name: string): Promise<ExoplanetData 
   const cacheKey = `${CACHE_KEYS.EXOPLANET_DETAIL}:${createSlug(name)}`;
 
   return withCache(cacheKey, CACHE_TTL.EXOPLANETS_DETAIL, async () => {
-    const results = await executeTAPQuery(buildDetailQuery(name));
+    const results = await executeTAPQuery(buildDetailQuery(name), { maxrec: 1 });
 
-    if (results.length === 0) {
-      return null;
-    }
+    if (results.length === 0) return null;
 
     const parsed = NASAExoplanetRawSchema.safeParse(results[0]);
     if (!parsed.success) {
@@ -265,25 +320,32 @@ export async function fetchExoplanetBySlug(slug: string): Promise<ExoplanetData 
   const cacheKey = `${CACHE_KEYS.EXOPLANET_DETAIL}:${slug}`;
 
   return withCache(cacheKey, CACHE_TTL.EXOPLANETS_DETAIL, async () => {
-    // Convert slug back to approximate name for search
-    const searchName = slug.replace(/-/g, " ");
+    const escapeAdqlString = (s: string) => s.replace(/'/g, "''");
 
-    // Search for planets matching this pattern
-    const query = `
-      SELECT pl_name, hostname, discoverymethod, disc_year,
-             pl_orbper, pl_rade, pl_masse, sy_dist, pl_eqt
-      FROM ps
-      WHERE LOWER(REPLACE(pl_name, ' ', '-')) = '${slug}'
-         OR LOWER(pl_name) LIKE '%${searchName}%'
-      AND default_flag = 1
-      LIMIT 1
-    `.trim();
+    const searchName = slug.replace(/-([b-z])$/i, " $1").toUpperCase();
 
-    const results = await executeTAPQuery(query);
+    let query =
+      `select pl_name,hostname,discoverymethod,disc_year,pl_orbper,pl_rade,pl_masse,sy_dist,pl_eqt ` +
+      `from ps where lower(pl_name)=lower('${escapeAdqlString(searchName)}') and default_flag=1`;
+    let results = await executeTAPQuery(query, { maxrec: 1 });
 
     if (results.length === 0) {
-      return null;
+      const fuzzyName = escapeAdqlString(slug.replace(/-/g, " "));
+      query =
+        `select pl_name,hostname,discoverymethod,disc_year,pl_orbper,pl_rade,pl_masse,sy_dist,pl_eqt ` +
+        `from ps where lower(pl_name) like lower('%${fuzzyName}%') and default_flag=1`;
+      results = await executeTAPQuery(query, { maxrec: 1 });
     }
+
+    if (results.length === 0) {
+      const safeSlug = escapeAdqlString(slug);
+      query =
+        `select pl_name,hostname,discoverymethod,disc_year,pl_orbper,pl_rade,pl_masse,sy_dist,pl_eqt ` +
+        `from ps where lower(pl_name) like lower('%${safeSlug}%') and default_flag=1`;
+      results = await executeTAPQuery(query, { maxrec: 1 });
+    }
+
+    if (results.length === 0) return null;
 
     const parsed = NASAExoplanetRawSchema.safeParse(results[0]);
     if (!parsed.success) {

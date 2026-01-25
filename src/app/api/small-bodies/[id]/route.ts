@@ -9,6 +9,7 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
+    console.log("id", id);
 
     // Rate limiting
     const clientId = getClientIdentifier(request);

@@ -5,6 +5,9 @@ import { getCacheControlHeader, CACHE_TTL } from "@/lib/cache";
 import { checkRateLimit, getClientIdentifier, getRateLimitHeaders } from "@/lib/rate-limit";
 
 export async function GET(request: NextRequest) {
+  // Generate request ID for debugging
+  const requestId = crypto.randomUUID();
+
   try {
     // Rate limiting
     const clientId = getClientIdentifier(request);
@@ -47,10 +50,39 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("Error fetching small bodies:", error);
+    // Log error with request ID for debugging (server-side only)
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    const errorType = error instanceof Error ? error.constructor.name : "Unknown";
+    
+    console.error(`[${requestId}] Error fetching small bodies:`, {
+      type: errorType,
+      message: errorMessage,
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+
+    // Determine appropriate error message and status based on error type
+    let status = 500;
+    let userMessage = "Failed to fetch small bodies. Please try again later.";
+
+    if (error instanceof Error) {
+      if (error.message.includes("timed out")) {
+        status = 504;
+        userMessage = "Request to external service timed out. Please try again.";
+      } else if (error.message.includes("JPL API error")) {
+        status = 502;
+        userMessage = "External service error. Please try again later.";
+      } else if (error.message.includes("parse") || error.message.includes("Invalid")) {
+        status = 502;
+        userMessage = "Invalid response from external service. Please try again later.";
+      }
+    }
+
     return NextResponse.json(
-      { error: "Failed to fetch small bodies. Please try again later." },
-      { status: 500 }
+      { 
+        error: userMessage,
+        requestId, // Include request ID for support/debugging
+      },
+      { status }
     );
   }
 }

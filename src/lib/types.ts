@@ -195,10 +195,8 @@ export const JPLSmallBodyRawSchema = z.object({
 
 // Utility function to create URL-safe slugs
 export function createSlug(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "");
+  const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  return slug;
 }
 
 // Format number with optional precision

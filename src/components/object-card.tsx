@@ -45,9 +45,16 @@ export function ObjectCard({ object }: ObjectCardProps) {
       <Card className="h-full bg-card border-border/50 transition-all duration-300 hover:border-primary/50 hover:glow-orange bezel scanlines overflow-hidden">
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between gap-2">
-            <CardTitle className="font-display text-lg text-foreground group-hover:text-primary transition-colors line-clamp-2">
-              {object.displayName}
-            </CardTitle>
+            <div className="flex-1 min-w-0">
+              <CardTitle className="font-display text-lg text-foreground group-hover:text-primary transition-colors line-clamp-2">
+                {object.displayName}
+              </CardTitle>
+              {isSmallBody(object) && object.aliases.length > 0 && (
+                <p className="text-xs text-muted-foreground mt-1 line-clamp-1">
+                  {object.aliases[0]}
+                </p>
+              )}
+            </div>
             <Badge variant={typeVariant} className="shrink-0 font-mono text-xs">
               {typeLabel}
             </Badge>

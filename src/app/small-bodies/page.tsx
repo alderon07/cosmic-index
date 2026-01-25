@@ -69,13 +69,19 @@ export default function SmallBodiesPage() {
           <div className="w-10 h-10 rounded-lg bg-secondary/20 flex items-center justify-center">
             <Globe className="w-5 h-5 text-secondary" />
           </div>
-          <h1 className="font-display text-3xl md:text-4xl text-foreground">
-            Small Bodies
-          </h1>
-        </div>
-        <p className="text-muted-foreground">
-          Discover asteroids and comets from JPL&apos;s Small-Body Database
-        </p>
+        <h1 className="font-display text-3xl md:text-4xl text-foreground">
+          Small Bodies
+        </h1>
+      </div>
+      <p className="text-muted-foreground mb-2">
+        Discover asteroids and comets from JPL&apos;s Small-Body Database
+      </p>
+      <p className="text-sm text-muted-foreground/80">
+        Small bodies are celestial objects in our solar system that are smaller than planets or dwarf planets. 
+        This category includes asteroids, rocky remnants from the early solar system, and comets, icy bodies 
+        that develop tails when they approach the Sun. Some small bodies, known as Near-Earth Objects (NEOs), 
+        have orbits that bring them close to Earth.
+      </p>
       </div>
 
       {/* Search and Filters */}
@@ -86,6 +92,9 @@ export default function SmallBodiesPage() {
           placeholder="Search asteroids and comets..."
           isLoading={isLoading}
         />
+        <p className="text-xs text-muted-foreground/70 italic">
+          Note: Search uses regex patterns and may timeout with very short or common terms. For best results, use specific names or designations.
+        </p>
 
         <SmallBodyFilterPanel
           filters={filters}
@@ -131,7 +140,7 @@ export default function SmallBodiesPage() {
       {!isLoading && data && data.objects.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {data.objects.map((smallBody) => (
-            <ObjectCard key={smallBody.id} object={smallBody} />
+            <ObjectCard key={smallBody.sourceId} object={smallBody} />
           ))}
         </div>
       )}

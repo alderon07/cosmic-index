@@ -71,13 +71,18 @@ export default function ExoplanetsPage() {
           <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
             <Sparkles className="w-5 h-5 text-primary" />
           </div>
-          <h1 className="font-display text-3xl md:text-4xl text-foreground">
-            Exoplanets
-          </h1>
-        </div>
-        <p className="text-muted-foreground">
-          Explore confirmed exoplanets from NASA&apos;s Exoplanet Archive
-        </p>
+        <h1 className="font-display text-3xl md:text-4xl text-foreground">
+          Exoplanets
+        </h1>
+      </div>
+      <p className="text-muted-foreground mb-2">
+        Explore confirmed exoplanets from NASA&apos;s Exoplanet Archive
+      </p>
+      <p className="text-sm text-muted-foreground/80">
+        An exoplanet, or extrasolar planet, is a planet that orbits a star outside our solar system. 
+        These distant worlds range from rocky planets similar to Earth to gas giants larger than Jupiter, 
+        and they may exist in habitable zones where conditions could potentially support life.
+      </p>
       </div>
 
       {/* Search and Filters */}
