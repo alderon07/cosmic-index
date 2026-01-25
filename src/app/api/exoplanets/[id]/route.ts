@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { fetchExoplanetBySlug } from "@/lib/nasa-exoplanet";
 import { getCacheControlHeader, CACHE_TTL } from "@/lib/cache";
 import { checkRateLimit, getClientIdentifier, getRateLimitHeaders } from "@/lib/rate-limit";
+import { ExoplanetDataSchema } from "@/lib/types";
 
 export async function GET(
   request: NextRequest,
@@ -34,8 +35,11 @@ export async function GET(
       );
     }
 
+    // Validate with schema to ensure all fields are present (prevents field stripping)
+    const validated = ExoplanetDataSchema.parse(exoplanet);
+
     // Return response with cache headers
-    return NextResponse.json(exoplanet, {
+    return NextResponse.json(validated, {
       headers: {
         "Cache-Control": getCacheControlHeader(CACHE_TTL.EXOPLANETS_DETAIL),
         ...getRateLimitHeaders(rateLimitResult),

@@ -79,8 +79,8 @@ export interface PaginatedResponse<T> {
   hasMore: boolean;
 }
 
-export interface ExoplanetListResponse extends PaginatedResponse<ExoplanetData> {}
-export interface SmallBodyListResponse extends PaginatedResponse<SmallBodyData> {}
+export type ExoplanetListResponse = PaginatedResponse<ExoplanetData>;
+export type SmallBodyListResponse = PaginatedResponse<SmallBodyData>;
 
 // Query Parameters
 export interface ExoplanetQueryParams {
@@ -166,6 +166,12 @@ export const SmallBodyDataSchema = CosmicObjectSchema.extend({
   diameterKm: z.number().optional(),
   absoluteMagnitude: z.number().optional(),
 });
+
+// Union schema for runtime validation (must be after individual schemas are defined)
+export const AnyCosmicObjectSchema = z.discriminatedUnion("type", [
+  ExoplanetDataSchema,
+  SmallBodyDataSchema,
+]);
 
 // Query Parameter Schemas with NFKC normalization and length limits
 

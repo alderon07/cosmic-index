@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, use } from "react";
+import Link from "next/link";
 import { ObjectDetail, ObjectDetailSkeleton } from "@/components/object-detail";
 import { ExoplanetData } from "@/lib/types";
 
@@ -8,7 +9,9 @@ interface ExoplanetDetailPageProps {
   params: Promise<{ id: string }>;
 }
 
-export default function ExoplanetDetailPage({ params }: ExoplanetDetailPageProps) {
+export default function ExoplanetDetailPage({
+  params,
+}: ExoplanetDetailPageProps) {
   const { id } = use(params);
   const [data, setData] = useState<ExoplanetData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -57,12 +60,9 @@ export default function ExoplanetDetailPage({ params }: ExoplanetDetailPageProps
             {error === "Exoplanet not found" ? "Exoplanet Not Found" : "Error"}
           </h2>
           <p className="text-muted-foreground mb-4">{error}</p>
-          <a
-            href="/exoplanets"
-            className="text-primary hover:underline"
-          >
+          <Link href="/exoplanets" className="text-primary hover:underline">
             Back to Exoplanets
-          </a>
+          </Link>
         </div>
       </div>
     );
