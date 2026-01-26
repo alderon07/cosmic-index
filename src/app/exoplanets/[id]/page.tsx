@@ -1,76 +1,169 @@
-"use client";
-
-import { useState, useEffect, use } from "react";
-import { ObjectDetail, ObjectDetailSkeleton } from "@/components/object-detail";
+import { notFound } from "next/navigation";
+import type { Metadata } from "next";
+import { ObjectDetail } from "@/components/object-detail";
+import { Breadcrumbs } from "@/components/breadcrumbs";
+import { fetchExoplanetBySlug } from "@/lib/nasa-exoplanet";
 import { ExoplanetData } from "@/lib/types";
+
+const BASE_URL = "https://cosmic-index.vercel.app";
 
 interface ExoplanetDetailPageProps {
   params: Promise<{ id: string }>;
 }
 
-export default function ExoplanetDetailPage({
+// Generate dynamic metadata for SEO
+export async function generateMetadata({
+  params,
+}: ExoplanetDetailPageProps): Promise<Metadata> {
+  const { id } = await params;
+  const exoplanet = await fetchExoplanetBySlug(id);
+
+  if (!exoplanet) {
+    return {
+      title: "Exoplanet Not Found",
+      description: "The requested exoplanet could not be found.",
+    };
+  }
+
+  const title = exoplanet.displayName;
+  const description = exoplanet.summary.slice(0, 155);
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title: `${title} | Cosmic Index`,
+      description,
+      url: `${BASE_URL}/exoplanets/${id}`,
+      type: "article",
+      images: [
+        {
+          url: "/og-image.png",
+          width: 1200,
+          height: 630,
+          alt: `${exoplanet.displayName} - Exoplanet`,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${title} | Cosmic Index`,
+      description,
+      images: ["/og-image.png"],
+    },
+    alternates: {
+      canonical: `${BASE_URL}/exoplanets/${id}`,
+    },
+  };
+}
+
+// Generate JSON-LD structured data for an exoplanet
+// Data comes from trusted NASA API, JSON.stringify safely escapes special characters
+function generateExoplanetJsonLd(exoplanet: ExoplanetData, slug: string) {
+  const additionalProperties = [];
+
+  if (exoplanet.hostStar) {
+    additionalProperties.push({
+      "@type": "PropertyValue",
+      name: "Host Star",
+      value: exoplanet.hostStar,
+    });
+  }
+
+  if (exoplanet.discoveryMethod) {
+    additionalProperties.push({
+      "@type": "PropertyValue",
+      name: "Discovery Method",
+      value: exoplanet.discoveryMethod,
+    });
+  }
+
+  if (exoplanet.radiusEarth !== undefined) {
+    additionalProperties.push({
+      "@type": "PropertyValue",
+      name: "Radius",
+      value: exoplanet.radiusEarth.toFixed(2),
+      unitText: "Earth radii",
+    });
+  }
+
+  if (exoplanet.massEarth !== undefined) {
+    additionalProperties.push({
+      "@type": "PropertyValue",
+      name: "Mass",
+      value: exoplanet.massEarth.toFixed(2),
+      unitText: "Earth masses",
+    });
+  }
+
+  if (exoplanet.orbitalPeriodDays !== undefined) {
+    additionalProperties.push({
+      "@type": "PropertyValue",
+      name: "Orbital Period",
+      value: exoplanet.orbitalPeriodDays.toFixed(2),
+      unitText: "days",
+    });
+  }
+
+  if (exoplanet.distanceParsecs !== undefined) {
+    additionalProperties.push({
+      "@type": "PropertyValue",
+      name: "Distance",
+      value: exoplanet.distanceParsecs.toFixed(1),
+      unitText: "parsecs",
+    });
+  }
+
+  if (exoplanet.discoveredYear !== undefined) {
+    additionalProperties.push({
+      "@type": "PropertyValue",
+      name: "Discovery Year",
+      value: exoplanet.discoveredYear.toString(),
+    });
+  }
+
+  return {
+    "@context": "https://schema.org",
+    "@type": "Thing",
+    name: exoplanet.displayName,
+    description: exoplanet.summary,
+    url: `${BASE_URL}/exoplanets/${slug}`,
+    additionalType: "https://schema.org/Thing",
+    additionalProperty: additionalProperties,
+    sameAs: [
+      `https://exoplanetarchive.ipac.caltech.edu/overview/${encodeURIComponent(exoplanet.sourceId)}`,
+    ],
+  };
+}
+
+export default async function ExoplanetDetailPage({
   params,
 }: ExoplanetDetailPageProps) {
-  const { id } = use(params);
-  const [data, setData] = useState<ExoplanetData | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { id } = await params;
+  const exoplanet = await fetchExoplanetBySlug(id);
 
-  useEffect(() => {
-    async function fetchData() {
-      setIsLoading(true);
-      setError(null);
-
-      try {
-        const response = await fetch(`/api/exoplanets/${id}`);
-
-        if (!response.ok) {
-          if (response.status === 404) {
-            throw new Error("Exoplanet not found");
-          }
-          throw new Error("Failed to fetch exoplanet");
-        }
-
-        const result: ExoplanetData = await response.json();
-        setData(result);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "An error occurred");
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
-    fetchData();
-  }, [id]);
-
-  if (isLoading) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <ObjectDetailSkeleton />
-      </div>
-    );
+  if (!exoplanet) {
+    notFound();
   }
 
-  if (error) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="p-12 text-center">
-          <h2 className="font-display text-2xl text-foreground mb-2">
-            {error === "Exoplanet not found" ? "Exoplanet Not Found" : "Error"}
-          </h2>
-          <p className="text-muted-foreground">{error}</p>
-        </div>
-      </div>
-    );
-  }
+  const jsonLd = generateExoplanetJsonLd(exoplanet, id);
 
-  if (!data) {
-    return null;
-  }
+  const breadcrumbItems = [
+    { label: "Home", href: "/" },
+    { label: "Exoplanets", href: "/exoplanets" },
+    { label: exoplanet.displayName },
+  ];
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <ObjectDetail object={data} />
-    </div>
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <div className="container mx-auto px-4 py-8">
+        <Breadcrumbs items={breadcrumbItems} className="mb-6" />
+        <ObjectDetail object={exoplanet} />
+      </div>
+    </>
   );
 }
