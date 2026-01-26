@@ -9,7 +9,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { X, Filter, RotateCcw } from "lucide-react";
-import { DISCOVERY_METHODS, SmallBodyKind } from "@/lib/types";
+import { DISCOVERY_METHODS, DISCOVERY_FACILITIES, SIZE_CATEGORIES, SmallBodyKind, SizeCategory } from "@/lib/types";
 
 // Exoplanet Filter Types
 export interface ExoplanetFilters {
@@ -18,6 +18,10 @@ export interface ExoplanetFilters {
   yearTo?: number;
   hasRadius?: boolean;
   hasMass?: boolean;
+  sizeCategory?: SizeCategory;
+  habitable?: boolean;
+  facility?: string;
+  multiPlanet?: boolean;
 }
 
 // Small Body Filter Types
@@ -103,6 +107,18 @@ export function ExoplanetFilterPanel({
               onRemove={() => removeFilter("discoveryMethod")}
             />
           )}
+          {filters.sizeCategory && (
+            <FilterChip
+              label={SIZE_CATEGORIES[filters.sizeCategory].label}
+              onRemove={() => removeFilter("sizeCategory")}
+            />
+          )}
+          {filters.facility && (
+            <FilterChip
+              label={filters.facility}
+              onRemove={() => removeFilter("facility")}
+            />
+          )}
           {filters.yearFrom && (
             <FilterChip
               label={`From ${filters.yearFrom}`}
@@ -113,6 +129,18 @@ export function ExoplanetFilterPanel({
             <FilterChip
               label={`To ${filters.yearTo}`}
               onRemove={() => removeFilter("yearTo")}
+            />
+          )}
+          {filters.habitable && (
+            <FilterChip
+              label="Habitable Zone"
+              onRemove={() => removeFilter("habitable")}
+            />
+          )}
+          {filters.multiPlanet && (
+            <FilterChip
+              label="Multi-planet"
+              onRemove={() => removeFilter("multiPlanet")}
             />
           )}
           {filters.hasRadius && (
@@ -157,6 +185,54 @@ export function ExoplanetFilterPanel({
             </div>
           </AccordionTrigger>
           <AccordionContent className="pb-4 space-y-4">
+            {/* Planet Size Category */}
+            <div>
+              <label className="text-xs text-muted-foreground uppercase tracking-wider block mb-2">
+                Planet Size
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {(Object.keys(SIZE_CATEGORIES) as SizeCategory[]).map((category) => (
+                  <Button
+                    key={category}
+                    variant={
+                      filters.sizeCategory === category ? "default" : "outline"
+                    }
+                    size="sm"
+                    onClick={() =>
+                      updateFilter(
+                        "sizeCategory",
+                        filters.sizeCategory === category ? undefined : category
+                      )
+                    }
+                    className="text-xs"
+                  >
+                    {SIZE_CATEGORIES[category].label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            {/* Discovery Facility */}
+            <div>
+              <label className="text-xs text-muted-foreground uppercase tracking-wider block mb-2">
+                Discovery Facility
+              </label>
+              <select
+                value={filters.facility || ""}
+                onChange={(e) =>
+                  updateFilter("facility", e.target.value || undefined)
+                }
+                className="w-full px-3 py-2 bg-input border border-border rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+              >
+                <option value="">All Facilities</option>
+                {DISCOVERY_FACILITIES.map((facility) => (
+                  <option key={facility} value={facility}>
+                    {facility}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             {/* Discovery Method */}
             <div>
               <label className="text-xs text-muted-foreground uppercase tracking-wider block mb-2">
@@ -223,6 +299,31 @@ export function ExoplanetFilterPanel({
                   placeholder="2025"
                   className="w-full px-3 py-2 bg-input border border-border rounded-md text-sm font-mono focus:outline-none focus:ring-1 focus:ring-primary"
                 />
+              </div>
+            </div>
+
+            {/* Special Filters */}
+            <div>
+              <label className="text-xs text-muted-foreground uppercase tracking-wider block mb-2">
+                Special Filters
+              </label>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant={filters.habitable ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => updateFilter("habitable", !filters.habitable)}
+                  className="text-xs"
+                >
+                  Potentially Habitable
+                </Button>
+                <Button
+                  variant={filters.multiPlanet ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => updateFilter("multiPlanet", !filters.multiPlanet)}
+                  className="text-xs"
+                >
+                  Multi-planet System
+                </Button>
               </div>
             </div>
 

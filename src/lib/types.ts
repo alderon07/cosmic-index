@@ -39,6 +39,7 @@ export interface ExoplanetData extends CosmicObject {
   type: "EXOPLANET";
   hostStar: string;
   discoveryMethod: string;
+  discoveryFacility?: string;
   orbitalPeriodDays?: number;
   radiusEarth?: number;
   massEarth?: number;
@@ -83,6 +84,9 @@ export interface PaginatedResponse<T> {
 export type ExoplanetListResponse = PaginatedResponse<ExoplanetData>;
 export type SmallBodyListResponse = PaginatedResponse<SmallBodyData>;
 
+// Size category type for exoplanet filtering
+export type SizeCategory = "earth" | "super-earth" | "neptune" | "jupiter";
+
 // Query Parameters
 export interface ExoplanetQueryParams {
   query?: string;
@@ -91,6 +95,10 @@ export interface ExoplanetQueryParams {
   yearTo?: number;
   hasRadius?: boolean;
   hasMass?: boolean;
+  sizeCategory?: SizeCategory;
+  habitable?: boolean;
+  facility?: string;
+  multiPlanet?: boolean;
   page?: number;
   limit?: number;
 }
@@ -139,6 +147,7 @@ export const ExoplanetDataSchema = CosmicObjectSchema.extend({
   type: z.literal("EXOPLANET"),
   hostStar: z.string(),
   discoveryMethod: z.string(),
+  discoveryFacility: z.string().optional(),
   orbitalPeriodDays: z.number().optional(),
   radiusEarth: z.number().optional(),
   massEarth: z.number().optional(),
@@ -190,6 +199,10 @@ export const ExoplanetQuerySchema = z.object({
   yearTo: z.coerce.number().int().min(1900).max(2100).optional(),
   hasRadius: z.coerce.boolean().optional(),
   hasMass: z.coerce.boolean().optional(),
+  sizeCategory: z.enum(["earth", "super-earth", "neptune", "jupiter"]).optional(),
+  habitable: z.coerce.boolean().optional(),
+  facility: normalizedString(64).optional(),
+  multiPlanet: z.coerce.boolean().optional(),
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(MAX_PAGE_SIZE).default(DEFAULT_PAGE_SIZE),
 });
@@ -209,6 +222,7 @@ export const NASAExoplanetRawSchema = z.object({
   hostname: z.string().nullable(),
   discoverymethod: z.string().nullable(),
   disc_year: z.number().nullable(),
+  disc_facility: z.string().nullable(),
   pl_orbper: z.number().nullable(),
   pl_rade: z.number().nullable(),
   pl_masse: z.number().nullable(),
@@ -278,6 +292,24 @@ export const DISCOVERY_METHODS = [
   "Disk Kinematics",
   "Astrometry",
 ] as const;
+
+// Discovery facilities for filtering (top facilities by planet count)
+export const DISCOVERY_FACILITIES = [
+  "Kepler",
+  "TESS",
+  "K2",
+  "La Silla Observatory",
+  "W. M. Keck Observatory",
+  "Multiple Observatories",
+] as const;
+
+// Size category definitions (in Earth radii)
+export const SIZE_CATEGORIES = {
+  earth: { label: "Earth-sized", min: 0.5, max: 1.5 },
+  "super-earth": { label: "Super-Earth", min: 1.5, max: 2.5 },
+  neptune: { label: "Neptune-sized", min: 2.5, max: 10 },
+  jupiter: { label: "Jupiter-sized", min: 10, max: null },
+} as const;
 
 // Track unknown discovery methods to log only once
 const loggedUnknownMethods = new Set<string>();

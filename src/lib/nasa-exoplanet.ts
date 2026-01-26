@@ -55,7 +55,11 @@ function hasAnyNarrowingFilter(params: ExoplanetQueryParams): boolean {
       params.yearFrom !== undefined ||
       params.yearTo !== undefined ||
       params.hasRadius ||
-      params.hasMass
+      params.hasMass ||
+      params.sizeCategory ||
+      params.habitable ||
+      params.facility ||
+      params.multiPlanet
   );
 }
 
@@ -94,12 +98,46 @@ export function buildBrowseQuery(
     conditions.push("pl_masse is not null");
   }
 
+  // Size category filter (Earth radii ranges)
+  if (params.sizeCategory) {
+    switch (params.sizeCategory) {
+      case "earth":
+        conditions.push("pl_rade >= 0.5 and pl_rade <= 1.5");
+        break;
+      case "super-earth":
+        conditions.push("pl_rade > 1.5 and pl_rade <= 2.5");
+        break;
+      case "neptune":
+        conditions.push("pl_rade > 2.5 and pl_rade <= 10");
+        break;
+      case "jupiter":
+        conditions.push("pl_rade > 10");
+        break;
+    }
+  }
+
+  // Potentially habitable (equilibrium temperature range)
+  if (params.habitable) {
+    conditions.push("pl_eqt >= 200 and pl_eqt <= 350");
+  }
+
+  // Discovery facility filter
+  if (params.facility) {
+    const safeFacility = escapeAdqlString(params.facility);
+    conditions.push(`disc_facility='${safeFacility}'`);
+  }
+
+  // Multi-planet system filter
+  if (params.multiPlanet) {
+    conditions.push("sy_pnum > 1");
+  }
+
   const whereClause = conditions.join(" and ");
 
   return {
     // Important: stable secondary sort so paging is deterministic
     query:
-      `select pl_name,hostname,discoverymethod,disc_year,pl_orbper,pl_rade,pl_masse,sy_dist,pl_eqt,sy_snum,sy_pnum,st_spectype,st_teff,st_mass,st_rad,st_lum,ra,dec ` +
+      `select pl_name,hostname,discoverymethod,disc_year,disc_facility,pl_orbper,pl_rade,pl_masse,sy_dist,pl_eqt,sy_snum,sy_pnum,st_spectype,st_teff,st_mass,st_rad,st_lum,ra,dec ` +
       `from ps where ${whereClause} ` +
       `order by disc_year desc, pl_name asc`,
     limit,
@@ -138,6 +176,40 @@ function buildCountQuery(params: ExoplanetQueryParams): string {
     conditions.push("pl_masse is not null");
   }
 
+  // Size category filter (Earth radii ranges)
+  if (params.sizeCategory) {
+    switch (params.sizeCategory) {
+      case "earth":
+        conditions.push("pl_rade >= 0.5 and pl_rade <= 1.5");
+        break;
+      case "super-earth":
+        conditions.push("pl_rade > 1.5 and pl_rade <= 2.5");
+        break;
+      case "neptune":
+        conditions.push("pl_rade > 2.5 and pl_rade <= 10");
+        break;
+      case "jupiter":
+        conditions.push("pl_rade > 10");
+        break;
+    }
+  }
+
+  // Potentially habitable (equilibrium temperature range)
+  if (params.habitable) {
+    conditions.push("pl_eqt >= 200 and pl_eqt <= 350");
+  }
+
+  // Discovery facility filter
+  if (params.facility) {
+    const safeFacility = escapeAdqlString(params.facility);
+    conditions.push(`disc_facility='${safeFacility}'`);
+  }
+
+  // Multi-planet system filter
+  if (params.multiPlanet) {
+    conditions.push("sy_pnum > 1");
+  }
+
   const whereClause = conditions.join(" and ");
   return `select count(*) as total from ps where ${whereClause}`;
 }
@@ -146,7 +218,7 @@ function buildCountQuery(params: ExoplanetQueryParams): string {
 function buildDetailQuery(name: string): string {
   const safeName = escapeAdqlString(name);
   return (
-    `select pl_name,hostname,discoverymethod,disc_year,pl_orbper,pl_rade,pl_masse,sy_dist,pl_eqt,sy_snum,sy_pnum,st_spectype,st_teff,st_mass,st_rad,st_lum,ra,dec ` +
+    `select pl_name,hostname,discoverymethod,disc_year,disc_facility,pl_orbper,pl_rade,pl_masse,sy_dist,pl_eqt,sy_snum,sy_pnum,st_spectype,st_teff,st_mass,st_rad,st_lum,ra,dec ` +
     `from ps where pl_name='${safeName}' and default_flag=1`
   );
 }
@@ -327,6 +399,7 @@ function transformExoplanet(raw: z.infer<typeof NASAExoplanetRawSchema>): Exopla
     discoveredYear: raw.disc_year ?? undefined,
     hostStar: raw.hostname || "Unknown",
     discoveryMethod: raw.discoverymethod || "Unknown",
+    discoveryFacility: raw.disc_facility ?? undefined,
     orbitalPeriodDays: raw.pl_orbper ?? undefined,
     radiusEarth: raw.pl_rade ?? undefined,
     massEarth: raw.pl_masse ?? undefined,
@@ -440,7 +513,7 @@ export async function fetchExoplanetBySlug(slug: string): Promise<ExoplanetData 
 
   return withCache(cacheKey, CACHE_TTL.EXOPLANETS_DETAIL, async () => {
     const query =
-      `select pl_name,hostname,discoverymethod,disc_year,pl_orbper,pl_rade,pl_masse,sy_dist,pl_eqt,sy_snum,sy_pnum,st_spectype,st_teff,st_mass,st_rad,st_lum,ra,dec ` +
+      `select pl_name,hostname,discoverymethod,disc_year,disc_facility,pl_orbper,pl_rade,pl_masse,sy_dist,pl_eqt,sy_snum,sy_pnum,st_spectype,st_teff,st_mass,st_rad,st_lum,ra,dec ` +
       `from ps where lower(pl_name)=lower('${escapeAdqlString(name)}') and default_flag=1`;
     const results = await executeTAPQuery(query, { maxrec: 1 });
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, Suspense, startTransition } from "react";
+import { useState, useEffect, useCallback, useMemo, Suspense, startTransition } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { ObjectCard, ObjectCardSkeleton } from "@/components/object-card";
 import { SearchBar } from "@/components/search-bar";
@@ -15,7 +15,7 @@ function ExoplanetsPageContent() {
   const router = useRouter();
   const pathname = usePathname();
 
-  // Derive page and limit from URL (URL is source of truth)
+  // Derive all query state from URL (URL is source of truth)
   const page = (() => {
     const param = searchParams.get("page");
     const parsed = param ? parseInt(param, 10) : 1;
@@ -31,9 +31,31 @@ function ExoplanetsPageContent() {
     return parsed;
   })();
 
-  // Other state (not in URL)
-  const [searchQuery, setSearchQuery] = useState("");
-  const [filters, setFilters] = useState<ExoplanetFilters>({});
+  // Derive search query from URL
+  const searchQuery = searchParams.get("query") || "";
+
+  // Derive filters from URL (memoized to avoid unnecessary re-renders)
+  const discoveryMethod = searchParams.get("discoveryMethod") || undefined;
+  const yearFrom = searchParams.get("yearFrom");
+  const yearTo = searchParams.get("yearTo");
+  const hasRadius = searchParams.get("hasRadius") === "true" || undefined;
+  const hasMass = searchParams.get("hasMass") === "true" || undefined;
+  const sizeCategory = (searchParams.get("sizeCategory") as ExoplanetFilters["sizeCategory"]) || undefined;
+  const habitable = searchParams.get("habitable") === "true" || undefined;
+  const facility = searchParams.get("facility") || undefined;
+  const multiPlanet = searchParams.get("multiPlanet") === "true" || undefined;
+
+  const filters: ExoplanetFilters = useMemo(() => ({
+    discoveryMethod,
+    yearFrom: yearFrom ? parseInt(yearFrom, 10) : undefined,
+    yearTo: yearTo ? parseInt(yearTo, 10) : undefined,
+    hasRadius,
+    hasMass,
+    sizeCategory,
+    habitable,
+    facility,
+    multiPlanet,
+  }), [discoveryMethod, yearFrom, yearTo, hasRadius, hasMass, sizeCategory, habitable, facility, multiPlanet]);
   const [data, setData] = useState<PaginatedResponse<ExoplanetData> | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -73,27 +95,45 @@ function ExoplanetsPageContent() {
     }
   }, [data, limit, page, setPage]);
 
-  // Reset to page 1 when search/filters change
+  // Update search query in URL (resets to page 1)
   const handleSearchChange = useCallback((query: string) => {
-    setSearchQuery(query);
-    if (page !== 1) {
-      updateUrl({ page: null }); // Reset to page 1
-    }
-  }, [page, updateUrl]);
+    updateUrl({
+      query: query || null, // Remove from URL if empty
+      page: null, // Reset to page 1
+    });
+  }, [updateUrl]);
 
+  // Update filters in URL (resets to page 1)
   const handleFiltersChange = useCallback((newFilters: ExoplanetFilters) => {
-    setFilters(newFilters);
-    if (page !== 1) {
-      updateUrl({ page: null }); // Reset to page 1
-    }
-  }, [page, updateUrl]);
+    updateUrl({
+      discoveryMethod: newFilters.discoveryMethod ?? null,
+      yearFrom: newFilters.yearFrom?.toString() ?? null,
+      yearTo: newFilters.yearTo?.toString() ?? null,
+      hasRadius: newFilters.hasRadius ? "true" : null,
+      hasMass: newFilters.hasMass ? "true" : null,
+      sizeCategory: newFilters.sizeCategory ?? null,
+      habitable: newFilters.habitable ? "true" : null,
+      facility: newFilters.facility ?? null,
+      multiPlanet: newFilters.multiPlanet ? "true" : null,
+      page: null, // Reset to page 1
+    });
+  }, [updateUrl]);
 
+  // Clear all filters from URL (resets to page 1)
   const handleFilterReset = useCallback(() => {
-    setFilters({});
-    if (page !== 1) {
-      updateUrl({ page: null }); // Reset to page 1
-    }
-  }, [page, updateUrl]);
+    updateUrl({
+      discoveryMethod: null,
+      yearFrom: null,
+      yearTo: null,
+      hasRadius: null,
+      hasMass: null,
+      sizeCategory: null,
+      habitable: null,
+      facility: null,
+      multiPlanet: null,
+      page: null, // Reset to page 1
+    });
+  }, [updateUrl]);
 
   // Fetch data when page/limit/search/filters change
   const fetchData = useCallback(async () => {
@@ -109,6 +149,10 @@ function ExoplanetsPageContent() {
       if (filters.yearTo) params.set("yearTo", filters.yearTo.toString());
       if (filters.hasRadius) params.set("hasRadius", "true");
       if (filters.hasMass) params.set("hasMass", "true");
+      if (filters.sizeCategory) params.set("sizeCategory", filters.sizeCategory);
+      if (filters.habitable) params.set("habitable", "true");
+      if (filters.facility) params.set("facility", filters.facility);
+      if (filters.multiPlanet) params.set("multiPlanet", "true");
       params.set("page", page.toString());
       params.set("limit", limit.toString());
 
@@ -171,7 +215,7 @@ function ExoplanetsPageContent() {
         />
       </div>
 
-      {/* Results Info */}
+      {/* Results Info and Top Pagination */}
       {data && !isLoading && (
         <div className="flex items-center justify-between mb-6">
           <PaginationInfo
@@ -179,6 +223,13 @@ function ExoplanetsPageContent() {
             pageSize={limit}
             totalItems={data.total}
           />
+          {totalPages > 1 && (
+            <Pagination
+              currentPage={page}
+              totalPages={totalPages}
+              onPageChange={setPage}
+            />
+          )}
         </div>
       )}
 

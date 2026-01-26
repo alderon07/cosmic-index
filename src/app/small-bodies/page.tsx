@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, Suspense, startTransition } from "react";
+import { useState, useEffect, useCallback, useMemo, Suspense, startTransition } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { ObjectCard, ObjectCardSkeleton } from "@/components/object-card";
 import { SearchBar } from "@/components/search-bar";
@@ -15,7 +15,7 @@ function SmallBodiesPageContent() {
   const router = useRouter();
   const pathname = usePathname();
 
-  // Derive page and limit from URL (URL is source of truth)
+  // Derive all query state from URL (URL is source of truth)
   const page = (() => {
     const param = searchParams.get("page");
     const parsed = param ? parseInt(param, 10) : 1;
@@ -31,9 +31,19 @@ function SmallBodiesPageContent() {
     return parsed;
   })();
 
-  // Other state (not in URL)
-  const [searchQuery, setSearchQuery] = useState("");
-  const [filters, setFilters] = useState<SmallBodyFilters>({});
+  // Derive search query from URL
+  const searchQuery = searchParams.get("query") || "";
+
+  // Derive filters from URL (memoized to avoid unnecessary re-renders)
+  const kind = (searchParams.get("kind") as SmallBodyFilters["kind"]) || undefined;
+  const neo = searchParams.get("neo") === "true" || undefined;
+  const pha = searchParams.get("pha") === "true" || undefined;
+
+  const filters: SmallBodyFilters = useMemo(() => ({
+    kind,
+    neo,
+    pha,
+  }), [kind, neo, pha]);
   const [data, setData] = useState<PaginatedResponse<SmallBodyData> | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -73,27 +83,33 @@ function SmallBodiesPageContent() {
     }
   }, [data, limit, page, setPage]);
 
-  // Reset to page 1 when search/filters change
+  // Update search query in URL (resets to page 1)
   const handleSearchChange = useCallback((query: string) => {
-    setSearchQuery(query);
-    if (page !== 1) {
-      updateUrl({ page: null }); // Reset to page 1
-    }
-  }, [page, updateUrl]);
+    updateUrl({
+      query: query || null, // Remove from URL if empty
+      page: null, // Reset to page 1
+    });
+  }, [updateUrl]);
 
+  // Update filters in URL (resets to page 1)
   const handleFiltersChange = useCallback((newFilters: SmallBodyFilters) => {
-    setFilters(newFilters);
-    if (page !== 1) {
-      updateUrl({ page: null }); // Reset to page 1
-    }
-  }, [page, updateUrl]);
+    updateUrl({
+      kind: newFilters.kind ?? null,
+      neo: newFilters.neo ? "true" : null,
+      pha: newFilters.pha ? "true" : null,
+      page: null, // Reset to page 1
+    });
+  }, [updateUrl]);
 
+  // Clear all filters from URL (resets to page 1)
   const handleFilterReset = useCallback(() => {
-    setFilters({});
-    if (page !== 1) {
-      updateUrl({ page: null }); // Reset to page 1
-    }
-  }, [page, updateUrl]);
+    updateUrl({
+      kind: null,
+      neo: null,
+      pha: null,
+      page: null, // Reset to page 1
+    });
+  }, [updateUrl]);
 
   // Fetch data when page/limit/search/filters change
   const fetchData = useCallback(async (signal?: AbortSignal) => {
@@ -192,7 +208,7 @@ function SmallBodiesPageContent() {
         />
       </div>
 
-      {/* Results Info */}
+      {/* Results Info and Top Pagination */}
       {data && !isLoading && (
         <div className="flex items-center justify-between mb-6">
           <PaginationInfo
@@ -200,6 +216,13 @@ function SmallBodiesPageContent() {
             pageSize={limit}
             totalItems={data.total}
           />
+          {totalPages > 1 && (
+            <Pagination
+              currentPage={page}
+              totalPages={totalPages}
+              onPageChange={setPage}
+            />
+          )}
         </div>
       )}
 
