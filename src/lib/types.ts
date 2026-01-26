@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE } from "./constants";
 
 // Object Types
 export type ObjectType = "EXOPLANET" | "SMALL_BODY";
@@ -190,7 +191,7 @@ export const ExoplanetQuerySchema = z.object({
   hasRadius: z.coerce.boolean().optional(),
   hasMass: z.coerce.boolean().optional(),
   page: z.coerce.number().int().min(1).default(1),
-  limit: z.coerce.number().int().min(1).max(100).default(20),
+  limit: z.coerce.number().int().min(1).max(MAX_PAGE_SIZE).default(DEFAULT_PAGE_SIZE),
 });
 
 export const SmallBodyQuerySchema = z.object({
@@ -199,7 +200,7 @@ export const SmallBodyQuerySchema = z.object({
   neo: z.coerce.boolean().optional(),
   pha: z.coerce.boolean().optional(),
   page: z.coerce.number().int().min(1).default(1),
-  limit: z.coerce.number().int().min(1).max(100).default(20),
+  limit: z.coerce.number().int().min(1).max(MAX_PAGE_SIZE).default(DEFAULT_PAGE_SIZE),
 });
 
 // NASA Exoplanet Archive Raw Response Schema

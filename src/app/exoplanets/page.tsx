@@ -1,22 +1,101 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Suspense, startTransition } from "react";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { ObjectCard, ObjectCardSkeleton } from "@/components/object-card";
 import { SearchBar } from "@/components/search-bar";
 import { ExoplanetFilterPanel, ExoplanetFilters } from "@/components/filter-panel";
 import { Pagination, PaginationInfo } from "@/components/pagination";
 import { ExoplanetData, PaginatedResponse } from "@/lib/types";
+import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "@/lib/constants";
 import { Circle } from "lucide-react";
 
-export default function ExoplanetsPage() {
+function ExoplanetsPageContent() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  // Derive page and limit from URL (URL is source of truth)
+  const page = (() => {
+    const param = searchParams.get("page");
+    const parsed = param ? parseInt(param, 10) : 1;
+    return isNaN(parsed) || parsed < 1 ? 1 : parsed;
+  })();
+
+  const limit = (() => {
+    const param = searchParams.get("limit");
+    const parsed = param ? parseInt(param, 10) : DEFAULT_PAGE_SIZE;
+    if (isNaN(parsed) || !PAGE_SIZE_OPTIONS.includes(parsed as typeof PAGE_SIZE_OPTIONS[number])) {
+      return DEFAULT_PAGE_SIZE;
+    }
+    return parsed;
+  })();
+
+  // Other state (not in URL)
   const [searchQuery, setSearchQuery] = useState("");
   const [filters, setFilters] = useState<ExoplanetFilters>({});
-  const [page, setPage] = useState(1);
-  const [limit] = useState(20);
   const [data, setData] = useState<PaginatedResponse<ExoplanetData> | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Update URL helper - preserves existing params
+  const updateUrl = useCallback((updates: Record<string, string | null>) => {
+    const params = new URLSearchParams(searchParams.toString());
+
+    for (const [key, value] of Object.entries(updates)) {
+      if (value === null) {
+        params.delete(key);
+      } else {
+        params.set(key, value);
+      }
+    }
+
+    const query = params.toString();
+    startTransition(() => {
+      router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+    });
+  }, [searchParams, pathname, router]);
+
+  // Page change handler (called by Pagination component)
+  const setPage = useCallback((newPage: number) => {
+    updateUrl({
+      page: newPage === 1 ? null : newPage.toString(), // Clean URL for page 1
+    });
+  }, [updateUrl]);
+
+  // Clamp page when data loads (handle out-of-range)
+  useEffect(() => {
+    if (data && data.total > 0) {
+      const maxPage = Math.ceil(data.total / limit);
+      if (page > maxPage) {
+        setPage(maxPage);
+      }
+    }
+  }, [data, limit, page, setPage]);
+
+  // Reset to page 1 when search/filters change
+  const handleSearchChange = useCallback((query: string) => {
+    setSearchQuery(query);
+    if (page !== 1) {
+      updateUrl({ page: null }); // Reset to page 1
+    }
+  }, [page, updateUrl]);
+
+  const handleFiltersChange = useCallback((newFilters: ExoplanetFilters) => {
+    setFilters(newFilters);
+    if (page !== 1) {
+      updateUrl({ page: null }); // Reset to page 1
+    }
+  }, [page, updateUrl]);
+
+  const handleFilterReset = useCallback(() => {
+    setFilters({});
+    if (page !== 1) {
+      updateUrl({ page: null }); // Reset to page 1
+    }
+  }, [page, updateUrl]);
+
+  // Fetch data when page/limit/search/filters change
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
@@ -52,15 +131,6 @@ export default function ExoplanetsPage() {
     fetchData();
   }, [fetchData]);
 
-  // Reset to page 1 when search or filters change
-  useEffect(() => {
-    setPage(1);
-  }, [searchQuery, filters]);
-
-  const handleFilterReset = () => {
-    setFilters({});
-  };
-
   const totalPages = data ? Math.ceil(data.total / limit) : 0;
 
   return (
@@ -79,8 +149,8 @@ export default function ExoplanetsPage() {
         Explore confirmed exoplanets from NASA&apos;s Exoplanet Archive
       </p>
       <p className="text-sm text-muted-foreground/80">
-        An exoplanet, or extrasolar planet, is a planet that orbits a star outside our solar system. 
-        These distant worlds range from rocky planets similar to Earth to gas giants larger than Jupiter, 
+        An exoplanet, or extrasolar planet, is a planet that orbits a star outside our solar system.
+        These distant worlds range from rocky planets similar to Earth to gas giants larger than Jupiter,
         and they may exist in habitable zones where conditions could potentially support life.
       </p>
       </div>
@@ -89,14 +159,14 @@ export default function ExoplanetsPage() {
       <div className="space-y-4 mb-8">
         <SearchBar
           value={searchQuery}
-          onChange={setSearchQuery}
+          onChange={handleSearchChange}
           placeholder="Search exoplanets by name..."
           isLoading={isLoading}
         />
 
         <ExoplanetFilterPanel
           filters={filters}
-          onChange={setFilters}
+          onChange={handleFiltersChange}
           onReset={handleFilterReset}
         />
       </div>
@@ -167,5 +237,37 @@ export default function ExoplanetsPage() {
         </div>
       )}
     </div>
+  );
+}
+
+// Loading skeleton for Suspense fallback
+function LoadingSkeleton() {
+  return (
+    <div className="container mx-auto px-4 py-8">
+      <div className="mb-8">
+        <div className="flex items-center gap-3 mb-2">
+          <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
+            <Circle className="w-5 h-5 text-primary" />
+          </div>
+          <h1 className="font-display text-3xl md:text-4xl text-foreground">
+            Exoplanets
+          </h1>
+        </div>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <ObjectCardSkeleton key={i} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Suspense wrapper (required for useSearchParams in Next.js 15)
+export default function ExoplanetsPage() {
+  return (
+    <Suspense fallback={<LoadingSkeleton />}>
+      <ExoplanetsPageContent />
+    </Suspense>
   );
 }

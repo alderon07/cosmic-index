@@ -10,6 +10,7 @@ import {
   ORBIT_CLASSES,
 } from "./types";
 import { withCache, CACHE_TTL, CACHE_KEYS, hashParams } from "./cache";
+import { DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE } from "./constants";
 
 const QUERY_API_URL = "https://ssd-api.jpl.nasa.gov/sbdb_query.api";
 const LOOKUP_API_URL = "https://ssd-api.jpl.nasa.gov/sbdb.api";
@@ -188,7 +189,7 @@ function buildQueryUrl(params: SmallBodyQueryParams): string {
   }
 
   // Pagination - validate limits
-  const limit = Math.min(Math.max(1, params.limit || 20), 100); // Clamp between 1 and 100
+  const limit = Math.min(Math.max(1, params.limit || DEFAULT_PAGE_SIZE), MAX_PAGE_SIZE);
   const page = Math.max(1, params.page || 1); // Ensure page is at least 1
   const offset = (page - 1) * limit;
   url.searchParams.set("limit", limit.toString());
@@ -300,17 +301,13 @@ function transformFromQuery(
   }
 
   const spkid = getValue("spkid");
-  const uniqueId = pdes || spkid || fullName || displayName;
   const sourceId = spkid || pdes || displayName;
-  
-  // Only append displayName if it actually differs (prevents "2025 Y3-2025 Y3")
-  const norm = (s: string) => s.trim().toLowerCase();
-  const idSource = displayName && uniqueId && norm(displayName) !== norm(uniqueId)
-    ? `${uniqueId}-${displayName}`
-    : uniqueId;
+
+  // Use pdes (primary designation) as slug - it's the canonical JPL identifier
+  const slugSource = pdes || displayName;
 
   return {
-    id: createSlug(idSource),
+    id: createSlug(slugSource),
     type: "SMALL_BODY",
     displayName,
     aliases: fullName && fullName !== displayName ? [fullName] : [],
@@ -523,17 +520,13 @@ async function fetchSmallBodyByIdentifierDirect(
     if (obj.pha) summary += " It has been identified as potentially hazardous.";
     if (diameter !== undefined) summary += ` Its estimated diameter is ${formatNumber(diameter)} km.`;
 
-    const uniqueId = obj.des || obj.spkid || obj.fullname || displayName;
     const sourceId = obj.spkid || obj.des || displayName;
 
-    const norm = (s: string) => s.trim().toLowerCase();
-    const idSource =
-      displayName && uniqueId && norm(displayName) !== norm(uniqueId)
-        ? `${uniqueId}-${displayName}`
-        : uniqueId;
+    // Use des (designation) as slug - it's the canonical JPL identifier
+    const slugSource = obj.des || displayName;
 
     return {
-      id: createSlug(idSource),
+      id: createSlug(slugSource),
       type: "SMALL_BODY",
       displayName,
       aliases: obj.fullname !== displayName ? [obj.fullname] : [],
@@ -678,7 +671,7 @@ async function fetchSmallBodiesPrimary(
 
     const total = parseInt(data.count, 10) || objects.length;
     const page = Math.max(1, params.page || 1);
-    const limit = Math.min(Math.max(1, params.limit || 20), 100);
+    const limit = Math.min(Math.max(1, params.limit || DEFAULT_PAGE_SIZE), MAX_PAGE_SIZE);
 
     return {
       objects,
@@ -735,7 +728,7 @@ export async function fetchSmallBodies(
 
   return withCache(cacheKey, CACHE_TTL.SMALL_BODIES_BROWSE, async () => {
     const page = Math.max(1, params.page || 1);
-    const limit = Math.min(Math.max(1, params.limit || 20), 100);
+    const limit = Math.min(Math.max(1, params.limit || DEFAULT_PAGE_SIZE), MAX_PAGE_SIZE);
 
     // Try primary approach first
     try {
@@ -935,16 +928,13 @@ export async function fetchSmallBodyByIdentifier(identifier: string): Promise<Sm
         summary += ` It was discovered on ${typedData.discovery.date} by ${typedData.discovery.who}.`;
       }
 
-      const uniqueId = obj.des || obj.spkid || obj.fullname || displayName;
       const sourceId = obj.spkid || obj.des || displayName;
-      
-      const norm = (s: string) => s.trim().toLowerCase();
-      const idSource = displayName && uniqueId && norm(displayName) !== norm(uniqueId)
-        ? `${uniqueId}-${displayName}`
-        : uniqueId;
+
+      // Use des (designation) as slug - it's the canonical JPL identifier
+      const slugSource = obj.des || displayName;
 
       return {
-        id: createSlug(idSource),
+        id: createSlug(slugSource),
         type: "SMALL_BODY",
         displayName,
         aliases: obj.fullname !== displayName ? [obj.fullname] : [],

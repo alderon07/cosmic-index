@@ -9,6 +9,7 @@ import {
   KeyFact,
 } from "./types";
 import { withCache, CACHE_TTL, CACHE_KEYS, hashParams } from "./cache";
+import { DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE } from "./constants";
 import { z } from "zod";
 
 const BASE_URL = "https://exoplanetarchive.ipac.caltech.edu/TAP/sync";
@@ -27,7 +28,7 @@ function sanitizeForLike(input: string): string {
 }
 
 // ---- Pagination guardrails (the "fix") ----
-// TAP sync doesn’t give you a true OFFSET. The old approach fetched (offset+limit)
+// TAP sync doesn't give you a true OFFSET. The old approach fetched (offset+limit)
 // which becomes insane for deep pages in prod.
 //
 // This makes pagination predictable:
@@ -35,14 +36,13 @@ function sanitizeForLike(input: string): string {
 // 2) Refuse deep offsets unless the user narrows filters (query/method/year/etc)
 const MAX_PAGE = 500; // pick your poison
 const MAX_OFFSET = 10_000; // hard cap on offset-based paging
-const DEFAULT_LIMIT = 20;
 
 function clampPagination(params: ExoplanetQueryParams): {
   page: number;
   limit: number;
   offset: number;
 } {
-  const limit = Math.max(1, Math.min(params.limit ?? DEFAULT_LIMIT, 100));
+  const limit = Math.max(1, Math.min(params.limit ?? DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE));
   const page = Math.max(1, Math.min(params.page ?? 1, MAX_PAGE));
   const offset = (page - 1) * limit;
   return { page, limit, offset };

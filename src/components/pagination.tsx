@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, MoreHorizontal } from "lucide-react";
+import { PAGE_SIZE_OPTIONS } from "@/lib/constants";
 
 interface PaginationProps {
   currentPage: number;
@@ -133,13 +134,13 @@ export function Pagination({
 interface PageSizeSelectorProps {
   value: number;
   onChange: (value: number) => void;
-  options?: number[];
+  options?: readonly number[];
 }
 
 export function PageSizeSelector({
   value,
   onChange,
-  options = [10, 20, 50],
+  options = PAGE_SIZE_OPTIONS,
 }: PageSizeSelectorProps) {
   return (
     <div className="flex items-center gap-2 text-sm">
