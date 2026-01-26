@@ -240,23 +240,21 @@ export const JPLSmallBodyRawSchema = z.object({
   H: z.string().nullable().optional(),
 });
 
-// Utility function to create URL-safe slugs
+// Utility function to create URL-safe slugs using URL encoding
+// This is fully reversible - decodeURIComponent() recovers the original exactly
 export function createSlug(name: string): string {
-  const slug = name
-    .toLowerCase()
-    .normalize("NFKC") // Handle Unicode normalization
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "")
-    .substring(0, 80); // Limit slug length
-  return slug;
+  const normalized = name.normalize("NFKC").trim();
+  return encodeURIComponent(normalized);
 }
 
-// Sanitize incoming slug parameters (for lookup)
-export function sanitizeSlug(input: string): string {
-  return input
-    .toLowerCase()
-    .replace(/[^a-z0-9-]/g, "")
-    .substring(0, 80);
+// Decode a slug back to the original name
+export function decodeSlug(slug: string): string {
+  try {
+    return decodeURIComponent(slug);
+  } catch {
+    // Return as-is if decoding fails (invalid encoding)
+    return slug;
+  }
 }
 
 // Format number with optional precision

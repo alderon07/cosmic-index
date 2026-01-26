@@ -4,6 +4,7 @@ import {
   PaginatedResponse,
   SmallBodyKind,
   createSlug,
+  decodeSlug,
   formatNumber,
   KeyFact,
   ORBIT_CLASSES,
@@ -980,52 +981,11 @@ export async function fetchSmallBodyByIdentifier(identifier: string): Promise<Sm
   });
 }
 
-// Fetch small body by slug
+// Fetch small body by slug (URL-encoded identifier)
+// decodeSlug() recovers the original identifier exactly, then we do a direct lookup
 export async function fetchSmallBodyBySlug(slug: string): Promise<SmallBodyData | null> {
-  const cleaned = slug.trim().toLowerCase();
-
-  // 1) Asteroid provisional designation FIRST:
-  //    "2025-y3-panstarrs" -> "2025 Y3"
-  //    "2014-mu69" -> "2014 MU69"
-  const provisionalMatch = cleaned.match(/^(\d{4})-([a-z]{1,2}\d+)(?:-.+)?$/i);
-  if (provisionalMatch) {
-    const year = provisionalMatch[1];
-    const code = provisionalMatch[2].toUpperCase();
-    return fetchSmallBodyByIdentifier(`${year} ${code}`);
-  }
-
-  // 2) Modern comet designation:
-  //    "c-2021-a1-leonard" -> "C/2021 A1"
-  //    Supports: c-, p-, d-, x-, i-, a-
-  const modernCometMatch = cleaned.match(/^([cpdxia])-(\d{4})-([a-z]{1,2}\d*)-(.+)$/i);
-  if (modernCometMatch) {
-    const prefix = modernCometMatch[1].toUpperCase();
-    const year = modernCometMatch[2];
-    const code = modernCometMatch[3].toUpperCase();
-    return fetchSmallBodyByIdentifier(`${prefix}/${year} ${code}`);
-  }
-
-  // 3) Periodic comet by number+letter:
-  //    "1p-halley" -> "1P"
-  //    "73p-schwassmann-wachmann-3" -> "73P"
-  const periodicCometMatch = cleaned.match(/^(\d{1,4})([pdxia])-(.+)$/i);
-  if (periodicCometMatch) {
-    const identifier = `${periodicCometMatch[1]}${periodicCometMatch[2].toUpperCase()}`;
-    return fetchSmallBodyByIdentifier(identifier);
-  }
-
-  // 4) Numbered asteroid (only if the segment after the dash is NOT like "y3"/"mu69"):
-  //    "433-eros" -> "433"
-  //    "2025-nortia" -> "2025"
-  //    But NOT "2025-y3-..." (already caught above)
-  const numberedMatch = cleaned.match(/^(\d{1,7})-([a-z][a-z-]*)$/i);
-  if (numberedMatch) {
-    return fetchSmallBodyByIdentifier(numberedMatch[1]);
-  }
-
-  // 5) Fallback: convert slug back to a search string for SBDB.
-  const searchTerm = cleaned.replace(/-/g, " ").replace(/\s+/g, " ").trim();
-  return fetchSmallBodyByIdentifier(searchTerm);
+  const identifier = decodeSlug(slug);
+  return fetchSmallBodyByIdentifier(identifier);
 }
 
 
