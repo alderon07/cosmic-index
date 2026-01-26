@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, use } from "react";
-import Link from "next/link";
 import { ObjectDetail, ObjectDetailSkeleton } from "@/components/object-detail";
 import { ExoplanetData } from "@/lib/types";
 
@@ -59,10 +58,7 @@ export default function ExoplanetDetailPage({
           <h2 className="font-display text-2xl text-foreground mb-2">
             {error === "Exoplanet not found" ? "Exoplanet Not Found" : "Error"}
           </h2>
-          <p className="text-muted-foreground mb-4">{error}</p>
-          <Link href="/exoplanets" className="text-primary hover:underline">
-            Back to Exoplanets
-          </Link>
+          <p className="text-muted-foreground">{error}</p>
         </div>
       </div>
     );

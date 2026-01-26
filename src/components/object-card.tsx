@@ -6,6 +6,10 @@ import { Badge } from "@/components/ui/badge";
 import { ExoplanetData, SmallBodyData, AnyCosmicObject } from "@/lib/types";
 import { Orbit, Sparkles, AlertTriangle } from "lucide-react";
 
+// SessionStorage keys for storing list page URLs
+const EXOPLANETS_LIST_URL_KEY = "exoplanetsListUrl";
+const SMALL_BODIES_LIST_URL_KEY = "smallBodiesListUrl";
+
 interface ObjectCardProps {
   object: AnyCosmicObject;
 }
@@ -38,8 +42,19 @@ export function ObjectCard({ object }: ObjectCardProps) {
   // Get first 3-4 key facts
   const displayFacts = object.keyFacts.slice(0, 4);
 
+  // Store current list page URL when clicking to navigate to detail page
+  const handleClick = () => {
+    if (typeof window !== "undefined") {
+      const currentUrl = window.location.pathname + window.location.search;
+      const storageKey = isExoplanet(object)
+        ? EXOPLANETS_LIST_URL_KEY
+        : SMALL_BODIES_LIST_URL_KEY;
+      sessionStorage.setItem(storageKey, currentUrl);
+    }
+  };
+
   return (
-    <Link href={href} className="block group">
+    <Link href={href} onClick={handleClick} className="block group">
       <Card className="h-full bg-card border-border/50 transition-all duration-300 hover:border-primary/50 hover:glow-orange bezel scanlines overflow-hidden">
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between gap-2">

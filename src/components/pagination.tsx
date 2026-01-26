@@ -102,7 +102,7 @@ export function Pagination({
               variant={isActive ? "default" : "outline"}
               size="sm"
               onClick={() => onPageChange(page)}
-              className={`w-9 h-9 p-0 font-mono ${
+              className={`min-w-9 h-9 px-2 font-mono ${
                 isActive ? "glow-orange" : ""
               }`}
               aria-label={`Go to page ${page}`}

@@ -8,10 +8,8 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { Button } from "@/components/ui/button";
 import { ExoplanetData, SmallBodyData, AnyCosmicObject } from "@/lib/types";
 import {
-  ArrowLeft,
   ExternalLink,
   Orbit,
   Sparkles,
@@ -20,7 +18,6 @@ import {
   Globe,
   Telescope,
 } from "lucide-react";
-import Link from "next/link";
 
 interface ObjectDetailProps {
   object: AnyCosmicObject;
@@ -35,9 +32,6 @@ function isSmallBody(obj: AnyCosmicObject): obj is SmallBodyData {
 }
 
 export function ObjectDetail({ object }: ObjectDetailProps) {
-  const backHref = isExoplanet(object) ? "/exoplanets" : "/small-bodies";
-  const backLabel = isExoplanet(object) ? "Exoplanets" : "Small Bodies";
-
   const typeLabel = isExoplanet(object)
     ? "Exoplanet"
     : isSmallBody(object)
@@ -48,17 +42,6 @@ export function ObjectDetail({ object }: ObjectDetailProps) {
 
   return (
     <div className="space-y-6">
-      {/* Back Navigation */}
-      <Link href={backHref}>
-        <Button
-          variant="ghost"
-          className="text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to {backLabel}
-        </Button>
-      </Link>
-
       {/* Hero Section */}
       <div className="relative p-6 md:p-8 bg-card border border-border/50 rounded-lg bezel scanlines overflow-hidden">
         <div className="relative z-10">

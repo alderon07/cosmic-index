@@ -56,13 +56,7 @@ export default function SmallBodyDetailPage({ params }: SmallBodyDetailPageProps
           <h2 className="font-display text-2xl text-foreground mb-2">
             {error === "Small body not found" ? "Small Body Not Found" : "Error"}
           </h2>
-          <p className="text-muted-foreground mb-4">{error}</p>
-          <a
-            href="/small-bodies"
-            className="text-primary hover:underline"
-          >
-            Back to Small Bodies
-          </a>
+          <p className="text-muted-foreground">{error}</p>
         </div>
       </div>
     );
