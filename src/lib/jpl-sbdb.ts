@@ -172,17 +172,23 @@ function buildQueryUrl(params: SmallBodyQueryParams): string {
     url.searchParams.set("sb-group", "pha");
   }
 
+  // Filter by orbit class
+  if (params.orbitClass) {
+    url.searchParams.set("sb-class", params.orbitClass);
+  }
+
   // Search query - sanitize input and use custom field constraints
   const sanitizedQuery = sanitizeQuery(params.query);
   if (sanitizedQuery) {
-    // Use sb-cdata with regular expression on name, full_name, and pdes fields
+    // Use sb-cdata with case-insensitive regular expression on name, full_name, and pdes fields
     // Escape special regex characters in the query to make it safe
+    // Use (?i) flag prefix for case-insensitive matching
     const escapedQuery = sanitizedQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const constraint = JSON.stringify({
       OR: [
-        `name|RE|.*${escapedQuery}.*`,
-        `full_name|RE|.*${escapedQuery}.*`,
-        `pdes|RE|.*${escapedQuery}.*`
+        `name|RE|(?i).*${escapedQuery}.*`,
+        `full_name|RE|(?i).*${escapedQuery}.*`,
+        `pdes|RE|(?i).*${escapedQuery}.*`
       ]
     });
     url.searchParams.set("sb-cdata", constraint);
@@ -201,12 +207,32 @@ function buildQueryUrl(params: SmallBodyQueryParams): string {
 }
 
 // Parse body kind from JPL data
-function parseBodyKind(kind: string | null | undefined): SmallBodyKind {
-  if (!kind) return "asteroid";
-  const normalized = kind.toLowerCase();
-  if (normalized.includes("comet") || normalized === "c") {
+// Also accepts designation/fullName to infer kind when the kind field is unavailable
+function parseBodyKind(
+  kind: string | null | undefined,
+  pdes?: string | null,
+  fullName?: string | null
+): SmallBodyKind {
+  // Check explicit kind field first
+  // JPL API returns: "cn" for comets, "an" for numbered asteroids, "au" for unnumbered asteroids
+  if (kind) {
+    const normalized = kind.toLowerCase();
+    if (normalized.startsWith("c") || normalized.includes("comet")) {
+      return "comet";
+    }
+    if (normalized.startsWith("a") || normalized.includes("asteroid")) {
+      return "asteroid";
+    }
+  }
+
+  // Infer from designation - comets have distinctive prefixes
+  // Patterns: C/yyyy, P/yyyy, D/yyyy, numbered periodic (1P, 2P, etc.)
+  const designation = pdes || fullName || "";
+  const cometPattern = /^(C\/|P\/|D\/|I\/|A\/|\d+P\/|\d+P\b)/i;
+  if (cometPattern.test(designation.trim())) {
     return "comet";
   }
+
   return "asteroid";
 }
 
@@ -253,7 +279,7 @@ function transformFromQuery(
     return null;
   }
 
-  const kind = parseBodyKind(getValue("kind"));
+  const kind = parseBodyKind(getValue("kind"), pdes, fullName);
   const orbitClass = getValue("class") || "";
   const isNeo = getValue("neo") === "Y";
   const isPha = getValue("pha") === "Y";
@@ -396,6 +422,11 @@ async function searchWithLookupFallback(
           if (params.kind && obj.bodyKind !== params.kind) return false;
           if (params.neo && !obj.isNeo) return false;
           if (params.pha && !obj.isPha) return false;
+          // For orbit class, compare the code (raw class field) from the raw data
+          if (params.orbitClass) {
+            const rawClass = (obj.raw as Record<string, unknown>)?.class as string | undefined;
+            if (rawClass !== params.orbitClass) return false;
+          }
           return true;
         });
     }
@@ -464,7 +495,7 @@ async function fetchSmallBodyByIdentifierDirect(
     // Transform using same logic as fetchSmallBodyByIdentifier
     const typedData = data as SBDBLookupResponse;
     const obj = typedData.object;
-    const kind = parseBodyKind(obj.kind);
+    const kind = parseBodyKind(obj.kind, obj.des, obj.fullname);
 
     let diameter: number | undefined;
     let absoluteMagnitude: number | undefined;
@@ -849,7 +880,7 @@ export async function fetchSmallBodyByIdentifier(identifier: string): Promise<Sm
       }
 
       const obj = typedData.object;
-      const kind = parseBodyKind(obj.kind);
+      const kind = parseBodyKind(obj.kind, obj.des, obj.fullname);
 
       // Extract physical parameters - search through array by name
       let diameter: number | undefined;

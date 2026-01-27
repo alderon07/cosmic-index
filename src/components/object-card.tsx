@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ExoplanetData, SmallBodyData, AnyCosmicObject } from "@/lib/types";
-import { Orbit, Sparkles, AlertTriangle } from "lucide-react";
+import { Orbit, Sparkles, AlertTriangle, SquareArrowOutUpRight } from "lucide-react";
 
 // SessionStorage keys for storing list page URLs
 const EXOPLANETS_LIST_URL_KEY = "exoplanetsListUrl";
@@ -37,7 +37,13 @@ export function ObjectCard({ object }: ObjectCardProps) {
 
   const typeVariant = isExoplanet(object)
     ? "default"
+    : isSmallBody(object) && object.bodyKind === "comet"
+    ? "outline"
     : "secondary";
+
+  const typeClassName = isSmallBody(object) && object.bodyKind === "comet"
+    ? "border-radium-teal/50 text-radium-teal bg-radium-teal/10"
+    : "";
 
   // Get first 3-4 key facts
   const displayFacts = object.keyFacts.slice(0, 4);
@@ -68,7 +74,7 @@ export function ObjectCard({ object }: ObjectCardProps) {
                 </p>
               )}
             </div>
-            <Badge variant={typeVariant} className="shrink-0 font-mono text-xs">
+            <Badge variant={typeVariant} className={`shrink-0 font-mono text-xs ${typeClassName}`}>
               {typeLabel}
             </Badge>
           </div>
@@ -100,29 +106,31 @@ export function ObjectCard({ object }: ObjectCardProps) {
           )}
         </CardHeader>
 
-        <CardContent className="pt-0">
+        <CardContent className="pt-0 flex flex-col flex-1 min-h-0">
           {/* Key Facts Grid */}
-          <div className="grid grid-cols-2 gap-x-4 gap-y-2">
-            {displayFacts.map((fact, index) => (
-              <div key={index} className="min-w-0">
-                <p className="text-xs text-muted-foreground truncate">
-                  {fact.label}
-                </p>
-                <p className="text-sm font-mono text-foreground truncate">
-                  {fact.value}
-                  {fact.unit && (
-                    <span className="text-muted-foreground ml-1 text-xs">
-                      {fact.unit}
-                    </span>
-                  )}
-                </p>
-              </div>
-            ))}
+          <div className="flex-1">
+            <div className="pb-4 grid grid-cols-2 gap-x-4 gap-y-2">
+              {displayFacts.map((fact, index) => (
+                <div key={index} className="min-w-0">
+                  <p className="text-xs text-muted-foreground truncate">
+                    {fact.label}
+                  </p>
+                  <p className="text-sm font-mono text-foreground truncate">
+                    {fact.value}
+                    {fact.unit && (
+                      <span className="text-muted-foreground ml-1 text-xs">
+                        {fact.unit}
+                      </span>
+                    )}
+                  </p>
+                </div>
+              ))}
+            </div>
           </div>
 
           {/* Discovery year badge */}
           {object.discoveredYear && (
-            <div className="mt-4 pt-3 border-t border-border/30">
+            <div className="mt-auto pt-2 pb-1 border-t border-border/30">
               <p className="text-xs text-muted-foreground">
                 Discovered{" "}
                 <span className="font-mono text-foreground">
@@ -132,17 +140,11 @@ export function ObjectCard({ object }: ObjectCardProps) {
             </div>
           )}
 
-          {/* Source attribution */}
-          <div className="mt-3 pt-2 border-t border-border/30 flex items-center justify-between">
-            <p className="text-xs text-muted-foreground/70 font-mono">
-              {object.source === "NASA_EXOPLANET_ARCHIVE"
-                ? "NASA Exoplanet Archive"
-                : "JPL SBDB"}
-            </p>
+          {/* <div className="mt-3 pt-2 border-t border-border/30 flex items-center justify-end">
             <span className="text-xs text-primary/70 group-hover:text-primary transition-colors">
-              View details →
+              <SquareArrowOutUpRight className="w-3 h-3 mr-1"/>
             </span>
-          </div>
+          </div> */}
         </CardContent>
       </Card>
     </Link>

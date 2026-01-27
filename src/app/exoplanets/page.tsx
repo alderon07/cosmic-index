@@ -36,8 +36,7 @@ function ExoplanetsPageContent() {
 
   // Derive filters from URL (memoized to avoid unnecessary re-renders)
   const discoveryMethod = searchParams.get("discoveryMethod") || undefined;
-  const yearFrom = searchParams.get("yearFrom");
-  const yearTo = searchParams.get("yearTo");
+  const year = searchParams.get("year");
   const hasRadius = searchParams.get("hasRadius") === "true" || undefined;
   const hasMass = searchParams.get("hasMass") === "true" || undefined;
   const sizeCategory = (searchParams.get("sizeCategory") as ExoplanetFilters["sizeCategory"]) || undefined;
@@ -47,15 +46,14 @@ function ExoplanetsPageContent() {
 
   const filters: ExoplanetFilters = useMemo(() => ({
     discoveryMethod,
-    yearFrom: yearFrom ? parseInt(yearFrom, 10) : undefined,
-    yearTo: yearTo ? parseInt(yearTo, 10) : undefined,
+    year: year ? parseInt(year, 10) : undefined,
     hasRadius,
     hasMass,
     sizeCategory,
     habitable,
     facility,
     multiPlanet,
-  }), [discoveryMethod, yearFrom, yearTo, hasRadius, hasMass, sizeCategory, habitable, facility, multiPlanet]);
+  }), [discoveryMethod, year, hasRadius, hasMass, sizeCategory, habitable, facility, multiPlanet]);
   const [data, setData] = useState<PaginatedResponse<ExoplanetData> | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -107,8 +105,7 @@ function ExoplanetsPageContent() {
   const handleFiltersChange = useCallback((newFilters: ExoplanetFilters) => {
     updateUrl({
       discoveryMethod: newFilters.discoveryMethod ?? null,
-      yearFrom: newFilters.yearFrom?.toString() ?? null,
-      yearTo: newFilters.yearTo?.toString() ?? null,
+      year: newFilters.year?.toString() ?? null,
       hasRadius: newFilters.hasRadius ? "true" : null,
       hasMass: newFilters.hasMass ? "true" : null,
       sizeCategory: newFilters.sizeCategory ?? null,
@@ -123,8 +120,7 @@ function ExoplanetsPageContent() {
   const handleFilterReset = useCallback(() => {
     updateUrl({
       discoveryMethod: null,
-      yearFrom: null,
-      yearTo: null,
+      year: null,
       hasRadius: null,
       hasMass: null,
       sizeCategory: null,
@@ -145,8 +141,7 @@ function ExoplanetsPageContent() {
 
       if (searchQuery) params.set("query", searchQuery);
       if (filters.discoveryMethod) params.set("discoveryMethod", filters.discoveryMethod);
-      if (filters.yearFrom) params.set("yearFrom", filters.yearFrom.toString());
-      if (filters.yearTo) params.set("yearTo", filters.yearTo.toString());
+      if (filters.year) params.set("year", filters.year.toString());
       if (filters.hasRadius) params.set("hasRadius", "true");
       if (filters.hasMass) params.set("hasMass", "true");
       if (filters.sizeCategory) params.set("sizeCategory", filters.sizeCategory);
@@ -207,6 +202,9 @@ function ExoplanetsPageContent() {
           placeholder="Search exoplanets by name..."
           isLoading={isLoading}
         />
+        <p className="text-xs text-muted-foreground/70 italic">
+          Search by exoplanet name or host star. Use filters to narrow results by discovery method, year, or other criteria.
+        </p>
 
         <ExoplanetFilterPanel
           filters={filters}

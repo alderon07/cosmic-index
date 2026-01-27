@@ -3,6 +3,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Circle, CircleDot, Telescope, ArrowRight, Orbit, Rocket } from "lucide-react";
 
+// Pre-computed star positions for deterministic rendering
+const STAR_POSITIONS = Array.from({ length: 50 }, (_, i) => ({
+  left: ((i * 37 + 13) % 100),
+  top: ((i * 53 + 7) % 100),
+  animationDelay: ((i * 17) % 30) / 10,
+  animationDuration: 2 + ((i * 23) % 20) / 10,
+}));
+
 export default function HomePage() {
   return (
     <div className="relative">
@@ -11,15 +19,15 @@ export default function HomePage() {
         {/* Animated Starfield Background */}
         <div className="absolute inset-0 overflow-hidden">
           <div className="stars-container">
-            {Array.from({ length: 50 }).map((_, i) => (
+            {STAR_POSITIONS.map((star, i) => (
               <div
                 key={i}
                 className="absolute w-1 h-1 bg-foreground/30 rounded-full animate-pulse"
                 style={{
-                  left: `${Math.random() * 100}%`,
-                  top: `${Math.random() * 100}%`,
-                  animationDelay: `${Math.random() * 3}s`,
-                  animationDuration: `${2 + Math.random() * 2}s`,
+                  left: `${star.left}%`,
+                  top: `${star.top}%`,
+                  animationDelay: `${star.animationDelay}s`,
+                  animationDuration: `${star.animationDuration}s`,
                 }}
               />
             ))}
@@ -41,7 +49,7 @@ export default function HomePage() {
             </h1>
 
             <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-              A retrofuturistic encyclopedia of cosmic objects. Explore thousands
+              An encyclopedia of cosmic objects. Explore thousands
               of exoplanets, asteroids, and comets with data from NASA and JPL.
             </p>
 
@@ -89,7 +97,7 @@ export default function HomePage() {
               </p>
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li className="flex items-center gap-2">
-                  <Orbit className="w-4 h-4 text-secondary" />
+                  <Circle className="w-4 h-4 text-secondary" />
                   5,000+ confirmed planets
                 </li>
                 <li className="flex items-center gap-2">
@@ -151,7 +159,7 @@ export default function HomePage() {
       </section>
 
       {/* Stats Section */}
-      <section className="border-y border-border/50 bg-card/30">
+      {/* <section className="border-y border-border/50 bg-card/30">
         <div className="container mx-auto px-4 py-12 md:py-16">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             <div className="text-center">
@@ -182,7 +190,7 @@ export default function HomePage() {
             </div>
           </div>
         </div>
-      </section>
+      </section> */}
 
       {/* CTA Section */}
       <section className="container mx-auto px-4 py-16 md:py-24">

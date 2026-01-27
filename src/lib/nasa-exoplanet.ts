@@ -52,8 +52,7 @@ function hasAnyNarrowingFilter(params: ExoplanetQueryParams): boolean {
   return Boolean(
     params.query ||
       params.discoveryMethod ||
-      params.yearFrom !== undefined ||
-      params.yearTo !== undefined ||
+      params.year !== undefined ||
       params.hasRadius ||
       params.hasMass ||
       params.sizeCategory ||
@@ -73,8 +72,8 @@ export function buildBrowseQuery(
   const { page, limit, offset } = clampPagination(params);
 
   if (params.query) {
-    const safeQuery = sanitizeForLike(params.query);
-    conditions.push(`pl_name like '%${safeQuery}%'`);
+    const safeQuery = sanitizeForLike(params.query).toLowerCase();
+    conditions.push(`lower(pl_name) like '%${safeQuery}%'`);
   }
 
   if (params.discoveryMethod) {
@@ -82,12 +81,8 @@ export function buildBrowseQuery(
     conditions.push(`discoverymethod='${safeMethod}'`);
   }
 
-  if (params.yearFrom !== undefined) {
-    conditions.push(`disc_year>=${params.yearFrom}`);
-  }
-
-  if (params.yearTo !== undefined) {
-    conditions.push(`disc_year<=${params.yearTo}`);
+  if (params.year !== undefined) {
+    conditions.push(`disc_year=${params.year}`);
   }
 
   if (params.hasRadius) {
@@ -151,8 +146,8 @@ function buildCountQuery(params: ExoplanetQueryParams): string {
   const conditions: string[] = ["default_flag=1"];
 
   if (params.query) {
-    const safeQuery = sanitizeForLike(params.query);
-    conditions.push(`pl_name like '%${safeQuery}%'`);
+    const safeQuery = sanitizeForLike(params.query).toLowerCase();
+    conditions.push(`lower(pl_name) like '%${safeQuery}%'`);
   }
 
   if (params.discoveryMethod) {
@@ -160,12 +155,8 @@ function buildCountQuery(params: ExoplanetQueryParams): string {
     conditions.push(`discoverymethod='${safeMethod}'`);
   }
 
-  if (params.yearFrom !== undefined) {
-    conditions.push(`disc_year>=${params.yearFrom}`);
-  }
-
-  if (params.yearTo !== undefined) {
-    conditions.push(`disc_year<=${params.yearTo}`);
+  if (params.year !== undefined) {
+    conditions.push(`disc_year=${params.year}`);
   }
 
   if (params.hasRadius) {
@@ -290,20 +281,21 @@ async function executeTAPQuery(
       }
 
       return data as unknown[];
-    } catch (err: any) {
+    } catch (err: unknown) {
       lastErr = err;
-      const code = err?.cause?.code ?? err?.code;
-      const isAbort = err?.name === "AbortError";
+      const errObj = err as { cause?: { code?: string }; code?: string; name?: string; message?: string };
+      const code = errObj?.cause?.code ?? errObj?.code;
+      const isAbort = errObj?.name === "AbortError";
       const isConnectTimeout = code === "UND_ERR_CONNECT_TIMEOUT";
 
       const shouldRetry =
         attempt < MAX_ATTEMPTS &&
-        (isAbort || isConnectTimeout || typeof code === "string" || /fetch failed/i.test(err?.message));
+        (isAbort || isConnectTimeout || typeof code === "string" || /fetch failed/i.test(errObj?.message ?? ""));
 
       if (!shouldRetry) {
         throw new Error(
           `NASA TAP connection failed.\nAttempt ${attempt}/${MAX_ATTEMPTS}\n` +
-            `Error: ${err?.message ?? String(err)}\n` +
+            `Error: ${errObj?.message ?? String(err)}\n` +
             (code ? `Code: ${code}\n` : "")
         );
       }
@@ -316,8 +308,9 @@ async function executeTAPQuery(
     }
   }
 
+  const lastErrObj = lastErr as { message?: string } | undefined;
   throw new Error(
-    `NASA TAP failed after retries.\nError: ${String((lastErr as any)?.message ?? lastErr)}`
+    `NASA TAP failed after retries.\nError: ${String(lastErrObj?.message ?? lastErr)}`
   );
 }
 
@@ -465,7 +458,7 @@ export async function fetchExoplanets(
       })
       .filter((obj): obj is ExoplanetData => obj !== null);
 
-    const totalRow = countResults[0] as any;
+    const totalRow = countResults[0] as { total?: number | string } | undefined;
     const total =
       typeof totalRow?.total === "number"
         ? totalRow.total

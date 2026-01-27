@@ -9,13 +9,22 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { X, Filter, RotateCcw } from "lucide-react";
-import { DISCOVERY_METHODS, DISCOVERY_FACILITIES, SIZE_CATEGORIES, SmallBodyKind, SizeCategory } from "@/lib/types";
+import {
+  DISCOVERY_METHODS,
+  DISCOVERY_FACILITIES,
+  SIZE_CATEGORIES,
+  SmallBodyKind,
+  SizeCategory,
+  ASTEROID_ORBIT_CLASSES,
+  COMET_ORBIT_CLASSES,
+  SHARED_ORBIT_CLASSES,
+  ORBIT_CLASSES,
+} from "@/lib/types";
 
 // Exoplanet Filter Types
 export interface ExoplanetFilters {
   discoveryMethod?: string;
-  yearFrom?: number;
-  yearTo?: number;
+  year?: number;
   hasRadius?: boolean;
   hasMass?: boolean;
   sizeCategory?: SizeCategory;
@@ -29,6 +38,7 @@ export interface SmallBodyFilters {
   kind?: SmallBodyKind;
   neo?: boolean;
   pha?: boolean;
+  orbitClass?: string;
 }
 
 interface ExoplanetFilterPanelProps {
@@ -74,6 +84,16 @@ function FilterChip({
   );
 }
 
+// Year validation constants
+const MIN_DISCOVERY_YEAR = 1990;
+const MAX_DISCOVERY_YEAR = new Date().getFullYear();
+
+// Generate year options array
+const YEAR_OPTIONS = Array.from(
+  { length: MAX_DISCOVERY_YEAR - MIN_DISCOVERY_YEAR + 1 },
+  (_, i) => MIN_DISCOVERY_YEAR + i
+);
+
 // Exoplanet Filter Panel
 export function ExoplanetFilterPanel({
   filters,
@@ -88,6 +108,7 @@ export function ExoplanetFilterPanel({
   ) => {
     onChange({ ...filters, [key]: value });
   };
+
 
   const removeFilter = (key: keyof ExoplanetFilters) => {
     const newFilters = { ...filters };
@@ -119,16 +140,10 @@ export function ExoplanetFilterPanel({
               onRemove={() => removeFilter("facility")}
             />
           )}
-          {filters.yearFrom && (
+          {filters.year && (
             <FilterChip
-              label={`From ${filters.yearFrom}`}
-              onRemove={() => removeFilter("yearFrom")}
-            />
-          )}
-          {filters.yearTo && (
-            <FilterChip
-              label={`To ${filters.yearTo}`}
-              onRemove={() => removeFilter("yearTo")}
+              label={`Year ${filters.year}`}
+              onRemove={() => removeFilter("year")}
             />
           )}
           {filters.habitable && (
@@ -212,25 +227,49 @@ export function ExoplanetFilterPanel({
               </div>
             </div>
 
-            {/* Discovery Facility */}
-            <div>
-              <label className="text-xs text-muted-foreground uppercase tracking-wider block mb-2">
-                Discovery Facility
-              </label>
-              <select
-                value={filters.facility || ""}
-                onChange={(e) =>
-                  updateFilter("facility", e.target.value || undefined)
-                }
-                className="w-full px-3 py-2 bg-input border border-border rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-primary"
-              >
-                <option value="">All Facilities</option>
-                {DISCOVERY_FACILITIES.map((facility) => (
-                  <option key={facility} value={facility}>
-                    {facility}
-                  </option>
-                ))}
-              </select>
+            {/* Discovery Facility and Year - Side by side on desktop */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Discovery Facility */}
+              <div>
+                <label className="text-xs text-muted-foreground uppercase tracking-wider block mb-2">
+                  Discovery Facility
+                </label>
+                <select
+                  value={filters.facility || ""}
+                  onChange={(e) =>
+                    updateFilter("facility", e.target.value || undefined)
+                  }
+                  className="w-full px-3 py-2 bg-input border border-border rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                >
+                  <option value="">All Facilities</option>
+                  {DISCOVERY_FACILITIES.map((facility) => (
+                    <option key={facility} value={facility}>
+                      {facility}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Discovery Year */}
+              <div>
+                <label className="text-xs text-muted-foreground uppercase tracking-wider block mb-2">
+                  Discovery Year
+                </label>
+                <select
+                  value={filters.year || ""}
+                  onChange={(e) =>
+                    updateFilter("year", e.target.value ? parseInt(e.target.value, 10) : undefined)
+                  }
+                  className="w-full px-3 py-2 bg-input border border-border rounded-md text-sm font-mono focus:outline-none focus:ring-1 focus:ring-primary"
+                >
+                  <option value="">All Years</option>
+                  {YEAR_OPTIONS.slice().reverse().map((year) => (
+                    <option key={year} value={year}>
+                      {year}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             {/* Discovery Method */}
@@ -257,48 +296,6 @@ export function ExoplanetFilterPanel({
                     {method}
                   </Button>
                 ))}
-              </div>
-            </div>
-
-            {/* Year Range */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-xs text-muted-foreground uppercase tracking-wider block mb-2">
-                  Year From
-                </label>
-                <input
-                  type="number"
-                  min={1990}
-                  max={2030}
-                  value={filters.yearFrom || ""}
-                  onChange={(e) =>
-                    updateFilter(
-                      "yearFrom",
-                      e.target.value ? parseInt(e.target.value) : undefined
-                    )
-                  }
-                  placeholder="1990"
-                  className="w-full px-3 py-2 bg-input border border-border rounded-md text-sm font-mono focus:outline-none focus:ring-1 focus:ring-primary"
-                />
-              </div>
-              <div>
-                <label className="text-xs text-muted-foreground uppercase tracking-wider block mb-2">
-                  Year To
-                </label>
-                <input
-                  type="number"
-                  min={1990}
-                  max={2030}
-                  value={filters.yearTo || ""}
-                  onChange={(e) =>
-                    updateFilter(
-                      "yearTo",
-                      e.target.value ? parseInt(e.target.value) : undefined
-                    )
-                  }
-                  placeholder="2025"
-                  className="w-full px-3 py-2 bg-input border border-border rounded-md text-sm font-mono focus:outline-none focus:ring-1 focus:ring-primary"
-                />
               </div>
             </div>
 
@@ -358,6 +355,28 @@ export function ExoplanetFilterPanel({
   );
 }
 
+// Get orbit class options based on selected body type
+function getOrbitClassOptions(kind?: SmallBodyKind) {
+  if (kind === "asteroid") {
+    return [...ASTEROID_ORBIT_CLASSES, ...SHARED_ORBIT_CLASSES];
+  } else if (kind === "comet") {
+    return [...COMET_ORBIT_CLASSES, ...SHARED_ORBIT_CLASSES];
+  }
+  // Show all orbit classes when "All" is selected
+  return [...ASTEROID_ORBIT_CLASSES, ...COMET_ORBIT_CLASSES, ...SHARED_ORBIT_CLASSES];
+}
+
+// Check if an orbit class is valid for a given body kind
+function isOrbitClassValidForKind(orbitClass: string, kind?: SmallBodyKind): boolean {
+  const validOptions = getOrbitClassOptions(kind);
+  return validOptions.some(opt => opt.code === orbitClass);
+}
+
+// Get display label for an orbit class code
+function getOrbitClassLabel(code: string): string {
+  return ORBIT_CLASSES[code as keyof typeof ORBIT_CLASSES] || code;
+}
+
 // Small Body Filter Panel
 export function SmallBodyFilterPanel({
   filters,
@@ -370,6 +389,14 @@ export function SmallBodyFilterPanel({
     key: K,
     value: SmallBodyFilters[K]
   ) => {
+    // When changing kind, clear orbitClass if it becomes invalid
+    if (key === "kind" && filters.orbitClass) {
+      const newKind = value as SmallBodyKind | undefined;
+      if (!isOrbitClassValidForKind(filters.orbitClass, newKind)) {
+        onChange({ ...filters, [key]: value, orbitClass: undefined });
+        return;
+      }
+    }
     onChange({ ...filters, [key]: value });
   };
 
@@ -378,6 +405,8 @@ export function SmallBodyFilterPanel({
     delete newFilters[key];
     onChange(newFilters);
   };
+
+  const orbitClassOptions = getOrbitClassOptions(filters.kind);
 
   return (
     <div className="space-y-4">
@@ -396,6 +425,12 @@ export function SmallBodyFilterPanel({
           )}
           {filters.pha && (
             <FilterChip label="PHA" onRemove={() => removeFilter("pha")} />
+          )}
+          {filters.orbitClass && (
+            <FilterChip
+              label={getOrbitClassLabel(filters.orbitClass)}
+              onRemove={() => removeFilter("orbitClass")}
+            />
           )}
           <Button
             variant="ghost"
@@ -444,14 +479,39 @@ export function SmallBodyFilterPanel({
             <div className="flex items-center gap-2">
               <Filter className="w-4 h-4 text-primary" />
               <span className="font-display">More Filters</span>
-              {(filters.neo || filters.pha) && (
+              {(filters.neo || filters.pha || filters.orbitClass) && (
                 <Badge variant="default" className="ml-2 text-xs">
-                  {(filters.neo ? 1 : 0) + (filters.pha ? 1 : 0)}
+                  {(filters.neo ? 1 : 0) + (filters.pha ? 1 : 0) + (filters.orbitClass ? 1 : 0)}
                 </Badge>
               )}
             </div>
           </AccordionTrigger>
           <AccordionContent className="pb-4 space-y-4">
+            {/* Orbit Class */}
+            <div>
+              <label className="text-xs text-muted-foreground uppercase tracking-wider block mb-2">
+                Orbit Class
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {orbitClassOptions.map((option) => (
+                  <Button
+                    key={option.code}
+                    variant={filters.orbitClass === option.code ? "default" : "outline"}
+                    size="sm"
+                    onClick={() =>
+                      updateFilter(
+                        "orbitClass",
+                        filters.orbitClass === option.code ? undefined : option.code
+                      )
+                    }
+                    className="text-xs"
+                  >
+                    {option.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
             {/* Classification Filters */}
             <div>
               <label className="text-xs text-muted-foreground uppercase tracking-wider block mb-2">

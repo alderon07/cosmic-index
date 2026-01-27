@@ -91,8 +91,7 @@ export type SizeCategory = "earth" | "super-earth" | "neptune" | "jupiter";
 export interface ExoplanetQueryParams {
   query?: string;
   discoveryMethod?: string;
-  yearFrom?: number;
-  yearTo?: number;
+  year?: number;
   hasRadius?: boolean;
   hasMass?: boolean;
   sizeCategory?: SizeCategory;
@@ -108,6 +107,7 @@ export interface SmallBodyQueryParams {
   kind?: SmallBodyKind;
   neo?: boolean;
   pha?: boolean;
+  orbitClass?: string;
   page?: number;
   limit?: number;
 }
@@ -195,8 +195,7 @@ const normalizedString = (maxLength: number) =>
 export const ExoplanetQuerySchema = z.object({
   query: normalizedString(128).optional(),
   discoveryMethod: normalizedString(64).optional(),
-  yearFrom: z.coerce.number().int().min(1900).max(2100).optional(),
-  yearTo: z.coerce.number().int().min(1900).max(2100).optional(),
+  year: z.coerce.number().int().min(1900).max(2100).optional(),
   hasRadius: z.coerce.boolean().optional(),
   hasMass: z.coerce.boolean().optional(),
   sizeCategory: z.enum(["earth", "super-earth", "neptune", "jupiter"]).optional(),
@@ -212,6 +211,7 @@ export const SmallBodyQuerySchema = z.object({
   kind: z.enum(["asteroid", "comet"]).optional(),
   neo: z.coerce.boolean().optional(),
   pha: z.coerce.boolean().optional(),
+  orbitClass: normalizedString(10).optional(),
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(MAX_PAGE_SIZE).default(DEFAULT_PAGE_SIZE),
 });
@@ -334,7 +334,7 @@ export function normalizeDiscoveryMethod(method: string): string {
   return trimmed;
 }
 
-// Small body orbit classes
+// Small body orbit classes (for display)
 export const ORBIT_CLASSES = {
   // Asteroids
   AMO: "Amor",
@@ -345,6 +345,10 @@ export const ORBIT_CLASSES = {
   TNO: "Trans-Neptunian",
   CEN: "Centaur",
   TJN: "Jupiter Trojan",
+  IMB: "Inner Main Belt",
+  OMB: "Outer Main Belt",
+  MCA: "Mars-Crossing",
+  AST: "Asteroid",
   // Comets
   COM: "Comet",
   HTC: "Halley-type Comet",
@@ -352,4 +356,37 @@ export const ORBIT_CLASSES = {
   JFc: "Jupiter-family Comet",
   JFC: "Jupiter-family Comet",
   CTc: "Chiron-type Comet",
+  PAR: "Parabolic Comet",
+  HYP: "Hyperbolic Comet",
 } as const;
+
+// Orbit class codes organized by body type (for filtering)
+export const ASTEROID_ORBIT_CLASSES = [
+  { code: "IEO", label: "Atira" },
+  { code: "ATE", label: "Aten" },
+  { code: "APO", label: "Apollo" },
+  { code: "AMO", label: "Amor" },
+  { code: "MCA", label: "Mars-Crossing" },
+  { code: "IMB", label: "Inner Main Belt" },
+  { code: "MBA", label: "Main Belt" },
+  { code: "OMB", label: "Outer Main Belt" },
+  { code: "TJN", label: "Jupiter Trojan" },
+] as const;
+
+export const COMET_ORBIT_CLASSES = [
+  { code: "JFC", label: "Jupiter-family" },
+  { code: "HTC", label: "Halley-type" },
+  { code: "ETc", label: "Encke-type" },
+  { code: "CTc", label: "Chiron-type" },
+  { code: "COM", label: "Comet" },
+  { code: "PAR", label: "Parabolic" },
+  { code: "HYP", label: "Hyperbolic" },
+] as const;
+
+export const SHARED_ORBIT_CLASSES = [
+  { code: "CEN", label: "Centaur" },
+  { code: "TNO", label: "Trans-Neptunian" },
+] as const;
+
+// Type for orbit class codes
+export type OrbitClassCode = keyof typeof ORBIT_CLASSES;

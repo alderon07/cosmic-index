@@ -47,8 +47,8 @@ export function ObjectDetail({ object }: ObjectDetailProps) {
         <div className="relative z-10">
           <div className="flex flex-wrap items-start gap-3 mb-4">
             <Badge
-              variant={isExoplanet(object) ? "default" : "secondary"}
-              className="font-mono"
+              variant={isExoplanet(object) ? "default" : isSmallBody(object) && object.bodyKind === "comet" ? "outline" : "secondary"}
+              className={`font-mono ${isSmallBody(object) && object.bodyKind === "comet" ? "border-radium-teal/50 text-radium-teal bg-radium-teal/10" : ""}`}
             >
               {typeLabel}
             </Badge>
@@ -84,7 +84,6 @@ export function ObjectDetail({ object }: ObjectDetailProps) {
 
           {isSmallBody(object) && (
             <p className="text-lg text-muted-foreground flex items-center gap-2">
-              <Globe className="w-5 h-5 text-radium-teal" />
               {object.orbitClass}
             </p>
           )}

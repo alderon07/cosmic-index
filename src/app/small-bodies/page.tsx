@@ -38,12 +38,14 @@ function SmallBodiesPageContent() {
   const kind = (searchParams.get("kind") as SmallBodyFilters["kind"]) || undefined;
   const neo = searchParams.get("neo") === "true" || undefined;
   const pha = searchParams.get("pha") === "true" || undefined;
+  const orbitClass = searchParams.get("orbitClass") || undefined;
 
   const filters: SmallBodyFilters = useMemo(() => ({
     kind,
     neo,
     pha,
-  }), [kind, neo, pha]);
+    orbitClass,
+  }), [kind, neo, pha, orbitClass]);
   const [data, setData] = useState<PaginatedResponse<SmallBodyData> | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -97,6 +99,7 @@ function SmallBodiesPageContent() {
       kind: newFilters.kind ?? null,
       neo: newFilters.neo ? "true" : null,
       pha: newFilters.pha ? "true" : null,
+      orbitClass: newFilters.orbitClass ?? null,
       page: null, // Reset to page 1
     });
   }, [updateUrl]);
@@ -107,6 +110,7 @@ function SmallBodiesPageContent() {
       kind: null,
       neo: null,
       pha: null,
+      orbitClass: null,
       page: null, // Reset to page 1
     });
   }, [updateUrl]);
@@ -123,6 +127,7 @@ function SmallBodiesPageContent() {
       if (filters.kind) params.set("kind", filters.kind);
       if (filters.neo) params.set("neo", "true");
       if (filters.pha) params.set("pha", "true");
+      if (filters.orbitClass) params.set("orbitClass", filters.orbitClass);
       params.set("page", page.toString());
       params.set("limit", limit.toString());
 
@@ -198,7 +203,7 @@ function SmallBodiesPageContent() {
           isLoading={isLoading}
         />
         <p className="text-xs text-muted-foreground/70 italic">
-          Note: Search uses regex patterns and may timeout with very short or common terms. For best results, use specific names or designations.
+          Search by asteroid or comet name, designation, or number. Use filters to narrow results by type, classification, or other criteria.
         </p>
 
         <SmallBodyFilterPanel
