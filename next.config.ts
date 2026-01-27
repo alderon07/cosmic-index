@@ -12,6 +12,10 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'ssd-api.jpl.nasa.gov',
       },
+      {
+        protocol: 'https',
+        hostname: 'images-assets.nasa.gov',
+      },
     ],
   },
 };

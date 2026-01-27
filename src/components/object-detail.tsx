@@ -9,6 +9,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { ExoplanetData, SmallBodyData, AnyCosmicObject } from "@/lib/types";
+import { NasaImageGallery } from "./nasa-image-gallery";
 import {
   ExternalLink,
   Orbit,
@@ -112,6 +113,9 @@ export function ObjectDetail({ object }: ObjectDetailProps) {
         </CardContent>
       </Card>
 
+      {/* NASA Images */}
+      <NasaImageGallery object={object} />
+
       {/* Key Facts Grid */}
       <Card className="bg-card border-border/50 bezel">
         <CardHeader>
@@ -176,6 +180,11 @@ export function ObjectDetail({ object }: ObjectDetailProps) {
                     <p className="font-mono text-lg">
                       {object.massEarth?.toFixed(2) ?? "Unknown"}
                     </p>
+                    {object.massEarth !== undefined && (
+                      <p className={`text-xs mt-0.5 ${object.massIsEstimated ? "text-amber-glow/80" : "text-muted-foreground"}`}>
+                        {object.massIsEstimated ? "Estimated via Chen & Kipping (2017) mass-radius relation" : "Measured"}
+                      </p>
+                    )}
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">

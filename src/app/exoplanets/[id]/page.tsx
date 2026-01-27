@@ -90,7 +90,7 @@ function generateExoplanetJsonLd(exoplanet: ExoplanetData, slug: string) {
   if (exoplanet.massEarth !== undefined) {
     additionalProperties.push({
       "@type": "PropertyValue",
-      name: "Mass",
+      name: exoplanet.massIsEstimated ? "Mass (estimated)" : "Mass",
       value: exoplanet.massEarth.toFixed(2),
       unitText: "Earth masses",
     });

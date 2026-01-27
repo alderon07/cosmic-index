@@ -24,6 +24,8 @@ export const CACHE_TTL = {
   EXOPLANETS_DETAIL: 24 * 60 * 60,  // 24 hours
   SMALL_BODIES_BROWSE: 12 * 60 * 60, // 12 hours
   SMALL_BODIES_DETAIL: 7 * 24 * 60 * 60, // 7 days
+  NASA_IMAGES: 24 * 60 * 60,         // 24 hours
+  NASA_IMAGES_EMPTY: 2 * 60 * 60,    // 2 hours (avoid hammering for objects with 0 images)
 } as const;
 
 // Cache key prefixes
@@ -32,6 +34,7 @@ export const CACHE_KEYS = {
   EXOPLANET_DETAIL: "exo:detail",
   SMALL_BODY_BROWSE: "sb:browse",
   SMALL_BODY_DETAIL: "sb:detail",
+  NASA_IMAGES: "img",
 } as const;
 
 // Create a hash from query parameters for cache keys

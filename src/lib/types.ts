@@ -43,6 +43,7 @@ export interface ExoplanetData extends CosmicObject {
   orbitalPeriodDays?: number;
   radiusEarth?: number;
   massEarth?: number;
+  massIsEstimated?: boolean;
   distanceParsecs?: number;
   equilibriumTempK?: number;
   // Host star properties
@@ -151,6 +152,7 @@ export const ExoplanetDataSchema = CosmicObjectSchema.extend({
   orbitalPeriodDays: z.number().optional(),
   radiusEarth: z.number().optional(),
   massEarth: z.number().optional(),
+  massIsEstimated: z.boolean().optional(),
   distanceParsecs: z.number().optional(),
   equilibriumTempK: z.number().optional(),
   // Host star properties

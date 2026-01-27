@@ -314,6 +314,17 @@ async function executeTAPQuery(
   );
 }
 
+// Estimate mass from radius using Chen & Kipping (2017) mass-radius relationship.
+// Returns mass in Earth masses, or undefined if radius is not available.
+function estimateMassFromRadius(radiusEarth: number): number {
+  if (radiusEarth < 1.23) {
+    // Terran regime: R = 1.008 * M^0.279 → M = (R / 1.008)^(1/0.279)
+    return Math.pow(radiusEarth / 1.008, 1 / 0.279);
+  }
+  // Neptunian regime: R = 0.7790 * M^0.589 → M = (R / 0.7790)^(1/0.589)
+  return Math.pow(radiusEarth / 0.7790, 1 / 0.589);
+}
+
 // Transform raw NASA data to ExoplanetData
 function transformExoplanet(raw: z.infer<typeof NASAExoplanetRawSchema>): ExoplanetData {
   const keyFacts: KeyFact[] = [];
@@ -325,10 +336,18 @@ function transformExoplanet(raw: z.infer<typeof NASAExoplanetRawSchema>): Exopla
       unit: "Earth radii",
     });
   }
-  if (raw.pl_masse !== null) {
+  const hasMeasuredMass = raw.pl_masse !== null;
+  const massIsEstimated = !hasMeasuredMass && raw.pl_rade !== null;
+  const massEarth = hasMeasuredMass
+    ? raw.pl_masse!
+    : massIsEstimated
+    ? estimateMassFromRadius(raw.pl_rade!)
+    : undefined;
+
+  if (massEarth !== undefined) {
     keyFacts.push({
-      label: "Mass",
-      value: formatNumber(raw.pl_masse),
+      label: massIsEstimated ? "Mass (est.)" : "Mass",
+      value: formatNumber(massEarth),
       unit: "Earth masses",
     });
   }
@@ -395,7 +414,8 @@ function transformExoplanet(raw: z.infer<typeof NASAExoplanetRawSchema>): Exopla
     discoveryFacility: raw.disc_facility ?? undefined,
     orbitalPeriodDays: raw.pl_orbper ?? undefined,
     radiusEarth: raw.pl_rade ?? undefined,
-    massEarth: raw.pl_masse ?? undefined,
+    massEarth: massEarth,
+    massIsEstimated: massIsEstimated || undefined,
     distanceParsecs: raw.sy_dist ?? undefined,
     equilibriumTempK: raw.pl_eqt ?? undefined,
     // Host star properties
