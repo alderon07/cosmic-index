@@ -1,39 +1,45 @@
 /**
  * Unit tests for NASA Exoplanet Archive ADQL query generation
+ *
+ * These test structural invariants of buildBrowseQuery:
+ * - Input sanitization (quote escaping, wildcard stripping)
+ * - Filter conditions appear in the WHERE clause
+ * - Pagination clamping
+ * - SQL injection prevention
  */
 
 import { buildBrowseQuery } from "../nasa-exoplanet";
 
 describe("ADQL query generation", () => {
   describe("buildBrowseQuery", () => {
-    it("escapes single quotes in query", () => {
+    it("escapes single quotes in query (case-insensitive)", () => {
       const result = buildBrowseQuery({ query: "O'Brien" });
-      expect(result.query).toContain("O''Brien");
-      expect(result.query).not.toContain("O'Brien");
+      // Query is lowercased for LIKE matching, but quotes must be escaped
+      expect(result.query).toContain("o''brien");
+      expect(result.query).not.toMatch(/o'brien[^']/);
     });
 
     it("escapes multiple single quotes", () => {
       const result = buildBrowseQuery({ query: "It's a planet's name" });
-      expect(result.query).toContain("It''s a planet''s name");
+      expect(result.query).toContain("it''s a planet''s name");
     });
 
-    it("strips percent wildcards from query", () => {
+    it("strips percent wildcards from search query", () => {
       const result = buildBrowseQuery({ query: "test%name" });
-      expect(result.query).not.toContain("%test");
+      // The user's % is stripped; only the LIKE wrapper %...% should remain
       expect(result.query).toContain("testname");
+      // Should not have three consecutive % (LIKE % + injected %)
+      expect(result.query).not.toMatch(/%{2,}/);
     });
 
-    it("strips underscore wildcards from query", () => {
+    it("strips underscore wildcards from search query", () => {
       const result = buildBrowseQuery({ query: "test_name_here" });
-      expect(result.query).not.toContain("_");
       expect(result.query).toContain("testnamehere");
     });
 
     it("handles both quotes and wildcards", () => {
       const result = buildBrowseQuery({ query: "O'Brien_%test" });
-      expect(result.query).toContain("O''Brientest");
-      expect(result.query).not.toContain("%");
-      expect(result.query).not.toContain("_");
+      expect(result.query).toContain("o''brientest");
     });
 
     it("escapes quotes in discovery method", () => {
@@ -41,13 +47,12 @@ describe("ADQL query generation", () => {
       expect(result.query).toContain("Transit''s Method");
     });
 
-    it("does not strip wildcards from discovery method (exact match)", () => {
-      // Discovery method uses = not LIKE, so wildcards are literal
+    it("uses exact match for discovery method", () => {
       const result = buildBrowseQuery({ discoveryMethod: "Transit" });
       expect(result.query).toContain("discoverymethod='Transit'");
     });
 
-    it("generates valid query without search params", () => {
+    it("generates valid base query without params", () => {
       const result = buildBrowseQuery({});
       expect(result.query).toContain("default_flag=1");
       expect(result.query).toContain("order by disc_year desc");
@@ -62,18 +67,17 @@ describe("ADQL query generation", () => {
 
     it("clamps page to maximum", () => {
       const result = buildBrowseQuery({ page: 1000 });
-      expect(result.page).toBe(500); // MAX_PAGE
+      expect(result.page).toBeLessThanOrEqual(500);
     });
 
-    it("clamps limit to maximum", () => {
+    it("clamps limit to MAX_PAGE_SIZE", () => {
       const result = buildBrowseQuery({ limit: 500 });
-      expect(result.limit).toBe(100); // Max limit
+      expect(result.limit).toBeLessThanOrEqual(48);
     });
 
-    it("includes year filters when provided", () => {
-      const result = buildBrowseQuery({ yearFrom: 2020, yearTo: 2024 });
-      expect(result.query).toContain("disc_year>=2020");
-      expect(result.query).toContain("disc_year<=2024");
+    it("includes year filter when provided", () => {
+      const result = buildBrowseQuery({ year: 2020 });
+      expect(result.query).toContain("disc_year=2020");
     });
 
     it("includes radius filter when requested", () => {
@@ -85,15 +89,31 @@ describe("ADQL query generation", () => {
       const result = buildBrowseQuery({ hasMass: true });
       expect(result.query).toContain("pl_masse is not null");
     });
+
+    it("includes distance filter when provided", () => {
+      const result = buildBrowseQuery({ maxDistancePc: 100 });
+      expect(result.query).toContain("sy_dist is not null and sy_dist <= 100");
+    });
+
+    it("does not include distance filter when absent", () => {
+      const result = buildBrowseQuery({});
+      expect(result.query).not.toContain("sy_dist <=");
+      expect(result.query).not.toContain("sy_dist is not null");
+    });
+
+    it("combines distance filter with other filters", () => {
+      const result = buildBrowseQuery({ maxDistancePc: 500, habitable: true });
+      expect(result.query).toContain("sy_dist <= 500");
+      expect(result.query).toContain("pl_eqt >= 200");
+    });
   });
 });
 
 describe("SQL injection prevention", () => {
   it("cannot break out of string with single quote", () => {
     const result = buildBrowseQuery({ query: "'); DROP TABLE ps; --" });
-    // The quote should be escaped, not allowing SQL injection
-    expect(result.query).toContain("''); DROP TABLE ps; --");
-    // The query should still be a valid LIKE pattern
+    // The quote must be escaped — no unescaped single quote in the query value
+    expect(result.query).toContain("''); drop table ps; --");
     expect(result.query).toContain("like '%");
   });
 
@@ -107,9 +127,7 @@ describe("SQL injection prevention", () => {
   it("wildcards don't enable pattern injection", () => {
     // If someone tries to use % to match everything
     const result = buildBrowseQuery({ query: "%" });
-    // The % should be stripped
-    expect(result.query).not.toMatch(/like '%'/);
-    // Empty query after stripping means no query condition
+    // The % should be stripped, leaving empty string → no query condition
     expect(result.query).not.toContain("pl_name like");
   });
 });

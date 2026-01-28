@@ -99,6 +99,7 @@ export interface ExoplanetQueryParams {
   habitable?: boolean;
   facility?: string;
   multiPlanet?: boolean;
+  maxDistancePc?: number;
   page?: number;
   limit?: number;
 }
@@ -204,6 +205,7 @@ export const ExoplanetQuerySchema = z.object({
   habitable: z.coerce.boolean().optional(),
   facility: normalizedString(64).optional(),
   multiPlanet: z.coerce.boolean().optional(),
+  maxDistancePc: z.coerce.number().positive().max(100_000).optional(),
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(MAX_PAGE_SIZE).default(DEFAULT_PAGE_SIZE),
 });

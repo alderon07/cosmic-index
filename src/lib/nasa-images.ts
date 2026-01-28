@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { withCache, CACHE_TTL, CACHE_KEYS, hashParams, getCached, setCached } from "./cache";
+import { CACHE_TTL, CACHE_KEYS, hashParams, getCached, setCached } from "./cache";
 import type { ObjectType, SmallBodyKind } from "./types";
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -79,6 +79,79 @@ export interface ImageSearchParams {
   name: string;
   hostStar?: string;
   bodyKind?: SmallBodyKind;
+}
+
+// ── Relevance Scoring ──────────────────────────────────────────────────────
+
+// Mission/instrument/hardware terms that indicate the image is NOT about a body
+const NEGATIVE_TERMS = /\b(spacecraft|satellite|probe|telescope|observatory|rover|launch|liftoff|technicians?|payload|fairing|booster|countdown|solar panel|solar array|antenna|clean ?room|processing facility|shipping container|vault|figurine|lego|aboard|ISS|Hubble|JWST|James Webb|Spitzer|Chandra|JunoCam|instrument|mission control)\b/i;
+
+// Positive terms per object type that indicate actual body imagery
+const POSITIVE_TERMS: Record<ObjectType, RegExp> = {
+  SMALL_BODY: /\b(asteroid|comet|surface|crater|regolith|near-earth|meteorite|nucleus|tail|coma|icy|rocky|boulder|dust|impact|rotation|shape model|topograph|close-up|flyby|mosaic|terrain|landslide|dwarf planet|approach|color view|survey|ice|infrared|spectrum|orbit class)\b/i,
+  EXOPLANET: /\b(exoplanet|planet|habitable|transit|radial velocity|light curve|star system|planetary system|artist.?s?.?concept|illustration|comparison|lineup|orbit|zone|spectrum|atmosphere)\b/i,
+};
+
+const RELEVANCE_THRESHOLD = 0;
+
+/**
+ * Score a search result for relevance to the cosmic object.
+ *
+ * Positive signals: body-type terms, object name / host star in title.
+ * Negative signals: mission/hardware/instrument terms.
+ *
+ * Items below RELEVANCE_THRESHOLD are filtered out.
+ */
+function scoreItem(
+  item: z.infer<typeof NasaImageItemSchema>,
+  params: ImageSearchParams
+): number {
+  const data = item.data[0];
+  if (!data) return -Infinity;
+
+  const title = data.title ?? "";
+  const desc = data.description ?? "";
+  const text = `${title} ${desc}`;
+  const kw = (data.keywords ?? []).join(" ");
+  const all = `${text} ${kw}`;
+
+  let score = 0;
+
+  // Positive: body-type context terms
+  const positivePattern = POSITIVE_TERMS[params.type];
+  const positiveMatches = all.match(new RegExp(positivePattern.source, "gi"));
+  if (positiveMatches) {
+    score += positiveMatches.length * 3;
+  }
+
+  // Positive: object name or host star in title
+  if (params.hostStar && params.hostStar !== "Unknown") {
+    if (title.toLowerCase().includes(params.hostStar.toLowerCase())) score += 2;
+  }
+  if (title.toLowerCase().includes(params.name.toLowerCase())) score += 2;
+
+  // Negative: mission/hardware/instrument noise
+  const negativeMatches = all.match(new RegExp(NEGATIVE_TERMS.source, "gi"));
+  if (negativeMatches) {
+    score -= negativeMatches.length * 3;
+  }
+
+  return score;
+}
+
+/**
+ * Filter and rank search result items by relevance score.
+ * Only items above RELEVANCE_THRESHOLD are kept, sorted best-first.
+ */
+function filterRelevantItems(
+  items: z.infer<typeof NasaImageItemSchema>[],
+  params: ImageSearchParams
+): z.infer<typeof NasaImageItemSchema>[] {
+  return items
+    .map((item) => ({ item, score: scoreItem(item, params) }))
+    .filter(({ score }) => score > RELEVANCE_THRESHOLD)
+    .sort((a, b) => b.score - a.score)
+    .map(({ item }) => item);
 }
 
 // ── Core Functions ─────────────────────────────────────────────────────────
@@ -256,89 +329,40 @@ async function resolveFullImageUrls(
 
 /**
  * Build an ordered list of search queries for a cosmic object.
- * Stops at the first query that returns results.
+ * Uses contextual terms (exoplanet, asteroid, comet) for disambiguation.
+ * Stops at the first query that returns relevant results.
  */
 function buildImageSearchQueries(params: ImageSearchParams): string[] {
   const queries: string[] = [];
+  const add = (q: string) => {
+    if (q && !queries.includes(q)) queries.push(q);
+  };
 
   if (params.type === "EXOPLANET") {
-    // Host star first — NASA usually has mission/system imagery, not planet-specific
+    // Most specific first: host star + "exoplanet"
     if (params.hostStar && params.hostStar !== "Unknown") {
-      queries.push(params.hostStar);
+      add(`${params.hostStar} exoplanet`);
+      add(`${params.hostStar} planetary system`);
+      add(params.hostStar);
     }
-    // Display name with trailing planet letter stripped ("TRAPPIST-1 b" → "TRAPPIST-1")
+    // Display name with trailing planet letter stripped
     const stripped = params.name.replace(/\s+[a-z]$/i, "").trim();
-    if (stripped && !queries.includes(stripped)) {
-      queries.push(stripped);
-    }
-    // Original display name as fallback if different
-    if (!queries.includes(params.name)) {
-      queries.push(params.name);
-    }
+    add(`${stripped} exoplanet`);
+    add(stripped);
   } else {
-    // Small bodies: display name, then display name + body kind
-    queries.push(params.name);
-    if (params.bodyKind) {
-      queries.push(`${params.name} ${params.bodyKind}`);
-    }
+    // Small bodies: name + body kind for disambiguation
+    const kind = params.bodyKind ?? "asteroid";
+    add(`${params.name} ${kind}`);
+    add(params.name);
   }
 
   return queries;
 }
 
 /**
- * Main entrypoint: search for NASA images relevant to a cosmic object.
- * Runs a query chain, stops at the first non-empty result, resolves full-res URLs.
- * Cached by object name + type.
- */
-export async function searchImagesForObject(
-  params: ImageSearchParams
-): Promise<NasaImagesResult> {
-  const cacheKey = `${CACHE_KEYS.NASA_IMAGES}:obj:${hashParams({
-    name: params.name,
-    type: params.type,
-  })}`;
-
-  return withCache(cacheKey, CACHE_TTL.NASA_IMAGES, async () => {
-    const queries = buildImageSearchQueries(params);
-
-    for (const query of queries) {
-      const response = await fetchNasaImageSearch(query, MAX_IMAGES);
-      if (!response) continue;
-
-      const items = response.collection.items;
-      const totalHits = response.collection.metadata?.total_hits ?? items.length;
-
-      if (items.length === 0) continue;
-
-      const images = await resolveFullImageUrls(items);
-
-      if (images.length > 0) {
-        return {
-          images,
-          totalHits,
-          usedQuery: query,
-        };
-      }
-    }
-
-    // No results for any query — cache with shorter TTL
-    // We store the empty result here, but withCache uses a single TTL.
-    // To handle the shorter TTL for empty results, we need a different approach.
-    // Actually, withCache will cache with the TTL we pass. Since we're inside
-    // withCache already, the result gets cached at NASA_IMAGES TTL.
-    // We'll handle the empty-result TTL in the route layer instead.
-    return {
-      images: [],
-      totalHits: 0,
-      usedQuery: queries[0] ?? params.name,
-    };
-  });
-}
-
-/**
- * Variant that caches empty results with a shorter TTL.
- * Call this from the route handler for proper TTL differentiation.
+ * Search for NASA images relevant to a cosmic object.
+ * Runs a query chain, stops at first query with relevant scored results,
+ * resolves full-res URLs. Caches with differentiated TTLs (24h results, 2h empty).
  */
 export async function searchImagesForObjectWithTtl(
   params: ImageSearchParams
@@ -358,12 +382,12 @@ export async function searchImagesForObjectWithTtl(
     const response = await fetchNasaImageSearch(query, MAX_IMAGES);
     if (!response) continue;
 
-    const items = response.collection.items;
-    const totalHits = response.collection.metadata?.total_hits ?? items.length;
+    const relevant = filterRelevantItems(response.collection.items, params);
+    const totalHits = response.collection.metadata?.total_hits ?? relevant.length;
 
-    if (items.length === 0) continue;
+    if (relevant.length === 0) continue;
 
-    const images = await resolveFullImageUrls(items);
+    const images = await resolveFullImageUrls(relevant);
 
     if (images.length > 0) {
       const result: NasaImagesResult = { images, totalHits, usedQuery: query };

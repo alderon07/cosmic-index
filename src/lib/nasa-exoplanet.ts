@@ -58,7 +58,8 @@ function hasAnyNarrowingFilter(params: ExoplanetQueryParams): boolean {
       params.sizeCategory ||
       params.habitable ||
       params.facility ||
-      params.multiPlanet
+      params.multiPlanet ||
+      params.maxDistancePc !== undefined
   );
 }
 
@@ -125,6 +126,11 @@ export function buildBrowseQuery(
   // Multi-planet system filter
   if (params.multiPlanet) {
     conditions.push("sy_pnum > 1");
+  }
+
+  // Max distance from Earth (parsecs)
+  if (params.maxDistancePc !== undefined) {
+    conditions.push(`sy_dist is not null and sy_dist <= ${params.maxDistancePc}`);
   }
 
   const whereClause = conditions.join(" and ");
@@ -199,6 +205,11 @@ function buildCountQuery(params: ExoplanetQueryParams): string {
   // Multi-planet system filter
   if (params.multiPlanet) {
     conditions.push("sy_pnum > 1");
+  }
+
+  // Max distance from Earth (parsecs)
+  if (params.maxDistancePc !== undefined) {
+    conditions.push(`sy_dist is not null and sy_dist <= ${params.maxDistancePc}`);
   }
 
   const whereClause = conditions.join(" and ");

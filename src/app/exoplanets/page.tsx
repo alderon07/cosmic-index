@@ -43,6 +43,8 @@ function ExoplanetsPageContent() {
   const habitable = searchParams.get("habitable") === "true" || undefined;
   const facility = searchParams.get("facility") || undefined;
   const multiPlanet = searchParams.get("multiPlanet") === "true" || undefined;
+  const maxDistancePcRaw = searchParams.get("maxDistancePc");
+  const maxDistancePc = maxDistancePcRaw ? Number(maxDistancePcRaw) : undefined;
 
   const filters: ExoplanetFilters = useMemo(() => ({
     discoveryMethod,
@@ -53,7 +55,8 @@ function ExoplanetsPageContent() {
     habitable,
     facility,
     multiPlanet,
-  }), [discoveryMethod, year, hasRadius, hasMass, sizeCategory, habitable, facility, multiPlanet]);
+    maxDistancePc,
+  }), [discoveryMethod, year, hasRadius, hasMass, sizeCategory, habitable, facility, multiPlanet, maxDistancePc]);
   const [data, setData] = useState<PaginatedResponse<ExoplanetData> | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -112,6 +115,7 @@ function ExoplanetsPageContent() {
       habitable: newFilters.habitable ? "true" : null,
       facility: newFilters.facility ?? null,
       multiPlanet: newFilters.multiPlanet ? "true" : null,
+      maxDistancePc: newFilters.maxDistancePc?.toString() ?? null,
       page: null, // Reset to page 1
     });
   }, [updateUrl]);
@@ -127,6 +131,7 @@ function ExoplanetsPageContent() {
       habitable: null,
       facility: null,
       multiPlanet: null,
+      maxDistancePc: null,
       page: null, // Reset to page 1
     });
   }, [updateUrl]);
@@ -148,6 +153,7 @@ function ExoplanetsPageContent() {
       if (filters.habitable) params.set("habitable", "true");
       if (filters.facility) params.set("facility", filters.facility);
       if (filters.multiPlanet) params.set("multiPlanet", "true");
+      if (filters.maxDistancePc) params.set("maxDistancePc", filters.maxDistancePc.toString());
       params.set("page", page.toString());
       params.set("limit", limit.toString());
 

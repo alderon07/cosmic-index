@@ -107,7 +107,7 @@ export function NasaImageGallery({ object }: NasaImageGalleryProps) {
         <CardHeader>
           <CardTitle className="font-display flex items-center gap-2">
             <Camera className="w-5 h-5 text-primary" />
-            NASA Images
+            Related NASA Images
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -115,7 +115,7 @@ export function NasaImageGallery({ object }: NasaImageGalleryProps) {
             {[1, 2, 3, 4].map((i) => (
               <div
                 key={i}
-                className="w-40 h-40 flex-shrink-0 rounded-lg data-stream bg-muted/30"
+                className="w-56 h-56 flex-shrink-0 rounded-lg data-stream bg-muted/30"
               />
             ))}
           </div>
@@ -137,7 +137,7 @@ export function NasaImageGallery({ object }: NasaImageGalleryProps) {
         <CardHeader>
           <CardTitle className="font-display flex items-center gap-2">
             <Camera className="w-5 h-5 text-primary" />
-            NASA Images
+            Related NASA Images
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -150,7 +150,7 @@ export function NasaImageGallery({ object }: NasaImageGalleryProps) {
               <button
                 key={image.nasaId}
                 onClick={() => setLightboxIndex(index)}
-                className="relative w-40 h-40 flex-shrink-0 rounded-lg overflow-hidden border border-border/30 bezel group cursor-pointer transition-all hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                className="relative w-56 h-56 flex-shrink-0 rounded-lg overflow-hidden border border-border/30 bezel group cursor-pointer transition-all hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img

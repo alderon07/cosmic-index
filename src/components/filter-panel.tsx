@@ -31,7 +31,17 @@ export interface ExoplanetFilters {
   habitable?: boolean;
   facility?: string;
   multiPlanet?: boolean;
+  maxDistancePc?: number;
 }
+
+// Distance-from-Earth presets (parsecs)
+const DISTANCE_PRESETS = [
+  { value: 10, label: "< 10 pc (~33 ly)" },
+  { value: 100, label: "< 100 pc (~326 ly)" },
+  { value: 500, label: "< 500 pc (~1,630 ly)" },
+  { value: 1000, label: "< 1,000 pc (~3,260 ly)" },
+  { value: 5000, label: "< 5,000 pc (~16,300 ly)" },
+] as const;
 
 // Small Body Filter Types
 export interface SmallBodyFilters {
@@ -170,6 +180,12 @@ export function ExoplanetFilterPanel({
               onRemove={() => removeFilter("hasMass")}
             />
           )}
+          {filters.maxDistancePc && (
+            <FilterChip
+              label={`< ${filters.maxDistancePc.toLocaleString()} pc`}
+              onRemove={() => removeFilter("maxDistancePc")}
+            />
+          )}
           <Button
             variant="ghost"
             size="sm"
@@ -227,8 +243,8 @@ export function ExoplanetFilterPanel({
               </div>
             </div>
 
-            {/* Discovery Facility and Year - Side by side on desktop */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Discovery Facility, Year, Distance - Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* Discovery Facility */}
               <div>
                 <label className="text-xs text-muted-foreground uppercase tracking-wider block mb-2">
@@ -266,6 +282,27 @@ export function ExoplanetFilterPanel({
                   {YEAR_OPTIONS.slice().reverse().map((year) => (
                     <option key={year} value={year}>
                       {year}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Max Distance from Earth */}
+              <div>
+                <label className="text-xs text-muted-foreground uppercase tracking-wider block mb-2">
+                  Max Distance
+                </label>
+                <select
+                  value={filters.maxDistancePc || ""}
+                  onChange={(e) =>
+                    updateFilter("maxDistancePc", e.target.value ? Number(e.target.value) : undefined)
+                  }
+                  className="w-full px-3 py-2 bg-input border border-border rounded-md text-sm font-mono focus:outline-none focus:ring-1 focus:ring-primary"
+                >
+                  <option value="">Any Distance</option>
+                  {DISTANCE_PRESETS.map((preset) => (
+                    <option key={preset.value} value={preset.value}>
+                      {preset.label}
                     </option>
                   ))}
                 </select>
