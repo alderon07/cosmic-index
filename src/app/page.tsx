@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Circle, CircleDot, Telescope, ArrowRight, Orbit, Rocket } from "lucide-react";
+import { Circle, CircleDot, Telescope, ArrowRight, Orbit, Rocket, Star, Sun } from "lucide-react";
 
 // Pre-computed star positions for deterministic rendering
 const STAR_POSITIONS = Array.from({ length: 50 }, (_, i) => ({
@@ -50,7 +50,7 @@ export default function HomePage() {
 
             <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
               An encyclopedia of cosmic objects. Explore thousands
-              of exoplanets, asteroids, and comets with data from NASA and JPL.
+              of exoplanets, host stars, asteroids, and comets with data from NASA and JPL.
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -58,6 +58,16 @@ export default function HomePage() {
                 <Button size="lg" className="glow-orange font-display gap-2">
                   <Circle className="w-5 h-5" />
                   Explore Exoplanets
+                </Button>
+              </Link>
+              <Link href="/stars">
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="font-display gap-2"
+                >
+                  <Star className="w-5 h-5" />
+                  Browse Stars
                 </Button>
               </Link>
               <Link href="/small-bodies">
@@ -81,7 +91,7 @@ export default function HomePage() {
 
       {/* Feature Sections */}
       <section className="container mx-auto px-4 py-16 md:py-24">
-        <div className="grid md:grid-cols-2 gap-8 md:gap-12">
+        <div className="grid md:grid-cols-3 gap-8 md:gap-12">
           {/* Exoplanets Section */}
           <Card className="bg-card border-border/50 bezel scanlines overflow-hidden group hover:border-primary/50 transition-colors">
             <CardHeader className="pb-4">
@@ -112,6 +122,42 @@ export default function HomePage() {
               <Link href="/exoplanets" className="inline-block">
                 <Button variant="ghost" className="gap-2 group/btn">
                   Browse Exoplanets
+                  <ArrowRight className="w-4 h-4 group-hover/btn:translate-x-1 transition-transform" />
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
+
+          {/* Stars Section */}
+          <Card className="bg-card border-border/50 bezel scanlines overflow-hidden group hover:border-amber-500/50 transition-colors">
+            <CardHeader className="pb-4">
+              <div className="w-12 h-12 rounded-lg bg-amber-500/20 flex items-center justify-center mb-4 group-hover:glow-amber transition-all">
+                <Star className="w-6 h-6 text-amber-500" />
+              </div>
+              <CardTitle className="font-display text-2xl">Stars</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-muted-foreground">
+                Discover host stars from NASA&apos;s Exoplanet Archive.
+                Explore stellar properties and their planetary systems.
+              </p>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li className="flex items-center gap-2">
+                  <Star className="w-4 h-4 text-primary" />
+                  4,500+ host stars
+                </li>
+                <li className="flex items-center gap-2">
+                  <Sun className="w-4 h-4 text-primary" />
+                  Spectral classifications
+                </li>
+                <li className="flex items-center gap-2">
+                  <Orbit className="w-4 h-4 text-primary" />
+                  Linked planetary systems
+                </li>
+              </ul>
+              <Link href="/stars" className="inline-block">
+                <Button variant="ghost" className="gap-2 group/btn">
+                  Browse Stars
                   <ArrowRight className="w-4 h-4 group-hover/btn:translate-x-1 transition-transform" />
                 </Button>
               </Link>
@@ -206,6 +252,11 @@ export default function HomePage() {
             <Link href="/exoplanets">
               <Button className="glow-orange font-display">
                 Start with Exoplanets
+              </Button>
+            </Link>
+            <Link href="/stars">
+              <Button variant="outline" className="font-display">
+                Explore Stars
               </Button>
             </Link>
             <Link href="/small-bodies">
