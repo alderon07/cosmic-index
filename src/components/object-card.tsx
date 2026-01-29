@@ -3,32 +3,34 @@
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ExoplanetData, SmallBodyData, AnyCosmicObject } from "@/lib/types";
-import { Orbit, Sparkles, AlertTriangle, SquareArrowOutUpRight } from "lucide-react";
+import {
+  AnyCosmicObject,
+  isExoplanet,
+  isSmallBody,
+  isStar,
+} from "@/lib/types";
+import { Orbit, Sparkles, AlertTriangle } from "lucide-react";
 
 // SessionStorage keys for storing list page URLs
 const EXOPLANETS_LIST_URL_KEY = "exoplanetsListUrl";
 const SMALL_BODIES_LIST_URL_KEY = "smallBodiesListUrl";
+const STARS_LIST_URL_KEY = "starsListUrl";
 
 interface ObjectCardProps {
   object: AnyCosmicObject;
 }
 
-function isExoplanet(obj: AnyCosmicObject): obj is ExoplanetData {
-  return obj.type === "EXOPLANET";
-}
-
-function isSmallBody(obj: AnyCosmicObject): obj is SmallBodyData {
-  return obj.type === "SMALL_BODY";
-}
-
 export function ObjectCard({ object }: ObjectCardProps) {
   const href = isExoplanet(object)
     ? `/exoplanets/${object.id}`
+    : isStar(object)
+    ? `/stars/${object.id}`
     : `/small-bodies/${object.id}`;
 
   const typeLabel = isExoplanet(object)
     ? "Exoplanet"
+    : isStar(object)
+    ? "Star"
     : isSmallBody(object)
     ? object.bodyKind === "comet"
       ? "Comet"
@@ -37,11 +39,15 @@ export function ObjectCard({ object }: ObjectCardProps) {
 
   const typeVariant = isExoplanet(object)
     ? "default"
+    : isStar(object)
+    ? "outline"
     : isSmallBody(object) && object.bodyKind === "comet"
     ? "outline"
     : "secondary";
 
-  const typeClassName = isSmallBody(object) && object.bodyKind === "comet"
+  const typeClassName = isStar(object)
+    ? "border-amber-glow/50 text-amber-glow bg-amber-glow/10"
+    : isSmallBody(object) && object.bodyKind === "comet"
     ? "border-radium-teal/50 text-radium-teal bg-radium-teal/10"
     : "";
 
@@ -54,6 +60,8 @@ export function ObjectCard({ object }: ObjectCardProps) {
       const currentUrl = window.location.pathname + window.location.search;
       const storageKey = isExoplanet(object)
         ? EXOPLANETS_LIST_URL_KEY
+        : isStar(object)
+        ? STARS_LIST_URL_KEY
         : SMALL_BODIES_LIST_URL_KEY;
       sessionStorage.setItem(storageKey, currentUrl);
     }
@@ -104,6 +112,7 @@ export function ObjectCard({ object }: ObjectCardProps) {
               {object.hostStar}
             </p>
           )}
+
         </CardHeader>
 
         <CardContent className="pt-0 flex flex-col flex-1 min-h-0">

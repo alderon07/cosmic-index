@@ -1,6 +1,8 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { ChevronRight, Home } from "lucide-react";
+import { getCategoryFromPath, getListUrl } from "@/lib/list-url-store";
 
 const BASE_URL = "https://cosmic-index.vercel.app";
 
@@ -31,13 +33,41 @@ function generateBreadcrumbJsonLd(items: BreadcrumbItem[]) {
   };
 }
 
+// Resolve list URLs from sessionStorage
+function resolveListUrls(items: BreadcrumbItem[]): BreadcrumbItem[] {
+  return items.map((item) => {
+    if (!item.href) return item;
+
+    const category = getCategoryFromPath(item.href);
+    if (category) {
+      return { ...item, href: getListUrl(category) };
+    }
+    return item;
+  });
+}
+
 export function Breadcrumbs({ items, className = "" }: BreadcrumbsProps) {
+  // JSON-LD uses original items (canonical URLs for SEO)
   const jsonLd = generateBreadcrumbJsonLd(items);
+
+  // Track mount state to avoid hydration mismatch (sessionStorage only available client-side)
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    // This is a valid pattern for detecting client-side mount to access browser APIs
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setIsMounted(true);
+  }, []);
+
+  // Resolve list URLs only after mount to avoid hydration mismatch
+  const resolvedItems = isMounted ? resolveListUrls(items) : items;
 
   return (
     <>
+      {/* JSON-LD for SEO - uses canonical URLs, content from trusted sources */}
       <script
         type="application/ld+json"
+        // Safe: jsonLd is generated from static labels/hrefs, JSON.stringify escapes special chars
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
       <nav
@@ -45,8 +75,8 @@ export function Breadcrumbs({ items, className = "" }: BreadcrumbsProps) {
         className={`flex items-center text-sm text-muted-foreground ${className}`}
       >
         <ol className="flex items-center flex-wrap gap-1">
-          {items.map((item, index) => {
-            const isLast = index === items.length - 1;
+          {resolvedItems.map((item, index) => {
+            const isLast = index === resolvedItems.length - 1;
             const isFirst = index === 0;
 
             return (

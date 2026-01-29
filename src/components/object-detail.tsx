@@ -8,7 +8,12 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { ExoplanetData, SmallBodyData, AnyCosmicObject } from "@/lib/types";
+import {
+  AnyCosmicObject,
+  isExoplanet,
+  isSmallBody,
+  isStar,
+} from "@/lib/types";
 import { NasaImageGallery } from "./nasa-image-gallery";
 import {
   ExternalLink,
@@ -16,25 +21,21 @@ import {
   Sparkles,
   AlertTriangle,
   Info,
-  Globe,
   Telescope,
+  Star,
+  Circle,
 } from "lucide-react";
 
 interface ObjectDetailProps {
   object: AnyCosmicObject;
+  hideDataSources?: boolean;
 }
 
-function isExoplanet(obj: AnyCosmicObject): obj is ExoplanetData {
-  return obj.type === "EXOPLANET";
-}
-
-function isSmallBody(obj: AnyCosmicObject): obj is SmallBodyData {
-  return obj.type === "SMALL_BODY";
-}
-
-export function ObjectDetail({ object }: ObjectDetailProps) {
+export function ObjectDetail({ object, hideDataSources }: ObjectDetailProps) {
   const typeLabel = isExoplanet(object)
     ? "Exoplanet"
+    : isStar(object)
+    ? "Star"
     : isSmallBody(object)
     ? object.bodyKind === "comet"
       ? "Comet"
@@ -48,8 +49,8 @@ export function ObjectDetail({ object }: ObjectDetailProps) {
         <div className="relative z-10">
           <div className="flex flex-wrap items-start gap-3 mb-4">
             <Badge
-              variant={isExoplanet(object) ? "default" : isSmallBody(object) && object.bodyKind === "comet" ? "outline" : "secondary"}
-              className={`font-mono ${isSmallBody(object) && object.bodyKind === "comet" ? "border-radium-teal/50 text-radium-teal bg-radium-teal/10" : ""}`}
+              variant={isExoplanet(object) ? "default" : isStar(object) ? "outline" : isSmallBody(object) && object.bodyKind === "comet" ? "outline" : "secondary"}
+              className={`font-mono ${isStar(object) ? "border-amber-glow/50 text-amber-glow bg-amber-glow/10" : isSmallBody(object) && object.bodyKind === "comet" ? "border-radium-teal/50 text-radium-teal bg-radium-teal/10" : ""}`}
             >
               {typeLabel}
             </Badge>
@@ -86,6 +87,15 @@ export function ObjectDetail({ object }: ObjectDetailProps) {
           {isSmallBody(object) && (
             <p className="text-lg text-muted-foreground flex items-center gap-2">
               {object.orbitClass}
+            </p>
+          )}
+
+          {isStar(object) && (
+            <p className="text-lg text-muted-foreground flex items-center gap-2">
+              <Star className="w-5 h-5 text-amber-glow" />
+              {object.spectralClass && object.spectralClass !== "Unknown"
+                ? `${object.spectralClass}-type star`
+                : "Host star"}
             </p>
           )}
 
@@ -151,7 +161,7 @@ export function ObjectDetail({ object }: ObjectDetailProps) {
       {/* Detailed Sections */}
       <Accordion
         type="multiple"
-        defaultValue={["physical", "orbital", "host-star", "discovery"]}
+        defaultValue={["physical", "orbital", "host-star", "discovery", "stellar", "system", "coordinates"]}
         className="space-y-2"
       >
         {isExoplanet(object) && (
@@ -291,7 +301,8 @@ export function ObjectDetail({ object }: ObjectDetailProps) {
                     </p>
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Circle className="w-3 h-3 text-primary" />
                       Planets in System
                     </p>
                     <p className="font-mono text-lg">
@@ -299,7 +310,8 @@ export function ObjectDetail({ object }: ObjectDetailProps) {
                     </p>
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Star className="w-3 h-3 text-amber-glow" />
                       Stars in System
                     </p>
                     <p className="font-mono text-lg">
@@ -420,34 +432,188 @@ export function ObjectDetail({ object }: ObjectDetailProps) {
             </AccordionItem>
           </>
         )}
+
+        {isStar(object) && (
+          <>
+            <AccordionItem
+              value="stellar"
+              className="bg-card border border-border/50 rounded-lg px-4 bezel"
+            >
+              <AccordionTrigger className="font-display hover:no-underline">
+                Stellar Properties
+              </AccordionTrigger>
+              <AccordionContent className="pb-4">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Spectral Type</p>
+                    <p className="font-mono text-lg">
+                      {object.spectralType ?? "Unknown"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Temperature</p>
+                    <p className="font-mono text-lg">
+                      {object.starTempK != null
+                        ? `${object.starTempK.toFixed(0)} K`
+                        : "Unknown"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Mass (Solar)</p>
+                    <p className="font-mono text-lg">
+                      {object.starMassSolar != null
+                        ? `${object.starMassSolar.toFixed(2)} M☉`
+                        : "Unknown"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Radius (Solar)</p>
+                    <p className="font-mono text-lg">
+                      {object.starRadiusSolar != null
+                        ? `${object.starRadiusSolar.toFixed(2)} R☉`
+                        : "Unknown"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Luminosity</p>
+                    <p className="font-mono text-lg">
+                      {object.starLuminosity != null
+                        ? `${object.starLuminosity.toFixed(2)} log L☉`
+                        : "Unknown"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Metallicity [Fe/H]</p>
+                    <p className="font-mono text-lg">
+                      {object.metallicityFeH != null
+                        ? object.metallicityFeH.toFixed(2)
+                        : "Unknown"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Age</p>
+                    <p className="font-mono text-lg">
+                      {object.ageGyr != null
+                        ? `${object.ageGyr.toFixed(1)} Gyr`
+                        : "Unknown"}
+                    </p>
+                  </div>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem
+              value="system"
+              className="bg-card border border-border/50 rounded-lg px-4 bezel"
+            >
+              <AccordionTrigger className="font-display hover:no-underline">
+                System Properties
+              </AccordionTrigger>
+              <AccordionContent className="pb-4">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  <div>
+                    <p className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Circle className="w-3 h-3 text-primary" />
+                      Known Planets
+                    </p>
+                    <p className="font-mono text-lg">{object.planetCount}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Star className="w-3 h-3 text-amber-glow" />
+                      Stars in System
+                    </p>
+                    <p className="font-mono text-lg">
+                      {object.starsInSystem ?? "Unknown"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Circle className="w-3 h-3 text-primary" />
+                      Planets in System (NASA)
+                    </p>
+                    <p className="font-mono text-lg">
+                      {object.planetsInSystem ?? "Unknown"}
+                    </p>
+                  </div>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem
+              value="coordinates"
+              className="bg-card border border-border/50 rounded-lg px-4 bezel"
+            >
+              <AccordionTrigger className="font-display hover:no-underline">
+                Coordinates & Brightness
+              </AccordionTrigger>
+              <AccordionContent className="pb-4">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Distance</p>
+                    <p className="font-mono text-lg">
+                      {object.distanceParsecs != null
+                        ? `${object.distanceParsecs.toFixed(1)} pc (~${(object.distanceParsecs * 3.26156).toFixed(0)} ly)`
+                        : "Unknown"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">V Magnitude</p>
+                    <p className="font-mono text-lg">
+                      {object.vMag != null ? object.vMag.toFixed(2) : "Unknown"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">K Magnitude</p>
+                    <p className="font-mono text-lg">
+                      {object.kMag != null ? object.kMag.toFixed(2) : "Unknown"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">
+                      Coordinates (RA, Dec)
+                    </p>
+                    <p className="font-mono text-lg">
+                      {object.ra != null && object.dec != null
+                        ? `${object.ra.toFixed(4)}°, ${object.dec.toFixed(4)}°`
+                        : "Unknown"}
+                    </p>
+                  </div>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          </>
+        )}
       </Accordion>
 
       {/* Source Links */}
-      <Card className="bg-card border-border/50 bezel">
-        <CardHeader>
-          <CardTitle className="font-display text-base">Data Sources</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-2">
-            {object.links.map((link, index) => (
-              <a
-                key={index}
-                href={link.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-muted/50 hover:bg-muted rounded-md text-foreground hover:text-primary transition-colors"
-              >
-                <ExternalLink className="w-3.5 h-3.5" />
-                {link.label}
-              </a>
-            ))}
-          </div>
-          <p className="text-xs text-muted-foreground mt-4">
-            Source ID:{" "}
-            <span className="font-mono text-foreground">{object.sourceId}</span>
-          </p>
-        </CardContent>
-      </Card>
+      {!hideDataSources && (
+        <Card className="bg-card border-border/50 bezel">
+          <CardHeader>
+            <CardTitle className="font-display text-base">Data Sources</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-2">
+              {object.links.map((link, index) => (
+                <a
+                  key={index}
+                  href={link.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-muted/50 hover:bg-muted rounded-md text-foreground hover:text-primary transition-colors"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  {link.label}
+                </a>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground mt-4">
+              Source ID:{" "}
+              <span className="font-mono text-foreground">{object.sourceId}</span>
+            </p>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

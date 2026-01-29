@@ -6,7 +6,7 @@ import { searchImagesForObjectWithTtl } from "@/lib/nasa-images";
 
 // Zod schema for query parameters
 const ImageQuerySchema = z.object({
-  type: z.enum(["EXOPLANET", "SMALL_BODY"]),
+  type: z.enum(["EXOPLANET", "SMALL_BODY", "STAR"]),
   name: z
     .string()
     .transform((s) => s.normalize("NFKC"))

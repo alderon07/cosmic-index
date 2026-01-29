@@ -2,9 +2,10 @@ import { z } from "zod";
 import { DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE } from "./constants";
 
 // Object Types
-export type ObjectType = "EXOPLANET" | "SMALL_BODY";
+export type ObjectType = "EXOPLANET" | "SMALL_BODY" | "STAR";
 export type DataSource = "NASA_EXOPLANET_ARCHIVE" | "JPL_SBDB";
 export type SmallBodyKind = "asteroid" | "comet";
+export type SpectralClass = "O" | "B" | "A" | "F" | "G" | "K" | "M" | "Unknown";
 
 // Key Fact Interface
 export interface KeyFact {
@@ -70,8 +71,33 @@ export interface SmallBodyData extends CosmicObject {
   absoluteMagnitude?: number;
 }
 
+// Star-specific Interface (host stars of exoplanets)
+export interface StarData extends CosmicObject {
+  type: "STAR";
+  hostname: string;
+  spectralType?: string;
+  spectralClass?: SpectralClass;
+
+  starTempK?: number;
+  starMassSolar?: number;
+  starRadiusSolar?: number;
+  starLuminosity?: number;          // log L☉
+  metallicityFeH?: number;
+  ageGyr?: number;
+
+  distanceParsecs?: number;
+  vMag?: number;
+  kMag?: number;
+  ra?: number;
+  dec?: number;
+
+  starsInSystem?: number;
+  planetsInSystem?: number;
+  planetCount: number;
+}
+
 // Union type for all cosmic objects
-export type AnyCosmicObject = ExoplanetData | SmallBodyData;
+export type AnyCosmicObject = ExoplanetData | SmallBodyData | StarData;
 
 // API Response Types
 export interface PaginatedResponse<T> {
@@ -100,6 +126,7 @@ export interface ExoplanetQueryParams {
   facility?: string;
   multiPlanet?: boolean;
   maxDistancePc?: number;
+  hostStar?: string;             // Filter by host star name
   page?: number;
   limit?: number;
 }
@@ -112,6 +139,17 @@ export interface SmallBodyQueryParams {
   orbitClass?: string;
   page?: number;
   limit?: number;
+}
+
+export interface StarQueryParams {
+  query?: string;                    // hostname search
+  spectralClass?: SpectralClass;
+  minPlanets?: number;               // 1, 2, 3+
+  multiPlanet?: boolean;             // shorthand for minPlanets >= 2
+  maxDistancePc?: number;
+  page?: number;
+  limit?: number;
+  sort?: "name" | "distance" | "vmag" | "planetCount" | "planetCountDesc";
 }
 
 // Zod Schemas for Validation
@@ -132,7 +170,7 @@ export const SourceLinkSchema = z.object({
 // Base Cosmic Object Schema
 export const CosmicObjectSchema = z.object({
   id: z.string(),
-  type: z.enum(["EXOPLANET", "SMALL_BODY"]),
+  type: z.enum(["EXOPLANET", "SMALL_BODY", "STAR"]),
   displayName: z.string(),
   aliases: z.array(z.string()),
   source: z.enum(["NASA_EXOPLANET_ARCHIVE", "JPL_SBDB"]),
@@ -180,10 +218,33 @@ export const SmallBodyDataSchema = CosmicObjectSchema.extend({
   absoluteMagnitude: z.number().optional(),
 });
 
+// Star Schema
+export const StarDataSchema = CosmicObjectSchema.extend({
+  type: z.literal("STAR"),
+  hostname: z.string(),
+  spectralType: z.string().optional(),
+  spectralClass: z.enum(["O", "B", "A", "F", "G", "K", "M", "Unknown"]).optional(),
+  starTempK: z.number().optional(),
+  starMassSolar: z.number().optional(),
+  starRadiusSolar: z.number().optional(),
+  starLuminosity: z.number().optional(),
+  metallicityFeH: z.number().optional(),
+  ageGyr: z.number().optional(),
+  distanceParsecs: z.number().optional(),
+  vMag: z.number().optional(),
+  kMag: z.number().optional(),
+  ra: z.number().optional(),
+  dec: z.number().optional(),
+  starsInSystem: z.number().optional(),
+  planetsInSystem: z.number().optional(),
+  planetCount: z.number(),
+});
+
 // Union schema for runtime validation (must be after individual schemas are defined)
 export const AnyCosmicObjectSchema = z.discriminatedUnion("type", [
   ExoplanetDataSchema,
   SmallBodyDataSchema,
+  StarDataSchema,
 ]);
 
 // Query Parameter Schemas with NFKC normalization and length limits
@@ -218,6 +279,17 @@ export const SmallBodyQuerySchema = z.object({
   orbitClass: normalizedString(10).optional(),
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(MAX_PAGE_SIZE).default(DEFAULT_PAGE_SIZE),
+});
+
+export const StarQuerySchema = z.object({
+  query: normalizedString(128).optional(),
+  spectralClass: z.enum(["O", "B", "A", "F", "G", "K", "M"]).optional(),
+  minPlanets: z.coerce.number().int().min(1).max(50).optional(),
+  multiPlanet: z.coerce.boolean().optional(),
+  maxDistancePc: z.coerce.number().positive().max(100_000).optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(MAX_PAGE_SIZE).default(DEFAULT_PAGE_SIZE),
+  sort: z.enum(["name", "distance", "vmag", "planetCount", "planetCountDesc"]).optional(),
 });
 
 // NASA Exoplanet Archive Raw Response Schema
@@ -394,3 +466,27 @@ export const SHARED_ORBIT_CLASSES = [
 
 // Type for orbit class codes
 export type OrbitClassCode = keyof typeof ORBIT_CLASSES;
+
+// Type guards for cosmic objects
+export function isExoplanet(obj: AnyCosmicObject): obj is ExoplanetData {
+  return obj.type === "EXOPLANET";
+}
+
+export function isSmallBody(obj: AnyCosmicObject): obj is SmallBodyData {
+  return obj.type === "SMALL_BODY";
+}
+
+export function isStar(obj: AnyCosmicObject): obj is StarData {
+  return obj.type === "STAR";
+}
+
+// Spectral class descriptions and colors for UI
+export const SPECTRAL_CLASS_INFO = {
+  O: { label: "O", description: "Blue", tempRange: "30,000+ K", color: "#9BB0FF" },
+  B: { label: "B", description: "Blue-White", tempRange: "10,000-30,000 K", color: "#AABFFF" },
+  A: { label: "A", description: "White", tempRange: "7,500-10,000 K", color: "#CAD7FF" },
+  F: { label: "F", description: "Yellow-White", tempRange: "6,000-7,500 K", color: "#F8F7FF" },
+  G: { label: "G", description: "Yellow (Sun-like)", tempRange: "5,200-6,000 K", color: "#FFF4EA" },
+  K: { label: "K", description: "Orange", tempRange: "3,700-5,200 K", color: "#FFD2A1" },
+  M: { label: "M", description: "Red", tempRange: "2,400-3,700 K", color: "#FFCC6F" },
+} as const;

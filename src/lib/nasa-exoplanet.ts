@@ -133,6 +133,12 @@ export function buildBrowseQuery(
     conditions.push(`sy_dist is not null and sy_dist <= ${params.maxDistancePc}`);
   }
 
+  // Host star filter (for fetching planets of a specific star)
+  if (params.hostStar) {
+    const safeHostStar = escapeAdqlString(params.hostStar);
+    conditions.push(`lower(hostname)=lower('${safeHostStar}')`);
+  }
+
   const whereClause = conditions.join(" and ");
 
   return {
@@ -210,6 +216,12 @@ function buildCountQuery(params: ExoplanetQueryParams): string {
   // Max distance from Earth (parsecs)
   if (params.maxDistancePc !== undefined) {
     conditions.push(`sy_dist is not null and sy_dist <= ${params.maxDistancePc}`);
+  }
+
+  // Host star filter
+  if (params.hostStar) {
+    const safeHostStar = escapeAdqlString(params.hostStar);
+    conditions.push(`lower(hostname)=lower('${safeHostStar}')`);
   }
 
   const whereClause = conditions.join(" and ");
@@ -550,5 +562,35 @@ export async function fetchExoplanetBySlug(slug: string): Promise<ExoplanetData 
     }
 
     return transformExoplanet(parsed.data);
+  });
+}
+
+// Fetch all exoplanets orbiting a specific host star (for star detail page)
+// Returns array sorted by orbital period ascending
+export async function fetchExoplanetsForHostStar(hostname: string): Promise<ExoplanetData[]> {
+  const cacheKey = `${CACHE_KEYS.STARS_PLANETS}:${createSlug(hostname)}`;
+
+  return withCache(cacheKey, CACHE_TTL.STARS_PLANETS, async () => {
+    const safeHostname = escapeAdqlString(hostname);
+    const query =
+      `select pl_name,hostname,discoverymethod,disc_year,disc_facility,pl_orbper,pl_rade,pl_masse,sy_dist,pl_eqt,sy_snum,sy_pnum,st_spectype,st_teff,st_mass,st_rad,st_lum,ra,dec ` +
+      `from ps where lower(hostname)=lower('${safeHostname}') and default_flag=1 ` +
+      `order by pl_orbper asc nulls last, pl_name asc`;
+
+    // Most stars have <20 planets, fetch up to 50 to be safe
+    const results = await executeTAPQuery(query, { maxrec: 50 });
+
+    const exoplanets = results
+      .map((row) => {
+        const parsed = NASAExoplanetRawSchema.safeParse(row);
+        if (!parsed.success) {
+          console.warn("Failed to parse exoplanet for host star:", parsed.error);
+          return null;
+        }
+        return transformExoplanet(parsed.data);
+      })
+      .filter((obj): obj is ExoplanetData => obj !== null);
+
+    return exoplanets;
   });
 }

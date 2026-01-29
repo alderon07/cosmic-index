@@ -7,15 +7,18 @@
     "build": "bun run next build",
     "start": "bun run next start",
     "lint": "bun run eslint",
-    "sbdb:diag": "npx tsx scripts/sbdb-diag.ts"
+    "sbdb:diag": "npx tsx scripts/sbdb-diag.ts",
+    "ingest:stars": "npx tsx scripts/ingest-stars.ts"
   },
   "dependencies": {
+    "@libsql/client": "^0.14.0",
     "@radix-ui/react-accordion": "^1.2.12",
     "@radix-ui/react-slot": "^1.2.4",
     "@upstash/redis": "^1.36.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
+    "dotenv": "^17.2.3",
     "lucide-react": "^0.563.0",
     "next": "16.1.4",
     "react": "19.2.3",

@@ -5,13 +5,13 @@ import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { saveListUrl } from "@/lib/list-url-store";
 import { ObjectCard, ObjectCardSkeleton } from "@/components/object-card";
 import { SearchBar } from "@/components/search-bar";
-import { ExoplanetFilterPanel, ExoplanetFilters } from "@/components/filter-panel";
+import { StarFilterPanel, StarFilters } from "@/components/star-filter-panel";
 import { Pagination, PaginationInfo } from "@/components/pagination";
-import { ExoplanetData, PaginatedResponse } from "@/lib/types";
+import { StarData, PaginatedResponse, SpectralClass } from "@/lib/types";
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "@/lib/constants";
-import { Circle } from "lucide-react";
+import { Star } from "lucide-react";
 
-function ExoplanetsPageContent() {
+function StarsPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
@@ -35,37 +35,30 @@ function ExoplanetsPageContent() {
   // Derive search query from URL
   const searchQuery = searchParams.get("query") || "";
 
-  // Derive filters from URL (memoized to avoid unnecessary re-renders)
-  const discoveryMethod = searchParams.get("discoveryMethod") || undefined;
-  const year = searchParams.get("year");
-  const hasRadius = searchParams.get("hasRadius") === "true" || undefined;
-  const hasMass = searchParams.get("hasMass") === "true" || undefined;
-  const sizeCategory = (searchParams.get("sizeCategory") as ExoplanetFilters["sizeCategory"]) || undefined;
-  const habitable = searchParams.get("habitable") === "true" || undefined;
-  const facility = searchParams.get("facility") || undefined;
+  // Derive filters from URL
+  const spectralClass = searchParams.get("spectralClass") as SpectralClass | undefined;
+  const minPlanetsRaw = searchParams.get("minPlanets");
+  const minPlanets = minPlanetsRaw ? Number(minPlanetsRaw) : undefined;
   const multiPlanet = searchParams.get("multiPlanet") === "true" || undefined;
   const maxDistancePcRaw = searchParams.get("maxDistancePc");
   const maxDistancePc = maxDistancePcRaw ? Number(maxDistancePcRaw) : undefined;
+  const sort = (searchParams.get("sort") as StarFilters["sort"]) || undefined;
 
-  const filters: ExoplanetFilters = useMemo(() => ({
-    discoveryMethod,
-    year: year ? parseInt(year, 10) : undefined,
-    hasRadius,
-    hasMass,
-    sizeCategory,
-    habitable,
-    facility,
+  const filters: StarFilters = useMemo(() => ({
+    spectralClass,
+    minPlanets,
     multiPlanet,
     maxDistancePc,
-  }), [discoveryMethod, year, hasRadius, hasMass, sizeCategory, habitable, facility, multiPlanet, maxDistancePc]);
+    sort,
+  }), [spectralClass, minPlanets, multiPlanet, maxDistancePc, sort]);
 
   // Save current URL to sessionStorage for breadcrumb navigation
   useEffect(() => {
     const query = searchParams.toString();
-    saveListUrl("exoplanets", query ? `${pathname}?${query}` : pathname);
+    saveListUrl("stars", query ? `${pathname}?${query}` : pathname);
   }, [searchParams, pathname]);
 
-  const [data, setData] = useState<PaginatedResponse<ExoplanetData> | null>(null);
+  const [data, setData] = useState<PaginatedResponse<StarData> | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -87,14 +80,14 @@ function ExoplanetsPageContent() {
     });
   }, [searchParams, pathname, router]);
 
-  // Page change handler (called by Pagination component)
+  // Page change handler
   const setPage = useCallback((newPage: number) => {
     updateUrl({
-      page: newPage === 1 ? null : newPage.toString(), // Clean URL for page 1
+      page: newPage === 1 ? null : newPage.toString(),
     });
   }, [updateUrl]);
 
-  // Clamp page when data loads (handle out-of-range)
+  // Clamp page when data loads
   useEffect(() => {
     if (data && data.total > 0) {
       const maxPage = Math.ceil(data.total / limit);
@@ -107,40 +100,32 @@ function ExoplanetsPageContent() {
   // Update search query in URL (resets to page 1)
   const handleSearchChange = useCallback((query: string) => {
     updateUrl({
-      query: query || null, // Remove from URL if empty
-      page: null, // Reset to page 1
+      query: query || null,
+      page: null,
     });
   }, [updateUrl]);
 
   // Update filters in URL (resets to page 1)
-  const handleFiltersChange = useCallback((newFilters: ExoplanetFilters) => {
+  const handleFiltersChange = useCallback((newFilters: StarFilters) => {
     updateUrl({
-      discoveryMethod: newFilters.discoveryMethod ?? null,
-      year: newFilters.year?.toString() ?? null,
-      hasRadius: newFilters.hasRadius ? "true" : null,
-      hasMass: newFilters.hasMass ? "true" : null,
-      sizeCategory: newFilters.sizeCategory ?? null,
-      habitable: newFilters.habitable ? "true" : null,
-      facility: newFilters.facility ?? null,
+      spectralClass: newFilters.spectralClass ?? null,
+      minPlanets: newFilters.minPlanets?.toString() ?? null,
       multiPlanet: newFilters.multiPlanet ? "true" : null,
       maxDistancePc: newFilters.maxDistancePc?.toString() ?? null,
-      page: null, // Reset to page 1
+      sort: newFilters.sort ?? null,
+      page: null,
     });
   }, [updateUrl]);
 
   // Clear all filters from URL (resets to page 1)
   const handleFilterReset = useCallback(() => {
     updateUrl({
-      discoveryMethod: null,
-      year: null,
-      hasRadius: null,
-      hasMass: null,
-      sizeCategory: null,
-      habitable: null,
-      facility: null,
+      spectralClass: null,
+      minPlanets: null,
       multiPlanet: null,
       maxDistancePc: null,
-      page: null, // Reset to page 1
+      sort: null,
+      page: null,
     });
   }, [updateUrl]);
 
@@ -153,25 +138,21 @@ function ExoplanetsPageContent() {
       const params = new URLSearchParams();
 
       if (searchQuery) params.set("query", searchQuery);
-      if (filters.discoveryMethod) params.set("discoveryMethod", filters.discoveryMethod);
-      if (filters.year) params.set("year", filters.year.toString());
-      if (filters.hasRadius) params.set("hasRadius", "true");
-      if (filters.hasMass) params.set("hasMass", "true");
-      if (filters.sizeCategory) params.set("sizeCategory", filters.sizeCategory);
-      if (filters.habitable) params.set("habitable", "true");
-      if (filters.facility) params.set("facility", filters.facility);
+      if (filters.spectralClass) params.set("spectralClass", filters.spectralClass);
+      if (filters.minPlanets) params.set("minPlanets", filters.minPlanets.toString());
       if (filters.multiPlanet) params.set("multiPlanet", "true");
       if (filters.maxDistancePc) params.set("maxDistancePc", filters.maxDistancePc.toString());
+      if (filters.sort) params.set("sort", filters.sort);
       params.set("page", page.toString());
       params.set("limit", limit.toString());
 
-      const response = await fetch(`/api/exoplanets?${params.toString()}`);
+      const response = await fetch(`/api/stars?${params.toString()}`);
 
       if (!response.ok) {
-        throw new Error("Failed to fetch exoplanets");
+        throw new Error("Failed to fetch stars");
       }
 
-      const result: PaginatedResponse<ExoplanetData> = await response.json();
+      const result: PaginatedResponse<StarData> = await response.json();
       setData(result);
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
@@ -191,21 +172,20 @@ function ExoplanetsPageContent() {
       {/* Page Header */}
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-2">
-          <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
-            <Circle className="w-5 h-5 text-primary" />
+          <div className="w-10 h-10 rounded-lg bg-amber-glow/20 flex items-center justify-center">
+            <Star className="w-5 h-5 text-amber-glow" />
           </div>
-        <h1 className="font-display text-3xl md:text-4xl text-foreground">
-          Exoplanets
-        </h1>
-      </div>
-      <p className="text-muted-foreground mb-2">
-        Explore confirmed exoplanets from NASA&apos;s Exoplanet Archive
-      </p>
-      <p className="text-sm text-muted-foreground/80">
-        An exoplanet, or extrasolar planet, is a planet that orbits a star outside our solar system.
-        These distant worlds range from rocky planets similar to Earth to gas giants larger than Jupiter,
-        and they may exist in habitable zones where conditions could potentially support life.
-      </p>
+          <h1 className="font-display text-3xl md:text-4xl text-foreground">
+            Stars
+          </h1>
+        </div>
+        <p className="text-muted-foreground mb-2">
+          Explore host stars of known exoplanets from NASA&apos;s Exoplanet Archive
+        </p>
+        <p className="text-sm text-muted-foreground/80">
+          These are stars confirmed to host one or more exoplanets. Browse by spectral type,
+          number of planets, or distance from Earth.
+        </p>
       </div>
 
       {/* Search and Filters */}
@@ -213,14 +193,14 @@ function ExoplanetsPageContent() {
         <SearchBar
           value={searchQuery}
           onChange={handleSearchChange}
-          placeholder="Search exoplanets by name..."
+          placeholder="Search host stars by name..."
           isLoading={isLoading}
         />
         <p className="text-xs text-muted-foreground/70 italic">
-          Search by exoplanet name or host star. Use filters to narrow results by discovery method, year, or other criteria.
+          Search by star name. Use filters to narrow results by spectral class, planet count, or distance.
         </p>
 
-        <ExoplanetFilterPanel
+        <StarFilterPanel
           filters={filters}
           onChange={handleFiltersChange}
           onReset={handleFilterReset}
@@ -270,8 +250,8 @@ function ExoplanetsPageContent() {
       {/* Results Grid */}
       {!isLoading && data && data.objects.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {data.objects.map((exoplanet) => (
-            <ObjectCard key={exoplanet.id} object={exoplanet} />
+          {data.objects.map((star) => (
+            <ObjectCard key={star.id} object={star} />
           ))}
         </div>
       )}
@@ -279,9 +259,9 @@ function ExoplanetsPageContent() {
       {/* Empty State */}
       {!isLoading && data && data.objects.length === 0 && (
         <div className="p-12 text-center">
-          <Circle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+          <Star className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
           <h3 className="font-display text-xl text-foreground mb-2">
-            No exoplanets found
+            No stars found
           </h3>
           <p className="text-muted-foreground">
             Try adjusting your search or filters
@@ -309,11 +289,11 @@ function LoadingSkeleton() {
     <div className="container mx-auto px-4 py-8">
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-2">
-          <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
-            <Circle className="w-5 h-5 text-primary" />
+          <div className="w-10 h-10 rounded-lg bg-amber-glow/20 flex items-center justify-center">
+            <Star className="w-5 h-5 text-amber-glow" />
           </div>
           <h1 className="font-display text-3xl md:text-4xl text-foreground">
-            Exoplanets
+            Stars
           </h1>
         </div>
       </div>
@@ -326,11 +306,11 @@ function LoadingSkeleton() {
   );
 }
 
-// Suspense wrapper (required for useSearchParams in Next.js 15)
-export default function ExoplanetsPage() {
+// Suspense wrapper
+export default function StarsPage() {
   return (
     <Suspense fallback={<LoadingSkeleton />}>
-      <ExoplanetsPageContent />
+      <StarsPageContent />
     </Suspense>
   );
 }

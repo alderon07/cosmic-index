@@ -90,6 +90,7 @@ const NEGATIVE_TERMS = /\b(spacecraft|satellite|probe|telescope|observatory|rove
 const POSITIVE_TERMS: Record<ObjectType, RegExp> = {
   SMALL_BODY: /\b(asteroid|comet|surface|crater|regolith|near-earth|meteorite|nucleus|tail|coma|icy|rocky|boulder|dust|impact|rotation|shape model|topograph|close-up|flyby|mosaic|terrain|landslide|dwarf planet|approach|color view|survey|ice|infrared|spectrum|orbit class)\b/i,
   EXOPLANET: /\b(exoplanet|planet|habitable|transit|radial velocity|light curve|star system|planetary system|artist.?s?.?concept|illustration|comparison|lineup|orbit|zone|spectrum|atmosphere)\b/i,
+  STAR: /\b(star|stellar|sun-?like|host star|binary|spectral|corona|chromosphere|flare|prominance|solar|magnitude|luminosity|temperature|mass|radius|exoplanet host|planetary system|orbiting)\b/i,
 };
 
 const RELEVANCE_THRESHOLD = 0;
@@ -349,6 +350,12 @@ function buildImageSearchQueries(params: ImageSearchParams): string[] {
     const stripped = params.name.replace(/\s+[a-z]$/i, "").trim();
     add(`${stripped} exoplanet`);
     add(stripped);
+  } else if (params.type === "STAR") {
+    // Stars: search with "star" and "planetary system" for context
+    add(`${params.name} star`);
+    add(`${params.name} planetary system`);
+    add(`${params.name} exoplanet host`);
+    add(params.name);
   } else {
     // Small bodies: name + body kind for disambiguation
     const kind = params.bodyKind ?? "asteroid";

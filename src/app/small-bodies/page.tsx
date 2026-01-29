@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo, Suspense, startTransition } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
+import { saveListUrl } from "@/lib/list-url-store";
 import { ObjectCard, ObjectCardSkeleton } from "@/components/object-card";
 import { SearchBar } from "@/components/search-bar";
 import { SmallBodyFilterPanel, SmallBodyFilters } from "@/components/filter-panel";
@@ -46,6 +47,13 @@ function SmallBodiesPageContent() {
     pha,
     orbitClass,
   }), [kind, neo, pha, orbitClass]);
+
+  // Save current URL to sessionStorage for breadcrumb navigation
+  useEffect(() => {
+    const query = searchParams.toString();
+    saveListUrl("small-bodies", query ? `${pathname}?${query}` : pathname);
+  }, [searchParams, pathname]);
+
   const [data, setData] = useState<PaginatedResponse<SmallBodyData> | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

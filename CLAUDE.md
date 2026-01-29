@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Cosmic Index is a retrofuturistic web encyclopedia for exploring cosmic objects. It aggregates data from NASA's Exoplanet Archive (5,000+ exoplanets) and JPL's Small-Body Database (1,000,000+ asteroids/comets) into a unified browsing interface.
+Cosmic Index is a retrofuturistic web encyclopedia for exploring cosmic objects. It aggregates data from NASA's Exoplanet Archive (5,000+ exoplanets, 4,500+ host stars) and JPL's Small-Body Database (1,000,000+ asteroids/comets) into a unified browsing interface.
 
 ## Commands
 
@@ -13,6 +13,7 @@ bun run dev          # Start dev server with Turbopack (port 3000)
 bun run build        # Production build
 bun run lint         # Run ESLint
 bun run sbdb:diag    # Run JPL SBDB API diagnostic script
+bun run ingest:stars # Ingest host stars from NASA into Turso database
 
 # Integration tests (calls real external APIs)
 RUN_INTEGRATION=1 pnpm test
@@ -26,9 +27,10 @@ RUN_INTEGRATION=1 pnpm test
 External APIs → API Clients (src/lib/) → API Routes (src/app/api/) → React Components
                      ↓
               Redis Cache (Upstash)
+              Turso Database (Stars index)
 ```
 
-### Two Data Sources with Different Strategies
+### Three Data Sources with Different Strategies
 
 **NASA Exoplanet Archive** (`src/lib/nasa-exoplanet.ts`):
 - Uses TAP API with ADQL queries
@@ -41,11 +43,18 @@ External APIs → API Clients (src/lib/) → API Routes (src/app/api/) → React
   2. Fallback: Lookup API with `sstr` parameter (fast)
 - Complex slug resolution for various designation formats (provisional, periodic comets, numbered asteroids)
 
+**Stars Index** (`src/lib/star-index.ts`):
+- Turso (hosted SQLite) database for fast browse/search
+- Data sourced from NASA Exoplanet Archive via ingestion script
+- Avoids TAP pagination issues (dedup-after-paging breaks offsets)
+- Planets fetched from TAP API on detail page (cached in Redis)
+
 ### Unified Data Model
 
 All cosmic objects implement `CosmicObject` base interface (`src/lib/types.ts`):
 - `ExoplanetData` extends with: hostStar, discoveryMethod, orbitalPeriodDays, radiusEarth, massEarth
 - `SmallBodyData` extends with: bodyKind, orbitClass, isNeo, isPha, diameterKm
+- `StarData` extends with: hostname, spectralClass, starTempK, planetCount, distanceParsecs
 
 ### Caching & Rate Limiting
 
@@ -76,7 +85,59 @@ All list endpoints return `PaginatedResponse<T>` with: objects, total, page, lim
 ```
 UPSTASH_REDIS_REST_URL    # Optional: Redis cache
 UPSTASH_REDIS_REST_TOKEN  # Optional: Redis cache
+TURSO_DATABASE_URL        # Required for Stars: Turso database URL
+TURSO_AUTH_TOKEN          # Required for Stars: Turso auth token
 DEBUG_API                 # Optional: Enable SBDB debug logging
+```
+
+## Turso Database Setup (Stars Feature)
+
+The Stars feature uses Turso (hosted SQLite) for fast browse/search. Setup steps:
+
+### 1. Install Turso CLI
+```bash
+curl -sSfL https://get.tur.so/install.sh | bash
+export PATH="$HOME/.turso:$PATH"  # Add to shell profile
+```
+
+### 2. Authenticate
+```bash
+turso auth login  # Opens browser for authentication
+```
+
+### 3. Create Database
+```bash
+turso db create cosmic-index
+turso db show cosmic-index --url      # Get database URL
+turso db tokens create cosmic-index   # Get auth token
+```
+
+### 4. Add Credentials to .env.local
+```
+TURSO_DATABASE_URL=libsql://cosmic-index-xxx.turso.io
+TURSO_AUTH_TOKEN=eyJ...
+```
+
+### 5. Run Schema
+```bash
+turso db shell cosmic-index < db/schema.sql
+```
+
+### 6. Run Ingestion
+```bash
+bun run ingest:stars           # Ingests ~4,500 host stars from NASA
+bun run ingest:stars --reset   # Reset checkpoint for fresh start
+```
+
+The ingestion script (`scripts/ingest-stars.ts`):
+- Fetches host star data from NASA Exoplanet Archive TAP API
+- Uses keyset pagination with checkpointing for resumability
+- Derives spectral class (O/B/A/F/G/K/M) from spectral type
+- Batch upserts to Turso (2000 rows per batch)
+
+### Verify
+```bash
+turso db shell cosmic-index "SELECT COUNT(*) FROM stars"
 ```
 
 ## UI Components

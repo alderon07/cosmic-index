@@ -108,6 +108,14 @@ const websiteJsonLd = {
       "@type": "SearchAction",
       target: {
         "@type": "EntryPoint",
+        urlTemplate: `${BASE_URL}/stars?query={search_term_string}`,
+      },
+      "query-input": "required name=search_term_string",
+    },
+    {
+      "@type": "SearchAction",
+      target: {
+        "@type": "EntryPoint",
         urlTemplate: `${BASE_URL}/small-bodies?query={search_term_string}`,
       },
       "query-input": "required name=search_term_string",
@@ -147,6 +155,12 @@ export default function RootLayout({
                   className="text-sm text-muted-foreground hover:text-primary transition-colors"
                 >
                   Exoplanets
+                </Link>
+                <Link
+                  href="/stars"
+                  className="text-sm text-muted-foreground hover:text-primary transition-colors"
+                >
+                  Stars
                 </Link>
                 <Link
                   href="/small-bodies"
