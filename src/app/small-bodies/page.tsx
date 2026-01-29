@@ -294,6 +294,7 @@ function SmallBodiesPageContent() {
             currentPage={page}
             totalPages={totalPages}
             onPageChange={setPage}
+            theme="small-bodies"
           />
         </div>
       )}

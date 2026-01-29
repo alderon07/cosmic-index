@@ -280,6 +280,7 @@ function StarsPageContent() {
             currentPage={page}
             totalPages={totalPages}
             onPageChange={setPage}
+            theme="stars"
           />
         </div>
       )}
