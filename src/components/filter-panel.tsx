@@ -20,6 +20,11 @@ import {
   SHARED_ORBIT_CLASSES,
   ORBIT_CLASSES,
 } from "@/lib/types";
+import { THEMES, COMET_THEME } from "@/lib/theme";
+
+// Theme configs
+const exoplanetTheme = THEMES.exoplanets;
+const smallBodyTheme = THEMES["small-bodies"];
 
 // Exoplanet Sort Options
 export type ExoplanetSort = "name" | "discovered" | "distance" | "radius" | "mass";
@@ -93,12 +98,12 @@ function FilterChip({
   return (
     <Badge
       variant="secondary"
-      className="gap-1 pr-1 bg-primary/20 text-primary border-primary/30"
+      className={`gap-1 pr-1 ${exoplanetTheme.filterChip}`}
     >
       {label}
       <button
         onClick={onRemove}
-        className="ml-1 rounded-full p-0.5 hover:bg-primary/30 transition-colors"
+        className={`ml-1 rounded-full p-0.5 ${exoplanetTheme.filterChipHover} transition-colors`}
       >
         <X className="w-3 h-3" />
       </button>
@@ -117,12 +122,12 @@ function SmallBodyFilterChip({
   return (
     <Badge
       variant="secondary"
-      className="gap-1 pr-1 bg-secondary/20 text-secondary border-secondary/30"
+      className={`gap-1 pr-1 ${smallBodyTheme.filterChip}`}
     >
       {label}
       <button
         onClick={onRemove}
-        className="ml-1 rounded-full p-0.5 hover:bg-secondary/30 transition-colors"
+        className={`ml-1 rounded-full p-0.5 ${smallBodyTheme.filterChipHover} transition-colors`}
       >
         <X className="w-3 h-3" />
       </button>
@@ -252,7 +257,7 @@ export function ExoplanetFilterPanel({
       {/* Sort Selector */}
       <div className="flex items-center gap-3">
         <label htmlFor="exoplanet-filter-sort" className="flex items-center gap-1.5 text-xs text-muted-foreground uppercase tracking-wider">
-          <ArrowUpDown className="w-3.5 h-3.5 text-primary" />
+          <ArrowUpDown className={`w-3.5 h-3.5 ${exoplanetTheme.text}`} />
           Sort
         </label>
         <div className="relative">
@@ -270,7 +275,7 @@ export function ExoplanetFilterPanel({
               </option>
             ))}
           </select>
-          <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-primary/70 pointer-events-none" />
+          <ChevronDown className={`absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 ${exoplanetTheme.text} opacity-70 pointer-events-none`} />
         </div>
       </div>
 
@@ -282,7 +287,7 @@ export function ExoplanetFilterPanel({
         >
           <AccordionTrigger className="hover:no-underline">
             <div className="flex items-center gap-2">
-              <Filter className="w-4 h-4 text-primary" />
+              <Filter className={`w-4 h-4 ${exoplanetTheme.text}`} />
               <span className="font-display">Filters</span>
               {activeCount > 0 && (
                 <Badge variant="default" className="ml-2 text-xs">
@@ -580,7 +585,7 @@ export function SmallBodyFilterPanel({
           variant="outline"
           size="sm"
           onClick={() => updateFilter("kind", "comet")}
-          className={filters.kind === "comet" ? "!bg-radium-teal !text-void-black !border-radium-teal hover:!bg-radium-teal/90" : ""}
+          className={filters.kind === "comet" ? COMET_THEME.selectedButton : ""}
         >
           Comets
         </Button>
@@ -594,10 +599,10 @@ export function SmallBodyFilterPanel({
         >
           <AccordionTrigger className="hover:no-underline">
             <div className="flex items-center gap-2">
-              <Filter className="w-4 h-4 text-secondary" />
+              <Filter className={`w-4 h-4 ${smallBodyTheme.text}`} />
               <span className="font-display">More Filters</span>
               {(filters.neo || filters.pha || filters.orbitClass) && (
-                <Badge variant="outline" className="ml-2 text-xs border-secondary/50 text-secondary">
+                <Badge variant="outline" className={`ml-2 text-xs ${smallBodyTheme.filterBadge}`}>
                   {(filters.neo ? 1 : 0) + (filters.pha ? 1 : 0) + (filters.orbitClass ? 1 : 0)}
                 </Badge>
               )}

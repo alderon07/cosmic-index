@@ -3,12 +3,14 @@
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, MoreHorizontal } from "lucide-react";
 import { PAGE_SIZE_OPTIONS } from "@/lib/constants";
+import { ObjectTheme, THEMES } from "@/lib/theme";
 
 interface PaginationProps {
   currentPage: number;
   totalPages: number;
   onPageChange: (page: number) => void;
   siblingsCount?: number;
+  theme?: ObjectTheme;
 }
 
 function generatePagination(
@@ -55,12 +57,15 @@ export function Pagination({
   totalPages,
   onPageChange,
   siblingsCount = 1,
+  theme = "exoplanets",
 }: PaginationProps) {
   if (totalPages <= 1) {
     return null;
   }
 
   const pages = generatePagination(currentPage, totalPages, siblingsCount);
+  const themeConfig = THEMES[theme];
+  const activeStyles = `${themeConfig.selectedButton} ${themeConfig.glow}`;
 
   return (
     <nav
@@ -96,15 +101,21 @@ export function Pagination({
 
           const isActive = page === currentPage;
 
+          // Use default variant for exoplanets, secondary for small-bodies, outline+override for stars
+          const getVariant = () => {
+            if (!isActive) return "outline";
+            if (theme === "exoplanets") return "default";
+            if (theme === "small-bodies") return "secondary";
+            return "outline"; // stars uses outline with override classes
+          };
+
           return (
             <Button
               key={page}
-              variant={isActive ? "default" : "outline"}
+              variant={getVariant()}
               size="sm"
               onClick={() => onPageChange(page)}
-              className={`min-w-9 h-9 px-2 font-mono ${
-                isActive ? "glow-orange" : ""
-              }`}
+              className={`min-w-9 h-9 px-2 font-mono ${isActive ? activeStyles : ""}`}
               aria-label={`Go to page ${page}`}
               aria-current={isActive ? "page" : undefined}
             >

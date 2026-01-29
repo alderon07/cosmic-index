@@ -9,7 +9,10 @@ import { SmallBodyFilterPanel, SmallBodyFilters } from "@/components/filter-pane
 import { Pagination, PaginationInfo } from "@/components/pagination";
 import { SmallBodyData, PaginatedResponse } from "@/lib/types";
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "@/lib/constants";
+import { THEMES } from "@/lib/theme";
 import { CircleDot } from "lucide-react";
+
+const theme = THEMES["small-bodies"];
 
 function SmallBodiesPageContent() {
   const searchParams = useSearchParams();
@@ -184,8 +187,8 @@ function SmallBodiesPageContent() {
       {/* Page Header */}
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-2">
-          <div className="w-10 h-10 rounded-lg bg-secondary/20 flex items-center justify-center">
-            <CircleDot className="w-5 h-5 text-secondary" />
+          <div className={`w-10 h-10 rounded-lg ${theme.iconContainer} flex items-center justify-center`}>
+            <CircleDot className={`w-5 h-5 ${theme.icon}`} />
           </div>
         <h1 className="font-display text-3xl md:text-4xl text-foreground">
           Small Bodies
@@ -234,6 +237,7 @@ function SmallBodiesPageContent() {
               currentPage={page}
               totalPages={totalPages}
               onPageChange={setPage}
+              theme="small-bodies"
             />
           )}
         </div>
@@ -303,8 +307,8 @@ function LoadingSkeleton() {
     <div className="container mx-auto px-4 py-8">
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-2">
-          <div className="w-10 h-10 rounded-lg bg-secondary/20 flex items-center justify-center">
-            <CircleDot className="w-5 h-5 text-secondary" />
+          <div className={`w-10 h-10 rounded-lg ${theme.iconContainer} flex items-center justify-center`}>
+            <CircleDot className={`w-5 h-5 ${theme.icon}`} />
           </div>
           <h1 className="font-display text-3xl md:text-4xl text-foreground">
             Small Bodies

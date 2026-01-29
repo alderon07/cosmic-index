@@ -9,7 +9,10 @@ import { StarFilterPanel, StarFilters } from "@/components/star-filter-panel";
 import { Pagination, PaginationInfo } from "@/components/pagination";
 import { StarData, PaginatedResponse, SpectralClass } from "@/lib/types";
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "@/lib/constants";
+import { THEMES } from "@/lib/theme";
 import { Star } from "lucide-react";
+
+const theme = THEMES.stars;
 
 function StarsPageContent() {
   const searchParams = useSearchParams();
@@ -172,8 +175,8 @@ function StarsPageContent() {
       {/* Page Header */}
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-2">
-          <div className="w-10 h-10 rounded-lg bg-uranium-green/20 flex items-center justify-center">
-            <Star className="w-5 h-5 text-uranium-green" />
+          <div className={`w-10 h-10 rounded-lg ${theme.iconContainer} flex items-center justify-center`}>
+            <Star className={`w-5 h-5 ${theme.icon}`} />
           </div>
           <h1 className="font-display text-3xl md:text-4xl text-foreground">
             Stars
@@ -220,6 +223,7 @@ function StarsPageContent() {
               currentPage={page}
               totalPages={totalPages}
               onPageChange={setPage}
+              theme="stars"
             />
           )}
         </div>
@@ -289,8 +293,8 @@ function LoadingSkeleton() {
     <div className="container mx-auto px-4 py-8">
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-2">
-          <div className="w-10 h-10 rounded-lg bg-uranium-green/20 flex items-center justify-center">
-            <Star className="w-5 h-5 text-uranium-green" />
+          <div className={`w-10 h-10 rounded-lg ${theme.iconContainer} flex items-center justify-center`}>
+            <Star className={`w-5 h-5 ${theme.icon}`} />
           </div>
           <h1 className="font-display text-3xl md:text-4xl text-foreground">
             Stars
