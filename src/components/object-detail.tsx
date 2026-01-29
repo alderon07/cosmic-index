@@ -50,7 +50,7 @@ export function ObjectDetail({ object, hideDataSources }: ObjectDetailProps) {
           <div className="flex flex-wrap items-start gap-3 mb-4">
             <Badge
               variant={isExoplanet(object) ? "default" : isStar(object) ? "outline" : isSmallBody(object) && object.bodyKind === "comet" ? "outline" : "secondary"}
-              className={`font-mono ${isStar(object) ? "border-amber-glow/50 text-amber-glow bg-amber-glow/10" : isSmallBody(object) && object.bodyKind === "comet" ? "border-radium-teal/50 text-radium-teal bg-radium-teal/10" : ""}`}
+              className={`font-mono ${isStar(object) ? "border-uranium-green/50 text-uranium-green bg-uranium-green/10" : isSmallBody(object) && object.bodyKind === "comet" ? "border-radium-teal/50 text-radium-teal bg-radium-teal/10" : ""}`}
             >
               {typeLabel}
             </Badge>
@@ -92,7 +92,7 @@ export function ObjectDetail({ object, hideDataSources }: ObjectDetailProps) {
 
           {isStar(object) && (
             <p className="text-lg text-muted-foreground flex items-center gap-2">
-              <Star className="w-5 h-5 text-amber-glow" />
+              <Star className="w-5 h-5 text-uranium-green" />
               {object.spectralClass && object.spectralClass !== "Unknown"
                 ? `${object.spectralClass}-type star`
                 : "Host star"}
@@ -311,7 +311,7 @@ export function ObjectDetail({ object, hideDataSources }: ObjectDetailProps) {
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground flex items-center gap-1">
-                      <Star className="w-3 h-3 text-amber-glow" />
+                      <Star className="w-3 h-3 text-uranium-green" />
                       Stars in System
                     </p>
                     <p className="font-mono text-lg">
@@ -520,7 +520,7 @@ export function ObjectDetail({ object, hideDataSources }: ObjectDetailProps) {
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground flex items-center gap-1">
-                      <Star className="w-3 h-3 text-amber-glow" />
+                      <Star className="w-3 h-3 text-uranium-green" />
                       Stars in System
                     </p>
                     <p className="font-mono text-lg">

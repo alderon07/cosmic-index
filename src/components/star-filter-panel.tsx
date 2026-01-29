@@ -75,12 +75,12 @@ function FilterChip({
   return (
     <Badge
       variant="secondary"
-      className="gap-1 pr-1 bg-amber-glow/20 text-amber-glow border-amber-glow/30"
+      className="gap-1 pr-1 bg-uranium-green/20 text-uranium-green border-uranium-green/30"
     >
       {label}
       <button
         onClick={onRemove}
-        className="ml-1 rounded-full p-0.5 hover:bg-amber-glow/30 transition-colors"
+        className="ml-1 rounded-full p-0.5 hover:bg-uranium-green/30 transition-colors"
       >
         <X className="w-3 h-3" />
       </button>
@@ -156,7 +156,7 @@ export function StarFilterPanel({
       {/* Sort Selector - Always visible */}
       <div className="flex items-center gap-3">
         <label htmlFor="star-filter-sort" className="flex items-center gap-1.5 text-xs text-muted-foreground uppercase tracking-wider">
-          <ArrowUpDown className="w-3.5 h-3.5 text-amber-glow" />
+          <ArrowUpDown className="w-3.5 h-3.5 text-uranium-green" />
           Sort
         </label>
         <div className="relative">
@@ -166,7 +166,7 @@ export function StarFilterPanel({
             onChange={(e) =>
               updateFilter("sort", e.target.value as StarFilters["sort"])
             }
-            className="appearance-none pl-3 pr-8 py-1.5 bg-card border border-amber-glow/30 rounded-md text-sm text-foreground font-mono cursor-pointer transition-all duration-200 hover:border-amber-glow/50 hover:bg-card/80 focus:outline-none focus:ring-1 focus:ring-amber-glow/50 focus:border-amber-glow/60"
+            className="appearance-none pl-3 pr-8 py-1.5 bg-card border border-uranium-green/30 rounded-md text-sm text-foreground font-mono cursor-pointer transition-all duration-200 hover:border-uranium-green/50 hover:bg-card/80 focus:outline-none focus:ring-1 focus:ring-uranium-green/50 focus:border-uranium-green/60"
           >
             {SORT_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>
@@ -174,7 +174,7 @@ export function StarFilterPanel({
               </option>
             ))}
           </select>
-          <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-amber-glow/70 pointer-events-none" />
+          <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-uranium-green/70 pointer-events-none" />
         </div>
       </div>
 
@@ -186,10 +186,10 @@ export function StarFilterPanel({
         >
           <AccordionTrigger className="hover:no-underline">
             <div className="flex items-center gap-2">
-              <Filter className="w-4 h-4 text-amber-glow" />
+              <Filter className="w-4 h-4 text-uranium-green" />
               <span className="font-display">Filters</span>
               {activeCount > 0 && (
-                <Badge variant="outline" className="ml-2 text-xs border-amber-glow/50 text-amber-glow">
+                <Badge variant="outline" className="ml-2 text-xs border-uranium-green/50 text-uranium-green">
                   {activeCount}
                 </Badge>
               )}
