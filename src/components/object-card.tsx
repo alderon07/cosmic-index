@@ -46,7 +46,7 @@ export function ObjectCard({ object }: ObjectCardProps) {
     : "secondary";
 
   const typeClassName = isStar(object)
-    ? "border-amber-glow/50 text-amber-glow bg-amber-glow/10"
+    ? "border-uranium-green/50 text-uranium-green bg-uranium-green/10"
     : isSmallBody(object) && object.bodyKind === "comet"
     ? "border-radium-teal/50 text-radium-teal bg-radium-teal/10"
     : "";
@@ -55,7 +55,7 @@ export function ObjectCard({ object }: ObjectCardProps) {
   const nameColorClass = isExoplanet(object)
     ? "text-primary"
     : isStar(object)
-    ? "text-amber-glow"
+    ? "text-uranium-green"
     : isSmallBody(object) && object.bodyKind === "comet"
     ? "text-radium-teal"
     : "text-secondary";
