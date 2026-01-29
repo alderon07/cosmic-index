@@ -161,7 +161,7 @@ export default function RootLayout({
                 </Link>
                 <Link
                   href="/stars"
-                  className="text-sm text-muted-foreground hover:text-amber-glow transition-colors"
+                  className="text-sm text-muted-foreground hover:text-uranium-green transition-colors"
                   title="Stars"
                 >
                   <Star className="w-5 h-5 sm:hidden" />
