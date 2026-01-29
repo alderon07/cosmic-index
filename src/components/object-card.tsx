@@ -51,6 +51,15 @@ export function ObjectCard({ object }: ObjectCardProps) {
     ? "border-radium-teal/50 text-radium-teal bg-radium-teal/10"
     : "";
 
+  // Name color based on object type
+  const nameColorClass = isExoplanet(object)
+    ? "text-primary"
+    : isStar(object)
+    ? "text-amber-glow"
+    : isSmallBody(object) && object.bodyKind === "comet"
+    ? "text-radium-teal"
+    : "text-secondary";
+
   // Get first 3-4 key facts
   const displayFacts = object.keyFacts.slice(0, 4);
 
@@ -73,7 +82,7 @@ export function ObjectCard({ object }: ObjectCardProps) {
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between gap-2">
             <div className="flex-1 min-w-0">
-              <CardTitle className="font-display text-lg text-foreground group-hover:text-primary transition-colors line-clamp-2">
+              <CardTitle className={`font-display text-lg ${nameColorClass} transition-colors line-clamp-2`}>
                 {object.displayName}
               </CardTitle>
               {isSmallBody(object) && object.aliases.length > 0 && (

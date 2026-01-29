@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Space_Grotesk, Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import Link from "next/link";
+import { Circle, Star, CircleDot } from "lucide-react";
 
 const spaceGrotesk = Space_Grotesk({
   variable: "--font-display",
@@ -149,24 +150,30 @@ export default function RootLayout({
                   Cosmic Index
                 </span>
               </Link>
-              <div className="flex items-center gap-6">
+              <div className="flex items-center gap-4 sm:gap-6">
                 <Link
                   href="/exoplanets"
                   className="text-sm text-muted-foreground hover:text-primary transition-colors"
+                  title="Exoplanets"
                 >
-                  Exoplanets
+                  <Circle className="w-5 h-5 sm:hidden" />
+                  <span className="hidden sm:inline">Exoplanets</span>
                 </Link>
                 <Link
                   href="/stars"
-                  className="text-sm text-muted-foreground hover:text-primary transition-colors"
+                  className="text-sm text-muted-foreground hover:text-amber-glow transition-colors"
+                  title="Stars"
                 >
-                  Stars
+                  <Star className="w-5 h-5 sm:hidden" />
+                  <span className="hidden sm:inline">Stars</span>
                 </Link>
                 <Link
                   href="/small-bodies"
-                  className="text-sm text-muted-foreground hover:text-primary transition-colors"
+                  className="text-sm text-muted-foreground hover:text-secondary transition-colors"
+                  title="Small Bodies"
                 >
-                  Small Bodies
+                  <CircleDot className="w-5 h-5 sm:hidden" />
+                  <span className="hidden sm:inline">Small Bodies</span>
                 </Link>
               </div>
             </nav>
