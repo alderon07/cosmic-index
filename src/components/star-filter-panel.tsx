@@ -208,7 +208,7 @@ export function StarFilterPanel({
                   return (
                     <Button
                       key={sc}
-                      variant={isSelected ? "default" : "outline"}
+                      variant="outline"
                       size="sm"
                       onClick={() =>
                         updateFilter(
@@ -216,7 +216,7 @@ export function StarFilterPanel({
                           isSelected ? undefined : sc
                         )
                       }
-                      className="text-xs relative"
+                      className={`text-xs relative ${isSelected ? "!bg-uranium-green !text-void-black !border-uranium-green hover:!bg-uranium-green/90" : ""}`}
                       title={`${info.description} (${info.tempRange})`}
                     >
                       <span
@@ -242,7 +242,7 @@ export function StarFilterPanel({
                 {MIN_PLANETS_PRESETS.map((preset) => (
                   <Button
                     key={preset.value}
-                    variant={filters.minPlanets === preset.value ? "default" : "outline"}
+                    variant="outline"
                     size="sm"
                     onClick={() =>
                       updateFilter(
@@ -250,7 +250,7 @@ export function StarFilterPanel({
                         filters.minPlanets === preset.value ? undefined : preset.value
                       )
                     }
-                    className="text-xs"
+                    className={`text-xs ${filters.minPlanets === preset.value ? "!bg-uranium-green !text-void-black !border-uranium-green hover:!bg-uranium-green/90" : ""}`}
                   >
                     {preset.label}
                   </Button>
@@ -272,7 +272,7 @@ export function StarFilterPanel({
                     e.target.value ? Number(e.target.value) : undefined
                   )
                 }
-                className="w-full px-3 py-2 bg-input border border-border rounded-md text-sm font-mono focus:outline-none focus:ring-1 focus:ring-primary"
+                className="w-full px-3 py-2 bg-input border border-border rounded-md text-sm font-mono focus:outline-none focus:ring-1 focus:ring-uranium-green"
               >
                 <option value="">Any Distance</option>
                 {DISTANCE_PRESETS.map((preset) => (

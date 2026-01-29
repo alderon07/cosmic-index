@@ -82,7 +82,7 @@ function countActiveFilters<T extends object>(filters: T): number {
   ).length;
 }
 
-// Active filter chip component
+// Active filter chip component for exoplanets (primary/orange)
 function FilterChip({
   label,
   onRemove,
@@ -99,6 +99,30 @@ function FilterChip({
       <button
         onClick={onRemove}
         className="ml-1 rounded-full p-0.5 hover:bg-primary/30 transition-colors"
+      >
+        <X className="w-3 h-3" />
+      </button>
+    </Badge>
+  );
+}
+
+// Active filter chip component for small bodies (secondary/amber)
+function SmallBodyFilterChip({
+  label,
+  onRemove,
+}: {
+  label: string;
+  onRemove: () => void;
+}) {
+  return (
+    <Badge
+      variant="secondary"
+      className="gap-1 pr-1 bg-secondary/20 text-secondary border-secondary/30"
+    >
+      {label}
+      <button
+        onClick={onRemove}
+        className="ml-1 rounded-full p-0.5 hover:bg-secondary/30 transition-colors"
       >
         <X className="w-3 h-3" />
       </button>
@@ -507,19 +531,19 @@ export function SmallBodyFilterPanel({
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs text-muted-foreground">Active filters:</span>
           {filters.kind && (
-            <FilterChip
+            <SmallBodyFilterChip
               label={filters.kind === "asteroid" ? "Asteroids" : "Comets"}
               onRemove={() => removeFilter("kind")}
             />
           )}
           {filters.neo && (
-            <FilterChip label="NEO" onRemove={() => removeFilter("neo")} />
+            <SmallBodyFilterChip label="NEO" onRemove={() => removeFilter("neo")} />
           )}
           {filters.pha && (
-            <FilterChip label="PHA" onRemove={() => removeFilter("pha")} />
+            <SmallBodyFilterChip label="PHA" onRemove={() => removeFilter("pha")} />
           )}
           {filters.orbitClass && (
-            <FilterChip
+            <SmallBodyFilterChip
               label={getOrbitClassLabel(filters.orbitClass)}
               onRemove={() => removeFilter("orbitClass")}
             />
@@ -539,23 +563,24 @@ export function SmallBodyFilterPanel({
       {/* Type Toggle */}
       <div className="flex gap-2">
         <Button
-          variant={filters.kind === undefined ? "default" : "outline"}
+          variant={filters.kind === undefined ? "secondary" : "outline"}
           size="sm"
           onClick={() => updateFilter("kind", undefined)}
         >
           All
         </Button>
         <Button
-          variant={filters.kind === "asteroid" ? "default" : "outline"}
+          variant={filters.kind === "asteroid" ? "secondary" : "outline"}
           size="sm"
           onClick={() => updateFilter("kind", "asteroid")}
         >
           Asteroids
         </Button>
         <Button
-          variant={filters.kind === "comet" ? "default" : "outline"}
+          variant="outline"
           size="sm"
           onClick={() => updateFilter("kind", "comet")}
+          className={filters.kind === "comet" ? "!bg-radium-teal !text-void-black !border-radium-teal hover:!bg-radium-teal/90" : ""}
         >
           Comets
         </Button>
@@ -569,10 +594,10 @@ export function SmallBodyFilterPanel({
         >
           <AccordionTrigger className="hover:no-underline">
             <div className="flex items-center gap-2">
-              <Filter className="w-4 h-4 text-primary" />
+              <Filter className="w-4 h-4 text-secondary" />
               <span className="font-display">More Filters</span>
               {(filters.neo || filters.pha || filters.orbitClass) && (
-                <Badge variant="default" className="ml-2 text-xs">
+                <Badge variant="outline" className="ml-2 text-xs border-secondary/50 text-secondary">
                   {(filters.neo ? 1 : 0) + (filters.pha ? 1 : 0) + (filters.orbitClass ? 1 : 0)}
                 </Badge>
               )}
@@ -588,7 +613,7 @@ export function SmallBodyFilterPanel({
                 {orbitClassOptions.map((option) => (
                   <Button
                     key={option.code}
-                    variant={filters.orbitClass === option.code ? "default" : "outline"}
+                    variant={filters.orbitClass === option.code ? "secondary" : "outline"}
                     size="sm"
                     onClick={() =>
                       updateFilter(
@@ -609,9 +634,9 @@ export function SmallBodyFilterPanel({
               <label className="text-xs text-muted-foreground uppercase tracking-wider block mb-2">
                 Classification
               </label>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <Button
-                  variant={filters.neo ? "default" : "outline"}
+                  variant={filters.neo ? "secondary" : "outline"}
                   size="sm"
                   onClick={() => updateFilter("neo", !filters.neo)}
                   className="text-xs"
