@@ -241,9 +241,9 @@ export function NasaImageGallery({ object }: NasaImageGalleryProps) {
 
             {/* Caption area */}
             <div className="mt-4 max-w-2xl text-center space-y-1">
-              <h3 className="text-white font-display text-lg">
+              <h2 className="text-white font-display text-lg">
                 {currentImage.title}
-              </h3>
+              </h2>
 
               {currentImage.description && (
                 <p className="text-white/70 text-sm line-clamp-3">

@@ -8,7 +8,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { X, Filter, RotateCcw } from "lucide-react";
+import { X, Filter, RotateCcw, ArrowUpDown, ChevronDown } from "lucide-react";
 import {
   DISCOVERY_METHODS,
   DISCOVERY_FACILITIES,
@@ -21,6 +21,17 @@ import {
   ORBIT_CLASSES,
 } from "@/lib/types";
 
+// Exoplanet Sort Options
+export type ExoplanetSort = "name" | "discovered" | "distance" | "radius" | "mass";
+
+const EXOPLANET_SORT_OPTIONS = [
+  { value: "discovered", label: "Newest First" },
+  { value: "name", label: "Name (A-Z)" },
+  { value: "distance", label: "Closest" },
+  { value: "radius", label: "Largest (Radius)" },
+  { value: "mass", label: "Most Massive" },
+] as const;
+
 // Exoplanet Filter Types
 export interface ExoplanetFilters {
   discoveryMethod?: string;
@@ -32,6 +43,7 @@ export interface ExoplanetFilters {
   facility?: string;
   multiPlanet?: boolean;
   maxDistancePc?: number;
+  sort?: ExoplanetSort;
 }
 
 // Distance-from-Earth presets (parsecs)
@@ -104,13 +116,28 @@ const YEAR_OPTIONS = Array.from(
   (_, i) => MIN_DISCOVERY_YEAR + i
 );
 
+// Count active exoplanet filters (excluding sort)
+function countExoplanetFilters(filters: ExoplanetFilters): number {
+  let count = 0;
+  if (filters.discoveryMethod) count++;
+  if (filters.year) count++;
+  if (filters.hasRadius) count++;
+  if (filters.hasMass) count++;
+  if (filters.sizeCategory) count++;
+  if (filters.habitable) count++;
+  if (filters.facility) count++;
+  if (filters.multiPlanet) count++;
+  if (filters.maxDistancePc) count++;
+  return count;
+}
+
 // Exoplanet Filter Panel
 export function ExoplanetFilterPanel({
   filters,
   onChange,
   onReset,
 }: ExoplanetFilterPanelProps) {
-  const activeCount = countActiveFilters(filters);
+  const activeCount = countExoplanetFilters(filters);
 
   const updateFilter = <K extends keyof ExoplanetFilters>(
     key: K,
@@ -198,6 +225,31 @@ export function ExoplanetFilterPanel({
         </div>
       )}
 
+      {/* Sort Selector */}
+      <div className="flex items-center gap-3">
+        <label htmlFor="exoplanet-filter-sort" className="flex items-center gap-1.5 text-xs text-muted-foreground uppercase tracking-wider">
+          <ArrowUpDown className="w-3.5 h-3.5 text-primary" />
+          Sort
+        </label>
+        <div className="relative">
+          <select
+            id="exoplanet-filter-sort"
+            value={filters.sort || "discovered"}
+            onChange={(e) =>
+              updateFilter("sort", e.target.value as ExoplanetSort)
+            }
+            className="appearance-none pl-3 pr-8 py-1.5 bg-card border border-primary/30 rounded-md text-sm text-foreground font-mono cursor-pointer transition-all duration-200 hover:border-primary/50 hover:bg-card/80 focus:outline-none focus:ring-1 focus:ring-primary/50 focus:border-primary/60"
+          >
+            {EXOPLANET_SORT_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-primary/70 pointer-events-none" />
+        </div>
+      </div>
+
       {/* Filter Accordion */}
       <Accordion type="single" collapsible className="w-full">
         <AccordionItem
@@ -247,10 +299,11 @@ export function ExoplanetFilterPanel({
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* Discovery Facility */}
               <div>
-                <label className="text-xs text-muted-foreground uppercase tracking-wider block mb-2">
+                <label htmlFor="filter-facility" className="text-xs text-muted-foreground uppercase tracking-wider block mb-2">
                   Discovery Facility
                 </label>
                 <select
+                  id="filter-facility"
                   value={filters.facility || ""}
                   onChange={(e) =>
                     updateFilter("facility", e.target.value || undefined)
@@ -268,10 +321,11 @@ export function ExoplanetFilterPanel({
 
               {/* Discovery Year */}
               <div>
-                <label className="text-xs text-muted-foreground uppercase tracking-wider block mb-2">
+                <label htmlFor="filter-year" className="text-xs text-muted-foreground uppercase tracking-wider block mb-2">
                   Discovery Year
                 </label>
                 <select
+                  id="filter-year"
                   value={filters.year || ""}
                   onChange={(e) =>
                     updateFilter("year", e.target.value ? parseInt(e.target.value, 10) : undefined)
@@ -289,10 +343,11 @@ export function ExoplanetFilterPanel({
 
               {/* Max Distance from Earth */}
               <div>
-                <label className="text-xs text-muted-foreground uppercase tracking-wider block mb-2">
+                <label htmlFor="filter-max-distance" className="text-xs text-muted-foreground uppercase tracking-wider block mb-2">
                   Max Distance
                 </label>
                 <select
+                  id="filter-max-distance"
                   value={filters.maxDistancePc || ""}
                   onChange={(e) =>
                     updateFilter("maxDistancePc", e.target.value ? Number(e.target.value) : undefined)

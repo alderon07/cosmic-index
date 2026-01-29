@@ -1,6 +1,7 @@
 import {
   ExoplanetData,
   ExoplanetQueryParams,
+  ExoplanetSortOption,
   PaginatedResponse,
   NASAExoplanetRawSchema,
   createSlug,
@@ -61,6 +62,24 @@ function hasAnyNarrowingFilter(params: ExoplanetQueryParams): boolean {
       params.multiPlanet ||
       params.maxDistancePc !== undefined
   );
+}
+
+// Build ORDER BY clause for exoplanet queries
+function buildOrderByClause(sort?: ExoplanetSortOption): string {
+  switch (sort) {
+    case "name":
+      return "order by pl_name asc";
+    case "distance":
+      return "order by sy_dist asc nulls last, pl_name asc";
+    case "radius":
+      return "order by pl_rade desc nulls last, pl_name asc";
+    case "mass":
+      return "order by pl_masse desc nulls last, pl_name asc";
+    case "discovered":
+    default:
+      // Default: newest discoveries first
+      return "order by disc_year desc nulls last, pl_name asc";
+  }
 }
 
 // Build ADQL query for browsing exoplanets
@@ -140,13 +159,14 @@ export function buildBrowseQuery(
   }
 
   const whereClause = conditions.join(" and ");
+  const orderByClause = buildOrderByClause(params.sort);
 
   return {
     // Important: stable secondary sort so paging is deterministic
     query:
       `select pl_name,hostname,discoverymethod,disc_year,disc_facility,pl_orbper,pl_rade,pl_masse,sy_dist,pl_eqt,sy_snum,sy_pnum,st_spectype,st_teff,st_mass,st_rad,st_lum,ra,dec ` +
       `from ps where ${whereClause} ` +
-      `order by disc_year desc, pl_name asc`,
+      orderByClause,
     limit,
     offset,
     page,

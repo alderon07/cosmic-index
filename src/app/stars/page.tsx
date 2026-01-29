@@ -260,9 +260,9 @@ function StarsPageContent() {
       {!isLoading && data && data.objects.length === 0 && (
         <div className="p-12 text-center">
           <Star className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-          <h3 className="font-display text-xl text-foreground mb-2">
+          <h2 className="font-display text-xl text-foreground mb-2">
             No stars found
-          </h3>
+          </h2>
           <p className="text-muted-foreground">
             Try adjusting your search or filters
           </p>

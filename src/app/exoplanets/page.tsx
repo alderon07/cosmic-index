@@ -46,6 +46,7 @@ function ExoplanetsPageContent() {
   const multiPlanet = searchParams.get("multiPlanet") === "true" || undefined;
   const maxDistancePcRaw = searchParams.get("maxDistancePc");
   const maxDistancePc = maxDistancePcRaw ? Number(maxDistancePcRaw) : undefined;
+  const sort = (searchParams.get("sort") as ExoplanetFilters["sort"]) || undefined;
 
   const filters: ExoplanetFilters = useMemo(() => ({
     discoveryMethod,
@@ -57,7 +58,8 @@ function ExoplanetsPageContent() {
     facility,
     multiPlanet,
     maxDistancePc,
-  }), [discoveryMethod, year, hasRadius, hasMass, sizeCategory, habitable, facility, multiPlanet, maxDistancePc]);
+    sort,
+  }), [discoveryMethod, year, hasRadius, hasMass, sizeCategory, habitable, facility, multiPlanet, maxDistancePc, sort]);
 
   // Save current URL to sessionStorage for breadcrumb navigation
   useEffect(() => {
@@ -112,8 +114,9 @@ function ExoplanetsPageContent() {
     });
   }, [updateUrl]);
 
-  // Update filters in URL (resets to page 1)
+  // Update filters in URL (resets to page 1, except for sort changes)
   const handleFiltersChange = useCallback((newFilters: ExoplanetFilters) => {
+    const sortChanged = newFilters.sort !== filters.sort;
     updateUrl({
       discoveryMethod: newFilters.discoveryMethod ?? null,
       year: newFilters.year?.toString() ?? null,
@@ -124,11 +127,13 @@ function ExoplanetsPageContent() {
       facility: newFilters.facility ?? null,
       multiPlanet: newFilters.multiPlanet ? "true" : null,
       maxDistancePc: newFilters.maxDistancePc?.toString() ?? null,
-      page: null, // Reset to page 1
+      sort: newFilters.sort ?? null,
+      // Only reset page if something other than sort changed
+      page: sortChanged ? page.toString() : null,
     });
-  }, [updateUrl]);
+  }, [updateUrl, filters.sort, page]);
 
-  // Clear all filters from URL (resets to page 1)
+  // Clear all filters from URL (resets to page 1, keeps sort)
   const handleFilterReset = useCallback(() => {
     updateUrl({
       discoveryMethod: null,
@@ -141,6 +146,7 @@ function ExoplanetsPageContent() {
       multiPlanet: null,
       maxDistancePc: null,
       page: null, // Reset to page 1
+      // Keep sort unchanged
     });
   }, [updateUrl]);
 
@@ -162,6 +168,7 @@ function ExoplanetsPageContent() {
       if (filters.facility) params.set("facility", filters.facility);
       if (filters.multiPlanet) params.set("multiPlanet", "true");
       if (filters.maxDistancePc) params.set("maxDistancePc", filters.maxDistancePc.toString());
+      if (filters.sort) params.set("sort", filters.sort);
       params.set("page", page.toString());
       params.set("limit", limit.toString());
 
@@ -280,9 +287,9 @@ function ExoplanetsPageContent() {
       {!isLoading && data && data.objects.length === 0 && (
         <div className="p-12 text-center">
           <Circle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-          <h3 className="font-display text-xl text-foreground mb-2">
+          <h2 className="font-display text-xl text-foreground mb-2">
             No exoplanets found
-          </h3>
+          </h2>
           <p className="text-muted-foreground">
             Try adjusting your search or filters
           </p>

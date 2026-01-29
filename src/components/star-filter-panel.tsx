@@ -8,7 +8,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { X, Filter, RotateCcw } from "lucide-react";
+import { X, Filter, RotateCcw, ArrowUpDown, ChevronDown } from "lucide-react";
 import { SpectralClass, SPECTRAL_CLASS_INFO } from "@/lib/types";
 
 // Spectral classes for filtering (excludes "Unknown")
@@ -154,21 +154,28 @@ export function StarFilterPanel({
       )}
 
       {/* Sort Selector - Always visible */}
-      <div className="flex items-center gap-2">
-        <span className="text-xs text-muted-foreground">Sort by:</span>
-        <select
-          value={filters.sort || "name"}
-          onChange={(e) =>
-            updateFilter("sort", e.target.value as StarFilters["sort"])
-          }
-          className="px-2 py-1 bg-input border border-border rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-primary"
-        >
-          {SORT_OPTIONS.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
+      <div className="flex items-center gap-3">
+        <label htmlFor="star-filter-sort" className="flex items-center gap-1.5 text-xs text-muted-foreground uppercase tracking-wider">
+          <ArrowUpDown className="w-3.5 h-3.5 text-amber-glow" />
+          Sort
+        </label>
+        <div className="relative">
+          <select
+            id="star-filter-sort"
+            value={filters.sort || "name"}
+            onChange={(e) =>
+              updateFilter("sort", e.target.value as StarFilters["sort"])
+            }
+            className="appearance-none pl-3 pr-8 py-1.5 bg-card border border-amber-glow/30 rounded-md text-sm text-foreground font-mono cursor-pointer transition-all duration-200 hover:border-amber-glow/50 hover:bg-card/80 focus:outline-none focus:ring-1 focus:ring-amber-glow/50 focus:border-amber-glow/60"
+          >
+            {SORT_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-amber-glow/70 pointer-events-none" />
+        </div>
       </div>
 
       {/* Filter Accordion */}
@@ -253,10 +260,11 @@ export function StarFilterPanel({
 
             {/* Max Distance */}
             <div>
-              <label className="text-xs text-muted-foreground uppercase tracking-wider block mb-2">
+              <label htmlFor="star-filter-max-distance" className="text-xs text-muted-foreground uppercase tracking-wider block mb-2">
                 Max Distance
               </label>
               <select
+                id="star-filter-max-distance"
                 value={filters.maxDistancePc || ""}
                 onChange={(e) =>
                   updateFilter(

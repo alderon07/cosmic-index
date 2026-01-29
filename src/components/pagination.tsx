@@ -144,8 +144,9 @@ export function PageSizeSelector({
 }: PageSizeSelectorProps) {
   return (
     <div className="flex items-center gap-2 text-sm">
-      <span className="text-muted-foreground">Show</span>
+      <label htmlFor="page-size-selector" className="text-muted-foreground">Show</label>
       <select
+        id="page-size-selector"
         value={value}
         onChange={(e) => onChange(parseInt(e.target.value))}
         className="px-2 py-1 bg-input border border-border rounded-md text-foreground font-mono focus:outline-none focus:ring-1 focus:ring-primary"

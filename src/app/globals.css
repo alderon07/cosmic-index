@@ -41,7 +41,7 @@
   --color-console-brown: hsl(30 12% 9%);
   --color-panel-bronze: hsl(30 15% 14%);
   --color-brass-light: hsl(40 35% 74%);
-  --color-patina-gray: hsl(35 10% 44%);
+  --color-patina-gray: hsl(35 10% 65%);
 }
 
 :root {
@@ -64,7 +64,7 @@
   --secondary-foreground: hsl(40 15% 3%);
 
   --muted: hsl(30 15% 14%);
-  --muted-foreground: hsl(35 10% 44%);    /* Patina Gray */
+  --muted-foreground: hsl(35 10% 65%);    /* Patina Gray - WCAG AA compliant */
 
   --accent: hsl(82 100% 67%);             /* Uranium Green */
   --accent-foreground: hsl(40 15% 3%);

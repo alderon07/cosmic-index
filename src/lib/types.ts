@@ -127,6 +127,7 @@ export interface ExoplanetQueryParams {
   multiPlanet?: boolean;
   maxDistancePc?: number;
   hostStar?: string;             // Filter by host star name
+  sort?: "name" | "discovered" | "distance" | "radius" | "mass";
   page?: number;
   limit?: number;
 }
@@ -267,9 +268,12 @@ export const ExoplanetQuerySchema = z.object({
   facility: normalizedString(64).optional(),
   multiPlanet: z.coerce.boolean().optional(),
   maxDistancePc: z.coerce.number().positive().max(100_000).optional(),
+  sort: z.enum(["name", "discovered", "distance", "radius", "mass"]).optional(),
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(MAX_PAGE_SIZE).default(DEFAULT_PAGE_SIZE),
 });
+
+export type ExoplanetSortOption = z.infer<typeof ExoplanetQuerySchema>["sort"];
 
 export const SmallBodyQuerySchema = z.object({
   query: normalizedString(100).optional(),
