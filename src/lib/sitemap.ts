@@ -1,8 +1,7 @@
 /**
  * Sitemap utilities for generating XML sitemaps
  */
-
-const BASE_URL = "https://cosmic-index.vercel.app";
+import { BASE_URL } from "@/lib/config";
 
 // Google's limit for URLs per sitemap
 export const MAX_URLS_PER_SITEMAP = 50000;

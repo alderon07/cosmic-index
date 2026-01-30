@@ -22,18 +22,20 @@ const jetbrainsMono = JetBrains_Mono({
   display: "swap",
 });
 
-const BASE_URL = "https://cosmic-index.vercel.app";
+import { BASE_URL, SITE_CONFIG } from "@/lib/config";
 
 export const metadata: Metadata = {
   metadataBase: new URL(BASE_URL),
   title: {
-    default: "Cosmic Index - Explore Exoplanets & Small Bodies",
+    default: "Cosmic Index - Explore Exoplanets, Stars & Small Bodies",
     template: "%s | Cosmic Index",
   },
   description:
-    "A retrofuturistic space encyclopedia for discovering exoplanets, asteroids, and comets. Explore 5,000+ exoplanets and 1,000,000+ small bodies with data from NASA and JPL.",
+    "A retrofuturistic space encyclopedia for discovering exoplanets, host stars, asteroids, and comets. Explore 5,000+ exoplanets, 4,500+ host stars, and 1,000,000+ small bodies with data from NASA and JPL.",
   keywords: [
     "exoplanets",
+    "stars",
+    "host stars",
     "asteroids",
     "comets",
     "space",
@@ -43,6 +45,7 @@ export const metadata: Metadata = {
     "near-earth objects",
     "NEO",
     "planetary science",
+    "spectral class",
   ],
   authors: [{ name: "Cosmic Index" }],
   creator: "Cosmic Index",
@@ -51,9 +54,9 @@ export const metadata: Metadata = {
     type: "website",
     url: BASE_URL,
     siteName: "Cosmic Index",
-    title: "Cosmic Index - Explore Exoplanets & Small Bodies",
+    title: "Cosmic Index - Explore Exoplanets, Stars & Small Bodies",
     description:
-      "A retrofuturistic space encyclopedia for discovering exoplanets, asteroids, and comets. Powered by NASA and JPL data.",
+      "A retrofuturistic space encyclopedia for discovering exoplanets, host stars, asteroids, and comets. Powered by NASA and JPL data.",
     locale: "en_US",
     images: [
       {
@@ -66,9 +69,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Cosmic Index - Explore Exoplanets & Small Bodies",
+    title: "Cosmic Index - Explore Exoplanets, Stars & Small Bodies",
     description:
-      "A retrofuturistic space encyclopedia for discovering exoplanets, asteroids, and comets. Powered by NASA and JPL data.",
+      "A retrofuturistic space encyclopedia for discovering exoplanets, host stars, asteroids, and comets. Powered by NASA and JPL data.",
     images: ["/og-image.png"],
   },
   robots: {
@@ -95,7 +98,7 @@ const websiteJsonLd = {
   name: "Cosmic Index",
   url: BASE_URL,
   description:
-    "A retrofuturistic space encyclopedia for discovering exoplanets, asteroids, and comets. Explore 5,000+ exoplanets and 1,000,000+ small bodies with data from NASA and JPL.",
+    "A retrofuturistic space encyclopedia for discovering exoplanets, host stars, asteroids, and comets. Explore 5,000+ exoplanets, 4,500+ host stars, and 1,000,000+ small bodies with data from NASA and JPL.",
   potentialAction: [
     {
       "@type": "SearchAction",

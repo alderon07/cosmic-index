@@ -4,8 +4,7 @@ import { ObjectDetail } from "@/components/object-detail";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { fetchSmallBodyBySlug } from "@/lib/jpl-sbdb";
 import { SmallBodyData } from "@/lib/types";
-
-const BASE_URL = "https://cosmic-index.vercel.app";
+import { BASE_URL } from "@/lib/config";
 
 interface SmallBodyDetailPageProps {
   params: Promise<{ id: string }>;

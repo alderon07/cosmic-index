@@ -3,8 +3,7 @@
 import { useState, useEffect } from "react";
 import { ChevronRight, Home } from "lucide-react";
 import { getCategoryFromPath, getListUrl } from "@/lib/list-url-store";
-
-const BASE_URL = "https://cosmic-index.vercel.app";
+import { BASE_URL } from "@/lib/config";
 
 export interface BreadcrumbItem {
   label: string;

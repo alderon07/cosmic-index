@@ -6,8 +6,7 @@ import { Breadcrumbs } from "@/components/breadcrumbs";
 import { StarPlanets } from "./star-planets";
 import { getStarBySlug } from "@/lib/star-index";
 import { StarData } from "@/lib/types";
-
-const BASE_URL = "https://cosmic-index.vercel.app";
+import { BASE_URL } from "@/lib/config";
 
 interface StarDetailPageProps {
   params: Promise<{ id: string }>;

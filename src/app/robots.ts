@@ -1,6 +1,5 @@
 import type { MetadataRoute } from "next";
-
-const BASE_URL = "https://cosmic-index.vercel.app";
+import { BASE_URL } from "@/lib/config";
 
 export default function robots(): MetadataRoute.Robots {
   return {

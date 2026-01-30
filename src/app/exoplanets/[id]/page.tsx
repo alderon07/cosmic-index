@@ -4,8 +4,7 @@ import { ObjectDetail } from "@/components/object-detail";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { fetchExoplanetBySlug } from "@/lib/nasa-exoplanet";
 import { ExoplanetData } from "@/lib/types";
-
-const BASE_URL = "https://cosmic-index.vercel.app";
+import { BASE_URL } from "@/lib/config";
 
 interface ExoplanetDetailPageProps {
   params: Promise<{ id: string }>;
