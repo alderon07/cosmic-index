@@ -3,6 +3,7 @@ import { Space_Grotesk, Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import Link from "next/link";
 import { Circle, Star, CircleDot } from "lucide-react";
+import { Analytics } from "@vercel/analytics/react";
 
 const spaceGrotesk = Space_Grotesk({
   variable: "--font-display",
@@ -22,7 +23,7 @@ const jetbrainsMono = JetBrains_Mono({
   display: "swap",
 });
 
-import { BASE_URL, SITE_CONFIG } from "@/lib/config";
+import { BASE_URL } from "@/lib/config";
 
 export const metadata: Metadata = {
   metadataBase: new URL(BASE_URL),
@@ -219,6 +220,7 @@ export default function RootLayout({
             </div>
           </footer>
         </div>
+        <Analytics />
       </body>
     </html>
   );
