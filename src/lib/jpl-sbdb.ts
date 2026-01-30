@@ -11,6 +11,7 @@ import {
 } from "./types";
 import { withCache, CACHE_TTL, CACHE_KEYS, hashParams } from "./cache";
 import { DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE } from "./constants";
+import { limitConcurrency } from "./concurrency";
 
 const QUERY_API_URL = "https://ssd-api.jpl.nasa.gov/sbdb_query.api";
 const LOOKUP_API_URL = "https://ssd-api.jpl.nasa.gov/sbdb.api";
@@ -403,17 +404,18 @@ async function searchWithLookupFallback(
       const listData = data as SBDBLookupListResponse;
       const matchesToFetch = listData.list.slice(0, 20);
 
-      const results = await Promise.all(
-        matchesToFetch.map(async (match) => {
-          try {
-            // Use fetchSmallBodyByIdentifier to get full details
-            const detail = await fetchSmallBodyByIdentifierDirect(match.pdes, signal);
-            return detail;
-          } catch {
-            return null;
-          }
-        })
-      );
+      // Limit to 5 concurrent fetches to prevent resource exhaustion
+      const tasks = matchesToFetch.map((match) => async () => {
+        try {
+          // Use fetchSmallBodyByIdentifier to get full details
+          const detail = await fetchSmallBodyByIdentifierDirect(match.pdes, signal);
+          return detail;
+        } catch {
+          return null;
+        }
+      });
+
+      const results = await limitConcurrency(tasks, 5);
 
       return results
         .filter((obj): obj is SmallBodyData => obj !== null)

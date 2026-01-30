@@ -21,7 +21,70 @@ function getRedis(): Redis | null {
 export const RATE_LIMITS = {
   BROWSE: { requests: 100, windowMs: 60 * 1000 },  // 100 req/min
   DETAIL: { requests: 200, windowMs: 60 * 1000 },  // 200 req/min
+  SITEMAP: { requests: 10, windowMs: 60 * 60 * 1000 },  // 10 req/hour
 } as const;
+
+// ── In-Memory Fallback Rate Limiter ─────────────────────────────────────────
+
+const MAX_MEMORY_ENTRIES = 10_000;
+
+interface MemoryEntry {
+  timestamps: number[];
+  lastAccess: number;
+}
+
+// In-memory storage for rate limiting when Redis is unavailable
+const memoryStore = new Map<string, MemoryEntry>();
+
+// LRU eviction: remove oldest entries when exceeding max size
+function evictOldestEntries(): void {
+  if (memoryStore.size <= MAX_MEMORY_ENTRIES) return;
+
+  // Sort by lastAccess and remove oldest 10%
+  const entries = Array.from(memoryStore.entries());
+  entries.sort((a, b) => a[1].lastAccess - b[1].lastAccess);
+
+  const toRemove = Math.ceil(memoryStore.size * 0.1);
+  for (let i = 0; i < toRemove; i++) {
+    memoryStore.delete(entries[i][0]);
+  }
+}
+
+// In-memory sliding window rate limiter
+function checkRateLimitMemory(
+  identifier: string,
+  type: RateLimitType
+): RateLimitResult {
+  const config = RATE_LIMITS[type];
+  const now = Date.now();
+  const windowStart = now - config.windowMs;
+  const key = `${type}:${identifier}`;
+
+  let entry = memoryStore.get(key);
+
+  if (!entry) {
+    entry = { timestamps: [], lastAccess: now };
+    memoryStore.set(key, entry);
+    evictOldestEntries();
+  }
+
+  // Remove timestamps outside the window
+  entry.timestamps = entry.timestamps.filter((ts) => ts > windowStart);
+  entry.lastAccess = now;
+
+  const currentCount = entry.timestamps.length;
+  const allowed = currentCount < config.requests;
+
+  if (allowed) {
+    entry.timestamps.push(now);
+  }
+
+  return {
+    allowed,
+    remaining: Math.max(0, config.requests - currentCount - (allowed ? 1 : 0)),
+    resetTime: now + config.windowMs,
+  };
+}
 
 type RateLimitType = keyof typeof RATE_LIMITS;
 
@@ -31,7 +94,7 @@ interface RateLimitResult {
   resetTime: number;
 }
 
-// Sliding window rate limiter using Redis
+// Sliding window rate limiter using Redis with in-memory fallback
 export async function checkRateLimit(
   identifier: string,
   type: RateLimitType
@@ -39,9 +102,12 @@ export async function checkRateLimit(
   const client = getRedis();
   const config = RATE_LIMITS[type];
 
-  // If Redis not configured, allow all requests
+  // If Redis not configured, use in-memory fallback
   if (!client) {
-    return { allowed: true, remaining: config.requests, resetTime: 0 };
+    if (process.env.NODE_ENV === "development") {
+      console.warn("[RateLimit] Redis unavailable, using in-memory fallback");
+    }
+    return checkRateLimitMemory(identifier, type);
   }
 
   const now = Date.now();
@@ -73,9 +139,9 @@ export async function checkRateLimit(
 
     return { allowed, remaining, resetTime };
   } catch (error) {
-    console.error("Rate limit check error:", error);
-    // On error, allow the request
-    return { allowed: true, remaining: config.requests, resetTime: 0 };
+    console.error("[RateLimit] Redis error, falling back to in-memory:", error);
+    // On Redis error, fall back to in-memory rate limiting
+    return checkRateLimitMemory(identifier, type);
   }
 }
 

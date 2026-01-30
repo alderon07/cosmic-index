@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { fetchSmallBodies } from "@/lib/jpl-sbdb";
 import {
   generateSitemapXml,
@@ -6,6 +6,11 @@ import {
   getIsoDate,
   SitemapUrl,
 } from "@/lib/sitemap";
+import {
+  checkRateLimit,
+  getClientIdentifier,
+  getRateLimitHeaders,
+} from "@/lib/rate-limit";
 
 // Force dynamic rendering - sitemaps fetch external APIs
 export const dynamic = "force-dynamic";
@@ -20,8 +25,21 @@ const BATCH_SIZE = 100;
 // PHAs are the most newsworthy objects
 const MAX_OBJECTS = 2000;
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    // Rate limiting - sitemaps are expensive, limit to 10 req/hour
+    const clientId = getClientIdentifier(request);
+    const rateLimitResult = await checkRateLimit(clientId, "SITEMAP");
+
+    if (!rateLimitResult.allowed) {
+      return new NextResponse("Rate limit exceeded. Please try again later.", {
+        status: 429,
+        headers: {
+          "Content-Type": "text/plain",
+          ...getRateLimitHeaders(rateLimitResult),
+        },
+      });
+    }
     const allUrls: SitemapUrl[] = [];
     const lastmod = getIsoDate();
 
@@ -67,6 +85,7 @@ export async function GET() {
       headers: {
         "Content-Type": "application/xml",
         "Cache-Control": "public, max-age=86400, s-maxage=86400",
+        ...getRateLimitHeaders(rateLimitResult),
       },
     });
   } catch (error) {

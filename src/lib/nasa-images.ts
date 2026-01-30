@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { CACHE_TTL, CACHE_KEYS, hashParams, getCached, setCached } from "./cache";
 import type { ObjectType, SmallBodyKind } from "./types";
+import { limitConcurrencySettled } from "./concurrency";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -283,42 +284,43 @@ async function fetchAssetManifest(nasaId: string): Promise<string | null> {
   }
 }
 
-/** Resolve full-res image URLs for a batch of search results in parallel. */
+/** Resolve full-res image URLs for a batch of search results with limited concurrency. */
 async function resolveFullImageUrls(
   items: z.infer<typeof NasaImageItemSchema>[]
 ): Promise<NasaImage[]> {
-  const results = await Promise.allSettled(
-    items.map(async (item): Promise<NasaImage | null> => {
-      const data = item.data[0];
-      if (!data) return null;
+  // Limit to 4 concurrent asset fetches to prevent resource exhaustion
+  const tasks = items.map((item) => async (): Promise<NasaImage | null> => {
+    const data = item.data[0];
+    if (!data) return null;
 
-      // Thumbnail from search result links
-      const thumbnailUrl =
-        item.links?.find((l) => l.rel === "preview")?.href ??
-        item.links?.[0]?.href ??
-        "";
+    // Thumbnail from search result links
+    const thumbnailUrl =
+      item.links?.find((l) => l.rel === "preview")?.href ??
+      item.links?.[0]?.href ??
+      "";
 
-      if (!thumbnailUrl) return null;
+    if (!thumbnailUrl) return null;
 
-      // Full-res from asset endpoint
-      const imageUrl = await fetchAssetManifest(data.nasa_id);
+    // Full-res from asset endpoint
+    const imageUrl = await fetchAssetManifest(data.nasa_id);
 
-      // Credit from secondary_creator or photographer
-      const credit = data.secondary_creator || data.photographer;
+    // Credit from secondary_creator or photographer
+    const credit = data.secondary_creator || data.photographer;
 
-      return {
-        nasaId: data.nasa_id,
-        title: data.title || "Untitled",
-        description: data.description,
-        center: data.center,
-        dateCreated: data.date_created,
-        keywords: data.keywords,
-        credit,
-        thumbnailUrl,
-        imageUrl: imageUrl ?? thumbnailUrl, // Fall back to thumbnail if asset fails
-      };
-    })
-  );
+    return {
+      nasaId: data.nasa_id,
+      title: data.title || "Untitled",
+      description: data.description,
+      center: data.center,
+      dateCreated: data.date_created,
+      keywords: data.keywords,
+      credit,
+      thumbnailUrl,
+      imageUrl: imageUrl ?? thumbnailUrl, // Fall back to thumbnail if asset fails
+    };
+  });
+
+  const results = await limitConcurrencySettled(tasks, 4);
 
   return results
     .filter(
