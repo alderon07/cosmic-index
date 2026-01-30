@@ -61,6 +61,15 @@ export function ObjectCard({ object, onModalOpen }: ObjectCardProps) {
     ? "text-radium-teal"
     : "text-secondary";
 
+  // Hover border and glow based on object type
+  const hoverStyles = isExoplanet(object)
+    ? "hover:border-primary/50 hover:glow-orange"
+    : isStar(object)
+    ? "hover:border-uranium-green/50 hover:glow-uranium"
+    : isSmallBody(object) && object.bodyKind === "comet"
+    ? "hover:border-radium-teal/50 hover:glow-teal"
+    : "hover:border-secondary/50 hover:glow-amber";
+
   // Get first 3-4 key facts
   const displayFacts = object.keyFacts.slice(0, 4);
 
@@ -205,7 +214,7 @@ export function ObjectCard({ object, onModalOpen }: ObjectCardProps) {
         onKeyDown={handleKeyDown}
         className="block group cursor-pointer"
       >
-        <Card className="h-full bg-card border-border/50 transition-all duration-300 hover:border-primary/50 hover:glow-orange bezel scanlines overflow-hidden relative">
+        <Card className={`h-full bg-card border-border/50 transition-all duration-300 ${hoverStyles} bezel scanlines overflow-hidden relative`}>
           {cardContent}
         </Card>
       </div>
@@ -215,7 +224,7 @@ export function ObjectCard({ object, onModalOpen }: ObjectCardProps) {
   // Default mode: entire card is a link
   return (
     <Link href={href} onClick={storeListUrl} className="block group">
-      <Card className="h-full bg-card border-border/50 transition-all duration-300 hover:border-primary/50 hover:glow-orange bezel scanlines overflow-hidden relative">
+      <Card className={`h-full bg-card border-border/50 transition-all duration-300 ${hoverStyles} bezel scanlines overflow-hidden relative`}>
         {cardContent}
       </Card>
     </Link>
