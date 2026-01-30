@@ -185,10 +185,6 @@ The easiest way to deploy is using [Vercel](https://vercel.com):
 
 The project is optimized for Vercel's platform and works out of the box.
 
-## 📝 License
-
-This project is open source and available under the [MIT License](LICENSE).
-
 ## 🙏 Acknowledgments
 
 - [NASA Exoplanet Archive](https://exoplanetarchive.ipac.caltech.edu/) for exoplanet data
