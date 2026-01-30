@@ -4,10 +4,11 @@ import { useState, useEffect, useCallback, useMemo, Suspense, startTransition } 
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { saveListUrl } from "@/lib/list-url-store";
 import { ObjectCard, ObjectCardSkeleton } from "@/components/object-card";
+import { ObjectDetailModal } from "@/components/object-detail-modal";
 import { SearchBar } from "@/components/search-bar";
 import { ExoplanetFilterPanel, ExoplanetFilters } from "@/components/filter-panel";
 import { Pagination, PaginationInfo } from "@/components/pagination";
-import { ExoplanetData, PaginatedResponse } from "@/lib/types";
+import { AnyCosmicObject, ExoplanetData, PaginatedResponse } from "@/lib/types";
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "@/lib/constants";
 import { Circle } from "lucide-react";
 
@@ -70,6 +71,7 @@ function ExoplanetsPageContent() {
   const [data, setData] = useState<PaginatedResponse<ExoplanetData> | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedObject, setSelectedObject] = useState<AnyCosmicObject | null>(null);
 
   // Update URL helper - preserves existing params
   const updateUrl = useCallback((updates: Record<string, string | null>) => {
@@ -236,7 +238,7 @@ function ExoplanetsPageContent() {
 
       {/* Results Info and Top Pagination */}
       {data && !isLoading && (
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col gap-4 md:flex-row items-center md:justify-between mb-6">
           <PaginationInfo
             currentPage={page}
             pageSize={limit}
@@ -278,7 +280,7 @@ function ExoplanetsPageContent() {
       {!isLoading && data && data.objects.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {data.objects.map((exoplanet) => (
-            <ObjectCard key={exoplanet.id} object={exoplanet} />
+            <ObjectCard key={exoplanet.id} object={exoplanet} onModalOpen={setSelectedObject} />
           ))}
         </div>
       )}
@@ -306,6 +308,13 @@ function ExoplanetsPageContent() {
           />
         </div>
       )}
+
+      {/* Object Detail Modal */}
+      <ObjectDetailModal
+        object={selectedObject}
+        open={selectedObject !== null}
+        onOpenChange={(open) => !open && setSelectedObject(null)}
+      />
     </div>
   );
 }

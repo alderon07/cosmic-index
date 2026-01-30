@@ -25,9 +25,10 @@ interface NasaImagesResult {
 
 interface NasaImageGalleryProps {
   object: AnyCosmicObject;
+  compact?: boolean;
 }
 
-export function NasaImageGallery({ object }: NasaImageGalleryProps) {
+export function NasaImageGallery({ object, compact }: NasaImageGalleryProps) {
   const [images, setImages] = useState<NasaImage[]>([]);
   const [loading, setLoading] = useState(true);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
@@ -100,22 +101,26 @@ export function NasaImageGallery({ object }: NasaImageGalleryProps) {
     };
   }, [lightboxIndex, handleKeyDown]);
 
+  const thumbnailSize = compact
+    ? "w-32 h-32 sm:w-40 sm:h-40"
+    : "w-56 h-56";
+
   // Loading state
   if (loading) {
     return (
-      <Card className="bg-card border-border/50 bezel">
+      <Card className="bg-card border-border/50 bezel overflow-hidden">
         <CardHeader>
           <CardTitle className="font-display flex items-center gap-2">
             <Camera className="w-5 h-5 text-primary" />
             Related NASA Images
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="flex gap-3 overflow-hidden">
+        <CardContent className="overflow-hidden">
+          <div className="flex gap-2 sm:gap-3 overflow-x-auto min-w-0">
             {[1, 2, 3, 4].map((i) => (
               <div
                 key={i}
-                className="w-56 h-56 flex-shrink-0 rounded-lg data-stream bg-muted/30"
+                className={`${thumbnailSize} flex-shrink-0 rounded-lg data-stream bg-muted/30`}
               />
             ))}
           </div>
@@ -133,24 +138,24 @@ export function NasaImageGallery({ object }: NasaImageGalleryProps) {
 
   return (
     <>
-      <Card className="bg-card border-border/50 bezel">
+      <Card className="bg-card border-border/50 bezel overflow-hidden">
         <CardHeader>
           <CardTitle className="font-display flex items-center gap-2">
             <Camera className="w-5 h-5 text-primary" />
             Related NASA Images
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          {/* Thumbnail strip */}
+        <CardContent className="overflow-hidden">
+          {/* Thumbnail strip - horizontal scroll */}
           <div
             ref={scrollRef}
-            className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin"
+            className={`flex ${compact ? "gap-2 sm:gap-3" : "gap-3"} overflow-x-auto pb-2 scrollbar-thin min-w-0`}
           >
             {images.map((image, index) => (
               <button
                 key={image.nasaId}
                 onClick={() => setLightboxIndex(index)}
-                className="relative w-56 h-56 flex-shrink-0 rounded-lg overflow-hidden border border-border/30 bezel group cursor-pointer transition-all hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                className={`relative ${thumbnailSize} flex-shrink-0 rounded-lg overflow-hidden border border-border/30 bezel group cursor-pointer transition-all hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary`}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
@@ -162,7 +167,7 @@ export function NasaImageGallery({ object }: NasaImageGalleryProps) {
                 {/* Vignette overlay */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
                 {/* Title */}
-                <p className="absolute bottom-0 left-0 right-0 p-2 text-xs text-white/90 font-mono line-clamp-2 leading-tight">
+                <p className={`absolute bottom-0 left-0 right-0 p-2 text-white/90 font-mono line-clamp-2 leading-tight ${compact ? "text-[10px]" : "text-xs"}`}>
                   {image.title}
                 </p>
               </button>

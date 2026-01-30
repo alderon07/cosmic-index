@@ -4,10 +4,11 @@ import { useState, useEffect, useCallback, useMemo, Suspense, startTransition } 
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { saveListUrl } from "@/lib/list-url-store";
 import { ObjectCard, ObjectCardSkeleton } from "@/components/object-card";
+import { ObjectDetailModal } from "@/components/object-detail-modal";
 import { SearchBar } from "@/components/search-bar";
 import { SmallBodyFilterPanel, SmallBodyFilters } from "@/components/filter-panel";
 import { Pagination, PaginationInfo } from "@/components/pagination";
-import { SmallBodyData, PaginatedResponse } from "@/lib/types";
+import { AnyCosmicObject, SmallBodyData, PaginatedResponse } from "@/lib/types";
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "@/lib/constants";
 import { THEMES } from "@/lib/theme";
 import { CircleDot } from "lucide-react";
@@ -60,6 +61,7 @@ function SmallBodiesPageContent() {
   const [data, setData] = useState<PaginatedResponse<SmallBodyData> | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedObject, setSelectedObject] = useState<AnyCosmicObject | null>(null);
 
   // Update URL helper - preserves existing params
   const updateUrl = useCallback((updates: Record<string, string | null>) => {
@@ -226,7 +228,7 @@ function SmallBodiesPageContent() {
 
       {/* Results Info and Top Pagination */}
       {data && !isLoading && (
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col gap-4 md:flex-row items-center md:justify-between mb-6">
           <PaginationInfo
             currentPage={page}
             pageSize={limit}
@@ -269,7 +271,7 @@ function SmallBodiesPageContent() {
       {!isLoading && data && data.objects.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {data.objects.map((smallBody) => (
-            <ObjectCard key={smallBody.sourceId} object={smallBody} />
+            <ObjectCard key={smallBody.sourceId} object={smallBody} onModalOpen={setSelectedObject} />
           ))}
         </div>
       )}
@@ -298,6 +300,13 @@ function SmallBodiesPageContent() {
           />
         </div>
       )}
+
+      {/* Object Detail Modal */}
+      <ObjectDetailModal
+        object={selectedObject}
+        open={selectedObject !== null}
+        onOpenChange={(open) => !open && setSelectedObject(null)}
+      />
     </div>
   );
 }

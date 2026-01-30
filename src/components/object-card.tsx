@@ -9,7 +9,7 @@ import {
   isSmallBody,
   isStar,
 } from "@/lib/types";
-import { Orbit, Sparkles, AlertTriangle } from "lucide-react";
+import { Orbit, Sparkles, AlertTriangle, SquareArrowOutUpRight } from "lucide-react";
 
 // SessionStorage keys for storing list page URLs
 const EXOPLANETS_LIST_URL_KEY = "exoplanetsListUrl";
@@ -18,9 +18,10 @@ const STARS_LIST_URL_KEY = "starsListUrl";
 
 interface ObjectCardProps {
   object: AnyCosmicObject;
+  onModalOpen?: (object: AnyCosmicObject) => void;
 }
 
-export function ObjectCard({ object }: ObjectCardProps) {
+export function ObjectCard({ object, onModalOpen }: ObjectCardProps) {
   const href = isExoplanet(object)
     ? `/exoplanets/${object.id}`
     : isStar(object)
@@ -64,7 +65,7 @@ export function ObjectCard({ object }: ObjectCardProps) {
   const displayFacts = object.keyFacts.slice(0, 4);
 
   // Store current list page URL when clicking to navigate to detail page
-  const handleClick = () => {
+  const storeListUrl = () => {
     if (typeof window !== "undefined") {
       const currentUrl = window.location.pathname + window.location.search;
       const storageKey = isExoplanet(object)
@@ -76,94 +77,146 @@ export function ObjectCard({ object }: ObjectCardProps) {
     }
   };
 
-  return (
-    <Link href={href} onClick={handleClick} className="block group">
-      <Card className="h-full bg-card border-border/50 transition-all duration-300 hover:border-primary/50 hover:glow-orange bezel scanlines overflow-hidden">
-        <CardHeader className="pb-3">
-          <div className="flex items-start justify-between gap-2">
-            <div className="flex-1 min-w-0">
-              <CardTitle className={`font-display text-lg ${nameColorClass} transition-colors line-clamp-2`}>
-                {object.displayName}
-              </CardTitle>
-              {isSmallBody(object) && object.aliases.length > 0 && (
-                <p className="text-xs text-muted-foreground mt-1 line-clamp-1">
-                  {object.aliases[0]}
-                </p>
-              )}
-            </div>
-            <Badge variant={typeVariant} className={`shrink-0 font-mono text-xs ${typeClassName}`}>
-              {typeLabel}
-            </Badge>
-          </div>
+  // Handle card click - opens modal if onModalOpen provided
+  const handleCardClick = () => {
+    if (onModalOpen) {
+      onModalOpen(object);
+    }
+  };
 
-          {/* Additional badges for small bodies */}
-          {isSmallBody(object) && (object.isNeo || object.isPha) && (
-            <div className="flex gap-1.5 mt-2">
-              {object.isNeo && (
-                <Badge variant="outline" className="text-xs border-amber-glow/50 text-amber-glow">
-                  <Orbit className="w-3 h-3 mr-1" />
-                  NEO
-                </Badge>
-              )}
-              {object.isPha && (
-                <Badge variant="destructive" className="text-xs">
-                  <AlertTriangle className="w-3 h-3 mr-1" />
-                  PHA
-                </Badge>
-              )}
-            </div>
-          )}
+  // Handle keyboard interaction for modal mode
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (onModalOpen && (e.key === "Enter" || e.key === " ")) {
+      e.preventDefault();
+      onModalOpen(object);
+    }
+  };
 
-          {/* Host star for exoplanets */}
-          {isExoplanet(object) && object.hostStar && (
-            <p className="text-sm text-muted-foreground mt-1 flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-secondary" />
-              {object.hostStar}
-            </p>
-          )}
+  // Handle navigation icon click (navigates to detail page)
+  const handleNavigateClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    storeListUrl();
+  };
 
-        </CardHeader>
+  const cardContent = (
+    <>
+      {/* Navigation icon (only in modal mode) */}
+      {onModalOpen && (
+        <Link
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={handleNavigateClick}
+          className="absolute bottom-3 right-3 z-10 p-1.5 rounded-md bg-background/80 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-primary/20"
+          aria-label={`Go to ${object.displayName} detail page (opens in new tab)`}
+        >
+          <SquareArrowOutUpRight className="w-4 h-4 text-muted-foreground hover:text-primary transition-colors" />
+        </Link>
+      )}
 
-        <CardContent className="pt-0 flex flex-col flex-1 min-h-0">
-          {/* Key Facts Grid */}
-          <div className="flex-1">
-            <div className="pb-4 grid grid-cols-2 gap-x-4 gap-y-2">
-              {displayFacts.map((fact, index) => (
-                <div key={index} className="min-w-0">
-                  <p className="text-xs text-muted-foreground truncate">
-                    {fact.label}
-                  </p>
-                  <p className="text-sm font-mono text-foreground truncate">
-                    {fact.value}
-                    {fact.unit && (
-                      <span className="text-muted-foreground ml-1 text-xs">
-                        {fact.unit}
-                      </span>
-                    )}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Discovery year badge */}
-          {object.discoveredYear && (
-            <div className="mt-auto pt-2 pb-1 border-t border-border/30">
-              <p className="text-xs text-muted-foreground">
-                Discovered{" "}
-                <span className="font-mono text-foreground">
-                  {object.discoveredYear}
-                </span>
+      <CardHeader className="pb-3">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex-1 min-w-0">
+            <CardTitle className={`font-display text-lg ${nameColorClass} transition-colors line-clamp-2`}>
+              {object.displayName}
+            </CardTitle>
+            {isSmallBody(object) && object.aliases.length > 0 && (
+              <p className="text-xs text-muted-foreground mt-1 line-clamp-1">
+                {object.aliases[0]}
               </p>
-            </div>
-          )}
+            )}
+          </div>
+          <Badge variant={typeVariant} className={`shrink-0 font-mono text-xs ${typeClassName}`}>
+            {typeLabel}
+          </Badge>
+        </div>
 
-          {/* <div className="mt-3 pt-2 border-t border-border/30 flex items-center justify-end">
-            <span className="text-xs text-primary/70 group-hover:text-primary transition-colors">
-              <SquareArrowOutUpRight className="w-3 h-3 mr-1"/>
-            </span>
-          </div> */}
-        </CardContent>
+        {/* Additional badges for small bodies */}
+        {isSmallBody(object) && (object.isNeo || object.isPha) && (
+          <div className="flex gap-1.5 mt-2">
+            {object.isNeo && (
+              <Badge variant="outline" className="text-xs border-amber-glow/50 text-amber-glow">
+                <Orbit className="w-3 h-3 mr-1" />
+                NEO
+              </Badge>
+            )}
+            {object.isPha && (
+              <Badge variant="destructive" className="text-xs">
+                <AlertTriangle className="w-3 h-3 mr-1" />
+                PHA
+              </Badge>
+            )}
+          </div>
+        )}
+
+        {/* Host star for exoplanets */}
+        {isExoplanet(object) && object.hostStar && (
+          <p className="text-sm text-muted-foreground mt-1 flex items-center gap-1.5">
+            <Sparkles className="w-3.5 h-3.5 text-secondary" />
+            {object.hostStar}
+          </p>
+        )}
+      </CardHeader>
+
+      <CardContent className="pt-0 flex flex-col flex-1 min-h-0">
+        {/* Key Facts Grid */}
+        <div className="flex-1">
+          <div className="pb-4 grid grid-cols-2 gap-x-4 gap-y-2">
+            {displayFacts.map((fact, index) => (
+              <div key={index} className="min-w-0">
+                <p className="text-xs text-muted-foreground truncate">
+                  {fact.label}
+                </p>
+                <p className="text-sm font-mono text-foreground truncate">
+                  {fact.value}
+                  {fact.unit && (
+                    <span className="text-muted-foreground ml-1 text-xs">
+                      {fact.unit}
+                    </span>
+                  )}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Discovery year badge */}
+        {object.discoveredYear && (
+          <div className="mt-auto pt-2 pb-1 border-t border-border/30">
+            <p className="text-xs text-muted-foreground">
+              Discovered{" "}
+              <span className="font-mono text-foreground">
+                {object.discoveredYear}
+              </span>
+            </p>
+          </div>
+        )}
+      </CardContent>
+    </>
+  );
+
+  // Modal mode: card click opens modal, icon navigates
+  if (onModalOpen) {
+    return (
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={handleCardClick}
+        onKeyDown={handleKeyDown}
+        className="block group cursor-pointer"
+      >
+        <Card className="h-full bg-card border-border/50 transition-all duration-300 hover:border-primary/50 hover:glow-orange bezel scanlines overflow-hidden relative">
+          {cardContent}
+        </Card>
+      </div>
+    );
+  }
+
+  // Default mode: entire card is a link
+  return (
+    <Link href={href} onClick={storeListUrl} className="block group">
+      <Card className="h-full bg-card border-border/50 transition-all duration-300 hover:border-primary/50 hover:glow-orange bezel scanlines overflow-hidden relative">
+        {cardContent}
       </Card>
     </Link>
   );
