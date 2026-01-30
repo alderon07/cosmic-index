@@ -151,14 +151,14 @@ export default function RootLayout({
             <nav className="container mx-auto px-4 h-16 flex items-center justify-between">
               <Link href="/" className="flex items-center gap-2 group">
                 <div className="w-8 h-8 rounded-full reactor-gradient pulse-glow" />
-                <span className="font-display text-xl text-foreground group-hover:text-primary transition-colors">
+                <span className="font-display text-xl tracking-wider text-foreground group-hover:text-primary transition-colors">
                   Cosmic Index
                 </span>
               </Link>
               <div className="flex items-center gap-4 sm:gap-6">
                 <Link
                   href="/exoplanets"
-                  className="text-sm text-muted-foreground hover:text-primary transition-colors"
+                  className="font-display text-sm tracking-wide text-muted-foreground hover:text-primary transition-colors"
                   title="Exoplanets"
                 >
                   <Circle className="w-5 h-5 sm:hidden" />
@@ -166,7 +166,7 @@ export default function RootLayout({
                 </Link>
                 <Link
                   href="/stars"
-                  className="text-sm text-muted-foreground hover:text-uranium-green transition-colors"
+                  className="font-display text-sm tracking-wide text-muted-foreground hover:text-uranium-green transition-colors"
                   title="Stars"
                 >
                   <Star className="w-5 h-5 sm:hidden" />
@@ -174,7 +174,7 @@ export default function RootLayout({
                 </Link>
                 <Link
                   href="/small-bodies"
-                  className="text-sm text-muted-foreground hover:text-secondary transition-colors"
+                  className="font-display text-sm tracking-wide text-muted-foreground hover:text-secondary transition-colors"
                   title="Small Bodies"
                 >
                   <CircleDot className="w-5 h-5 sm:hidden" />
@@ -193,7 +193,7 @@ export default function RootLayout({
               <div className="flex flex-col md:flex-row items-center justify-between gap-4">
                 <div className="flex items-center gap-2">
                   <div className="w-6 h-6 rounded-full reactor-gradient opacity-50" />
-                  <span className="font-display text-sm text-muted-foreground">
+                  <span className="font-display text-sm tracking-wider text-muted-foreground">
                     Cosmic Index
                   </span>
                 </div>
