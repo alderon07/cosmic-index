@@ -252,7 +252,22 @@ function extractDisplayName(fullName: string | null, pdes: string | null, name: 
 
   // Fall back to cleaned up full name
   if (fullName) {
-    // Remove parentheses and extra info
+    // For comets like "1P/Halley" or "C/2020 F3 (NEOWISE)", extract the name part
+    // Pattern: designation/name or designation (name)
+    const cometMatch = fullName.match(/^[\dA-Z]+[A-Z]?\/(?:\d{4}\s+[A-Z]\d+\s+)?(.+)$/i);
+    if (cometMatch && cometMatch[1]) {
+      // Remove parentheses from name like "(NEOWISE)" -> "NEOWISE"
+      return cometMatch[1].replace(/^\(|\)$/g, "").trim();
+    }
+
+    // For asteroids like "433 Eros" or "(433) Eros", extract the name
+    const asteroidMatch = fullName.match(/^(?:\(?\d+\)?\s+)?([A-Za-z].*)$/);
+    if (asteroidMatch && asteroidMatch[1]) {
+      // Remove parentheses from name
+      return asteroidMatch[1].replace(/\([^)]*\)/g, "").trim();
+    }
+
+    // Generic cleanup: remove leading numbers and parentheses
     const cleaned = fullName.replace(/^\d+\s+/, "").replace(/\([^)]*\)/g, "").trim();
     if (cleaned) return cleaned;
   }
@@ -516,7 +531,7 @@ async function fetchSmallBodyByIdentifierDirect(
       }
     }
 
-    const displayName = obj.name || obj.shortname || obj.des || obj.fullname;
+    const displayName = extractDisplayName(obj.fullname, obj.des, obj.name);
     const orbitClassName = obj.orbit_class?.name || getOrbitClassName(obj.orbit_class?.code);
 
     const keyFacts: KeyFact[] = [];
@@ -904,8 +919,8 @@ export async function fetchSmallBodyByIdentifier(identifier: string): Promise<Sm
         }
       }
 
-      // Prefer shortname (e.g., "1 Ceres") over des (e.g., "1") or fullname
-      const displayName = obj.name || obj.shortname || obj.des || obj.fullname;
+      // Extract display name using consistent logic
+      const displayName = extractDisplayName(obj.fullname, obj.des, obj.name);
       const orbitClassName = obj.orbit_class?.name || getOrbitClassName(obj.orbit_class?.code);
 
       const keyFacts: KeyFact[] = [];

@@ -34,18 +34,24 @@ export function NasaImageGallery({ object, compact }: NasaImageGalleryProps) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  // Extract stable values for dependency array to avoid unnecessary re-fetches
+  const objectType = object.type;
+  const objectName = object.displayName;
+  const hostStar = object.type === "EXOPLANET" ? object.hostStar : undefined;
+  const bodyKind = object.type === "SMALL_BODY" ? object.bodyKind : undefined;
+
   useEffect(() => {
     const params = new URLSearchParams({
-      type: object.type,
-      name: object.displayName,
+      type: objectType,
+      name: objectName,
     });
 
-    if (object.type === "EXOPLANET") {
-      params.set("hostStar", object.hostStar);
+    if (hostStar) {
+      params.set("hostStar", hostStar);
     }
 
-    if (object.type === "SMALL_BODY") {
-      params.set("bodyKind", object.bodyKind);
+    if (bodyKind) {
+      params.set("bodyKind", bodyKind);
     }
 
     const controller = new AbortController();
@@ -68,7 +74,7 @@ export function NasaImageGallery({ object, compact }: NasaImageGalleryProps) {
       .finally(() => setLoading(false));
 
     return () => controller.abort();
-  }, [object]);
+  }, [objectType, objectName, hostStar, bodyKind]);
 
   // Keyboard navigation for lightbox
   const handleKeyDown = useCallback(
