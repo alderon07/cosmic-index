@@ -8,12 +8,19 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { X, Filter, RotateCcw, ArrowUpDown, ChevronDown } from "lucide-react";
-import { SpectralClass, SPECTRAL_CLASS_INFO } from "@/lib/types";
-import { THEMES } from "@/lib/theme";
+import { X, Filter, RotateCcw, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { SpectralClass, SortOrder, SPECTRAL_CLASS_INFO } from "@/lib/types";
+import { THEMES, ThemeConfig } from "@/lib/theme";
 
-// Use stars theme
-const theme = THEMES.stars;
+// Default stars theme (can be overridden via props)
+const defaultStarTheme = THEMES.stars;
 
 // Spectral classes for filtering (excludes "Unknown")
 type FilterableSpectralClass = Exclude<SpectralClass, "Unknown">;
@@ -25,6 +32,7 @@ export interface StarFilters {
   multiPlanet?: boolean;
   maxDistancePc?: number;
   sort?: "name" | "distance" | "vmag" | "planetCount" | "planetCountDesc";
+  order?: SortOrder;
 }
 
 // Distance presets (parsecs)
@@ -46,16 +54,17 @@ const MIN_PLANETS_PRESETS = [
 
 // Sort options
 const SORT_OPTIONS = [
-  { value: "name", label: "Name (A-Z)" },
-  { value: "planetCountDesc", label: "Most Planets" },
-  { value: "distance", label: "Closest" },
-  { value: "vmag", label: "Brightest" },
+  { value: "name", label: "Name" },
+  { value: "planetCountDesc", label: "Planet Count" },
+  { value: "distance", label: "Distance" },
+  { value: "vmag", label: "Brightness" },
 ] as const;
 
 interface StarFilterPanelProps {
   filters: StarFilters;
   onChange: (filters: StarFilters) => void;
   onReset: () => void;
+  theme?: ThemeConfig;
 }
 
 // Count active filters (excluding sort)
@@ -79,12 +88,12 @@ function FilterChip({
   return (
     <Badge
       variant="secondary"
-      className={`gap-1 pr-1 ${theme.filterChip}`}
+      className={`gap-1 pr-1 ${defaultStarTheme.filterChip}`}
     >
       {label}
       <button
         onClick={onRemove}
-        className={`ml-1 rounded-full p-0.5 ${theme.filterChipHover} transition-colors`}
+        className={`ml-1 rounded-full p-0.5 ${defaultStarTheme.filterChipHover} transition-colors`}
       >
         <X className="w-3 h-3" />
       </button>
@@ -96,6 +105,7 @@ export function StarFilterPanel({
   filters,
   onChange,
   onReset,
+  theme = defaultStarTheme,
 }: StarFilterPanelProps) {
   const activeCount = countActiveFilters(filters);
 
@@ -159,26 +169,51 @@ export function StarFilterPanel({
 
       {/* Sort Selector - Always visible */}
       <div className="flex items-center gap-3">
-        <label htmlFor="star-filter-sort" className="flex items-center gap-1.5 text-xs text-muted-foreground uppercase tracking-wider">
+        <label className="flex items-center gap-1.5 text-xs text-muted-foreground uppercase tracking-wider">
           <ArrowUpDown className={`w-3.5 h-3.5 ${theme.text}`} />
           Sort
         </label>
-        <div className="relative">
-          <select
-            id="star-filter-sort"
-            value={filters.sort || "name"}
-            onChange={(e) =>
-              updateFilter("sort", e.target.value as StarFilters["sort"])
-            }
-            className={`appearance-none pl-3 pr-8 py-1.5 bg-card border rounded-md text-sm text-foreground font-mono cursor-pointer transition-all duration-200 hover:bg-card/80 focus:outline-none focus:ring-1 ${theme.sortSelect}`}
-          >
+        <Select
+          value={filters.sort || "name"}
+          onValueChange={(value) => updateFilter("sort", value as StarFilters["sort"])}
+        >
+          <SelectTrigger className={`w-auto font-mono ${theme.sortSelect}`}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
             {SORT_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
+              <SelectItem key={option.value} value={option.value} className={theme.selectItemFocus}>
                 {option.label}
-              </option>
+              </SelectItem>
             ))}
-          </select>
-          <ChevronDown className={`absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 ${theme.text} opacity-70 pointer-events-none`} />
+          </SelectContent>
+        </Select>
+        {/* Sort Order Toggle */}
+        <div className={`flex rounded-md border ${theme.sortOrderBorder} overflow-hidden`}>
+          <button
+            type="button"
+            onClick={() => updateFilter("order", "asc")}
+            className={`p-1.5 transition-colors ${
+              filters.order === "asc" || (!filters.order && (filters.sort === "name" || filters.sort === "distance" || filters.sort === "vmag" || filters.sort === "planetCount"))
+                ? theme.sortOrderSelected
+                : "bg-card hover:bg-card/80 text-muted-foreground hover:text-foreground"
+            }`}
+            title="Ascending"
+          >
+            <ArrowUp className="w-4 h-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => updateFilter("order", "desc")}
+            className={`p-1.5 transition-colors border-l ${theme.sortOrderBorder} ${
+              filters.order === "desc" || (!filters.order && filters.sort === "planetCountDesc")
+                ? theme.sortOrderSelected
+                : "bg-card hover:bg-card/80 text-muted-foreground hover:text-foreground"
+            }`}
+            title="Descending"
+          >
+            <ArrowDown className="w-4 h-4" />
+          </button>
         </div>
       </div>
 
@@ -264,27 +299,27 @@ export function StarFilterPanel({
 
             {/* Max Distance */}
             <div>
-              <label htmlFor="star-filter-max-distance" className="text-xs text-muted-foreground uppercase tracking-wider block mb-2">
+              <label className="text-xs text-muted-foreground uppercase tracking-wider block mb-2">
                 Max Distance
               </label>
-              <select
-                id="star-filter-max-distance"
-                value={filters.maxDistancePc || ""}
-                onChange={(e) =>
-                  updateFilter(
-                    "maxDistancePc",
-                    e.target.value ? Number(e.target.value) : undefined
-                  )
+              <Select
+                value={filters.maxDistancePc?.toString() || "all"}
+                onValueChange={(value) =>
+                  updateFilter("maxDistancePc", value === "all" ? undefined : Number(value))
                 }
-                className={`w-full px-3 py-2 bg-input border border-border rounded-md text-sm font-mono focus:outline-none focus:ring-1 ${theme.focusRing}`}
               >
-                <option value="">Any Distance</option>
-                {DISTANCE_PRESETS.map((preset) => (
-                  <option key={preset.value} value={preset.value}>
-                    {preset.label}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger className={`w-full md:w-64 font-mono ${theme.sortSelect}`}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all" className={theme.selectItemFocus}>Any Distance</SelectItem>
+                  {DISTANCE_PRESETS.map((preset) => (
+                    <SelectItem key={preset.value} value={preset.value.toString()} className={theme.selectItemFocus}>
+                      {preset.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </AccordionContent>
         </AccordionItem>

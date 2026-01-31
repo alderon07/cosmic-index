@@ -114,6 +114,9 @@ export type SmallBodyListResponse = PaginatedResponse<SmallBodyData>;
 // Size category type for exoplanet filtering
 export type SizeCategory = "earth" | "super-earth" | "neptune" | "jupiter";
 
+// Sort order type
+export type SortOrder = "asc" | "desc";
+
 // Query Parameters
 export interface ExoplanetQueryParams {
   query?: string;
@@ -128,6 +131,7 @@ export interface ExoplanetQueryParams {
   maxDistancePc?: number;
   hostStar?: string;             // Filter by host star name
   sort?: "name" | "discovered" | "distance" | "radius" | "mass";
+  order?: SortOrder;
   page?: number;
   limit?: number;
 }
@@ -151,6 +155,7 @@ export interface StarQueryParams {
   page?: number;
   limit?: number;
   sort?: "name" | "distance" | "vmag" | "planetCount" | "planetCountDesc";
+  order?: SortOrder;
 }
 
 // Zod Schemas for Validation
@@ -269,6 +274,7 @@ export const ExoplanetQuerySchema = z.object({
   multiPlanet: z.coerce.boolean().optional(),
   maxDistancePc: z.coerce.number().positive().max(100_000).optional(),
   sort: z.enum(["name", "discovered", "distance", "radius", "mass"]).optional(),
+  order: z.enum(["asc", "desc"]).optional(),
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(MAX_PAGE_SIZE).default(DEFAULT_PAGE_SIZE),
 });
@@ -294,6 +300,7 @@ export const StarQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(MAX_PAGE_SIZE).default(DEFAULT_PAGE_SIZE),
   sort: z.enum(["name", "distance", "vmag", "planetCount", "planetCountDesc"]).optional(),
+  order: z.enum(["asc", "desc"]).optional(),
 });
 
 // NASA Exoplanet Archive Raw Response Schema

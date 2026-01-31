@@ -2,6 +2,7 @@ import {
   ExoplanetData,
   ExoplanetQueryParams,
   ExoplanetSortOption,
+  SortOrder,
   PaginatedResponse,
   NASAExoplanetRawSchema,
   createSlug,
@@ -64,21 +65,34 @@ function hasAnyNarrowingFilter(params: ExoplanetQueryParams): boolean {
   );
 }
 
+// Default sort directions for each sort option
+const DEFAULT_SORT_DIRECTIONS: Record<string, SortOrder> = {
+  name: "asc",
+  distance: "asc",      // closest first
+  radius: "desc",       // largest first
+  mass: "desc",         // most massive first
+  discovered: "desc",   // newest first
+};
+
 // Build ORDER BY clause for exoplanet queries
-function buildOrderByClause(sort?: ExoplanetSortOption): string {
-  switch (sort) {
+function buildOrderByClause(sort?: ExoplanetSortOption, order?: SortOrder): string {
+  const sortField = sort || "discovered";
+  const direction = order || DEFAULT_SORT_DIRECTIONS[sortField] || "asc";
+  const dirUpper = direction.toUpperCase();
+  const nullsPosition = direction === "asc" ? "LAST" : "FIRST";
+
+  switch (sortField) {
     case "name":
-      return "order by pl_name asc";
+      return `order by pl_name ${dirUpper}`;
     case "distance":
-      return "order by sy_dist asc nulls last, pl_name asc";
+      return `order by sy_dist ${dirUpper} nulls ${nullsPosition}, pl_name asc`;
     case "radius":
-      return "order by pl_rade desc nulls last, pl_name asc";
+      return `order by pl_rade ${dirUpper} nulls ${nullsPosition}, pl_name asc`;
     case "mass":
-      return "order by pl_masse desc nulls last, pl_name asc";
+      return `order by pl_masse ${dirUpper} nulls ${nullsPosition}, pl_name asc`;
     case "discovered":
     default:
-      // Default: newest discoveries first
-      return "order by disc_year desc nulls last, pl_name asc";
+      return `order by disc_year ${dirUpper} nulls ${nullsPosition}, pl_name asc`;
   }
 }
 
@@ -159,7 +173,7 @@ export function buildBrowseQuery(
   }
 
   const whereClause = conditions.join(" and ");
-  const orderByClause = buildOrderByClause(params.sort);
+  const orderByClause = buildOrderByClause(params.sort, params.order);
 
   return {
     // Important: stable secondary sort so paging is deterministic

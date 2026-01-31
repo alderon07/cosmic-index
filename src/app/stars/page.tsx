@@ -47,6 +47,7 @@ function StarsPageContent() {
   const maxDistancePcRaw = searchParams.get("maxDistancePc");
   const maxDistancePc = maxDistancePcRaw ? Number(maxDistancePcRaw) : undefined;
   const sort = (searchParams.get("sort") as StarFilters["sort"]) || undefined;
+  const order = (searchParams.get("order") as StarFilters["order"]) || undefined;
 
   const filters: StarFilters = useMemo(() => ({
     spectralClass,
@@ -54,7 +55,8 @@ function StarsPageContent() {
     multiPlanet,
     maxDistancePc,
     sort,
-  }), [spectralClass, minPlanets, multiPlanet, maxDistancePc, sort]);
+    order,
+  }), [spectralClass, minPlanets, multiPlanet, maxDistancePc, sort, order]);
 
   // Save current URL to sessionStorage for breadcrumb navigation
   useEffect(() => {
@@ -110,17 +112,20 @@ function StarsPageContent() {
     });
   }, [updateUrl]);
 
-  // Update filters in URL (resets to page 1)
+  // Update filters in URL (resets to page 1, except for sort/order changes)
   const handleFiltersChange = useCallback((newFilters: StarFilters) => {
+    const sortChanged = newFilters.sort !== filters.sort || newFilters.order !== filters.order;
     updateUrl({
       spectralClass: newFilters.spectralClass ?? null,
       minPlanets: newFilters.minPlanets?.toString() ?? null,
       multiPlanet: newFilters.multiPlanet ? "true" : null,
       maxDistancePc: newFilters.maxDistancePc?.toString() ?? null,
       sort: newFilters.sort ?? null,
-      page: null,
+      order: newFilters.order ?? null,
+      // Only reset page if something other than sort/order changed
+      page: sortChanged ? page.toString() : null,
     });
-  }, [updateUrl]);
+  }, [updateUrl, filters.sort, filters.order, page]);
 
   // Clear all filters from URL (resets to page 1)
   const handleFilterReset = useCallback(() => {
@@ -130,6 +135,7 @@ function StarsPageContent() {
       multiPlanet: null,
       maxDistancePc: null,
       sort: null,
+      order: null,
       page: null,
     });
   }, [updateUrl]);
@@ -148,6 +154,7 @@ function StarsPageContent() {
       if (filters.multiPlanet) params.set("multiPlanet", "true");
       if (filters.maxDistancePc) params.set("maxDistancePc", filters.maxDistancePc.toString());
       if (filters.sort) params.set("sort", filters.sort);
+      if (filters.order) params.set("order", filters.order);
       params.set("page", page.toString());
       params.set("limit", limit.toString());
 
@@ -209,6 +216,7 @@ function StarsPageContent() {
           filters={filters}
           onChange={handleFiltersChange}
           onReset={handleFilterReset}
+          theme={theme}
         />
       </div>
 

@@ -25,7 +25,7 @@ export async function generateMetadata({
   }
 
   const typeLabel = smallBody.bodyKind === "comet" ? "Comet" : "Asteroid";
-  const title = smallBody.displayName;
+  const title = `${smallBody.displayName} - ${typeLabel}`;
   const description = smallBody.summary.slice(0, 155);
 
   return {
@@ -41,7 +41,7 @@ export async function generateMetadata({
           url: "/og-image.png",
           width: 1200,
           height: 630,
-          alt: `${smallBody.displayName} - ${typeLabel}`,
+          alt: title,
         },
       ],
     },

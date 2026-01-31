@@ -8,19 +8,27 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { X, Filter, RotateCcw, ArrowUpDown, ChevronDown } from "lucide-react";
+import { X, Filter, RotateCcw, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   DISCOVERY_METHODS,
   DISCOVERY_FACILITIES,
   SIZE_CATEGORIES,
   SmallBodyKind,
   SizeCategory,
+  SortOrder,
   ASTEROID_ORBIT_CLASSES,
   COMET_ORBIT_CLASSES,
   SHARED_ORBIT_CLASSES,
   ORBIT_CLASSES,
 } from "@/lib/types";
-import { THEMES, COMET_THEME } from "@/lib/theme";
+import { THEMES, COMET_THEME, ThemeConfig } from "@/lib/theme";
 
 // Theme configs
 const exoplanetTheme = THEMES.exoplanets;
@@ -30,11 +38,11 @@ const smallBodyTheme = THEMES["small-bodies"];
 export type ExoplanetSort = "name" | "discovered" | "distance" | "radius" | "mass";
 
 const EXOPLANET_SORT_OPTIONS = [
-  { value: "discovered", label: "Newest First" },
-  { value: "name", label: "Name (A-Z)" },
-  { value: "distance", label: "Closest" },
-  { value: "radius", label: "Largest (Radius)" },
-  { value: "mass", label: "Most Massive" },
+  { value: "discovered", label: "Discovery Year" },
+  { value: "name", label: "Name" },
+  { value: "distance", label: "Distance" },
+  { value: "radius", label: "Radius" },
+  { value: "mass", label: "Mass" },
 ] as const;
 
 // Exoplanet Filter Types
@@ -49,6 +57,7 @@ export interface ExoplanetFilters {
   multiPlanet?: boolean;
   maxDistancePc?: number;
   sort?: ExoplanetSort;
+  order?: SortOrder;
 }
 
 // Distance-from-Earth presets (parsecs)
@@ -72,6 +81,7 @@ interface ExoplanetFilterPanelProps {
   filters: ExoplanetFilters;
   onChange: (filters: ExoplanetFilters) => void;
   onReset: () => void;
+  theme?: ThemeConfig;
 }
 
 interface SmallBodyFilterPanelProps {
@@ -165,6 +175,7 @@ export function ExoplanetFilterPanel({
   filters,
   onChange,
   onReset,
+  theme = exoplanetTheme,
 }: ExoplanetFilterPanelProps) {
   const activeCount = countExoplanetFilters(filters);
 
@@ -256,26 +267,51 @@ export function ExoplanetFilterPanel({
 
       {/* Sort Selector */}
       <div className="flex items-center gap-3">
-        <label htmlFor="exoplanet-filter-sort" className="flex items-center gap-1.5 text-xs text-muted-foreground uppercase tracking-wider">
-          <ArrowUpDown className={`w-3.5 h-3.5 ${exoplanetTheme.text}`} />
+        <label className="flex items-center gap-1.5 text-xs text-muted-foreground uppercase tracking-wider">
+          <ArrowUpDown className={`w-3.5 h-3.5 ${theme.text}`} />
           Sort
         </label>
-        <div className="relative">
-          <select
-            id="exoplanet-filter-sort"
-            value={filters.sort || "discovered"}
-            onChange={(e) =>
-              updateFilter("sort", e.target.value as ExoplanetSort)
-            }
-            className="appearance-none pl-3 pr-8 py-1.5 bg-card border border-primary/30 rounded-md text-sm text-foreground font-mono cursor-pointer transition-all duration-200 hover:border-primary/50 hover:bg-card/80 focus:outline-none focus:ring-1 focus:ring-primary/50 focus:border-primary/60"
-          >
+        <Select
+          value={filters.sort || "discovered"}
+          onValueChange={(value) => updateFilter("sort", value as ExoplanetSort)}
+        >
+          <SelectTrigger className={`w-auto font-mono ${theme.sortSelect}`}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
             {EXOPLANET_SORT_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
+              <SelectItem key={option.value} value={option.value} className={theme.selectItemFocus}>
                 {option.label}
-              </option>
+              </SelectItem>
             ))}
-          </select>
-          <ChevronDown className={`absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 ${exoplanetTheme.text} opacity-70 pointer-events-none`} />
+          </SelectContent>
+        </Select>
+        {/* Sort Order Toggle */}
+        <div className={`flex rounded-md border ${theme.sortOrderBorder} overflow-hidden`}>
+          <button
+            type="button"
+            onClick={() => updateFilter("order", "asc")}
+            className={`p-1.5 transition-colors ${
+              filters.order === "asc" || (!filters.order && (filters.sort === "name" || filters.sort === "distance"))
+                ? theme.sortOrderSelected
+                : "bg-card hover:bg-card/80 text-muted-foreground hover:text-foreground"
+            }`}
+            title="Ascending"
+          >
+            <ArrowUp className="w-4 h-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => updateFilter("order", "desc")}
+            className={`p-1.5 transition-colors border-l ${theme.sortOrderBorder} ${
+              filters.order === "desc" || (!filters.order && filters.sort !== "name" && filters.sort !== "distance")
+                ? theme.sortOrderSelected
+                : "bg-card hover:bg-card/80 text-muted-foreground hover:text-foreground"
+            }`}
+            title="Descending"
+          >
+            <ArrowDown className="w-4 h-4" />
+          </button>
         </div>
       </div>
 
@@ -287,7 +323,7 @@ export function ExoplanetFilterPanel({
         >
           <AccordionTrigger className="hover:no-underline">
             <div className="flex items-center gap-2">
-              <Filter className={`w-4 h-4 ${exoplanetTheme.text}`} />
+              <Filter className={`w-4 h-4 ${theme.text}`} />
               <span className="font-display">Filters</span>
               {activeCount > 0 && (
                 <Badge variant="default" className="ml-2 text-xs">
@@ -328,68 +364,77 @@ export function ExoplanetFilterPanel({
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* Discovery Facility */}
               <div>
-                <label htmlFor="filter-facility" className="text-xs text-muted-foreground uppercase tracking-wider block mb-2">
+                <label className="text-xs text-muted-foreground uppercase tracking-wider block mb-2">
                   Discovery Facility
                 </label>
-                <select
-                  id="filter-facility"
-                  value={filters.facility || ""}
-                  onChange={(e) =>
-                    updateFilter("facility", e.target.value || undefined)
+                <Select
+                  value={filters.facility || "all"}
+                  onValueChange={(value) =>
+                    updateFilter("facility", value === "all" ? undefined : value)
                   }
-                  className="w-full px-3 py-2 bg-input border border-border rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-primary"
                 >
-                  <option value="">All Facilities</option>
-                  {DISCOVERY_FACILITIES.map((facility) => (
-                    <option key={facility} value={facility}>
-                      {facility}
-                    </option>
-                  ))}
-                </select>
+                  <SelectTrigger className={`w-full ${theme.sortSelect}`}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all" className={theme.selectItemFocus}>All Facilities</SelectItem>
+                    {DISCOVERY_FACILITIES.map((facility) => (
+                      <SelectItem key={facility} value={facility} className={theme.selectItemFocus}>
+                        {facility}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               {/* Discovery Year */}
               <div>
-                <label htmlFor="filter-year" className="text-xs text-muted-foreground uppercase tracking-wider block mb-2">
+                <label className="text-xs text-muted-foreground uppercase tracking-wider block mb-2">
                   Discovery Year
                 </label>
-                <select
-                  id="filter-year"
-                  value={filters.year || ""}
-                  onChange={(e) =>
-                    updateFilter("year", e.target.value ? parseInt(e.target.value, 10) : undefined)
+                <Select
+                  value={filters.year?.toString() || "all"}
+                  onValueChange={(value) =>
+                    updateFilter("year", value === "all" ? undefined : parseInt(value, 10))
                   }
-                  className="w-full px-3 py-2 bg-input border border-border rounded-md text-sm font-mono focus:outline-none focus:ring-1 focus:ring-primary"
                 >
-                  <option value="">All Years</option>
-                  {YEAR_OPTIONS.slice().reverse().map((year) => (
-                    <option key={year} value={year}>
-                      {year}
-                    </option>
-                  ))}
-                </select>
+                  <SelectTrigger className={`w-full font-mono ${theme.sortSelect}`}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all" className={theme.selectItemFocus}>All Years</SelectItem>
+                    {YEAR_OPTIONS.slice().reverse().map((year) => (
+                      <SelectItem key={year} value={year.toString()} className={theme.selectItemFocus}>
+                        {year}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               {/* Max Distance from Earth */}
               <div>
-                <label htmlFor="filter-max-distance" className="text-xs text-muted-foreground uppercase tracking-wider block mb-2">
+                <label className="text-xs text-muted-foreground uppercase tracking-wider block mb-2">
                   Max Distance
                 </label>
-                <select
-                  id="filter-max-distance"
-                  value={filters.maxDistancePc || ""}
-                  onChange={(e) =>
-                    updateFilter("maxDistancePc", e.target.value ? Number(e.target.value) : undefined)
+                <Select
+                  value={filters.maxDistancePc?.toString() || "all"}
+                  onValueChange={(value) =>
+                    updateFilter("maxDistancePc", value === "all" ? undefined : Number(value))
                   }
-                  className="w-full px-3 py-2 bg-input border border-border rounded-md text-sm font-mono focus:outline-none focus:ring-1 focus:ring-primary"
                 >
-                  <option value="">Any Distance</option>
-                  {DISTANCE_PRESETS.map((preset) => (
-                    <option key={preset.value} value={preset.value}>
-                      {preset.label}
-                    </option>
-                  ))}
-                </select>
+                  <SelectTrigger className={`w-full font-mono ${theme.sortSelect}`}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all" className={theme.selectItemFocus}>Any Distance</SelectItem>
+                    {DISTANCE_PRESETS.map((preset) => (
+                      <SelectItem key={preset.value} value={preset.value.toString()} className={theme.selectItemFocus}>
+                        {preset.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 

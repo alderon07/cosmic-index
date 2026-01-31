@@ -2,6 +2,7 @@ import { createClient, Client } from "@libsql/client";
 import {
   StarData,
   StarQueryParams,
+  SortOrder,
   PaginatedResponse,
   SpectralClass,
   createSlug,
@@ -182,20 +183,35 @@ function buildWhereClause(params: StarQueryParams): {
   return { clause, args };
 }
 
+// Default sort directions for each sort option
+const DEFAULT_STAR_SORT_DIRECTIONS: Record<string, SortOrder> = {
+  name: "asc",
+  distance: "asc",        // closest first
+  vmag: "asc",            // brightest first (lower = brighter)
+  planetCount: "asc",     // fewest planets first
+  planetCountDesc: "desc", // most planets first (backwards compat)
+};
+
 // Build ORDER BY clause for star queries
-function buildOrderByClause(sort?: StarQueryParams["sort"]): string {
-  switch (sort) {
+function buildOrderByClause(sort?: StarQueryParams["sort"], order?: SortOrder): string {
+  const sortField = sort || "name";
+  const direction = order || DEFAULT_STAR_SORT_DIRECTIONS[sortField] || "asc";
+  const dirUpper = direction.toUpperCase();
+  const nullsPosition = direction === "asc" ? "LAST" : "FIRST";
+
+  switch (sortField) {
     case "distance":
-      return "ORDER BY distance_parsecs ASC NULLS LAST, hostname ASC";
+      return `ORDER BY distance_parsecs ${dirUpper} NULLS ${nullsPosition}, hostname ASC`;
     case "vmag":
-      return "ORDER BY vmag ASC NULLS LAST, hostname ASC";
+      return `ORDER BY vmag ${dirUpper} NULLS ${nullsPosition}, hostname ASC`;
     case "planetCount":
-      return "ORDER BY planet_count ASC, hostname ASC";
+      return `ORDER BY planet_count ${dirUpper}, hostname ASC`;
     case "planetCountDesc":
+      // For backwards compat, planetCountDesc ignores user order (always desc)
       return "ORDER BY planet_count DESC, hostname ASC";
     case "name":
     default:
-      return "ORDER BY hostname ASC";
+      return `ORDER BY hostname ${dirUpper}`;
   }
 }
 
@@ -220,7 +236,7 @@ export async function searchStars(
   const offset = (page - 1) * limit;
 
   const { clause, args } = buildWhereClause(params);
-  const orderBy = buildOrderByClause(params.sort);
+  const orderBy = buildOrderByClause(params.sort, params.order);
 
   // Get total count
   const countQuery = `SELECT COUNT(*) as total FROM stars ${clause}`;

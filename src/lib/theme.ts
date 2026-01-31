@@ -34,6 +34,11 @@ export interface ThemeConfig {
   filterBadge: string;
   // Focus ring
   focusRing: string;
+  // Sort order toggle button classes
+  sortOrderBorder: string;
+  sortOrderSelected: string;
+  // Select item focus state
+  selectItemFocus: string;
 }
 
 export const THEMES: Record<ObjectTheme, ThemeConfig> = {
@@ -54,6 +59,9 @@ export const THEMES: Record<ObjectTheme, ThemeConfig> = {
     sortSelect: "border-primary/30 hover:border-primary/50 focus:ring-primary/50 focus:border-primary/60",
     filterBadge: "",
     focusRing: "focus:ring-primary",
+    sortOrderBorder: "border-primary/30",
+    sortOrderSelected: "bg-primary/20 text-primary",
+    selectItemFocus: "focus:bg-primary/20 focus:text-primary",
   },
   stars: {
     colorName: "uranium-green",
@@ -72,6 +80,9 @@ export const THEMES: Record<ObjectTheme, ThemeConfig> = {
     sortSelect: "border-uranium-green/30 hover:border-uranium-green/50 focus:ring-uranium-green/50 focus:border-uranium-green/60",
     filterBadge: "border-uranium-green/50 text-uranium-green",
     focusRing: "focus:ring-uranium-green",
+    sortOrderBorder: "border-uranium-green/30",
+    sortOrderSelected: "bg-uranium-green/20 text-uranium-green",
+    selectItemFocus: "focus:bg-uranium-green/20 focus:text-uranium-green",
   },
   "small-bodies": {
     colorName: "secondary",
@@ -90,6 +101,9 @@ export const THEMES: Record<ObjectTheme, ThemeConfig> = {
     sortSelect: "border-secondary/30 hover:border-secondary/50 focus:ring-secondary/50 focus:border-secondary/60",
     filterBadge: "border-secondary/50 text-secondary",
     focusRing: "focus:ring-secondary",
+    sortOrderBorder: "border-secondary/30",
+    sortOrderSelected: "bg-secondary/20 text-secondary",
+    selectItemFocus: "focus:bg-secondary/20 focus:text-secondary",
   },
 };
 

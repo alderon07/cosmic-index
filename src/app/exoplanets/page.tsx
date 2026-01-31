@@ -10,7 +10,10 @@ import { ExoplanetFilterPanel, ExoplanetFilters } from "@/components/filter-pane
 import { Pagination, PaginationInfo } from "@/components/pagination";
 import { AnyCosmicObject, ExoplanetData, PaginatedResponse } from "@/lib/types";
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "@/lib/constants";
+import { THEMES } from "@/lib/theme";
 import { Circle } from "lucide-react";
+
+const theme = THEMES.exoplanets;
 
 function ExoplanetsPageContent() {
   const searchParams = useSearchParams();
@@ -48,6 +51,7 @@ function ExoplanetsPageContent() {
   const maxDistancePcRaw = searchParams.get("maxDistancePc");
   const maxDistancePc = maxDistancePcRaw ? Number(maxDistancePcRaw) : undefined;
   const sort = (searchParams.get("sort") as ExoplanetFilters["sort"]) || undefined;
+  const order = (searchParams.get("order") as ExoplanetFilters["order"]) || undefined;
 
   const filters: ExoplanetFilters = useMemo(() => ({
     discoveryMethod,
@@ -60,7 +64,8 @@ function ExoplanetsPageContent() {
     multiPlanet,
     maxDistancePc,
     sort,
-  }), [discoveryMethod, year, hasRadius, hasMass, sizeCategory, habitable, facility, multiPlanet, maxDistancePc, sort]);
+    order,
+  }), [discoveryMethod, year, hasRadius, hasMass, sizeCategory, habitable, facility, multiPlanet, maxDistancePc, sort, order]);
 
   // Save current URL to sessionStorage for breadcrumb navigation
   useEffect(() => {
@@ -116,9 +121,9 @@ function ExoplanetsPageContent() {
     });
   }, [updateUrl]);
 
-  // Update filters in URL (resets to page 1, except for sort changes)
+  // Update filters in URL (resets to page 1, except for sort/order changes)
   const handleFiltersChange = useCallback((newFilters: ExoplanetFilters) => {
-    const sortChanged = newFilters.sort !== filters.sort;
+    const sortChanged = newFilters.sort !== filters.sort || newFilters.order !== filters.order;
     updateUrl({
       discoveryMethod: newFilters.discoveryMethod ?? null,
       year: newFilters.year?.toString() ?? null,
@@ -130,10 +135,11 @@ function ExoplanetsPageContent() {
       multiPlanet: newFilters.multiPlanet ? "true" : null,
       maxDistancePc: newFilters.maxDistancePc?.toString() ?? null,
       sort: newFilters.sort ?? null,
-      // Only reset page if something other than sort changed
+      order: newFilters.order ?? null,
+      // Only reset page if something other than sort/order changed
       page: sortChanged ? page.toString() : null,
     });
-  }, [updateUrl, filters.sort, page]);
+  }, [updateUrl, filters.sort, filters.order, page]);
 
   // Clear all filters from URL (resets to page 1, keeps sort)
   const handleFilterReset = useCallback(() => {
@@ -171,6 +177,7 @@ function ExoplanetsPageContent() {
       if (filters.multiPlanet) params.set("multiPlanet", "true");
       if (filters.maxDistancePc) params.set("maxDistancePc", filters.maxDistancePc.toString());
       if (filters.sort) params.set("sort", filters.sort);
+      if (filters.order) params.set("order", filters.order);
       params.set("page", page.toString());
       params.set("limit", limit.toString());
 
@@ -233,6 +240,7 @@ function ExoplanetsPageContent() {
           filters={filters}
           onChange={handleFiltersChange}
           onReset={handleFilterReset}
+          theme={theme}
         />
       </div>
 
