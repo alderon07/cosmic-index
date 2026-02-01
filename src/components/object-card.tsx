@@ -70,6 +70,22 @@ export function ObjectCard({ object, onModalOpen }: ObjectCardProps) {
     ? "hover:border-radium-teal/50 hover:glow-teal"
     : "hover:border-secondary/50 hover:glow-amber";
 
+  // View page icon hover: match theme of the card
+  const iconLinkHover = isExoplanet(object)
+    ? "hover:bg-primary/20"
+    : isStar(object)
+    ? "hover:bg-uranium-green/20"
+    : isSmallBody(object) && object.bodyKind === "comet"
+    ? "hover:bg-radium-teal/20"
+    : "hover:bg-secondary/20";
+  const iconHoverText = isExoplanet(object)
+    ? "hover:text-primary"
+    : isStar(object)
+    ? "hover:text-uranium-green"
+    : isSmallBody(object) && object.bodyKind === "comet"
+    ? "hover:text-radium-teal"
+    : "hover:text-secondary";
+
   // Get first 3-4 key facts
   const displayFacts = object.keyFacts.slice(0, 4);
 
@@ -116,10 +132,10 @@ export function ObjectCard({ object, onModalOpen }: ObjectCardProps) {
           target="_blank"
           rel="noopener noreferrer"
           onClick={handleNavigateClick}
-          className="absolute bottom-3 right-3 z-10 p-1.5 rounded-md bg-background/80 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-primary/20"
+          className={`absolute bottom-3 right-3 z-10 p-1.5 rounded-md bg-background/80 opacity-0 group-hover:opacity-100 transition-opacity ${iconLinkHover}`}
           aria-label={`Go to ${object.displayName} detail page (opens in new tab)`}
         >
-          <SquareArrowOutUpRight className="w-4 h-4 text-muted-foreground hover:text-primary transition-colors" />
+          <SquareArrowOutUpRight className={`w-4 h-4 text-muted-foreground transition-colors ${iconHoverText}`} />
         </Link>
       )}
 
