@@ -74,7 +74,7 @@ export default function HomePage() {
                 <Button
                   size="lg"
                   variant="outline"
-                  className="font-display gap-2"
+                  className="font-display gap-2 border-uranium-green/50 text-uranium-green hover:bg-uranium-green/10 hover:border-uranium-green"
                 >
                   <Star className="w-5 h-5" />
                   Browse Stars
@@ -84,7 +84,7 @@ export default function HomePage() {
                 <Button
                   size="lg"
                   variant="outline"
-                  className="font-display gap-2"
+                  className="font-display gap-2 border-secondary/50 text-secondary hover:bg-secondary/10 hover:border-secondary"
                 >
                   <CircleDot className="w-5 h-5" />
                   Browse Small Bodies
@@ -102,7 +102,7 @@ export default function HomePage() {
       {/* Feature Sections */}
       <section className="container mx-auto px-4 py-16 md:py-24">
         <div className="grid md:grid-cols-3 gap-8 md:gap-12">
-          {/* Exoplanets Section */}
+          {/* Exoplanets Section — primary (reactor orange) theme */}
           <Card className="bg-card border-border/50 bezel scanlines overflow-hidden group hover:border-primary/50 transition-colors">
             <CardHeader className="pb-4">
               <div className="w-12 h-12 rounded-lg bg-primary/20 flex items-center justify-center mb-4 group-hover:glow-orange transition-all">
@@ -119,20 +119,20 @@ export default function HomePage() {
               </p>
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li className="flex items-center gap-2">
-                  <Circle className="w-4 h-4 text-secondary" />
+                  <Circle className="w-4 h-4 text-primary shrink-0" />
                   5,000+ confirmed planets
                 </li>
                 <li className="flex items-center gap-2">
-                  <Telescope className="w-4 h-4 text-secondary" />
+                  <Telescope className="w-4 h-4 text-primary shrink-0" />
                   Multiple discovery methods
                 </li>
                 <li className="flex items-center gap-2">
-                  <Circle className="w-4 h-4 text-secondary" />
+                  <Circle className="w-4 h-4 text-primary shrink-0" />
                   Physical & orbital data
                 </li>
               </ul>
               <Link href="/exoplanets" className="inline-block">
-                <Button variant="ghost" className="gap-2 group/btn">
+                <Button variant="ghost" className="gap-2 group/btn text-primary hover:text-primary hover:bg-primary/10">
                   Browse Exoplanets
                   <ArrowRight className="w-4 h-4 group-hover/btn:translate-x-1 transition-transform" />
                 </Button>
@@ -140,11 +140,11 @@ export default function HomePage() {
             </CardContent>
           </Card>
 
-          {/* Stars Section */}
-          <Card className="bg-card border-border/50 bezel scanlines overflow-hidden group hover:border-amber-500/50 transition-colors">
+          {/* Stars Section — uranium-green theme */}
+          <Card className="bg-card border-border/50 bezel scanlines overflow-hidden group hover:border-uranium-green/50 transition-colors">
             <CardHeader className="pb-4">
-              <div className="w-12 h-12 rounded-lg bg-amber-500/20 flex items-center justify-center mb-4 group-hover:glow-amber transition-all">
-                <Star className="w-6 h-6 text-amber-500" />
+              <div className="w-12 h-12 rounded-lg bg-uranium-green/20 flex items-center justify-center mb-4 group-hover:glow-uranium transition-all">
+                <Star className="w-6 h-6 text-uranium-green" />
               </div>
               <CardTitle className="font-display text-2xl">Stars</CardTitle>
             </CardHeader>
@@ -155,20 +155,20 @@ export default function HomePage() {
               </p>
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li className="flex items-center gap-2">
-                  <Star className="w-4 h-4 text-primary" />
+                  <Star className="w-4 h-4 text-uranium-green shrink-0" />
                   4,500+ host stars
                 </li>
                 <li className="flex items-center gap-2">
-                  <Sun className="w-4 h-4 text-primary" />
+                  <Sun className="w-4 h-4 text-uranium-green shrink-0" />
                   Spectral classifications
                 </li>
                 <li className="flex items-center gap-2">
-                  <Orbit className="w-4 h-4 text-primary" />
+                  <Orbit className="w-4 h-4 text-uranium-green shrink-0" />
                   Linked planetary systems
                 </li>
               </ul>
               <Link href="/stars" className="inline-block">
-                <Button variant="ghost" className="gap-2 group/btn">
+                <Button variant="ghost" className="gap-2 group/btn text-uranium-green hover:text-uranium-green hover:bg-uranium-green/10">
                   Browse Stars
                   <ArrowRight className="w-4 h-4 group-hover/btn:translate-x-1 transition-transform" />
                 </Button>
@@ -176,7 +176,7 @@ export default function HomePage() {
             </CardContent>
           </Card>
 
-          {/* Small Bodies Section */}
+          {/* Small Bodies Section — secondary (amber) theme */}
           <Card className="bg-card border-border/50 bezel scanlines overflow-hidden group hover:border-secondary/50 transition-colors">
             <CardHeader className="pb-4">
               <div className="w-12 h-12 rounded-lg bg-secondary/20 flex items-center justify-center mb-4 group-hover:glow-amber transition-all">
@@ -194,20 +194,20 @@ export default function HomePage() {
               </p>
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li className="flex items-center gap-2">
-                  <CircleDot className="w-4 h-4 text-primary" />
+                  <CircleDot className="w-4 h-4 text-secondary shrink-0" />
                   1,000,000+ asteroids & comets
                 </li>
                 <li className="flex items-center gap-2">
-                  <Orbit className="w-4 h-4 text-primary" />
+                  <Orbit className="w-4 h-4 text-secondary shrink-0" />
                   Near-Earth Objects (NEOs)
                 </li>
                 <li className="flex items-center gap-2">
-                  <Orbit className="w-4 h-4 text-primary" />
+                  <Orbit className="w-4 h-4 text-secondary shrink-0" />
                   Orbit classifications
                 </li>
               </ul>
               <Link href="/small-bodies" className="inline-block">
-                <Button variant="ghost" className="gap-2 group/btn">
+                <Button variant="ghost" className="gap-2 group/btn text-secondary hover:text-secondary hover:bg-secondary/10">
                   Browse Small Bodies
                   <ArrowRight className="w-4 h-4 group-hover/btn:translate-x-1 transition-transform" />
                 </Button>
@@ -268,12 +268,18 @@ export default function HomePage() {
               </Button>
             </Link>
             <Link href="/stars">
-              <Button variant="outline" className="font-display">
+              <Button
+                variant="outline"
+                className="font-display border-uranium-green/50 text-uranium-green hover:bg-uranium-green/10 hover:border-uranium-green"
+              >
                 Explore Stars
               </Button>
             </Link>
             <Link href="/small-bodies">
-              <Button variant="outline" className="font-display">
+              <Button
+                variant="outline"
+                className="font-display border-secondary/50 text-secondary hover:bg-secondary/10 hover:border-secondary"
+              >
                 Explore Small Bodies
               </Button>
             </Link>
