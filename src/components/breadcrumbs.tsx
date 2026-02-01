@@ -13,6 +13,7 @@ export interface BreadcrumbItem {
 interface BreadcrumbsProps {
   items: BreadcrumbItem[];
   className?: string;
+  linkHoverClassName?: string;
 }
 
 // Generate JSON-LD BreadcrumbList schema
@@ -45,7 +46,11 @@ function resolveListUrls(items: BreadcrumbItem[]): BreadcrumbItem[] {
   });
 }
 
-export function Breadcrumbs({ items, className = "" }: BreadcrumbsProps) {
+export function Breadcrumbs({
+  items,
+  className = "",
+  linkHoverClassName,
+}: BreadcrumbsProps) {
   // JSON-LD uses original items (canonical URLs for SEO)
   const jsonLd = generateBreadcrumbJsonLd(items);
 
@@ -86,7 +91,9 @@ export function Breadcrumbs({ items, className = "" }: BreadcrumbsProps) {
                 {item.href && !isLast ? (
                   <a
                     href={item.href}
-                    className="hover:text-primary transition-colors flex items-center gap-1"
+                    className={`transition-colors flex items-center gap-1 ${
+                      linkHoverClassName ?? "hover:text-primary"
+                    }`}
                   >
                     {isFirst && <Home className="w-4 h-4" />}
                     <span>{item.label}</span>

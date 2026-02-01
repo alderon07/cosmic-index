@@ -5,6 +5,7 @@ import { Breadcrumbs } from "@/components/breadcrumbs";
 import { fetchExoplanetBySlug } from "@/lib/nasa-exoplanet";
 import { ExoplanetData } from "@/lib/types";
 import { BASE_URL } from "@/lib/config";
+import { THEMES } from "@/lib/theme";
 
 interface ExoplanetDetailPageProps {
   params: Promise<{ id: string }>;
