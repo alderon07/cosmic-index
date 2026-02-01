@@ -152,7 +152,7 @@ export default async function SmallBodyDetailPage({
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
       <div className="container mx-auto px-4 py-8">
-        <Breadcrumbs items={breadcrumbItems} className="mb-6" linkHoverClassName={THEMES.smallBodies.hoverText} />
+        <Breadcrumbs items={breadcrumbItems} className="mb-6" linkHoverClassName={THEMES["small-bodies"].hoverText} />
         <ObjectDetail object={smallBody} />
       </div>
     </>

@@ -39,6 +39,8 @@ export interface ThemeConfig {
   sortOrderSelected: string;
   // Select item focus state
   selectItemFocus: string;
+  // Link/button hover text (e.g. hover:text-primary)
+  hoverText: string;
 }
 
 export const THEMES: Record<ObjectTheme, ThemeConfig> = {
@@ -63,6 +65,7 @@ export const THEMES: Record<ObjectTheme, ThemeConfig> = {
     sortOrderBorder: "border-primary/30",
     sortOrderSelected: "bg-primary/20 text-primary",
     selectItemFocus: "focus:bg-primary/20 focus:text-primary",
+    hoverText: "hover:text-primary",
   },
   stars: {
     colorName: "uranium-green",
@@ -87,8 +90,9 @@ export const THEMES: Record<ObjectTheme, ThemeConfig> = {
     sortOrderBorder: "border-uranium-green/30",
     sortOrderSelected: "bg-uranium-green/20 text-uranium-green",
     selectItemFocus: "focus:bg-uranium-green/20 focus:text-uranium-green",
+    hoverText: "hover:text-uranium-green",
   },
-  smallBodies: {
+  "small-bodies": {
     colorName: "secondary",
     text: "text-secondary",
     bg: "bg-secondary",
@@ -109,6 +113,7 @@ export const THEMES: Record<ObjectTheme, ThemeConfig> = {
     sortOrderBorder: "border-secondary/30",
     sortOrderSelected: "bg-secondary/20 text-secondary",
     selectItemFocus: "focus:bg-secondary/20 focus:text-secondary",
+    hoverText: "hover:text-secondary",
   },
 };
 
