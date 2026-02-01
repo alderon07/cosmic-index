@@ -1,12 +1,21 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Circle, CircleDot, Telescope, ArrowRight, Orbit, Rocket, Star, Sun } from "lucide-react";
+import {
+  Circle,
+  CircleDot,
+  Telescope,
+  ArrowRight,
+  Orbit,
+  Rocket,
+  Star,
+  Sun,
+} from "lucide-react";
 
 // Pre-computed star positions for deterministic rendering
 const STAR_POSITIONS = Array.from({ length: 50 }, (_, i) => ({
-  left: ((i * 37 + 13) % 100),
-  top: ((i * 53 + 7) % 100),
+  left: (i * 37 + 13) % 100,
+  top: (i * 53 + 7) % 100,
   animationDelay: ((i * 17) % 30) / 10,
   animationDuration: 2 + ((i * 23) % 20) / 10,
 }));
@@ -49,8 +58,9 @@ export default function HomePage() {
             </h1>
 
             <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-              An encyclopedia of cosmic objects. Explore thousands
-              of exoplanets, host stars, asteroids, and comets with data from NASA and JPL.
+              An encyclopedia of cosmic objects. Explore thousands of
+              exoplanets, host stars, asteroids, and comets with data from NASA
+              and JPL.
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -98,7 +108,9 @@ export default function HomePage() {
               <div className="w-12 h-12 rounded-lg bg-primary/20 flex items-center justify-center mb-4 group-hover:glow-orange transition-all">
                 <Circle className="w-6 h-6 text-primary" />
               </div>
-              <CardTitle className="font-display text-2xl">Exoplanets</CardTitle>
+              <CardTitle className="font-display text-2xl">
+                Exoplanets
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-muted-foreground">
@@ -138,8 +150,8 @@ export default function HomePage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-muted-foreground">
-                Discover host stars from NASA&apos;s Exoplanet Archive.
-                Explore stellar properties and their planetary systems.
+                Discover host stars from NASA&apos;s Exoplanet Archive. Explore
+                stellar properties and their planetary systems.
               </p>
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li className="flex items-center gap-2">
@@ -176,8 +188,9 @@ export default function HomePage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-muted-foreground">
-                Discover asteroids and comets from JPL&apos;s Small-Body Database.
-                Track near-Earth objects and potentially hazardous asteroids.
+                Discover asteroids and comets from JPL&apos;s Small-Body
+                Database. Track near-Earth objects and potentially hazardous
+                asteroids.
               </p>
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li className="flex items-center gap-2">

@@ -115,14 +115,14 @@ function generateStarJsonLd(star: StarData, slug: string) {
     url: `${BASE_URL}/stars/${slug}`,
     additionalProperty: additionalProperties,
     sameAs: [
-      `https://exoplanetarchive.ipac.caltech.edu/overview/${encodeURIComponent(star.hostname)}`,
+      `https://exoplanetarchive.ipac.caltech.edu/overview/${encodeURIComponent(
+        star.hostname
+      )}`,
     ],
   };
 }
 
-export default async function StarDetailPage({
-  params,
-}: StarDetailPageProps) {
+export default async function StarDetailPage({ params }: StarDetailPageProps) {
   const { id } = await params;
   const star = await getStarBySlug(id);
 
@@ -152,7 +152,11 @@ export default async function StarDetailPage({
         {/* Planets in this system */}
         {star.planetCount > 0 && (
           <div className="mt-8">
-            <StarPlanets starId={id} hostname={star.hostname} planetCount={star.planetCount} />
+            <StarPlanets
+              starId={id}
+              hostname={star.hostname}
+              planetCount={star.planetCount}
+            />
           </div>
         )}
 

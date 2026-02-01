@@ -8,11 +8,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ObjectDetail } from "@/components/object-detail";
-import {
-  AnyCosmicObject,
-  isExoplanet,
-  isStar,
-} from "@/lib/types";
+import { AnyCosmicObject, isExoplanet, isStar } from "@/lib/types";
 import { SquareArrowOutUpRight } from "lucide-react";
 
 interface ObjectDetailModalProps {

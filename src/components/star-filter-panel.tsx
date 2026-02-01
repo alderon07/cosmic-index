@@ -8,7 +8,14 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { X, Filter, RotateCcw, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import {
+  X,
+  Filter,
+  RotateCcw,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+} from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -123,7 +130,15 @@ export function StarFilterPanel({
   };
 
   // Spectral classes with color indicators (excludes "Unknown")
-  const spectralClasses: FilterableSpectralClass[] = ["O", "B", "A", "F", "G", "K", "M"];
+  const spectralClasses: FilterableSpectralClass[] = [
+    "O",
+    "B",
+    "A",
+    "F",
+    "G",
+    "K",
+    "M",
+  ];
 
   return (
     <div className="space-y-4">
@@ -175,26 +190,39 @@ export function StarFilterPanel({
         </label>
         <Select
           value={filters.sort || "name"}
-          onValueChange={(value) => updateFilter("sort", value as StarFilters["sort"])}
+          onValueChange={(value) =>
+            updateFilter("sort", value as StarFilters["sort"])
+          }
         >
           <SelectTrigger className={`w-auto font-mono ${theme.sortSelect}`}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
             {SORT_OPTIONS.map((option) => (
-              <SelectItem key={option.value} value={option.value} className={theme.selectItemFocus}>
+              <SelectItem
+                key={option.value}
+                value={option.value}
+                className={theme.selectItemFocus}
+              >
                 {option.label}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
         {/* Sort Order Toggle */}
-        <div className={`flex rounded-md border ${theme.sortOrderBorder} overflow-hidden`}>
+        <div
+          className={`flex rounded-md border ${theme.sortOrderBorder} overflow-hidden`}
+        >
           <button
             type="button"
             onClick={() => updateFilter("order", "asc")}
             className={`p-1.5 transition-colors ${
-              filters.order === "asc" || (!filters.order && (filters.sort === "name" || filters.sort === "distance" || filters.sort === "vmag" || filters.sort === "planetCount"))
+              filters.order === "asc" ||
+              (!filters.order &&
+                (filters.sort === "name" ||
+                  filters.sort === "distance" ||
+                  filters.sort === "vmag" ||
+                  filters.sort === "planetCount"))
                 ? theme.sortOrderSelected
                 : "bg-card hover:bg-card/80 text-muted-foreground hover:text-foreground"
             }`}
@@ -205,8 +233,11 @@ export function StarFilterPanel({
           <button
             type="button"
             onClick={() => updateFilter("order", "desc")}
-            className={`p-1.5 transition-colors border-l ${theme.sortOrderBorder} ${
-              filters.order === "desc" || (!filters.order && filters.sort === "planetCountDesc")
+            className={`p-1.5 transition-colors border-l ${
+              theme.sortOrderBorder
+            } ${
+              filters.order === "desc" ||
+              (!filters.order && filters.sort === "planetCountDesc")
                 ? theme.sortOrderSelected
                 : "bg-card hover:bg-card/80 text-muted-foreground hover:text-foreground"
             }`}
@@ -228,7 +259,10 @@ export function StarFilterPanel({
               <Filter className={`w-4 h-4 ${theme.text}`} />
               <span className="font-display">Filters</span>
               {activeCount > 0 && (
-                <Badge variant="outline" className={`ml-2 text-xs ${theme.filterBadge}`}>
+                <Badge
+                  variant="outline"
+                  className={`ml-2 text-xs ${theme.filterBadge}`}
+                >
                   {activeCount}
                 </Badge>
               )}
@@ -255,7 +289,9 @@ export function StarFilterPanel({
                           isSelected ? undefined : sc
                         )
                       }
-                      className={`text-xs relative ${isSelected ? theme.selectedButton : ""}`}
+                      className={`text-xs relative ${
+                        isSelected ? theme.selectedButton : ""
+                      }`}
                       title={`${info.description} (${info.tempRange})`}
                     >
                       <span
@@ -286,10 +322,16 @@ export function StarFilterPanel({
                     onClick={() =>
                       updateFilter(
                         "minPlanets",
-                        filters.minPlanets === preset.value ? undefined : preset.value
+                        filters.minPlanets === preset.value
+                          ? undefined
+                          : preset.value
                       )
                     }
-                    className={`text-xs ${filters.minPlanets === preset.value ? theme.selectedButton : ""}`}
+                    className={`text-xs ${
+                      filters.minPlanets === preset.value
+                        ? theme.selectedButton
+                        : ""
+                    }`}
                   >
                     {preset.label}
                   </Button>
@@ -305,16 +347,27 @@ export function StarFilterPanel({
               <Select
                 value={filters.maxDistancePc?.toString() || "all"}
                 onValueChange={(value) =>
-                  updateFilter("maxDistancePc", value === "all" ? undefined : Number(value))
+                  updateFilter(
+                    "maxDistancePc",
+                    value === "all" ? undefined : Number(value)
+                  )
                 }
               >
-                <SelectTrigger className={`w-full md:w-64 font-mono ${theme.sortSelect}`}>
+                <SelectTrigger
+                  className={`w-full md:w-64 font-mono ${theme.sortSelect}`}
+                >
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all" className={theme.selectItemFocus}>Any Distance</SelectItem>
+                  <SelectItem value="all" className={theme.selectItemFocus}>
+                    Any Distance
+                  </SelectItem>
                   {DISTANCE_PRESETS.map((preset) => (
-                    <SelectItem key={preset.value} value={preset.value.toString()} className={theme.selectItemFocus}>
+                    <SelectItem
+                      key={preset.value}
+                      value={preset.value.toString()}
+                      className={theme.selectItemFocus}
+                    >
                       {preset.label}
                     </SelectItem>
                   ))}

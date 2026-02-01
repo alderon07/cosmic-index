@@ -8,12 +8,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import {
-  AnyCosmicObject,
-  isExoplanet,
-  isSmallBody,
-  isStar,
-} from "@/lib/types";
+import { AnyCosmicObject, isExoplanet, isSmallBody, isStar } from "@/lib/types";
 import { NasaImageGallery } from "./nasa-image-gallery";
 import {
   ExternalLink,
@@ -32,7 +27,11 @@ interface ObjectDetailProps {
   compact?: boolean;
 }
 
-export function ObjectDetail({ object, hideDataSources, compact }: ObjectDetailProps) {
+export function ObjectDetail({
+  object,
+  hideDataSources,
+  compact,
+}: ObjectDetailProps) {
   const typeLabel = isExoplanet(object)
     ? "Exoplanet"
     : isStar(object)
@@ -50,8 +49,22 @@ export function ObjectDetail({ object, hideDataSources, compact }: ObjectDetailP
         <div className="relative z-10">
           <div className="flex flex-wrap items-start gap-3 mb-4">
             <Badge
-              variant={isExoplanet(object) ? "default" : isStar(object) ? "outline" : isSmallBody(object) && object.bodyKind === "comet" ? "outline" : "secondary"}
-              className={`font-mono ${isStar(object) ? "border-uranium-green/50 text-uranium-green bg-uranium-green/10" : isSmallBody(object) && object.bodyKind === "comet" ? "border-radium-teal/50 text-radium-teal bg-radium-teal/10" : ""}`}
+              variant={
+                isExoplanet(object)
+                  ? "default"
+                  : isStar(object)
+                  ? "outline"
+                  : isSmallBody(object) && object.bodyKind === "comet"
+                  ? "outline"
+                  : "secondary"
+              }
+              className={`font-mono ${
+                isStar(object)
+                  ? "border-uranium-green/50 text-uranium-green bg-uranium-green/10"
+                  : isSmallBody(object) && object.bodyKind === "comet"
+                  ? "border-radium-teal/50 text-radium-teal bg-radium-teal/10"
+                  : ""
+              }`}
             >
               {typeLabel}
             </Badge>
@@ -162,7 +175,15 @@ export function ObjectDetail({ object, hideDataSources, compact }: ObjectDetailP
       {/* Detailed Sections */}
       <Accordion
         type="multiple"
-        defaultValue={["physical", "orbital", "host-star", "discovery", "stellar", "system", "coordinates"]}
+        defaultValue={[
+          "physical",
+          "orbital",
+          "host-star",
+          "discovery",
+          "stellar",
+          "system",
+          "coordinates",
+        ]}
         className="space-y-2"
       >
         {isExoplanet(object) && (
@@ -192,7 +213,13 @@ export function ObjectDetail({ object, hideDataSources, compact }: ObjectDetailP
                       {object.massEarth?.toFixed(2) ?? "Unknown"}
                     </p>
                     {object.massEarth !== undefined && (
-                      <p className={`text-xs mt-0.5 ${object.massIsEstimated ? "text-amber-glow/80" : "text-muted-foreground"}`}>
+                      <p
+                        className={`text-xs mt-0.5 ${
+                          object.massIsEstimated
+                            ? "text-amber-glow/80"
+                            : "text-muted-foreground"
+                        }`}
+                      >
                         {object.massIsEstimated ? "Estimated" : "Measured"}
                       </p>
                     )}
@@ -236,7 +263,9 @@ export function ObjectDetail({ object, hideDataSources, compact }: ObjectDetailP
                     </p>
                     <p className="font-mono text-sm sm:text-lg break-words">
                       {object.distanceParsecs != null
-                        ? `${object.distanceParsecs.toFixed(1)} pc (~${(object.distanceParsecs * 3.26156).toFixed(0)} ly)`
+                        ? `${object.distanceParsecs.toFixed(1)} pc (~${(
+                            object.distanceParsecs * 3.26156
+                          ).toFixed(0)} ly)`
                         : "Unknown"}
                     </p>
                   </div>
@@ -262,9 +291,7 @@ export function ObjectDetail({ object, hideDataSources, compact }: ObjectDetailP
                     </p>
                   </div>
                   <div className="min-w-0">
-                    <p className="text-xs text-muted-foreground">
-                      Temperature
-                    </p>
+                    <p className="text-xs text-muted-foreground">Temperature</p>
                     <p className="font-mono text-sm sm:text-lg break-all">
                       {object.starTempK != null
                         ? `${object.starTempK.toFixed(0)} K`
@@ -292,9 +319,7 @@ export function ObjectDetail({ object, hideDataSources, compact }: ObjectDetailP
                     </p>
                   </div>
                   <div className="min-w-0">
-                    <p className="text-xs text-muted-foreground">
-                      Luminosity
-                    </p>
+                    <p className="text-xs text-muted-foreground">Luminosity</p>
                     <p className="font-mono text-sm sm:text-lg break-all">
                       {object.starLuminosity != null
                         ? `${object.starLuminosity.toFixed(2)} log L☉`
@@ -346,7 +371,9 @@ export function ObjectDetail({ object, hideDataSources, compact }: ObjectDetailP
                     <p className="text-xs text-muted-foreground">
                       Discovery Method
                     </p>
-                    <p className="font-mono text-sm sm:text-lg break-words">{object.discoveryMethod}</p>
+                    <p className="font-mono text-sm sm:text-lg break-words">
+                      {object.discoveryMethod}
+                    </p>
                   </div>
                   <div className="min-w-0">
                     <p className="text-xs text-muted-foreground">
@@ -404,7 +431,9 @@ export function ObjectDetail({ object, hideDataSources, compact }: ObjectDetailP
                 <div className="grid grid-cols-2 gap-3 sm:gap-4">
                   <div className="min-w-0">
                     <p className="text-xs text-muted-foreground">Orbit Class</p>
-                    <p className="font-mono text-sm sm:text-lg break-words">{object.orbitClass}</p>
+                    <p className="font-mono text-sm sm:text-lg break-words">
+                      {object.orbitClass}
+                    </p>
                   </div>
                   <div className="min-w-0">
                     <p className="text-xs text-muted-foreground">Body Type</p>
@@ -446,7 +475,9 @@ export function ObjectDetail({ object, hideDataSources, compact }: ObjectDetailP
               <AccordionContent className="pb-4">
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
                   <div className="min-w-0">
-                    <p className="text-xs text-muted-foreground">Spectral Type</p>
+                    <p className="text-xs text-muted-foreground">
+                      Spectral Type
+                    </p>
                     <p className="font-mono text-sm sm:text-lg break-all">
                       {object.spectralType ?? "Unknown"}
                     </p>
@@ -460,7 +491,9 @@ export function ObjectDetail({ object, hideDataSources, compact }: ObjectDetailP
                     </p>
                   </div>
                   <div className="min-w-0">
-                    <p className="text-xs text-muted-foreground">Mass (Solar)</p>
+                    <p className="text-xs text-muted-foreground">
+                      Mass (Solar)
+                    </p>
                     <p className="font-mono text-sm sm:text-lg break-all">
                       {object.starMassSolar != null
                         ? `${object.starMassSolar.toFixed(2)} M☉`
@@ -468,7 +501,9 @@ export function ObjectDetail({ object, hideDataSources, compact }: ObjectDetailP
                     </p>
                   </div>
                   <div className="min-w-0">
-                    <p className="text-xs text-muted-foreground">Radius (Solar)</p>
+                    <p className="text-xs text-muted-foreground">
+                      Radius (Solar)
+                    </p>
                     <p className="font-mono text-sm sm:text-lg break-all">
                       {object.starRadiusSolar != null
                         ? `${object.starRadiusSolar.toFixed(2)} R☉`
@@ -484,7 +519,9 @@ export function ObjectDetail({ object, hideDataSources, compact }: ObjectDetailP
                     </p>
                   </div>
                   <div className="min-w-0">
-                    <p className="text-xs text-muted-foreground truncate">Metallicity [Fe/H]</p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      Metallicity [Fe/H]
+                    </p>
                     <p className="font-mono text-sm sm:text-lg break-all">
                       {object.metallicityFeH != null
                         ? object.metallicityFeH.toFixed(2)
@@ -517,7 +554,9 @@ export function ObjectDetail({ object, hideDataSources, compact }: ObjectDetailP
                       <Circle className="w-3 h-3 text-primary shrink-0" />
                       <span className="truncate">Known Planets</span>
                     </p>
-                    <p className="font-mono text-sm sm:text-lg">{object.planetCount}</p>
+                    <p className="font-mono text-sm sm:text-lg">
+                      {object.planetCount}
+                    </p>
                   </div>
                   <div className="min-w-0">
                     <p className="text-xs text-muted-foreground flex items-center gap-1">
@@ -554,7 +593,9 @@ export function ObjectDetail({ object, hideDataSources, compact }: ObjectDetailP
                     <p className="text-xs text-muted-foreground">Distance</p>
                     <p className="font-mono text-sm sm:text-lg break-words">
                       {object.distanceParsecs != null
-                        ? `${object.distanceParsecs.toFixed(1)} pc (~${(object.distanceParsecs * 3.26156).toFixed(0)} ly)`
+                        ? `${object.distanceParsecs.toFixed(1)} pc (~${(
+                            object.distanceParsecs * 3.26156
+                          ).toFixed(0)} ly)`
                         : "Unknown"}
                     </p>
                   </div>
@@ -591,7 +632,9 @@ export function ObjectDetail({ object, hideDataSources, compact }: ObjectDetailP
       {!hideDataSources && (
         <Card className="bg-card border-border/50 bezel">
           <CardHeader>
-            <CardTitle className="font-display text-base">Data Sources</CardTitle>
+            <CardTitle className="font-display text-base">
+              Data Sources
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex flex-wrap gap-2">
@@ -610,7 +653,9 @@ export function ObjectDetail({ object, hideDataSources, compact }: ObjectDetailP
             </div>
             <p className="text-xs text-muted-foreground mt-4">
               Source ID:{" "}
-              <span className="font-mono text-foreground">{object.sourceId}</span>
+              <span className="font-mono text-foreground">
+                {object.sourceId}
+              </span>
             </p>
           </CardContent>
         </Card>

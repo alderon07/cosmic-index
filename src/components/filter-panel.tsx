@@ -8,7 +8,14 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { X, Filter, RotateCcw, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import {
+  X,
+  Filter,
+  RotateCcw,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+} from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -35,7 +42,12 @@ const exoplanetTheme = THEMES.exoplanets;
 const smallBodyTheme = THEMES["small-bodies"];
 
 // Exoplanet Sort Options
-export type ExoplanetSort = "name" | "discovered" | "distance" | "radius" | "mass";
+export type ExoplanetSort =
+  | "name"
+  | "discovered"
+  | "distance"
+  | "radius"
+  | "mass";
 
 const EXOPLANET_SORT_OPTIONS = [
   { value: "discovered", label: "Discovery Year" },
@@ -186,7 +198,6 @@ export function ExoplanetFilterPanel({
     onChange({ ...filters, [key]: value });
   };
 
-
   const removeFilter = (key: keyof ExoplanetFilters) => {
     const newFilters = { ...filters };
     delete newFilters[key];
@@ -273,26 +284,36 @@ export function ExoplanetFilterPanel({
         </label>
         <Select
           value={filters.sort || "discovered"}
-          onValueChange={(value) => updateFilter("sort", value as ExoplanetSort)}
+          onValueChange={(value) =>
+            updateFilter("sort", value as ExoplanetSort)
+          }
         >
           <SelectTrigger className={`w-auto font-mono ${theme.sortSelect}`}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
             {EXOPLANET_SORT_OPTIONS.map((option) => (
-              <SelectItem key={option.value} value={option.value} className={theme.selectItemFocus}>
+              <SelectItem
+                key={option.value}
+                value={option.value}
+                className={theme.selectItemFocus}
+              >
                 {option.label}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
         {/* Sort Order Toggle */}
-        <div className={`flex rounded-md border ${theme.sortOrderBorder} overflow-hidden`}>
+        <div
+          className={`flex rounded-md border ${theme.sortOrderBorder} overflow-hidden`}
+        >
           <button
             type="button"
             onClick={() => updateFilter("order", "asc")}
             className={`p-1.5 transition-colors ${
-              filters.order === "asc" || (!filters.order && (filters.sort === "name" || filters.sort === "distance"))
+              filters.order === "asc" ||
+              (!filters.order &&
+                (filters.sort === "name" || filters.sort === "distance"))
                 ? theme.sortOrderSelected
                 : "bg-card hover:bg-card/80 text-muted-foreground hover:text-foreground"
             }`}
@@ -303,8 +324,13 @@ export function ExoplanetFilterPanel({
           <button
             type="button"
             onClick={() => updateFilter("order", "desc")}
-            className={`p-1.5 transition-colors border-l ${theme.sortOrderBorder} ${
-              filters.order === "desc" || (!filters.order && filters.sort !== "name" && filters.sort !== "distance")
+            className={`p-1.5 transition-colors border-l ${
+              theme.sortOrderBorder
+            } ${
+              filters.order === "desc" ||
+              (!filters.order &&
+                filters.sort !== "name" &&
+                filters.sort !== "distance")
                 ? theme.sortOrderSelected
                 : "bg-card hover:bg-card/80 text-muted-foreground hover:text-foreground"
             }`}
@@ -339,24 +365,30 @@ export function ExoplanetFilterPanel({
                 Planet Size
               </label>
               <div className="flex flex-wrap gap-2">
-                {(Object.keys(SIZE_CATEGORIES) as SizeCategory[]).map((category) => (
-                  <Button
-                    key={category}
-                    variant={
-                      filters.sizeCategory === category ? "default" : "outline"
-                    }
-                    size="sm"
-                    onClick={() =>
-                      updateFilter(
-                        "sizeCategory",
-                        filters.sizeCategory === category ? undefined : category
-                      )
-                    }
-                    className="text-xs"
-                  >
-                    {SIZE_CATEGORIES[category].label}
-                  </Button>
-                ))}
+                {(Object.keys(SIZE_CATEGORIES) as SizeCategory[]).map(
+                  (category) => (
+                    <Button
+                      key={category}
+                      variant={
+                        filters.sizeCategory === category
+                          ? "default"
+                          : "outline"
+                      }
+                      size="sm"
+                      onClick={() =>
+                        updateFilter(
+                          "sizeCategory",
+                          filters.sizeCategory === category
+                            ? undefined
+                            : category
+                        )
+                      }
+                      className="text-xs"
+                    >
+                      {SIZE_CATEGORIES[category].label}
+                    </Button>
+                  )
+                )}
               </div>
             </div>
 
@@ -370,16 +402,25 @@ export function ExoplanetFilterPanel({
                 <Select
                   value={filters.facility || "all"}
                   onValueChange={(value) =>
-                    updateFilter("facility", value === "all" ? undefined : value)
+                    updateFilter(
+                      "facility",
+                      value === "all" ? undefined : value
+                    )
                   }
                 >
                   <SelectTrigger className={`w-full ${theme.sortSelect}`}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all" className={theme.selectItemFocus}>All Facilities</SelectItem>
+                    <SelectItem value="all" className={theme.selectItemFocus}>
+                      All Facilities
+                    </SelectItem>
                     {DISCOVERY_FACILITIES.map((facility) => (
-                      <SelectItem key={facility} value={facility} className={theme.selectItemFocus}>
+                      <SelectItem
+                        key={facility}
+                        value={facility}
+                        className={theme.selectItemFocus}
+                      >
                         {facility}
                       </SelectItem>
                     ))}
@@ -395,19 +436,32 @@ export function ExoplanetFilterPanel({
                 <Select
                   value={filters.year?.toString() || "all"}
                   onValueChange={(value) =>
-                    updateFilter("year", value === "all" ? undefined : parseInt(value, 10))
+                    updateFilter(
+                      "year",
+                      value === "all" ? undefined : parseInt(value, 10)
+                    )
                   }
                 >
-                  <SelectTrigger className={`w-full font-mono ${theme.sortSelect}`}>
+                  <SelectTrigger
+                    className={`w-full font-mono ${theme.sortSelect}`}
+                  >
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all" className={theme.selectItemFocus}>All Years</SelectItem>
-                    {YEAR_OPTIONS.slice().reverse().map((year) => (
-                      <SelectItem key={year} value={year.toString()} className={theme.selectItemFocus}>
-                        {year}
-                      </SelectItem>
-                    ))}
+                    <SelectItem value="all" className={theme.selectItemFocus}>
+                      All Years
+                    </SelectItem>
+                    {YEAR_OPTIONS.slice()
+                      .reverse()
+                      .map((year) => (
+                        <SelectItem
+                          key={year}
+                          value={year.toString()}
+                          className={theme.selectItemFocus}
+                        >
+                          {year}
+                        </SelectItem>
+                      ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -420,16 +474,27 @@ export function ExoplanetFilterPanel({
                 <Select
                   value={filters.maxDistancePc?.toString() || "all"}
                   onValueChange={(value) =>
-                    updateFilter("maxDistancePc", value === "all" ? undefined : Number(value))
+                    updateFilter(
+                      "maxDistancePc",
+                      value === "all" ? undefined : Number(value)
+                    )
                   }
                 >
-                  <SelectTrigger className={`w-full font-mono ${theme.sortSelect}`}>
+                  <SelectTrigger
+                    className={`w-full font-mono ${theme.sortSelect}`}
+                  >
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all" className={theme.selectItemFocus}>Any Distance</SelectItem>
+                    <SelectItem value="all" className={theme.selectItemFocus}>
+                      Any Distance
+                    </SelectItem>
                     {DISTANCE_PRESETS.map((preset) => (
-                      <SelectItem key={preset.value} value={preset.value.toString()} className={theme.selectItemFocus}>
+                      <SelectItem
+                        key={preset.value}
+                        value={preset.value.toString()}
+                        className={theme.selectItemFocus}
+                      >
                         {preset.label}
                       </SelectItem>
                     ))}
@@ -482,7 +547,9 @@ export function ExoplanetFilterPanel({
                 <Button
                   variant={filters.multiPlanet ? "default" : "outline"}
                   size="sm"
-                  onClick={() => updateFilter("multiPlanet", !filters.multiPlanet)}
+                  onClick={() =>
+                    updateFilter("multiPlanet", !filters.multiPlanet)
+                  }
                   className="text-xs"
                 >
                   Multi-planet System
@@ -529,13 +596,20 @@ function getOrbitClassOptions(kind?: SmallBodyKind) {
     return [...COMET_ORBIT_CLASSES, ...SHARED_ORBIT_CLASSES];
   }
   // Show all orbit classes when "All" is selected
-  return [...ASTEROID_ORBIT_CLASSES, ...COMET_ORBIT_CLASSES, ...SHARED_ORBIT_CLASSES];
+  return [
+    ...ASTEROID_ORBIT_CLASSES,
+    ...COMET_ORBIT_CLASSES,
+    ...SHARED_ORBIT_CLASSES,
+  ];
 }
 
 // Check if an orbit class is valid for a given body kind
-function isOrbitClassValidForKind(orbitClass: string, kind?: SmallBodyKind): boolean {
+function isOrbitClassValidForKind(
+  orbitClass: string,
+  kind?: SmallBodyKind
+): boolean {
   const validOptions = getOrbitClassOptions(kind);
-  return validOptions.some(opt => opt.code === orbitClass);
+  return validOptions.some((opt) => opt.code === orbitClass);
 }
 
 // Get display label for an orbit class code
@@ -587,10 +661,16 @@ export function SmallBodyFilterPanel({
             />
           )}
           {filters.neo && (
-            <SmallBodyFilterChip label="NEO" onRemove={() => removeFilter("neo")} />
+            <SmallBodyFilterChip
+              label="NEO"
+              onRemove={() => removeFilter("neo")}
+            />
           )}
           {filters.pha && (
-            <SmallBodyFilterChip label="PHA" onRemove={() => removeFilter("pha")} />
+            <SmallBodyFilterChip
+              label="PHA"
+              onRemove={() => removeFilter("pha")}
+            />
           )}
           {filters.orbitClass && (
             <SmallBodyFilterChip
@@ -647,8 +727,13 @@ export function SmallBodyFilterPanel({
               <Filter className={`w-4 h-4 ${smallBodyTheme.text}`} />
               <span className="font-display">More Filters</span>
               {(filters.neo || filters.pha || filters.orbitClass) && (
-                <Badge variant="outline" className={`ml-2 text-xs ${smallBodyTheme.filterBadge}`}>
-                  {(filters.neo ? 1 : 0) + (filters.pha ? 1 : 0) + (filters.orbitClass ? 1 : 0)}
+                <Badge
+                  variant="outline"
+                  className={`ml-2 text-xs ${smallBodyTheme.filterBadge}`}
+                >
+                  {(filters.neo ? 1 : 0) +
+                    (filters.pha ? 1 : 0) +
+                    (filters.orbitClass ? 1 : 0)}
                 </Badge>
               )}
             </div>
@@ -663,12 +748,18 @@ export function SmallBodyFilterPanel({
                 {orbitClassOptions.map((option) => (
                   <Button
                     key={option.code}
-                    variant={filters.orbitClass === option.code ? "secondary" : "outline"}
+                    variant={
+                      filters.orbitClass === option.code
+                        ? "secondary"
+                        : "outline"
+                    }
                     size="sm"
                     onClick={() =>
                       updateFilter(
                         "orbitClass",
-                        filters.orbitClass === option.code ? undefined : option.code
+                        filters.orbitClass === option.code
+                          ? undefined
+                          : option.code
                       )
                     }
                     className="text-xs"

@@ -56,7 +56,8 @@ export const THEMES: Record<ObjectTheme, ThemeConfig> = {
     filterChipHover: "hover:bg-primary/30",
     icon: "text-primary",
     iconContainer: "bg-primary/20",
-    sortSelect: "border-primary/30 hover:border-primary/50 focus:ring-primary/50 focus:border-primary/60",
+    sortSelect:
+      "border-primary/30 hover:border-primary/50 focus:ring-primary/50 focus:border-primary/60",
     filterBadge: "",
     focusRing: "focus:ring-primary",
     sortOrderBorder: "border-primary/30",
@@ -71,20 +72,23 @@ export const THEMES: Record<ObjectTheme, ThemeConfig> = {
     hoverBg: "hover:bg-uranium-green/90",
     textOnBg: "text-void-black",
     glow: "glow-uranium",
-    selectedButton: "!bg-uranium-green !text-void-black !border-uranium-green hover:!bg-uranium-green/90",
+    selectedButton:
+      "!bg-uranium-green !text-void-black !border-uranium-green hover:!bg-uranium-green/90",
     badge: "border-uranium-green/50 text-uranium-green bg-uranium-green/10",
-    filterChip: "bg-uranium-green/20 text-uranium-green border-uranium-green/30",
+    filterChip:
+      "bg-uranium-green/20 text-uranium-green border-uranium-green/30",
     filterChipHover: "hover:bg-uranium-green/30",
     icon: "text-uranium-green",
     iconContainer: "bg-uranium-green/20",
-    sortSelect: "border-uranium-green/30 hover:border-uranium-green/50 focus:ring-uranium-green/50 focus:border-uranium-green/60",
+    sortSelect:
+      "border-uranium-green/30 hover:border-uranium-green/50 focus:ring-uranium-green/50 focus:border-uranium-green/60",
     filterBadge: "border-uranium-green/50 text-uranium-green",
     focusRing: "focus:ring-uranium-green",
     sortOrderBorder: "border-uranium-green/30",
     sortOrderSelected: "bg-uranium-green/20 text-uranium-green",
     selectItemFocus: "focus:bg-uranium-green/20 focus:text-uranium-green",
   },
-  "small-bodies": {
+  smallBodies: {
     colorName: "secondary",
     text: "text-secondary",
     bg: "bg-secondary",
@@ -98,7 +102,8 @@ export const THEMES: Record<ObjectTheme, ThemeConfig> = {
     filterChipHover: "hover:bg-secondary/30",
     icon: "text-secondary",
     iconContainer: "bg-secondary/20",
-    sortSelect: "border-secondary/30 hover:border-secondary/50 focus:ring-secondary/50 focus:border-secondary/60",
+    sortSelect:
+      "border-secondary/30 hover:border-secondary/50 focus:ring-secondary/50 focus:border-secondary/60",
     filterBadge: "border-secondary/50 text-secondary",
     focusRing: "focus:ring-secondary",
     sortOrderBorder: "border-secondary/30",
@@ -115,7 +120,8 @@ export const COMET_THEME = {
   hoverBg: "hover:bg-radium-teal/90",
   textOnBg: "text-void-black",
   glow: "glow-teal",
-  selectedButton: "!bg-radium-teal !text-void-black !border-radium-teal hover:!bg-radium-teal/90",
+  selectedButton:
+    "!bg-radium-teal !text-void-black !border-radium-teal hover:!bg-radium-teal/90",
   badge: "border-radium-teal/50 text-radium-teal bg-radium-teal/10",
 };
 

@@ -2,7 +2,13 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Camera, ChevronLeft, ChevronRight, X, ExternalLink } from "lucide-react";
+import {
+  Camera,
+  ChevronLeft,
+  ChevronRight,
+  X,
+  ExternalLink,
+} from "lucide-react";
 import type { AnyCosmicObject } from "@/lib/types";
 
 interface NasaImage {
@@ -107,9 +113,7 @@ export function NasaImageGallery({ object, compact }: NasaImageGalleryProps) {
     };
   }, [lightboxIndex, handleKeyDown]);
 
-  const thumbnailSize = compact
-    ? "w-32 h-32 sm:w-40 sm:h-40"
-    : "w-56 h-56";
+  const thumbnailSize = compact ? "w-32 h-32 sm:w-40 sm:h-40" : "w-56 h-56";
 
   // Loading state
   if (loading) {
@@ -155,7 +159,9 @@ export function NasaImageGallery({ object, compact }: NasaImageGalleryProps) {
           {/* Thumbnail strip - horizontal scroll */}
           <div
             ref={scrollRef}
-            className={`flex ${compact ? "gap-2 sm:gap-3" : "gap-3"} overflow-x-auto pb-2 scrollbar-thin min-w-0`}
+            className={`flex ${
+              compact ? "gap-2 sm:gap-3" : "gap-3"
+            } overflow-x-auto pb-2 scrollbar-thin min-w-0`}
           >
             {images.map((image, index) => (
               <button
@@ -173,7 +179,11 @@ export function NasaImageGallery({ object, compact }: NasaImageGalleryProps) {
                 {/* Vignette overlay */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
                 {/* Title */}
-                <p className={`absolute bottom-0 left-0 right-0 p-2 text-white/90 font-mono line-clamp-2 leading-tight ${compact ? "text-[10px]" : "text-xs"}`}>
+                <p
+                  className={`absolute bottom-0 left-0 right-0 p-2 text-white/90 font-mono line-clamp-2 leading-tight ${
+                    compact ? "text-[10px]" : "text-xs"
+                  }`}
+                >
                   {image.title}
                 </p>
               </button>

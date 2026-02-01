@@ -130,7 +130,9 @@ function generateExoplanetJsonLd(exoplanet: ExoplanetData, slug: string) {
     additionalType: "https://schema.org/Thing",
     additionalProperty: additionalProperties,
     sameAs: [
-      `https://exoplanetarchive.ipac.caltech.edu/overview/${encodeURIComponent(exoplanet.sourceId)}`,
+      `https://exoplanetarchive.ipac.caltech.edu/overview/${encodeURIComponent(
+        exoplanet.sourceId
+      )}`,
     ],
   };
 }
@@ -160,7 +162,11 @@ export default async function ExoplanetDetailPage({
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
       <div className="container mx-auto px-4 py-8">
-        <Breadcrumbs items={breadcrumbItems} className="mb-6" />
+        <Breadcrumbs
+          items={breadcrumbItems}
+          className="mb-6"
+          linkHoverClassName={THEMES.exoplanets.hoverText}
+        />
         <ObjectDetail object={exoplanet} />
       </div>
     </>

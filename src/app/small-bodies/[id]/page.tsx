@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { ObjectDetail } from "@/components/object-detail";
 import { Breadcrumbs } from "@/components/breadcrumbs";
+import { THEMES } from "@/lib/theme";
 import { fetchSmallBodyBySlug } from "@/lib/jpl-sbdb";
 import { SmallBodyData } from "@/lib/types";
 import { BASE_URL } from "@/lib/config";
@@ -151,7 +152,7 @@ export default async function SmallBodyDetailPage({
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
       <div className="container mx-auto px-4 py-8">
-        <Breadcrumbs items={breadcrumbItems} className="mb-6" />
+        <Breadcrumbs items={breadcrumbItems} className="mb-6" linkHoverClassName={THEMES.smallBodies.hoverText} />
         <ObjectDetail object={smallBody} />
       </div>
     </>

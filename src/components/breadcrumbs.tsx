@@ -99,7 +99,11 @@ export function Breadcrumbs({ items, className = "" }: BreadcrumbsProps) {
                     aria-current={isLast ? "page" : undefined}
                   >
                     {isFirst && !item.href && <Home className="w-4 h-4" />}
-                    <span className={isLast ? "truncate max-w-[200px] md:max-w-none" : ""}>
+                    <span
+                      className={
+                        isLast ? "truncate max-w-[200px] md:max-w-none" : ""
+                      }
+                    >
                       {item.label}
                     </span>
                   </span>
