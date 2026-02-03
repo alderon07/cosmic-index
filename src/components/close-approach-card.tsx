@@ -2,8 +2,13 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { CloseApproach } from "@/lib/types";
-import { getSizeCategory } from "@/lib/cneos-close-approach";
+import { getSizeCategory, AU_KM, LD_KM } from "@/lib/cneos-close-approach";
 import { THEMES } from "@/lib/theme";
 import { AlertTriangle, Gauge, Ruler, Calendar } from "lucide-react";
 
@@ -14,11 +19,32 @@ interface CloseApproachCardProps {
   showHighlightBadge?: "closest" | "fastest";
 }
 
+// Reusable tooltip wrapper for terms that need explanation
+function InfoTooltip({ children, content }: { children: React.ReactNode; content: string }) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className="cursor-help border-b border-dotted border-destructive/40 hover:border-destructive transition-colors">
+          {children}
+        </span>
+      </TooltipTrigger>
+      <TooltipContent className="max-w-xs border-destructive/30">
+        {content}
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
 export function CloseApproachCard({ approach, showHighlightBadge }: CloseApproachCardProps) {
   const sizeCategory = getSizeCategory(approach.diameterEstimated);
 
   // Format velocity
   const velocityKmS = approach.relativeVelocityKmS.toFixed(1);
+
+  // Compute distance range in LD (3-sigma uncertainty)
+  const distMinLd = (approach.distanceMinAu * AU_KM) / LD_KM;
+  const distMaxLd = (approach.distanceMaxAu * AU_KM) / LD_KM;
+  const hasDistanceRange = Math.abs(distMaxLd - distMinLd) > 0.01;
 
   // Format diameter range
   let diameterDisplay = "Unknown";
@@ -28,15 +54,15 @@ export function CloseApproachCard({ approach, showHighlightBadge }: CloseApproac
     const minM = approach.diameterEstimated.minKm * 1000;
     const maxM = approach.diameterEstimated.maxKm * 1000;
     if (minM < 1000 && maxM < 1000) {
-      diameterDisplay = `${minM.toFixed(0)}-${maxM.toFixed(0)}m (est.)`;
+      diameterDisplay = `${minM.toFixed(0)}-${maxM.toFixed(0)} m`;
     } else {
-      diameterDisplay = `${(minM / 1000).toFixed(2)}-${(maxM / 1000).toFixed(2)}km (est.)`;
+      diameterDisplay = `${(minM / 1000).toFixed(2)}-${(maxM / 1000).toFixed(2)} km`;
     }
   }
 
   return (
     <Card className={`h-full bg-card border-border/50 transition-all duration-300 hover:border-destructive/50 hover:glow-red bezel scanlines overflow-hidden`}>
-      <CardHeader className="pb-3">
+      <CardHeader>
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
             <CardTitle className={`font-display text-lg ${theme.text} transition-colors line-clamp-2`}>
@@ -60,10 +86,17 @@ export function CloseApproachCard({ approach, showHighlightBadge }: CloseApproac
               </Badge>
             )}
             {approach.isPha && (
-              <Badge variant="destructive" className="text-xs">
-                <AlertTriangle className="w-3 h-3 mr-1" />
-                PHA
-              </Badge>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Badge variant="destructive" className="text-xs cursor-help">
+                    <AlertTriangle className="w-3 h-3 mr-1" />
+                    PHA
+                  </Badge>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs border-destructive/30">
+                  Potentially Hazardous Asteroid: Objects larger than ~140m that can pass within 7.5 million km of Earth. This is a classification, not a warning.
+                </TooltipContent>
+              </Tooltip>
             )}
           </div>
         </div>
@@ -76,13 +109,20 @@ export function CloseApproachCard({ approach, showHighlightBadge }: CloseApproac
           <div className="col-span-2">
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <Calendar className="w-3.5 h-3.5" />
-              <span>Close Approach (TDB)</span>
+              <span>Close Approach</span>
+              <InfoTooltip content="TDB (Barycentric Dynamical Time) is the astronomical time standard. It's essentially equivalent to UTC, differing by less than a minute.">
+                <span className="text-muted-foreground/60">(TDB)</span>
+              </InfoTooltip>
             </div>
-            <p className="text-xs text-muted-foreground/60 mt-0.5">
-              TDB ≈ UTC (within ~1 min)
-            </p>
             <p className="text-sm font-mono text-foreground mt-0.5">
               {approach.approachTimeRaw}
+              {approach.timeUncertainty && (
+                <InfoTooltip content="Time uncertainty: This prediction is accurate within this margin. Smaller values indicate better-tracked objects.">
+                  <span className="text-xs text-muted-foreground ml-2">
+                    ±{approach.timeUncertainty}
+                  </span>
+                </InfoTooltip>
+              )}
             </p>
           </div>
 
@@ -93,11 +133,21 @@ export function CloseApproachCard({ approach, showHighlightBadge }: CloseApproac
               <span>Miss Distance</span>
             </div>
             <p className="text-sm font-mono text-foreground mt-0.5">
-              {approach.distanceLd.toFixed(2)} <span className="text-xs text-muted-foreground">LD</span>
+              {approach.distanceLd.toFixed(2)}{" "}
+              <InfoTooltip content="Lunar Distance: The average distance from Earth to the Moon (384,400 km). Used to give intuitive scale for near-Earth flybys.">
+                <span className="text-xs text-muted-foreground">LD</span>
+              </InfoTooltip>
             </p>
             <p className="text-xs text-muted-foreground font-mono">
               {(approach.distanceKm / 1_000_000).toFixed(2)}M km
             </p>
+            {hasDistanceRange && (
+              <InfoTooltip content="3-sigma range: There's a 99.7% probability the actual flyby distance falls within this interval.">
+                <p className="text-xs text-muted-foreground/60 font-mono">
+                  range: {distMinLd.toFixed(2)}-{distMaxLd.toFixed(2)} LD
+                </p>
+              </InfoTooltip>
+            )}
           </div>
 
           {/* Velocity */}
@@ -107,7 +157,9 @@ export function CloseApproachCard({ approach, showHighlightBadge }: CloseApproac
               <span>Velocity</span>
             </div>
             <p className="text-sm font-mono text-foreground mt-0.5">
-              {velocityKmS} <span className="text-xs text-muted-foreground">km/s</span>
+              <InfoTooltip content="Relative velocity: Speed of the object relative to Earth at closest approach. For comparison, a bullet travels ~1 km/s.">
+                <span>{velocityKmS} km/s</span>
+              </InfoTooltip>
             </p>
           </div>
         </div>
@@ -116,7 +168,11 @@ export function CloseApproachCard({ approach, showHighlightBadge }: CloseApproac
         <div className="mt-auto pt-3 border-t border-border/30">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs text-muted-foreground">Est. Size</p>
+              <p className="text-xs text-muted-foreground">
+                <InfoTooltip content="Size is estimated from brightness (H) assuming typical asteroid reflectivity (5-25% albedo). Actual size could vary.">
+                  Estimated Size
+                </InfoTooltip>
+              </p>
               <p className="text-sm font-mono text-foreground">
                 {diameterDisplay}
               </p>
@@ -126,7 +182,9 @@ export function CloseApproachCard({ approach, showHighlightBadge }: CloseApproac
             </Badge>
           </div>
           <p className="text-xs text-muted-foreground/70 mt-1">
-            H = {approach.absoluteMagnitude.toFixed(1)}
+            <InfoTooltip content="Absolute magnitude (H): A measure of intrinsic brightness. Lower H = brighter = larger object. H=22 ≈ 100-200m, H=25 ≈ 25-50m, H=28 ≈ 5-15m.">
+              H = {approach.absoluteMagnitude.toFixed(1)}
+            </InfoTooltip>
           </p>
         </div>
       </CardContent>

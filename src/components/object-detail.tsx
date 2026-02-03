@@ -20,6 +20,12 @@ import {
   Star,
   Circle,
 } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { InfoTooltip, TOOLTIP_CONTENT } from "@/components/info-tooltip";
 
 interface ObjectDetailProps {
   object: AnyCosmicObject;
@@ -70,20 +76,34 @@ export function ObjectDetail({
             </Badge>
 
             {isSmallBody(object) && object.isNeo && (
-              <Badge
-                variant="outline"
-                className="border-amber-glow/50 text-amber-glow"
-              >
-                <Orbit className="w-3 h-3 mr-1" />
-                Near-Earth Object
-              </Badge>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Badge
+                    variant="outline"
+                    className="border-amber-glow/50 text-amber-glow cursor-help"
+                  >
+                    <Orbit className="w-3 h-3 mr-1" />
+                    Near-Earth Object
+                  </Badge>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs border-secondary/30">
+                  {TOOLTIP_CONTENT.NEO}
+                </TooltipContent>
+              </Tooltip>
             )}
 
             {isSmallBody(object) && object.isPha && (
-              <Badge variant="destructive">
-                <AlertTriangle className="w-3 h-3 mr-1" />
-                Potentially Hazardous
-              </Badge>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Badge variant="destructive" className="cursor-help">
+                    <AlertTriangle className="w-3 h-3 mr-1" />
+                    Potentially Hazardous
+                  </Badge>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs border-destructive/30">
+                  {TOOLTIP_CONTENT.PHA}
+                </TooltipContent>
+              </Tooltip>
             )}
           </div>
 
@@ -410,7 +430,9 @@ export function ObjectDetail({
                   </div>
                   <div className="min-w-0">
                     <p className="text-xs text-muted-foreground">
-                      Absolute Magnitude (H)
+                      <InfoTooltip content={TOOLTIP_CONTENT.ABSOLUTE_MAGNITUDE_H} theme="small-bodies">
+                        Absolute Magnitude (H)
+                      </InfoTooltip>
                     </p>
                     <p className="font-mono text-sm sm:text-lg break-all">
                       {object.absoluteMagnitude?.toFixed(1) ?? "Unknown"}
@@ -511,7 +533,11 @@ export function ObjectDetail({
                     </p>
                   </div>
                   <div className="min-w-0">
-                    <p className="text-xs text-muted-foreground">Luminosity</p>
+                    <p className="text-xs text-muted-foreground">
+                      <InfoTooltip content={TOOLTIP_CONTENT.LUMINOSITY} theme="stars">
+                        Luminosity
+                      </InfoTooltip>
+                    </p>
                     <p className="font-mono text-sm sm:text-lg break-all">
                       {object.starLuminosity != null
                         ? `${object.starLuminosity.toFixed(2)} log L☉`
@@ -520,7 +546,9 @@ export function ObjectDetail({
                   </div>
                   <div className="min-w-0">
                     <p className="text-xs text-muted-foreground truncate">
-                      Metallicity [Fe/H]
+                      <InfoTooltip content={TOOLTIP_CONTENT.METALLICITY} theme="stars">
+                        Metallicity [Fe/H]
+                      </InfoTooltip>
                     </p>
                     <p className="font-mono text-sm sm:text-lg break-all">
                       {object.metallicityFeH != null
@@ -590,7 +618,11 @@ export function ObjectDetail({
               <AccordionContent className="pb-4">
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
                   <div className="min-w-0 col-span-2 sm:col-span-1">
-                    <p className="text-xs text-muted-foreground">Distance</p>
+                    <p className="text-xs text-muted-foreground">
+                      <InfoTooltip content={TOOLTIP_CONTENT.PARSEC} theme="stars">
+                        Distance
+                      </InfoTooltip>
+                    </p>
                     <p className="font-mono text-sm sm:text-lg break-words">
                       {object.distanceParsecs != null
                         ? `${object.distanceParsecs.toFixed(1)} pc (~${(
@@ -600,7 +632,11 @@ export function ObjectDetail({
                     </p>
                   </div>
                   <div className="min-w-0">
-                    <p className="text-xs text-muted-foreground">V Magnitude</p>
+                    <p className="text-xs text-muted-foreground">
+                      <InfoTooltip content={TOOLTIP_CONTENT.V_MAGNITUDE} theme="stars">
+                        V Magnitude
+                      </InfoTooltip>
+                    </p>
                     <p className="font-mono text-sm sm:text-lg">
                       {object.vMag != null ? object.vMag.toFixed(2) : "Unknown"}
                     </p>

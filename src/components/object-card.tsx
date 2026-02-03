@@ -10,6 +10,12 @@ import {
   isStar,
 } from "@/lib/types";
 import { Orbit, Sparkles, AlertTriangle, SquareArrowOutUpRight } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { TOOLTIP_CONTENT } from "@/components/info-tooltip";
 
 // SessionStorage keys for storing list page URLs
 const EXOPLANETS_LIST_URL_KEY = "exoplanetsListUrl";
@@ -160,16 +166,30 @@ export function ObjectCard({ object, onModalOpen }: ObjectCardProps) {
         {isSmallBody(object) && (object.isNeo || object.isPha) && (
           <div className="flex gap-1.5 mt-2">
             {object.isNeo && (
-              <Badge variant="outline" className="text-xs border-amber-glow/50 text-amber-glow">
-                <Orbit className="w-3 h-3 mr-1" />
-                NEO
-              </Badge>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Badge variant="outline" className="text-xs border-amber-glow/50 text-amber-glow cursor-help">
+                    <Orbit className="w-3 h-3 mr-1" />
+                    NEO
+                  </Badge>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs border-secondary/30">
+                  {TOOLTIP_CONTENT.NEO}
+                </TooltipContent>
+              </Tooltip>
             )}
             {object.isPha && (
-              <Badge variant="destructive" className="text-xs">
-                <AlertTriangle className="w-3 h-3 mr-1" />
-                PHA
-              </Badge>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Badge variant="destructive" className="text-xs cursor-help">
+                    <AlertTriangle className="w-3 h-3 mr-1" />
+                    PHA
+                  </Badge>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs border-destructive/30">
+                  {TOOLTIP_CONTENT.PHA}
+                </TooltipContent>
+              </Tooltip>
             )}
           </div>
         )}

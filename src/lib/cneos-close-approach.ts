@@ -169,6 +169,8 @@ function parseCADResponse(
       const fullName = getValue(row, "fullname");
       const diameterStr = getValue(row, "diameter");
       const diameterSigmaStr = getValue(row, "diameter_sigma");
+      const tSigmaF = getValue(row, "t_sigma_f");  // Time uncertainty (e.g., "00:19", "< 00:01")
+      const vInf = getValue(row, "v_inf");         // Velocity at infinity
 
       // Measured diameter (from API)
       let diameterMeasured: CloseApproach["diameterMeasured"];
@@ -188,12 +190,16 @@ function parseCADResponse(
       // Estimated diameter (from H)
       const diameterEstimated = estimateDiameter(absMag);
 
+      // Parse velocity at infinity
+      const velInf = vInf ? parseFloat(vInf) : undefined;
+
       const approach: CloseApproach = {
         id: createApproachId(des, orbitId, cd),
         designation: des,
         orbitId,
         fullName: fullName || undefined,
         approachTimeRaw: cd,
+        timeUncertainty: tSigmaF || undefined,
         jd: jdStr ? parseFloat(jdStr) : undefined,
         distanceAu: distAu,
         distanceKm: distances.km,
@@ -201,6 +207,7 @@ function parseCADResponse(
         distanceMinAu: distMinAu,
         distanceMaxAu: distMaxAu,
         relativeVelocityKmS: relVel,
+        velocityInfinityKmS: velInf && !isNaN(velInf) ? velInf : undefined,
         absoluteMagnitude: absMag,
         diameterMeasured,
         diameterEstimated,

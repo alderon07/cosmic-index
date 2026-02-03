@@ -516,6 +516,7 @@ export interface CloseApproach {
 
   // Timing - keep raw string, don't mess with timezones
   approachTimeRaw: string;         // raw `cd` string from API (e.g., "2025-Jan-01 05:24")
+  timeUncertainty?: string;        // formatted uncertainty (e.g., "00:19" = ±19 min, "< 00:01")
   jd?: number;                     // Julian date (optional, for sorting precision)
 
   // Distance - compute via km for accuracy
@@ -527,6 +528,7 @@ export interface CloseApproach {
 
   // Velocity
   relativeVelocityKmS: number;     // km/s relative to Earth
+  velocityInfinityKmS?: number;    // km/s at infinity (hyperbolic excess velocity)
 
   // Size - separate measured vs estimated
   absoluteMagnitude: number;       // H value (brightness)
