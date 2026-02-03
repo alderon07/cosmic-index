@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getExoplanetBySlug } from "@/lib/exoplanet-index";
 import { fetchExoplanetBySlug } from "@/lib/nasa-exoplanet";
 import { getCacheControlHeader, CACHE_TTL } from "@/lib/cache";
 import { checkRateLimit, getClientIdentifier, getRateLimitHeaders } from "@/lib/rate-limit";
@@ -25,8 +26,13 @@ export async function GET(
       );
     }
 
-    // Fetch exoplanet by slug
-    const exoplanet = await fetchExoplanetBySlug(id);
+    // Try Turso index first (fast, no external API call)
+    let exoplanet = await getExoplanetBySlug(id);
+
+    // Fallback to TAP API if not in index (or index unavailable)
+    if (!exoplanet) {
+      exoplanet = await fetchExoplanetBySlug(id);
+    }
 
     if (!exoplanet) {
       return NextResponse.json(

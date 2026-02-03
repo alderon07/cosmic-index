@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { fetchExoplanets } from "@/lib/nasa-exoplanet";
+import { searchExoplanets, ExoplanetIndexUnavailableError } from "@/lib/exoplanet-index";
 import { ExoplanetQuerySchema } from "@/lib/types";
 import { getCacheControlHeader, CACHE_TTL } from "@/lib/cache";
 import { checkRateLimit, getClientIdentifier, getRateLimitHeaders } from "@/lib/rate-limit";
@@ -36,8 +36,8 @@ export async function GET(request: NextRequest) {
 
     const params = parseResult.data;
 
-    // Fetch exoplanets
-    const result = await fetchExoplanets(params);
+    // Fetch exoplanets from Turso index (no TAP fallback for browse)
+    const result = await searchExoplanets(params);
 
     // Return response with cache headers
     return NextResponse.json(result, {
@@ -47,6 +47,14 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
+    // Handle index unavailable separately - return 503
+    if (error instanceof ExoplanetIndexUnavailableError) {
+      return NextResponse.json(
+        { error: "Exoplanet index is temporarily unavailable. Please try again later." },
+        { status: 503 }
+      );
+    }
+
     console.error("Error fetching exoplanets:", error);
     return NextResponse.json(
       { error: "Failed to fetch exoplanets. Please try again later." },
