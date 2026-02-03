@@ -232,7 +232,7 @@ function CloseApproachesPageContent() {
 
       {/* Highlight Cards */}
       {!isLoading && data?.highlights && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-12 mb-12">
           {data.highlights.closestApproach && (
             <div>
               <h2 className="text-sm font-display text-muted-foreground mb-2 flex items-center gap-2">
