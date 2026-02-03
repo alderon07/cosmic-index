@@ -501,3 +501,81 @@ export const SPECTRAL_CLASS_INFO = {
   K: { label: "K", description: "Orange", tempRange: "3,700-5,200 K", color: "#FFD2A1" },
   M: { label: "M", description: "Red", tempRange: "2,400-3,700 K", color: "#FFCC6F" },
 } as const;
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Close Approach Types (CNEOS Flyby Radar)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// Close Approach Event (NOT a CosmicObject - this is an event stream)
+export interface CloseApproach {
+  // Identity - use des + orbit_id + cd for uniqueness
+  id: string;                      // slugified `${des}_${orbit_id}_${cd}`
+  designation: string;             // e.g., "2024 YY8", "433 Eros"
+  orbitId: string;                 // orbit solution ID
+  fullName?: string;               // formatted full name
+
+  // Timing - keep raw string, don't mess with timezones
+  approachTimeRaw: string;         // raw `cd` string from API (e.g., "2025-Jan-01 05:24")
+  jd?: number;                     // Julian date (optional, for sorting precision)
+
+  // Distance - compute via km for accuracy
+  distanceAu: number;              // nominal distance (AU)
+  distanceKm: number;              // = distanceAu * AU_KM
+  distanceLd: number;              // = distanceKm / LD_KM
+  distanceMinAu: number;           // 3-sigma minimum (AU)
+  distanceMaxAu: number;           // 3-sigma maximum (AU)
+
+  // Velocity
+  relativeVelocityKmS: number;     // km/s relative to Earth
+
+  // Size - separate measured vs estimated
+  absoluteMagnitude: number;       // H value (brightness)
+  diameterMeasured?: {             // from API (often null)
+    km: number;
+    sigma?: number;
+  };
+  diameterEstimated?: {            // computed from H + albedo range
+    minKm: number;
+    maxKm: number;
+    albedoRange: [number, number]; // e.g., [0.05, 0.25]
+  };
+
+  // Flags - optional, only set when known
+  isPha?: boolean;                 // true only if PHA filter was applied or API confirms
+}
+
+export type CloseApproachSortField = "date" | "dist" | "v-rel" | "h";
+
+export interface CloseApproachQueryParams {
+  dateMin?: string;                // default: "now"
+  dateMax?: string;                // default: "+60" (60 days)
+  distMaxLd?: number;              // UI uses LD → converted to AU for API
+  phaOnly?: boolean;               // filter to PHAs only
+  sort?: CloseApproachSortField;
+  order?: SortOrder;
+  limit?: number;
+}
+
+export interface CloseApproachListResponse {
+  events: CloseApproach[];
+  meta: {
+    count: number;
+    phaFilterApplied: boolean;     // so UI knows "all results are PHAs"
+    queryApplied: Record<string, string>;  // debug: what we sent to CNEOS
+  };
+  highlights?: {                   // precomputed for UI
+    closestApproach?: CloseApproach;
+    fastestFlyby?: CloseApproach;
+  };
+}
+
+// Zod schema for Close Approach query validation
+export const CloseApproachQuerySchema = z.object({
+  dateMin: z.string().max(20).optional(),
+  dateMax: z.string().max(20).optional(),
+  distMaxLd: z.coerce.number().positive().max(100).optional(),
+  phaOnly: z.coerce.boolean().optional(),
+  sort: z.enum(["date", "dist", "v-rel", "h"]).optional(),
+  order: z.enum(["asc", "desc"]).optional(),
+  limit: z.coerce.number().int().min(1).max(200).optional(),
+});

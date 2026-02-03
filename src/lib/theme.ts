@@ -1,6 +1,6 @@
 // Centralized theme configuration for each object type
 
-export type ObjectTheme = "exoplanets" | "stars" | "small-bodies";
+export type ObjectTheme = "exoplanets" | "stars" | "small-bodies" | "close-approaches";
 
 export interface ThemeConfig {
   // Raw color name (for documentation)
@@ -114,6 +114,30 @@ export const THEMES: Record<ObjectTheme, ThemeConfig> = {
     sortOrderSelected: "bg-secondary/20 text-secondary",
     selectItemFocus: "focus:bg-secondary/20 focus:text-secondary",
     hoverText: "hover:text-secondary",
+  },
+  "close-approaches": {
+    colorName: "destructive",
+    text: "text-destructive",
+    bg: "bg-destructive",
+    border: "border-destructive",
+    hoverBg: "hover:bg-destructive/90",
+    textOnBg: "text-destructive-foreground",
+    glow: "glow-red",
+    selectedButton:
+      "!bg-destructive !text-destructive-foreground !border-destructive hover:!bg-destructive/90",
+    badge: "border-destructive/50 text-destructive bg-destructive/10",
+    filterChip: "bg-destructive/20 text-destructive border-destructive/30",
+    filterChipHover: "hover:bg-destructive/30",
+    icon: "text-destructive",
+    iconContainer: "bg-destructive/20",
+    sortSelect:
+      "border-destructive/30 hover:border-destructive/50 focus:ring-destructive/50 focus:border-destructive/60",
+    filterBadge: "border-destructive/50 text-destructive",
+    focusRing: "focus:ring-destructive",
+    sortOrderBorder: "border-destructive/30",
+    sortOrderSelected: "bg-destructive/20 text-destructive",
+    selectItemFocus: "focus:bg-destructive/20 focus:text-destructive",
+    hoverText: "hover:text-destructive",
   },
 };
 

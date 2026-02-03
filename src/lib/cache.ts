@@ -29,6 +29,8 @@ export const CACHE_TTL = {
   STARS_PLANETS: 12 * 60 * 60,       // 12 hours (planets in system)
   NASA_IMAGES: 24 * 60 * 60,         // 24 hours
   NASA_IMAGES_EMPTY: 2 * 60 * 60,    // 2 hours (avoid hammering for objects with 0 images)
+  CLOSE_APPROACH_LIST: 60 * 60,      // 1 hour
+  CLOSE_APPROACH_UPCOMING: 30 * 60,  // 30 min for dashboard widget
 } as const;
 
 // Cache key prefixes
@@ -41,6 +43,8 @@ export const CACHE_KEYS = {
   STARS_DETAIL: "star:detail",
   STARS_PLANETS: "star:planets",
   NASA_IMAGES: "img",
+  CLOSE_APPROACH_LIST: "ca:list",
+  CLOSE_APPROACH_UPCOMING: "ca:upcoming",
 } as const;
 
 // Create a hash from query parameters for cache keys

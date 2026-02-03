@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Audiowide, Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import Link from "next/link";
-import { Circle, Star, CircleDot } from "lucide-react";
+import { Circle, Star, CircleDot, Crosshair } from "lucide-react";
 import { Analytics } from "@vercel/analytics/react";
 
 const audiowide = Audiowide({
@@ -179,6 +179,14 @@ export default function RootLayout({
                 >
                   <CircleDot className="w-5 h-5 sm:hidden" />
                   <span className="hidden sm:inline">Small Bodies</span>
+                </Link>
+                <Link
+                  href="/close-approaches"
+                  className="font-display text-sm tracking-wide text-muted-foreground hover:text-destructive transition-colors"
+                  title="Close Approaches"
+                >
+                  <Crosshair className="w-5 h-5 sm:hidden" />
+                  <span className="hidden sm:inline">Flybys</span>
                 </Link>
               </div>
             </nav>

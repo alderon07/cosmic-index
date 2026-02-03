@@ -116,6 +116,12 @@
     box-shadow: 0 0 25px rgba(var(--glow-uranium), 0.4);
   }
 
+  /* Alert Red Glow (Close Approaches) */
+  .glow-red {
+    box-shadow: 0 0 20px rgba(255, 80, 80, 0.4),
+                0 0 40px rgba(255, 80, 80, 0.2);
+  }
+
   /* Radium Teal Glow */
   .glow-teal {
     box-shadow: 0 0 20px rgba(61, 219, 217, 0.4);
