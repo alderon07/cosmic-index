@@ -71,18 +71,18 @@ export function CloseApproachCard({ approach, showHighlightBadge }: CloseApproac
 
       <CardContent className="pt-0 flex flex-col flex-1 min-h-0">
         {/* Key metrics */}
-        <div className="grid grid-cols-2 gap-x-4 gap-y-3 pb-4">
+        <div className="grid grid-cols-2 gap-x-4 gap-y-4 pb-4">
           {/* Approach date */}
           <div className="col-span-2">
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <Calendar className="w-3.5 h-3.5" />
               <span>Close Approach (TDB)</span>
             </div>
-            <p className="text-sm font-mono text-foreground mt-0.5">
-              {approach.approachTimeRaw}
-            </p>
             <p className="text-xs text-muted-foreground/60 mt-0.5">
               TDB ≈ UTC (within ~1 min)
+            </p>
+            <p className="text-sm font-mono text-foreground mt-0.5">
+              {approach.approachTimeRaw}
             </p>
           </div>
 
