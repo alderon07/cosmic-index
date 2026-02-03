@@ -76,10 +76,13 @@ export function CloseApproachCard({ approach, showHighlightBadge }: CloseApproac
           <div className="col-span-2">
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <Calendar className="w-3.5 h-3.5" />
-              <span>Close Approach (UTC)</span>
+              <span>Close Approach (TDB)</span>
             </div>
             <p className="text-sm font-mono text-foreground mt-0.5">
               {approach.approachTimeRaw}
+            </p>
+            <p className="text-xs text-muted-foreground/60 mt-0.5">
+              TDB ≈ UTC (within ~1 min)
             </p>
           </div>
 
