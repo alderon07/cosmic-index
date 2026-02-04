@@ -1,6 +1,6 @@
 # 🌌 Cosmic Index
 
-A retrofuturistic web encyclopedia for exploring cosmic objects beyond our solar system. Browse and search through thousands of confirmed exoplanets from NASA's Exoplanet Archive and over a million asteroids and comets from JPL's Small-Body Database.
+A rweb encyclopedia for exploring cosmic objects beyond our solar system. Browse and search through thousands of confirmed exoplanets from NASA's Exoplanet Archive and over a million asteroids and comets from JPL's Small-Body Database.
 
 ![Next.js](https://img.shields.io/badge/Next.js-16.1-black?logo=next.js)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?logo=typescript)
@@ -9,6 +9,7 @@ A retrofuturistic web encyclopedia for exploring cosmic objects beyond our solar
 ## ✨ Features
 
 ### Exoplanets
+
 - **5,000+ confirmed exoplanets** from NASA's Exoplanet Archive
 - Search by name or designation
 - Filter by discovery method, discovery year, and physical properties
@@ -16,6 +17,7 @@ A retrofuturistic web encyclopedia for exploring cosmic objects beyond our solar
 - Multiple discovery methods: Transit, Radial Velocity, Imaging, Microlensing, and more
 
 ### Small Bodies
+
 - **1,000,000+ asteroids and comets** from JPL's Small-Body Database
 - Search asteroids and comets by name or designation
 - Filter by type (asteroid/comet), Near-Earth Object (NEO) status, and Potentially Hazardous Asteroid (PHA) classification
@@ -23,6 +25,7 @@ A retrofuturistic web encyclopedia for exploring cosmic objects beyond our solar
 - View physical properties including diameter and absolute magnitude
 
 ### General Features
+
 - 🎨 **Retrofuturistic UI** with scanlines, bezels, and glow effects
 - 🔍 **Advanced search and filtering** capabilities
 - 📄 **Pagination** for efficient browsing of large datasets
@@ -45,11 +48,13 @@ A retrofuturistic web encyclopedia for exploring cosmic objects beyond our solar
 ## 📊 Data Sources
 
 ### NASA Exoplanet Archive
+
 - **API**: [NASA Exoplanet Archive TAP Service](https://exoplanetarchive.ipac.caltech.edu/docs/TAP/usingTAP.html)
 - **Data**: Confirmed exoplanets with physical and orbital properties
 - **Update Frequency**: Daily
 
 ### JPL Small-Body Database
+
 - **API**: [JPL Small-Body Database Query API](https://ssd-api.jpl.nasa.gov/doc/sbdb.html)
 - **Data**: Asteroids, comets, and other small solar system bodies
 - **Update Frequency**: Regular updates from JPL
@@ -59,38 +64,47 @@ A retrofuturistic web encyclopedia for exploring cosmic objects beyond our solar
 ### Prerequisites
 
 - [Bun](https://bun.sh/) (recommended) or Node.js 20+
+- [just](https://github.com/casey/just) (optional) – command runner; run `just` to see all tasks
 - Optional: Upstash Redis account for caching
 
 ### Installation
 
 1. Clone the repository:
+
 ```bash
 git clone https://github.com/yourusername/cosmic-index.git
 cd cosmic-index
 ```
 
 2. Install dependencies:
+
 ```bash
 bun install
 ```
 
 3. (Optional) Set up environment variables:
+
 ```bash
 cp .env.example .env.local
 ```
 
 Add your Upstash Redis credentials if you want to enable caching:
+
 ```env
 UPSTASH_REDIS_REST_URL=your_redis_url
 UPSTASH_REDIS_REST_TOKEN=your_redis_token
 ```
 
 4. Run the development server:
+
 ```bash
-bun dev
+just dev
+# or: bun run dev
 ```
 
 5. Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+Run `just` (or `just --list`) to see all available commands (dev, build, lint, ingest, etc.).
 
 ## 📁 Project Structure
 
@@ -126,6 +140,7 @@ cosmic-index/
 ### Exoplanets
 
 - `GET /api/exoplanets` - List exoplanets with filtering and pagination
+
   - Query parameters:
     - `query` - Search by name
     - `discoveryMethod` - Filter by discovery method
@@ -139,6 +154,7 @@ cosmic-index/
 ### Small Bodies
 
 - `GET /api/small-bodies` - List small bodies with filtering and pagination
+
   - Query parameters:
     - `query` - Search by name or designation (regex pattern)
     - `kind` - Filter by type: `asteroid` or `comet`
@@ -160,17 +176,25 @@ The project features a custom retrofuturistic design system with:
 
 ## 🧪 Development
 
-### Available Scripts
+### Commands (just)
 
-- `bun dev` - Start development server with Turbopack
-- `bun build` - Build for production
-- `bun start` - Start production server
-- `bun lint` - Run ESLint
-- `bun sbdb:diag` - Run JPL SBDB diagnostic script
+Run `just` to list all recipes. Common ones:
+
+- `just dev` - Start development server with Turbopack
+- `just build` - Build for production
+- `just start` - Start production server
+- `just lint` - Run ESLint
+- `just sbdb-diag` - Run JPL SBDB diagnostic
+- `just ingest-stars` / `just ingest-exoplanets` - Ingest data into Turso (requires TURSO\_\* in .env.local)
+- `just ingest-stars-reset` / `just ingest-exoplanets-reset` - Reset checkpoint and re-ingest
+- `just ingest-all` - Ingest stars then exoplanets (full reset + ingest)
+
+Without just, use `bun run <script>` (e.g. `bun run dev`, `bun run ingest:stars`).
 
 ### Testing
 
 Integration tests are available in `src/lib/__tests__/`:
+
 - `nasa-exoplanet.test.ts` - NASA Exoplanet Archive integration tests
 - `jpl-sbdb.integration.test.ts` - JPL Small-Body Database integration tests
 
