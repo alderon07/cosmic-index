@@ -1,6 +1,8 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { APODCard, APODCardSkeleton } from "@/components/apod-card";
 import {
   Circle,
   CircleDot,
@@ -97,6 +99,13 @@ export default function HomePage() {
         {/* Decorative gradient orbs */}
         <div className="absolute -bottom-32 -left-32 w-64 h-64 bg-primary/10 rounded-full blur-3xl" />
         <div className="absolute -top-32 -right-32 w-64 h-64 bg-secondary/10 rounded-full blur-3xl" />
+      </section>
+
+      {/* APOD Daily Feature */}
+      <section className="container mx-auto px-4 py-8">
+        <Suspense fallback={<APODCardSkeleton />}>
+          <APODCard />
+        </Suspense>
       </section>
 
       {/* Feature Sections */}

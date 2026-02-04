@@ -581,3 +581,86 @@ export const CloseApproachQuerySchema = z.object({
   order: z.enum(["asc", "desc"]).optional(),
   limit: z.coerce.number().int().min(1).max(200).optional(),
 });
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// APOD Types (Astronomy Picture of the Day)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// APOD Data Interface (NOT extending CosmicObject - it's media, not a catalog object)
+export interface APODData {
+  date: string;           // YYYY-MM-DD
+  title: string;
+  explanation: string;
+  imageUrl: string;
+  imageUrlHd?: string;
+  mediaType: "image" | "video";
+  copyright?: string;
+  thumbnailUrl?: string;  // For videos
+}
+
+// Zod schema for APOD API route validation
+export const APODQuerySchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format").optional(),
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Fireball Types (CNEOS Atmospheric Impact Events)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// Fireball Event (NOT a CosmicObject - this is an event stream like Close Approaches)
+export interface FireballEvent {
+  id: string;                    // Generated: date-based slug
+  date: string;                  // ISO datetime string
+  dateRaw: string;               // Raw date string from API
+
+  // Energy (always present)
+  radiatedEnergyJ: number;       // Radiated energy in Joules (×10¹⁰)
+  impactEnergyKt?: number;       // Impact energy in kilotons TNT (sometimes missing)
+
+  // Location (OFTEN MISSING - not all fireballs have location data)
+  latitude?: number;             // Decimal degrees (positive = N, negative = S)
+  longitude?: number;            // Decimal degrees (positive = E, negative = W)
+  altitudeKm?: number;           // Altitude at peak brightness
+
+  // Velocity (OFTEN MISSING)
+  velocityKmS?: number;          // Entry velocity
+
+  // Computed flags for UI
+  hasLocation: boolean;          // lat/lon both present
+  hasAltitude: boolean;          // altitude present
+  hasVelocity: boolean;          // velocity present
+  isComplete: boolean;           // all optional fields present
+}
+
+export type FireballSortField = "date" | "energy" | "impact-e" | "vel" | "alt";
+
+export interface FireballQueryParams {
+  dateMin?: string;              // YYYY-MM-DD
+  dateMax?: string;              // YYYY-MM-DD
+  reqLoc?: boolean;              // Only events with lat/lon (maps to req-loc)
+  reqAlt?: boolean;              // Only events with altitude (maps to req-alt)
+  reqVel?: boolean;              // Only events with velocity (maps to req-vel)
+  sort?: FireballSortField;
+  order?: SortOrder;
+  limit?: number;                // Default: 100 (most recent)
+}
+
+export interface FireballListResponse {
+  events: FireballEvent[];
+  count: number;
+  meta: {
+    filtersApplied: Record<string, string>;  // Debug: what we sent to API
+  };
+}
+
+// Zod schema for Fireball query validation
+export const FireballQuerySchema = z.object({
+  dateMin: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  dateMax: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  reqLoc: z.coerce.boolean().optional(),
+  reqAlt: z.coerce.boolean().optional(),
+  reqVel: z.coerce.boolean().optional(),
+  sort: z.enum(["date", "energy", "impact-e", "vel", "alt"]).optional(),
+  order: z.enum(["asc", "desc"]).optional(),
+  limit: z.coerce.number().int().min(1).max(500).default(100),
+});

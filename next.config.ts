@@ -16,6 +16,29 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'images-assets.nasa.gov',
       },
+      // APOD images can come from various NASA subdomains
+      {
+        protocol: 'https',
+        hostname: 'apod.nasa.gov',
+      },
+      {
+        protocol: 'https',
+        hostname: '*.nasa.gov',
+      },
+      // YouTube thumbnails for video APODs
+      {
+        protocol: 'https',
+        hostname: 'img.youtube.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'i.ytimg.com',
+      },
+      // Vimeo thumbnails
+      {
+        protocol: 'https',
+        hostname: 'i.vimeocdn.com',
+      },
     ],
   },
 };

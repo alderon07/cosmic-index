@@ -31,6 +31,8 @@ export const CACHE_TTL = {
   NASA_IMAGES_EMPTY: 2 * 60 * 60,    // 2 hours (avoid hammering for objects with 0 images)
   CLOSE_APPROACH_LIST: 60 * 60,      // 1 hour
   CLOSE_APPROACH_UPCOMING: 30 * 60,  // 30 min for dashboard widget
+  APOD: 6 * 60 * 60,                 // 6 hours (refreshes multiple times/day for freshness)
+  FIREBALL_LIST: 60 * 60,            // 1 hour (data updates infrequently)
 } as const;
 
 // Cache key prefixes
@@ -45,6 +47,8 @@ export const CACHE_KEYS = {
   NASA_IMAGES: "img",
   CLOSE_APPROACH_LIST: "ca:list",
   CLOSE_APPROACH_UPCOMING: "ca:upcoming",
+  APOD: "apod",
+  FIREBALL_LIST: "fireball:list",
 } as const;
 
 // Create a hash from query parameters for cache keys

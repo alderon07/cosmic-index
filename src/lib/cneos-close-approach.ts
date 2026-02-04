@@ -124,12 +124,55 @@ function buildCNEOSParams(params: CloseApproachQueryParams): URLSearchParams {
 }
 
 /**
+ * Fetch PHA designations for a given date range
+ * Returns a Set of designations that are PHAs
+ */
+async function fetchPhaDesignations(
+  dateMin: string,
+  dateMax: string
+): Promise<Set<string>> {
+  try {
+    const params = new URLSearchParams({
+      "date-min": dateMin,
+      "date-max": dateMax,
+      pha: "true",
+    });
+
+    const response = await fetch(`${CAD_API_URL}?${params.toString()}`, {
+      headers: { Accept: "application/json" },
+    });
+
+    if (!response.ok) {
+      return new Set();
+    }
+
+    const data: CADResponse = await response.json();
+
+    if (!data || data.count === "0" || !Array.isArray(data.fields) || !Array.isArray(data.data)) {
+      return new Set();
+    }
+
+    const desIdx = data.fields.indexOf("des");
+    if (desIdx < 0) return new Set();
+
+    return new Set(
+      data.data
+        .map((row) => row[desIdx])
+        .filter((des): des is string => des !== null)
+    );
+  } catch {
+    // If PHA lookup fails, return empty set (non-critical)
+    return new Set();
+  }
+}
+
+/**
  * Parse CNEOS CAD API response into CloseApproach objects
  */
 function parseCADResponse(
   fields: string[],
   data: (string | null)[][],
-  phaFilterApplied: boolean
+  phaDesignations: Set<string>
 ): CloseApproach[] {
   const getValue = (row: (string | null)[], field: string): string | null => {
     const idx = fields.indexOf(field);
@@ -211,8 +254,8 @@ function parseCADResponse(
         absoluteMagnitude: absMag,
         diameterMeasured,
         diameterEstimated,
-        // Only mark as PHA if we filtered by PHA (API doesn't return this flag otherwise)
-        isPha: phaFilterApplied ? true : undefined,
+        // Mark as PHA if designation is in the PHA set
+        isPha: phaDesignations.has(des) ? true : undefined,
       };
 
       return approach;
@@ -243,13 +286,16 @@ function computeHighlights(events: CloseApproach[]): CloseApproachListResponse["
   return { closestApproach, fastestFlyby };
 }
 
+// Cache version - increment to invalidate old cached responses
+const CACHE_VERSION = 2;
+
 /**
  * Fetch close approaches from CNEOS CAD API
  */
 export async function fetchCloseApproaches(
   params: CloseApproachQueryParams = {}
 ): Promise<CloseApproachListResponse> {
-  const cacheKey = `${CACHE_KEYS.CLOSE_APPROACH_LIST}:${hashParams(params as Record<string, unknown>)}`;
+  const cacheKey = `${CACHE_KEYS.CLOSE_APPROACH_LIST}:v${CACHE_VERSION}:${hashParams(params as Record<string, unknown>)}`;
 
   return withCache(cacheKey, CACHE_TTL.CLOSE_APPROACH_LIST, async () => {
     const urlParams = buildCNEOSParams(params);
@@ -296,7 +342,26 @@ export async function fetchCloseApproaches(
       }
 
       const phaFilterApplied = params.phaOnly === true;
-      const events = parseCADResponse(data.fields, data.data, phaFilterApplied);
+
+      // Get PHA designations to mark objects correctly
+      // If already filtering by PHA, all results are PHAs
+      // Otherwise, fetch the PHA list in parallel for cross-reference
+      let phaDesignations: Set<string>;
+      if (phaFilterApplied) {
+        // All results are PHAs when filter is applied
+        phaDesignations = new Set(
+          data.data
+            .map((row) => row[data.fields.indexOf("des")])
+            .filter((des): des is string => des !== null)
+        );
+      } else {
+        // Fetch PHA list to cross-reference
+        const dateMin = params.dateMin || DEFAULT_PARAMS.dateMin;
+        const dateMax = params.dateMax || DEFAULT_PARAMS.dateMax;
+        phaDesignations = await fetchPhaDesignations(dateMin, dateMax);
+      }
+
+      const events = parseCADResponse(data.fields, data.data, phaDesignations);
 
       // Apply limit if specified (API should handle this, but be safe)
       const limit = params.limit || DEFAULT_PARAMS.limit;

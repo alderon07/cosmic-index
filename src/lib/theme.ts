@@ -1,6 +1,6 @@
 // Centralized theme configuration for each object type
 
-export type ObjectTheme = "exoplanets" | "stars" | "small-bodies" | "close-approaches";
+export type ObjectTheme = "exoplanets" | "stars" | "small-bodies" | "close-approaches" | "fireballs";
 
 export interface ThemeConfig {
   // Raw color name (for documentation)
@@ -138,6 +138,30 @@ export const THEMES: Record<ObjectTheme, ThemeConfig> = {
     sortOrderSelected: "bg-destructive/20 text-destructive",
     selectItemFocus: "focus:bg-destructive/20 focus:text-destructive",
     hoverText: "hover:text-destructive",
+  },
+  fireballs: {
+    colorName: "radium-teal",
+    text: "text-radium-teal",
+    bg: "bg-radium-teal",
+    border: "border-radium-teal",
+    hoverBg: "hover:bg-radium-teal/90",
+    textOnBg: "text-void-black",
+    glow: "glow-teal",
+    selectedButton:
+      "!bg-radium-teal !text-void-black !border-radium-teal hover:!bg-radium-teal/90",
+    badge: "border-radium-teal/50 text-radium-teal bg-radium-teal/10",
+    filterChip: "bg-radium-teal/20 text-radium-teal border-radium-teal/30",
+    filterChipHover: "hover:bg-radium-teal/30",
+    icon: "text-radium-teal",
+    iconContainer: "bg-radium-teal/20",
+    sortSelect:
+      "border-radium-teal/30 hover:border-radium-teal/50 focus:ring-radium-teal/50 focus:border-radium-teal/60",
+    filterBadge: "border-radium-teal/50 text-radium-teal",
+    focusRing: "focus:ring-radium-teal",
+    sortOrderBorder: "border-radium-teal/30",
+    sortOrderSelected: "bg-radium-teal/20 text-radium-teal",
+    selectItemFocus: "focus:bg-radium-teal/20 focus:text-radium-teal",
+    hoverText: "hover:text-radium-teal",
   },
 };
 

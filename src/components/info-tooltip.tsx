@@ -31,6 +31,10 @@ const THEME_CLASSES: Record<ObjectTheme, { underline: string; border: string }> 
     underline: "border-destructive/40 hover:border-destructive",
     border: "border-destructive/30",
   },
+  fireballs: {
+    underline: "border-radium-teal/40 hover:border-radium-teal",
+    border: "border-radium-teal/30",
+  },
 };
 
 const DEFAULT_CLASSES = {
