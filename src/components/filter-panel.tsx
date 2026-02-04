@@ -94,12 +94,14 @@ interface ExoplanetFilterPanelProps {
   onChange: (filters: ExoplanetFilters) => void;
   onReset: () => void;
   theme?: ThemeConfig;
+  viewToggle?: React.ReactNode;
 }
 
 interface SmallBodyFilterPanelProps {
   filters: SmallBodyFilters;
   onChange: (filters: SmallBodyFilters) => void;
   onReset: () => void;
+  viewToggle?: React.ReactNode;
 }
 
 // Count active filters
@@ -188,6 +190,7 @@ export function ExoplanetFilterPanel({
   onChange,
   onReset,
   theme = exoplanetTheme,
+  viewToggle,
 }: ExoplanetFilterPanelProps) {
   const activeCount = countExoplanetFilters(filters);
 
@@ -339,6 +342,8 @@ export function ExoplanetFilterPanel({
             <ArrowDown className="w-4 h-4" />
           </button>
         </div>
+        {/* View Toggle */}
+        {viewToggle && <div className="ml-auto">{viewToggle}</div>}
       </div>
 
       {/* Filter Accordion */}
@@ -622,6 +627,7 @@ export function SmallBodyFilterPanel({
   filters,
   onChange,
   onReset,
+  viewToggle,
 }: SmallBodyFilterPanelProps) {
   const activeCount = countActiveFilters(filters);
 
@@ -691,7 +697,7 @@ export function SmallBodyFilterPanel({
       )}
 
       {/* Type Toggle */}
-      <div className="flex gap-2">
+      <div className="flex items-center gap-2">
         <Button
           variant={filters.kind === undefined ? "secondary" : "outline"}
           size="sm"
@@ -714,6 +720,8 @@ export function SmallBodyFilterPanel({
         >
           Comets
         </Button>
+        {/* View Toggle */}
+        {viewToggle && <div className="ml-auto">{viewToggle}</div>}
       </div>
 
       {/* Filter Accordion */}

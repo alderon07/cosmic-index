@@ -59,53 +59,61 @@ export function FireballCard({
       : "—";
 
     return (
-      <Card className={cardClassName}>
-        <CardContent className="py-3 px-4 flex flex-col gap-2">
-          <div className="flex items-center justify-between gap-2 min-w-0">
-            <div className="flex items-center gap-2 min-w-0">
-              <Calendar className={`w-4 h-4 shrink-0 ${theme.icon}`} />
-              <span className={`font-display text-sm ${theme.text} truncate`}>
-                {dateDisplay}
-              </span>
-              {!fireball.isComplete && (
-                <Badge
-                  variant="outline"
-                  className="text-xs border-muted-foreground/30 text-muted-foreground shrink-0"
-                >
-                  <AlertCircle className="w-3 h-3 mr-1" />
-                  Incomplete
-                </Badge>
-              )}
+      <Card className="bg-card border-border/50 transition-all duration-300 hover:border-radium-teal/50 hover:glow-teal bezel overflow-hidden">
+        <CardContent className="py-3 px-4">
+          <div className="flex items-center gap-4">
+            {/* Date (primary identifier) */}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <Calendar className={`w-4 h-4 shrink-0 ${theme.icon}`} />
+                <span className={`font-display text-sm ${theme.text} truncate`}>
+                  {dateDisplay}
+                </span>
+                {!fireball.isComplete && (
+                  <Badge
+                    variant="outline"
+                    className="text-[10px] border-muted-foreground/30 text-muted-foreground shrink-0 py-0 px-1.5"
+                  >
+                    <AlertCircle className="w-2.5 h-2.5 mr-0.5" />
+                    Incomplete
+                  </Badge>
+                )}
+              </div>
             </div>
+
+            {/* Energy */}
+            <div className="text-right shrink-0 w-20">
+              <p className="text-xs text-muted-foreground">Energy</p>
+              <p className="text-xs font-mono text-foreground">{energyDisplay}</p>
+            </div>
+
+            {/* Location */}
+            <div className="hidden sm:block text-right shrink-0 w-24">
+              <p className="text-xs text-muted-foreground">Location</p>
+              <p className="text-xs font-mono text-foreground truncate" title={locationShort}>
+                {locationShort}
+              </p>
+            </div>
+
+            {/* Altitude */}
+            <div className="hidden md:block text-right shrink-0 w-16">
+              <p className="text-xs text-muted-foreground">Altitude</p>
+              <p className="text-xs font-mono text-foreground">{altShort}</p>
+            </div>
+
+            {/* Velocity */}
+            <div className="hidden lg:block text-right shrink-0 w-16">
+              <p className="text-xs text-muted-foreground">Velocity</p>
+              <p className="text-xs font-mono text-foreground">{velShort}</p>
+            </div>
+
+            {/* Size category badge */}
             <Badge
               variant="outline"
-              className={`text-xs shrink-0 ${theme.badge}`}
+              className={`text-[10px] shrink-0 ${theme.badge}`}
             >
               {sizeCategory}
             </Badge>
-          </div>
-          <div className="flex flex-wrap items-center gap-x-8 gap-y-1 text-sm min-w-0">
-            <span className="flex items-center gap-1.5">
-              <Zap className="w-3.5 h-3.5 text-muted-foreground" />
-              <span className="font-mono text-foreground">{energyDisplay}</span>
-            </span>
-            <span className="flex items-center gap-1.5">
-              <MapPin className="w-3.5 h-3.5 text-muted-foreground" />
-              <span
-                className="font-mono text-foreground truncate max-w-[120px]"
-                title={locationShort}
-              >
-                {locationShort}
-              </span>
-            </span>
-            <span className="flex items-center gap-1.5">
-              <Mountain className="w-3.5 h-3.5 text-muted-foreground" />
-              <span className="font-mono text-foreground">{altShort}</span>
-            </span>
-            <span className="flex items-center gap-1.5">
-              <Gauge className="w-3.5 h-3.5 text-muted-foreground" />
-              <span className="font-mono text-foreground">{velShort}</span>
-            </span>
           </div>
         </CardContent>
       </Card>
@@ -239,20 +247,34 @@ export function FireballCardSkeleton({
 }) {
   if (variant === "compact") {
     return (
-      <Card className="h-full bg-card border-border/50 bezel overflow-hidden">
-        <CardContent className="py-3 px-4 flex flex-col gap-2">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <div className="h-4 w-4 data-stream rounded shrink-0" />
-              <div className="h-4 w-24 data-stream rounded" />
+      <Card className="bg-card border-border/50 bezel overflow-hidden">
+        <CardContent className="py-3 px-4">
+          <div className="flex items-center gap-4">
+            {/* Date area */}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <div className="h-4 w-4 data-stream rounded shrink-0" />
+                <div className="h-4 w-28 data-stream rounded" />
+              </div>
             </div>
-            <div className="h-5 w-20 data-stream rounded shrink-0" />
-          </div>
-          <div className="flex flex-wrap items-center gap-x-8 gap-y-1">
-            <div className="h-4 w-16 data-stream rounded" />
-            <div className="h-4 w-20 data-stream rounded" />
-            <div className="h-4 w-14 data-stream rounded" />
-            <div className="h-4 w-14 data-stream rounded" />
+            {/* Data columns */}
+            <div className="text-right shrink-0 w-20">
+              <div className="h-3 w-10 data-stream rounded mb-1 ml-auto" />
+              <div className="h-3 w-16 data-stream rounded ml-auto" />
+            </div>
+            <div className="hidden sm:block text-right shrink-0 w-24">
+              <div className="h-3 w-12 data-stream rounded mb-1 ml-auto" />
+              <div className="h-3 w-20 data-stream rounded ml-auto" />
+            </div>
+            <div className="hidden md:block text-right shrink-0 w-16">
+              <div className="h-3 w-10 data-stream rounded mb-1 ml-auto" />
+              <div className="h-3 w-14 data-stream rounded ml-auto" />
+            </div>
+            <div className="hidden lg:block text-right shrink-0 w-16">
+              <div className="h-3 w-10 data-stream rounded mb-1 ml-auto" />
+              <div className="h-3 w-14 data-stream rounded ml-auto" />
+            </div>
+            <div className="h-5 w-14 data-stream rounded shrink-0" />
           </div>
         </CardContent>
       </Card>

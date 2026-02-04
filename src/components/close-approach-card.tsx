@@ -14,9 +14,12 @@ import { AlertTriangle, Gauge, Ruler, Calendar } from "lucide-react";
 
 const theme = THEMES["close-approaches"];
 
+export type CloseApproachCardVariant = "default" | "compact";
+
 interface CloseApproachCardProps {
   approach: CloseApproach;
   showHighlightBadge?: "closest" | "fastest";
+  variant?: CloseApproachCardVariant;
 }
 
 // Reusable tooltip wrapper for terms that need explanation
@@ -35,7 +38,7 @@ function InfoTooltip({ children, content }: { children: React.ReactNode; content
   );
 }
 
-export function CloseApproachCard({ approach, showHighlightBadge }: CloseApproachCardProps) {
+export function CloseApproachCard({ approach, showHighlightBadge, variant = "default" }: CloseApproachCardProps) {
   const sizeCategory = getSizeCategory(approach.diameterEstimated);
 
   // Format velocity
@@ -60,6 +63,76 @@ export function CloseApproachCard({ approach, showHighlightBadge }: CloseApproac
     }
   }
 
+  // Compact (list) variant - single row with key info
+  if (variant === "compact") {
+    return (
+      <Card className="bg-card border-border/50 transition-all duration-300 hover:border-destructive/50 hover:glow-red bezel overflow-hidden">
+        <CardContent className="p-3">
+          <div className="flex items-center gap-4">
+            {/* Name and badges */}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <span className={`font-display text-sm ${theme.text} truncate`}>
+                  {approach.designation}
+                </span>
+                {showHighlightBadge === "closest" && (
+                  <Badge variant="outline" className={`text-[10px] ${theme.badge}`}>
+                    Closest
+                  </Badge>
+                )}
+                {showHighlightBadge === "fastest" && (
+                  <Badge variant="outline" className={`text-[10px] ${theme.badge}`}>
+                    Fastest
+                  </Badge>
+                )}
+                {approach.isPha && (
+                  <Badge variant="destructive" className="text-[10px]">
+                    <AlertTriangle className="w-2.5 h-2.5 mr-0.5" />
+                    PHA
+                  </Badge>
+                )}
+              </div>
+              {approach.fullName && approach.fullName !== approach.designation && (
+                <p className="text-xs text-muted-foreground truncate">
+                  {approach.fullName}
+                </p>
+              )}
+            </div>
+
+            {/* Date */}
+            <div className="hidden sm:block text-right shrink-0">
+              <p className="text-xs text-muted-foreground">Date</p>
+              <p className="text-xs font-mono text-foreground">
+                {approach.approachTimeRaw.split(" ")[0]}
+              </p>
+            </div>
+
+            {/* Distance */}
+            <div className="text-right shrink-0">
+              <p className="text-xs text-muted-foreground">Distance</p>
+              <p className="text-xs font-mono text-foreground">
+                {approach.distanceLd.toFixed(2)} LD
+              </p>
+            </div>
+
+            {/* Velocity */}
+            <div className="hidden md:block text-right shrink-0">
+              <p className="text-xs text-muted-foreground">Velocity</p>
+              <p className="text-xs font-mono text-foreground">{velocityKmS} km/s</p>
+            </div>
+
+            {/* Size */}
+            <div className="hidden lg:block text-right shrink-0">
+              <p className="text-xs text-muted-foreground">Size</p>
+              <p className="text-xs font-mono text-foreground">{diameterDisplay}</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Default (grid) variant
   return (
     <Card className={`h-full bg-card border-border/50 transition-all duration-300 hover:border-destructive/50 hover:glow-red bezel scanlines overflow-hidden`}>
       <CardHeader>
@@ -192,7 +265,34 @@ export function CloseApproachCard({ approach, showHighlightBadge }: CloseApproac
   );
 }
 
-export function CloseApproachCardSkeleton() {
+export function CloseApproachCardSkeleton({ variant = "default" }: { variant?: CloseApproachCardVariant }) {
+  if (variant === "compact") {
+    return (
+      <Card className="bg-card border-border/50 bezel overflow-hidden">
+        <CardContent className="p-3">
+          <div className="flex items-center gap-4">
+            <div className="flex-1 min-w-0">
+              <div className="h-4 w-32 data-stream rounded mb-1" />
+              <div className="h-3 w-24 data-stream rounded" />
+            </div>
+            <div className="hidden sm:block text-right">
+              <div className="h-3 w-8 data-stream rounded mb-1" />
+              <div className="h-3 w-16 data-stream rounded" />
+            </div>
+            <div className="text-right">
+              <div className="h-3 w-12 data-stream rounded mb-1" />
+              <div className="h-3 w-14 data-stream rounded" />
+            </div>
+            <div className="hidden md:block text-right">
+              <div className="h-3 w-12 data-stream rounded mb-1" />
+              <div className="h-3 w-14 data-stream rounded" />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card className="h-full bg-card border-border/50 bezel overflow-hidden">
       <CardHeader className="pb-3">

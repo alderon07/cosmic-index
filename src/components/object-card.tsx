@@ -5,6 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   AnyCosmicObject,
+  ExoplanetData,
+  StarData,
+  SmallBodyData,
   isExoplanet,
   isSmallBody,
   isStar,
@@ -22,12 +25,15 @@ const EXOPLANETS_LIST_URL_KEY = "exoplanetsListUrl";
 const SMALL_BODIES_LIST_URL_KEY = "smallBodiesListUrl";
 const STARS_LIST_URL_KEY = "starsListUrl";
 
+export type ObjectCardVariant = "default" | "compact";
+
 interface ObjectCardProps {
   object: AnyCosmicObject;
   onModalOpen?: (object: AnyCosmicObject) => void;
+  variant?: ObjectCardVariant;
 }
 
-export function ObjectCard({ object, onModalOpen }: ObjectCardProps) {
+export function ObjectCard({ object, onModalOpen, variant = "default" }: ObjectCardProps) {
   const href = isExoplanet(object)
     ? `/exoplanets/${object.id}`
     : isStar(object)
@@ -107,6 +113,194 @@ export function ObjectCard({ object, onModalOpen }: ObjectCardProps) {
       sessionStorage.setItem(storageKey, currentUrl);
     }
   };
+
+  // Compact variant for list view - with type-specific column layouts
+  if (variant === "compact") {
+    // Type-specific data extraction for optimal list display
+    const renderExoplanetColumns = () => {
+      const exo = object as ExoplanetData;
+      return (
+        <>
+          {/* Host Star */}
+          <div className="hidden sm:block text-right shrink-0 w-24">
+            <p className="text-xs text-muted-foreground">Host</p>
+            <p className="text-xs font-mono text-foreground truncate">{exo.hostStar || "—"}</p>
+          </div>
+          {/* Radius */}
+          <div className="text-right shrink-0 w-16">
+            <p className="text-xs text-muted-foreground">Radius</p>
+            <p className="text-xs font-mono text-foreground">
+              {exo.radiusEarth ? `${exo.radiusEarth.toFixed(1)} R⊕` : "—"}
+            </p>
+          </div>
+          {/* Period */}
+          <div className="hidden md:block text-right shrink-0 w-20">
+            <p className="text-xs text-muted-foreground">Period</p>
+            <p className="text-xs font-mono text-foreground">
+              {exo.orbitalPeriodDays ? `${exo.orbitalPeriodDays.toFixed(1)} d` : "—"}
+            </p>
+          </div>
+          {/* Distance */}
+          <div className="hidden lg:block text-right shrink-0 w-20">
+            <p className="text-xs text-muted-foreground">Distance</p>
+            <p className="text-xs font-mono text-foreground">
+              {exo.distanceParsecs ? `${exo.distanceParsecs.toFixed(0)} pc` : "—"}
+            </p>
+          </div>
+          {/* Discovery Year */}
+          <div className="hidden xl:block text-right shrink-0 w-14">
+            <p className="text-xs text-muted-foreground">Year</p>
+            <p className="text-xs font-mono text-foreground">{exo.discoveredYear || "—"}</p>
+          </div>
+        </>
+      );
+    };
+
+    const renderStarColumns = () => {
+      const star = object as StarData;
+      return (
+        <>
+          {/* Spectral Class */}
+          <div className="text-right shrink-0 w-14">
+            <p className="text-xs text-muted-foreground">Class</p>
+            <p className="text-xs font-mono text-foreground">{star.spectralClass || "—"}</p>
+          </div>
+          {/* Temperature */}
+          <div className="hidden sm:block text-right shrink-0 w-16">
+            <p className="text-xs text-muted-foreground">Temp</p>
+            <p className="text-xs font-mono text-foreground">
+              {star.starTempK ? `${star.starTempK.toFixed(0)} K` : "—"}
+            </p>
+          </div>
+          {/* Mass */}
+          <div className="hidden md:block text-right shrink-0 w-16">
+            <p className="text-xs text-muted-foreground">Mass</p>
+            <p className="text-xs font-mono text-foreground">
+              {star.starMassSolar ? `${star.starMassSolar.toFixed(2)} M☉` : "—"}
+            </p>
+          </div>
+          {/* Planet Count */}
+          <div className="text-right shrink-0 w-16">
+            <p className="text-xs text-muted-foreground">Planets</p>
+            <p className="text-xs font-mono text-foreground">{star.planetCount}</p>
+          </div>
+          {/* Distance */}
+          <div className="hidden lg:block text-right shrink-0 w-20">
+            <p className="text-xs text-muted-foreground">Distance</p>
+            <p className="text-xs font-mono text-foreground">
+              {star.distanceParsecs ? `${star.distanceParsecs.toFixed(1)} pc` : "—"}
+            </p>
+          </div>
+        </>
+      );
+    };
+
+    const renderSmallBodyColumns = () => {
+      const sb = object as SmallBodyData;
+      return (
+        <>
+          {/* Orbit Class */}
+          <div className="hidden sm:block text-right shrink-0 w-20">
+            <p className="text-xs text-muted-foreground">Orbit</p>
+            <p className="text-xs font-mono text-foreground truncate">{sb.orbitClass || "—"}</p>
+          </div>
+          {/* Diameter */}
+          <div className="text-right shrink-0 w-20">
+            <p className="text-xs text-muted-foreground">Diameter</p>
+            <p className="text-xs font-mono text-foreground">
+              {sb.diameterKm ? `${sb.diameterKm.toFixed(1)} km` : "—"}
+            </p>
+          </div>
+          {/* Absolute Magnitude */}
+          <div className="hidden md:block text-right shrink-0 w-14">
+            <p className="text-xs text-muted-foreground">H mag</p>
+            <p className="text-xs font-mono text-foreground">
+              {sb.absoluteMagnitude ? sb.absoluteMagnitude.toFixed(1) : "—"}
+            </p>
+          </div>
+          {/* Discovery Year */}
+          <div className="hidden lg:block text-right shrink-0 w-14">
+            <p className="text-xs text-muted-foreground">Year</p>
+            <p className="text-xs font-mono text-foreground">{sb.discoveredYear || "—"}</p>
+          </div>
+        </>
+      );
+    };
+
+    const compactContent = (
+      <Card className={`bg-card border-border/50 transition-all duration-300 ${hoverStyles} bezel overflow-hidden`}>
+        <CardContent className="py-3 px-4">
+          <div className="flex items-center gap-4">
+            {/* Left: Name and badges */}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <span className={`font-display text-sm ${nameColorClass} truncate`}>
+                  {object.displayName}
+                </span>
+                {isSmallBody(object) && object.isNeo && (
+                  <Badge variant="outline" className="text-[10px] border-amber-glow/50 text-amber-glow shrink-0 py-0 px-1.5">
+                    NEO
+                  </Badge>
+                )}
+                {isSmallBody(object) && object.isPha && (
+                  <Badge variant="destructive" className="text-[10px] shrink-0 py-0 px-1.5">
+                    PHA
+                  </Badge>
+                )}
+              </div>
+              {/* Secondary info line */}
+              {isExoplanet(object) && object.discoveryMethod && (
+                <p className="text-xs text-muted-foreground truncate">
+                  {object.discoveryMethod}
+                </p>
+              )}
+              {isSmallBody(object) && object.aliases.length > 0 && (
+                <p className="text-xs text-muted-foreground truncate">
+                  {object.aliases[0]}
+                </p>
+              )}
+            </div>
+
+            {/* Type-specific data columns */}
+            {isExoplanet(object) && renderExoplanetColumns()}
+            {isStar(object) && renderStarColumns()}
+            {isSmallBody(object) && renderSmallBodyColumns()}
+
+            {/* Type badge */}
+            <Badge variant={typeVariant} className={`shrink-0 font-mono text-[10px] ${typeClassName}`}>
+              {typeLabel}
+            </Badge>
+          </div>
+        </CardContent>
+      </Card>
+    );
+
+    // Handle click behavior for compact variant
+    if (onModalOpen) {
+      return (
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => onModalOpen(object)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              onModalOpen(object);
+            }
+          }}
+          className="block group cursor-pointer"
+        >
+          {compactContent}
+        </div>
+      );
+    }
+
+    return (
+      <Link href={href} onClick={storeListUrl} className="block group">
+        {compactContent}
+      </Link>
+    );
+  }
 
   // Handle card click - opens modal if onModalOpen provided
   const handleCardClick = () => {
@@ -268,7 +462,46 @@ export function ObjectCard({ object, onModalOpen }: ObjectCardProps) {
 }
 
 // Loading skeleton for ObjectCard
-export function ObjectCardSkeleton() {
+interface ObjectCardSkeletonProps {
+  variant?: ObjectCardVariant;
+}
+
+export function ObjectCardSkeleton({ variant = "default" }: ObjectCardSkeletonProps) {
+  if (variant === "compact") {
+    return (
+      <Card className="bg-card border-border/50 bezel overflow-hidden">
+        <CardContent className="py-3 px-4">
+          <div className="flex items-center gap-4">
+            {/* Name area */}
+            <div className="flex-1 min-w-0">
+              <div className="h-4 w-32 data-stream rounded mb-1" />
+              <div className="h-3 w-20 data-stream rounded" />
+            </div>
+            {/* Data columns */}
+            <div className="hidden sm:block text-right shrink-0 w-20">
+              <div className="h-3 w-10 data-stream rounded mb-1 ml-auto" />
+              <div className="h-3 w-16 data-stream rounded ml-auto" />
+            </div>
+            <div className="text-right shrink-0 w-16">
+              <div className="h-3 w-10 data-stream rounded mb-1 ml-auto" />
+              <div className="h-3 w-14 data-stream rounded ml-auto" />
+            </div>
+            <div className="hidden md:block text-right shrink-0 w-16">
+              <div className="h-3 w-10 data-stream rounded mb-1 ml-auto" />
+              <div className="h-3 w-14 data-stream rounded ml-auto" />
+            </div>
+            <div className="hidden lg:block text-right shrink-0 w-16">
+              <div className="h-3 w-10 data-stream rounded mb-1 ml-auto" />
+              <div className="h-3 w-14 data-stream rounded ml-auto" />
+            </div>
+            {/* Type badge */}
+            <div className="h-5 w-14 data-stream rounded shrink-0" />
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card className="h-full bg-card border-border/50 bezel overflow-hidden">
       <CardHeader className="pb-3">

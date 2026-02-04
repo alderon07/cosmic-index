@@ -72,6 +72,7 @@ interface StarFilterPanelProps {
   onChange: (filters: StarFilters) => void;
   onReset: () => void;
   theme?: ThemeConfig;
+  viewToggle?: React.ReactNode;
 }
 
 // Count active filters (excluding sort)
@@ -113,6 +114,7 @@ export function StarFilterPanel({
   onChange,
   onReset,
   theme = defaultStarTheme,
+  viewToggle,
 }: StarFilterPanelProps) {
   const activeCount = countActiveFilters(filters);
 
@@ -246,6 +248,8 @@ export function StarFilterPanel({
             <ArrowDown className="w-4 h-4" />
           </button>
         </div>
+        {/* View Toggle */}
+        {viewToggle && <div className="ml-auto">{viewToggle}</div>}
       </div>
 
       {/* Filter Accordion */}

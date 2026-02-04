@@ -72,11 +72,14 @@ function formatDateTime(isoString: string): { date: string; time: string } {
   }
 }
 
+export type SpaceWeatherCardVariant = "default" | "compact";
+
 interface SpaceWeatherCardProps {
   event: AnySpaceWeatherEvent;
+  variant?: SpaceWeatherCardVariant;
 }
 
-export function SpaceWeatherCard({ event }: SpaceWeatherCardProps) {
+export function SpaceWeatherCard({ event, variant = "default" }: SpaceWeatherCardProps) {
   const { date, time } = formatDateTime(event.startTime);
 
   // Get severity based on event type
@@ -113,6 +116,69 @@ export function SpaceWeatherCard({ event }: SpaceWeatherCardProps) {
 
   const linkedCount = event.linkedEvents?.length || 0;
 
+  // Compact (list) variant - single row with key info
+  if (variant === "compact") {
+    return (
+      <Card className="bg-card border-border/50 transition-all duration-300 hover:border-aurora-violet/50 hover:glow-violet bezel overflow-hidden">
+        <CardContent className="p-3">
+          <div className="flex items-center gap-4">
+            {/* Event type and icon */}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <span className={`${theme.text}`}>
+                  {getEventIcon(event.eventType)}
+                </span>
+                <span className={`font-display text-sm ${theme.text}`}>
+                  {getEventTypeLabel(event.eventType)}
+                </span>
+                <Badge variant="outline" className={`text-[10px] ${SEVERITY_COLORS[severity]}`}>
+                  {severity.charAt(0).toUpperCase() + severity.slice(1)}
+                </Badge>
+              </div>
+              {linkedCount > 0 && (
+                <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                  <Link2 className="w-3 h-3" />
+                  {linkedCount} linked
+                </p>
+              )}
+            </div>
+
+            {/* Date */}
+            <div className="text-right shrink-0">
+              <p className="text-xs text-muted-foreground">Date</p>
+              <p className="text-xs font-mono text-foreground">{date}</p>
+            </div>
+
+            {/* Time */}
+            <div className="hidden sm:block text-right shrink-0">
+              <p className="text-xs text-muted-foreground">Time</p>
+              <p className="text-xs font-mono text-foreground">{time || "—"}</p>
+            </div>
+
+            {/* Primary Metric */}
+            <div className="text-right shrink-0">
+              <p className="text-xs text-muted-foreground">
+                {event.eventType === "FLR" ? "Class" : event.eventType === "CME" ? "Speed" : "Kp"}
+              </p>
+              <p className={`text-xs font-mono ${theme.text}`}>{primaryMetric}</p>
+            </div>
+
+            {/* Source (hidden on small screens) */}
+            {secondaryMetric && (
+              <div className="hidden md:block text-right shrink-0">
+                <p className="text-xs text-muted-foreground">
+                  {event.eventType === "GST" ? "Readings" : "Source"}
+                </p>
+                <p className="text-xs font-mono text-foreground">{secondaryMetric}</p>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Default (grid) variant
   return (
     <Card
       className={`h-full bg-card border-border/50 transition-all duration-300 hover:border-aurora-violet/50 hover:glow-violet bezel scanlines overflow-hidden`}
@@ -214,7 +280,34 @@ export function SpaceWeatherCard({ event }: SpaceWeatherCardProps) {
   );
 }
 
-export function SpaceWeatherCardSkeleton() {
+export function SpaceWeatherCardSkeleton({ variant = "default" }: { variant?: SpaceWeatherCardVariant }) {
+  if (variant === "compact") {
+    return (
+      <Card className="bg-card border-border/50 bezel overflow-hidden">
+        <CardContent className="p-3">
+          <div className="flex items-center gap-4">
+            <div className="flex-1 min-w-0">
+              <div className="h-4 w-28 data-stream rounded mb-1" />
+              <div className="h-3 w-16 data-stream rounded" />
+            </div>
+            <div className="text-right">
+              <div className="h-3 w-8 data-stream rounded mb-1" />
+              <div className="h-3 w-16 data-stream rounded" />
+            </div>
+            <div className="hidden sm:block text-right">
+              <div className="h-3 w-8 data-stream rounded mb-1" />
+              <div className="h-3 w-12 data-stream rounded" />
+            </div>
+            <div className="text-right">
+              <div className="h-3 w-10 data-stream rounded mb-1" />
+              <div className="h-3 w-12 data-stream rounded" />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card className="h-full bg-card border-border/50 bezel overflow-hidden">
       <CardHeader className="pb-2">
