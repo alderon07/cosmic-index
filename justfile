@@ -44,14 +44,5 @@ ingest-exoplanets-reset:
     bun run ingest:exoplanets -- --reset
     bun run ingest:exoplanets
 
-# Ingest small bodies into Turso (~30-60 minutes for 1M+ objects)
-ingest-small-bodies:
-    bun run ingest:small-bodies
-
-# Reset checkpoint and ingest small bodies (fresh run)
-ingest-small-bodies-reset:
-    bun run ingest:small-bodies -- --reset
-    bun run ingest:small-bodies
-
 # Ingest stars then exoplanets (reset + ingest each). Needs TURSO_* in .env.local
 ingest-all: ingest-stars-reset ingest-exoplanets-reset

@@ -9,8 +9,7 @@
     "lint": "bun run eslint",
     "sbdb:diag": "npx tsx scripts/sbdb-diag.ts",
     "ingest:stars": "npx tsx scripts/ingest-stars.ts",
-    "ingest:exoplanets": "npx tsx scripts/ingest-exoplanets.ts",
-    "ingest:small-bodies": "npx tsx scripts/ingest-small-bodies.ts"
+    "ingest:exoplanets": "npx tsx scripts/ingest-exoplanets.ts"
   },
   "dependencies": {
     "@libsql/client": "^0.14.0",

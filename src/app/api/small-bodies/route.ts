@@ -1,9 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import { fetchSmallBodies, isContractMismatch, isUpstreamFailure } from "@/lib/jpl-sbdb";
-import { searchSmallBodies, isSmallBodyIndexAvailable } from "@/lib/small-body-index";
+import {
+  fetchSmallBodies,
+  isContractMismatch,
+  isUpstreamFailure,
+} from "@/lib/jpl-sbdb";
 import { SmallBodyQuerySchema } from "@/lib/types";
 import { getCacheControlHeader, CACHE_TTL } from "@/lib/cache";
-import { checkRateLimit, getClientIdentifier, getRateLimitHeaders } from "@/lib/rate-limit";
+import {
+  checkRateLimit,
+  getClientIdentifier,
+  getRateLimitHeaders,
+} from "@/lib/rate-limit";
 
 export async function GET(request: NextRequest) {
   // Generate request ID for debugging
@@ -40,28 +47,22 @@ export async function GET(request: NextRequest) {
 
     const params = parseResult.data;
 
-    // Use local index if available, otherwise fall back to live API
-    const useLocalIndex = isSmallBodyIndexAvailable();
-    const result = useLocalIndex
-      ? await searchSmallBodies(params)
-      : await fetchSmallBodies(params);
+    // Fetch small bodies
+    const result = await fetchSmallBodies(params);
 
     // Return response with cache headers
-    const headers: Record<string, string> = {
-      "Cache-Control": getCacheControlHeader(CACHE_TTL.SMALL_BODIES_BROWSE),
-      ...getRateLimitHeaders(rateLimitResult),
-    };
-
-    // Add header to indicate data source (useful for debugging)
-    if (useLocalIndex) {
-      headers["X-Data-Source"] = "local-index";
-    }
-
-    return NextResponse.json(result, { headers });
+    return NextResponse.json(result, {
+      headers: {
+        "Cache-Control": getCacheControlHeader(CACHE_TTL.SMALL_BODIES_BROWSE),
+        ...getRateLimitHeaders(rateLimitResult),
+      },
+    });
   } catch (error) {
     // Log error with request ID for debugging (server-side only)
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
-    const errorType = error instanceof Error ? error.constructor.name : "Unknown";
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error";
+    const errorType =
+      error instanceof Error ? error.constructor.name : "Unknown";
 
     console.error(`[${requestId}] Error fetching small bodies:`, {
       type: errorType,
@@ -96,13 +97,18 @@ export async function GET(request: NextRequest) {
     if (isContractMismatch(error)) {
       // Contract mismatch - return empty results rather than failing
       // This prevents user-facing errors on API contract changes
-      console.warn(`[${requestId}] Contract mismatch, returning empty results:`, errorMessage);
+      console.warn(
+        `[${requestId}] Contract mismatch, returning empty results:`,
+        errorMessage
+      );
       return NextResponse.json(
         { objects: [], total: 0, page: 1, limit: 20, hasMore: false },
         {
           status: 200,
           headers: {
-            "Cache-Control": getCacheControlHeader(CACHE_TTL.SMALL_BODIES_BROWSE),
+            "Cache-Control": getCacheControlHeader(
+              CACHE_TTL.SMALL_BODIES_BROWSE
+            ),
           },
         }
       );
