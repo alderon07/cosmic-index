@@ -1,37 +1,48 @@
 # Cosmic Index – run `just` or `just --list` to see recipes
 # Requires: just (https://github.com/casey/just), bun
 
-# Show all recipes (default)
-default: just --list
+# Show all recipes (default when you run `just` with no args)
+[default]
+list:
+    just --list
 
 # Start dev server (Turbopack, port 3000)
-dev: bun run dev
+dev:
+    bun run dev
 
 # Production build
-build: bun run build
+build:
+    bun run build
 
 # Start production server
-start: bun run start
+start:
+    bun run start
 
 # Run ESLint
-lint: bun run lint
+lint:
+    bun run lint
 
 # Run JPL SBDB API diagnostic
-sbdb-diag: bun run sbdb:diag
+sbdb-diag:
+    bun run sbdb:diag
 
 # Ingest host stars into Turso
-ingest-stars: bun run ingest:stars
+ingest-stars:
+    bun run ingest:stars
 
 # Reset checkpoint and ingest stars (fresh run)
-ingest-stars-reset: bun run ingest:stars -- --reset
-  bun run ingest:stars
+ingest-stars-reset:
+    bun run ingest:stars -- --reset
+    bun run ingest:stars
 
 # Ingest exoplanets into Turso
-ingest-exoplanets: bun run ingest:exoplanets
+ingest-exoplanets:
+    bun run ingest:exoplanets
 
 # Reset and ingest exoplanets
-ingest-exoplanets-reset: bun run ingest:exoplanets -- --reset
-  bun run ingest:exoplanets
+ingest-exoplanets-reset:
+    bun run ingest:exoplanets -- --reset
+    bun run ingest:exoplanets
 
 # Ingest stars then exoplanets (reset + ingest each). Needs TURSO_* in .env.local
 ingest-all: ingest-stars-reset ingest-exoplanets-reset
