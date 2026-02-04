@@ -10,34 +10,126 @@ import {
   getGoogleMapsUrl,
 } from "@/lib/cneos-fireball";
 import { THEMES } from "@/lib/theme";
-import { Calendar, Zap, MapPin, ArrowUpRight, Gauge, Mountain, AlertCircle } from "lucide-react";
+import {
+  Calendar,
+  Zap,
+  MapPin,
+  ArrowUpRight,
+  Gauge,
+  Mountain,
+  AlertCircle,
+} from "lucide-react";
 
 const theme = THEMES["fireballs"];
 
+type FireballCardVariant = "default" | "compact";
+
 interface FireballCardProps {
   fireball: FireballEvent;
+  variant?: FireballCardVariant;
 }
 
-export function FireballCard({ fireball }: FireballCardProps) {
-  const sizeCategory = getEnergySizeCategory(fireball.impactEnergyKt, fireball.radiatedEnergyJ);
-  const energyDisplay = formatEnergy(fireball.radiatedEnergyJ, fireball.impactEnergyKt);
+export function FireballCard({
+  fireball,
+  variant = "default",
+}: FireballCardProps) {
+  const sizeCategory = getEnergySizeCategory(
+    fireball.impactEnergyKt,
+    fireball.radiatedEnergyJ
+  );
+  const energyDisplay = formatEnergy(
+    fireball.radiatedEnergyJ,
+    fireball.impactEnergyKt
+  );
 
   // Format date for display
   const dateDisplay = fireball.date;
 
+  const cardClassName = `h-full bg-card border-border/50 transition-all duration-300 hover:border-radium-teal/50 hover:${theme.glow} bezel scanlines overflow-hidden`;
+
+  if (variant === "compact") {
+    const locationShort = fireball.hasLocation
+      ? formatCoordinates(fireball.latitude!, fireball.longitude!)
+      : "—";
+    const altShort = fireball.hasAltitude
+      ? `${fireball.altitudeKm!.toFixed(1)} km`
+      : "—";
+    const velShort = fireball.hasVelocity
+      ? `${fireball.velocityKmS!.toFixed(1)} km/s`
+      : "—";
+
+    return (
+      <Card className={cardClassName}>
+        <CardContent className="py-3 px-4 flex flex-col gap-2">
+          <div className="flex items-center justify-between gap-2 min-w-0">
+            <div className="flex items-center gap-2 min-w-0">
+              <Calendar className={`w-4 h-4 shrink-0 ${theme.icon}`} />
+              <span className={`font-display text-sm ${theme.text} truncate`}>
+                {dateDisplay}
+              </span>
+              {!fireball.isComplete && (
+                <Badge
+                  variant="outline"
+                  className="text-xs border-muted-foreground/30 text-muted-foreground shrink-0"
+                >
+                  <AlertCircle className="w-3 h-3 mr-1" />
+                  Incomplete
+                </Badge>
+              )}
+            </div>
+            <Badge
+              variant="outline"
+              className={`text-xs shrink-0 ${theme.badge}`}
+            >
+              {sizeCategory}
+            </Badge>
+          </div>
+          <div className="flex flex-wrap items-center gap-x-8 gap-y-1 text-sm min-w-0">
+            <span className="flex items-center gap-1.5">
+              <Zap className="w-3.5 h-3.5 text-muted-foreground" />
+              <span className="font-mono text-foreground">{energyDisplay}</span>
+            </span>
+            <span className="flex items-center gap-1.5">
+              <MapPin className="w-3.5 h-3.5 text-muted-foreground" />
+              <span
+                className="font-mono text-foreground truncate max-w-[120px]"
+                title={locationShort}
+              >
+                {locationShort}
+              </span>
+            </span>
+            <span className="flex items-center gap-1.5">
+              <Mountain className="w-3.5 h-3.5 text-muted-foreground" />
+              <span className="font-mono text-foreground">{altShort}</span>
+            </span>
+            <span className="flex items-center gap-1.5">
+              <Gauge className="w-3.5 h-3.5 text-muted-foreground" />
+              <span className="font-mono text-foreground">{velShort}</span>
+            </span>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
-    <Card className={`h-full bg-card border-border/50 transition-all duration-300 hover:border-radium-teal/50 hover:glow-teal bezel scanlines overflow-hidden`}>
+    <Card className={cardClassName}>
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
-            <CardTitle className={`font-display text-lg ${theme.text} transition-colors flex items-center gap-2`}>
+            <CardTitle
+              className={`font-display text-lg ${theme.text} transition-colors flex items-center gap-2`}
+            >
               <Calendar className="w-4 h-4 shrink-0" />
               {dateDisplay}
             </CardTitle>
           </div>
           <div className="flex flex-col items-end gap-1.5">
             {!fireball.isComplete && (
-              <Badge variant="outline" className="text-xs border-muted-foreground/30 text-muted-foreground">
+              <Badge
+                variant="outline"
+                className="text-xs border-muted-foreground/30 text-muted-foreground"
+              >
                 <AlertCircle className="w-3 h-3 mr-1" />
                 Data incomplete
               </Badge>
@@ -60,7 +152,7 @@ export function FireballCard({ fireball }: FireballCardProps) {
             </p>
             {fireball.impactEnergyKt && (
               <p className="text-xs text-muted-foreground font-mono">
-                {(fireball.radiatedEnergyJ).toFixed(1)}×10¹⁰ J radiated
+                {fireball.radiatedEnergyJ.toFixed(1)}×10¹⁰ J radiated
               </p>
             )}
           </div>
@@ -77,7 +169,10 @@ export function FireballCard({ fireball }: FireballCardProps) {
                   {formatCoordinates(fireball.latitude!, fireball.longitude!)}
                 </p>
                 <a
-                  href={getGoogleMapsUrl(fireball.latitude!, fireball.longitude!)}
+                  href={getGoogleMapsUrl(
+                    fireball.latitude!,
+                    fireball.longitude!
+                  )}
                   target="_blank"
                   rel="noopener noreferrer"
                   className={`text-xs ${theme.text} hover:underline inline-flex items-center gap-1 mt-0.5`}
@@ -104,9 +199,7 @@ export function FireballCard({ fireball }: FireballCardProps) {
                 {fireball.altitudeKm!.toFixed(1)} km
               </p>
             ) : (
-              <p className="text-sm text-muted-foreground/60 mt-0.5">
-                —
-              </p>
+              <p className="text-sm text-muted-foreground/60 mt-0.5">—</p>
             )}
           </div>
 
@@ -121,9 +214,7 @@ export function FireballCard({ fireball }: FireballCardProps) {
                 {fireball.velocityKmS!.toFixed(1)} km/s
               </p>
             ) : (
-              <p className="text-sm text-muted-foreground/60 mt-0.5">
-                —
-              </p>
+              <p className="text-sm text-muted-foreground/60 mt-0.5">—</p>
             )}
           </div>
         </div>
@@ -141,7 +232,33 @@ export function FireballCard({ fireball }: FireballCardProps) {
   );
 }
 
-export function FireballCardSkeleton() {
+export function FireballCardSkeleton({
+  variant = "default",
+}: {
+  variant?: "default" | "compact";
+}) {
+  if (variant === "compact") {
+    return (
+      <Card className="h-full bg-card border-border/50 bezel overflow-hidden">
+        <CardContent className="py-3 px-4 flex flex-col gap-2">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <div className="h-4 w-4 data-stream rounded shrink-0" />
+              <div className="h-4 w-24 data-stream rounded" />
+            </div>
+            <div className="h-5 w-20 data-stream rounded shrink-0" />
+          </div>
+          <div className="flex flex-wrap items-center gap-x-8 gap-y-1">
+            <div className="h-4 w-16 data-stream rounded" />
+            <div className="h-4 w-20 data-stream rounded" />
+            <div className="h-4 w-14 data-stream rounded" />
+            <div className="h-4 w-14 data-stream rounded" />
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card className="h-full bg-card border-border/50 bezel overflow-hidden">
       <CardHeader className="pb-2">
