@@ -282,7 +282,7 @@ function StarsPageContent() {
 
       {/* Loading State - List */}
       {isLoading && view === "list" && (
-        <div className="space-y-2">
+        <div className="min-w-0 overflow-hidden space-y-2">
           {Array.from({ length: 8 }).map((_, i) => (
             <ObjectCardSkeleton key={i} variant="compact" />
           ))}
@@ -300,7 +300,7 @@ function StarsPageContent() {
 
       {/* Results List */}
       {!isLoading && data && data.objects.length > 0 && view === "list" && (
-        <div className="space-y-2">
+        <div className="min-w-0 overflow-hidden space-y-2">
           {data.objects.map((star) => (
             <ObjectCard key={star.id} object={star} onModalOpen={setSelectedObject} variant="compact" />
           ))}

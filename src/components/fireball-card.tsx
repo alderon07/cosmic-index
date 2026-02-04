@@ -2,6 +2,11 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { FireballEvent } from "@/lib/types";
 import {
   getEnergySizeCategory,
@@ -59,61 +64,83 @@ export function FireballCard({
       : "—";
 
     return (
-      <Card className="bg-card border-border/50 transition-all duration-300 hover:border-radium-teal/50 hover:glow-teal bezel overflow-hidden">
-        <CardContent className="py-3 px-4">
-          <div className="flex items-center gap-4">
-            {/* Date (primary identifier) */}
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <Calendar className={`w-4 h-4 shrink-0 ${theme.icon}`} />
-                <span className={`font-display text-sm ${theme.text} truncate`}>
-                  {dateDisplay}
-                </span>
-                {!fireball.isComplete && (
-                  <Badge
-                    variant="outline"
-                    className="text-[10px] border-muted-foreground/30 text-muted-foreground shrink-0 py-0 px-1.5"
-                  >
-                    <AlertCircle className="w-2.5 h-2.5 mr-0.5" />
-                    Incomplete
-                  </Badge>
-                )}
+      <Card className="bg-card border-border/50 transition-all duration-300 hover:border-radium-teal/50 hover:glow-teal bezel overflow-hidden min-h-[44px]">
+        <CardContent className="py-3 px-4 min-h-[44px] flex flex-col justify-center gap-y-2.5">
+          {/* Line 1: Date only (no badges) */}
+          <div className="min-w-0 overflow-hidden flex items-center gap-2">
+            <Calendar className={`w-4 h-4 shrink-0 ${theme.icon}`} />
+            <span className={`font-display text-sm font-medium ${theme.text} truncate`}>
+              {dateDisplay}
+            </span>
+          </div>
+
+          {/* Line 2: Data columns + all badges on the last row */}
+          <div className="w-full shrink-0 flex items-center justify-between gap-3 sm:gap-4 flex-wrap min-w-0">
+            <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-wrap sm:flex-nowrap">
+              <div className="text-right shrink-0 w-16 flex flex-col items-end gap-0.5">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="text-muted-foreground cursor-help" aria-hidden="true">
+                      <Zap className="w-3.5 h-3.5" />
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>Energy</TooltipContent>
+                </Tooltip>
+                <p className="text-xs font-mono text-foreground">{energyDisplay}</p>
+              </div>
+              <div className="text-right shrink-0 min-w-0 w-20 flex flex-col items-end gap-0.5">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="text-muted-foreground cursor-help" aria-hidden="true">
+                      <MapPin className="w-3.5 h-3.5" />
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>Location</TooltipContent>
+                </Tooltip>
+                <p className="text-xs font-mono text-foreground truncate w-full text-right" title={locationShort}>
+                  {locationShort}
+                </p>
+              </div>
+              <div className="text-right shrink-0 w-14 flex flex-col items-end gap-0.5">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="text-muted-foreground cursor-help" aria-hidden="true">
+                      <Mountain className="w-3.5 h-3.5" />
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>Altitude (km)</TooltipContent>
+                </Tooltip>
+                <p className="text-xs font-mono text-foreground">{altShort}</p>
+              </div>
+              <div className="hidden lg:flex flex-col items-end gap-0.5 text-right shrink-0 w-14">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="text-muted-foreground cursor-help" aria-hidden="true">
+                      <Gauge className="w-3.5 h-3.5" />
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>Velocity (km/s)</TooltipContent>
+                </Tooltip>
+                <p className="text-xs font-mono text-foreground">{velShort}</p>
               </div>
             </div>
-
-            {/* Energy */}
-            <div className="text-right shrink-0 w-20">
-              <p className="text-xs text-muted-foreground">Energy</p>
-              <p className="text-xs font-mono text-foreground">{energyDisplay}</p>
+            <div className="flex items-center gap-1.5 shrink-0">
+              {!fireball.isComplete && (
+                <Badge
+                  variant="outline"
+                  className="text-[10px] border-muted-foreground/30 text-muted-foreground py-0 px-1.5"
+                >
+                  <AlertCircle className="w-2.5 h-2.5 mr-0.5" />
+                  Incomplete
+                </Badge>
+              )}
+              <Badge
+                variant="outline"
+                className={`text-[10px] ${theme.badge}`}
+              >
+                {sizeCategory}
+              </Badge>
             </div>
-
-            {/* Location */}
-            <div className="hidden sm:block text-right shrink-0 w-24">
-              <p className="text-xs text-muted-foreground">Location</p>
-              <p className="text-xs font-mono text-foreground truncate" title={locationShort}>
-                {locationShort}
-              </p>
-            </div>
-
-            {/* Altitude */}
-            <div className="hidden md:block text-right shrink-0 w-16">
-              <p className="text-xs text-muted-foreground">Altitude</p>
-              <p className="text-xs font-mono text-foreground">{altShort}</p>
-            </div>
-
-            {/* Velocity */}
-            <div className="hidden lg:block text-right shrink-0 w-16">
-              <p className="text-xs text-muted-foreground">Velocity</p>
-              <p className="text-xs font-mono text-foreground">{velShort}</p>
-            </div>
-
-            {/* Size category badge */}
-            <Badge
-              variant="outline"
-              className={`text-[10px] shrink-0 ${theme.badge}`}
-            >
-              {sizeCategory}
-            </Badge>
           </div>
         </CardContent>
       </Card>
@@ -247,32 +274,26 @@ export function FireballCardSkeleton({
 }) {
   if (variant === "compact") {
     return (
-      <Card className="bg-card border-border/50 bezel overflow-hidden">
-        <CardContent className="py-3 px-4">
-          <div className="flex items-center gap-4">
-            {/* Date area */}
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <div className="h-4 w-4 data-stream rounded shrink-0" />
-                <div className="h-4 w-28 data-stream rounded" />
+      <Card className="bg-card border-border/50 bezel overflow-hidden min-h-[44px]">
+        <CardContent className="py-3 px-4 min-h-[44px] flex flex-col justify-center gap-y-2.5">
+          <div className="min-w-0 flex items-center gap-2">
+            <div className="h-4 w-4 data-stream rounded shrink-0" />
+            <div className="h-4 w-28 data-stream rounded" />
+          </div>
+          <div className="w-full shrink-0 flex items-center justify-between gap-3 sm:gap-4 min-w-0">
+            <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+              <div className="text-right shrink-0 w-14">
+                <div className="h-3 w-10 data-stream rounded mb-0.5 ml-auto" />
+                <div className="h-3 w-12 data-stream rounded ml-auto" />
               </div>
-            </div>
-            {/* Data columns */}
-            <div className="text-right shrink-0 w-20">
-              <div className="h-3 w-10 data-stream rounded mb-1 ml-auto" />
-              <div className="h-3 w-16 data-stream rounded ml-auto" />
-            </div>
-            <div className="hidden sm:block text-right shrink-0 w-24">
-              <div className="h-3 w-12 data-stream rounded mb-1 ml-auto" />
-              <div className="h-3 w-20 data-stream rounded ml-auto" />
-            </div>
-            <div className="hidden md:block text-right shrink-0 w-16">
-              <div className="h-3 w-10 data-stream rounded mb-1 ml-auto" />
-              <div className="h-3 w-14 data-stream rounded ml-auto" />
-            </div>
-            <div className="hidden lg:block text-right shrink-0 w-16">
-              <div className="h-3 w-10 data-stream rounded mb-1 ml-auto" />
-              <div className="h-3 w-14 data-stream rounded ml-auto" />
+              <div className="text-right shrink-0 min-w-0 w-16">
+                <div className="h-3 w-10 data-stream rounded mb-0.5 ml-auto" />
+                <div className="h-3 w-14 data-stream rounded ml-auto" />
+              </div>
+              <div className="text-right shrink-0 w-12">
+                <div className="h-3 w-8 data-stream rounded mb-0.5 ml-auto" />
+                <div className="h-3 w-10 data-stream rounded ml-auto" />
+              </div>
             </div>
             <div className="h-5 w-14 data-stream rounded shrink-0" />
           </div>

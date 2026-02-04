@@ -378,7 +378,7 @@ function SpaceWeatherPageContent() {
 
       {/* Loading State - List */}
       {isLoading && view === "list" && (
-        <div className="space-y-2">
+        <div className="min-w-0 overflow-hidden space-y-2">
           {Array.from({ length: 8 }).map((_, i) => (
             <SpaceWeatherCardSkeleton key={i} variant="compact" />
           ))}
@@ -396,7 +396,7 @@ function SpaceWeatherPageContent() {
 
       {/* Results List */}
       {!isLoading && data && data.events.length > 0 && view === "list" && (
-        <div className="space-y-2">
+        <div className="min-w-0 overflow-hidden space-y-2">
           {data.events.map((event) => (
             <SpaceWeatherCard key={event.id} event={event} variant="compact" />
           ))}

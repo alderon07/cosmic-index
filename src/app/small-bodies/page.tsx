@@ -288,7 +288,7 @@ function SmallBodiesPageContent() {
 
       {/* Loading State - List */}
       {isLoading && view === "list" && (
-        <div className="space-y-2">
+        <div className="min-w-0 overflow-hidden space-y-2">
           {Array.from({ length: 8 }).map((_, i) => (
             <ObjectCardSkeleton key={i} variant="compact" />
           ))}
@@ -306,7 +306,7 @@ function SmallBodiesPageContent() {
 
       {/* Results List */}
       {!isLoading && data && data.objects.length > 0 && view === "list" && (
-        <div className="space-y-2">
+        <div className="min-w-0 overflow-hidden space-y-2">
           {data.objects.map((smallBody) => (
             <ObjectCard key={smallBody.sourceId} object={smallBody} onModalOpen={setSelectedObject} variant="compact" />
           ))}

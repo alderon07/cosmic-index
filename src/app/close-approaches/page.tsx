@@ -478,7 +478,7 @@ function CloseApproachesPageContent() {
 
       {/* Loading State - List */}
       {isLoading && view === "list" && (
-        <div className="space-y-2">
+        <div className="min-w-0 overflow-hidden space-y-2">
           {Array.from({ length: 8 }).map((_, i) => (
             <CloseApproachCardSkeleton key={i} variant="compact" />
           ))}
@@ -496,7 +496,7 @@ function CloseApproachesPageContent() {
 
       {/* Results List */}
       {!isLoading && data && data.events.length > 0 && view === "list" && (
-        <div className="space-y-2">
+        <div className="min-w-0 overflow-hidden space-y-2">
           {data.events.map((approach) => (
             <CloseApproachCard key={approach.id} approach={approach} variant="compact" />
           ))}

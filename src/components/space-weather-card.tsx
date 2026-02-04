@@ -3,6 +3,11 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   AnySpaceWeatherEvent,
   SolarFlareEvent,
   CMEEvent,
@@ -116,62 +121,80 @@ export function SpaceWeatherCard({ event, variant = "default" }: SpaceWeatherCar
 
   const linkedCount = event.linkedEvents?.length || 0;
 
-  // Compact (list) variant - single row with key info
+  // Compact (list) variant - line 1: event type only; line 2: data columns + severity badge
   if (variant === "compact") {
     return (
-      <Card className="bg-card border-border/50 transition-all duration-300 hover:border-aurora-violet/50 hover:glow-violet bezel overflow-hidden">
-        <CardContent className="p-3">
-          <div className="flex items-center gap-4">
-            {/* Event type and icon */}
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <span className={`${theme.text}`}>
-                  {getEventIcon(event.eventType)}
-                </span>
-                <span className={`font-display text-sm ${theme.text}`}>
-                  {getEventTypeLabel(event.eventType)}
-                </span>
-                <Badge variant="outline" className={`text-[10px] ${SEVERITY_COLORS[severity]}`}>
-                  {severity.charAt(0).toUpperCase() + severity.slice(1)}
-                </Badge>
-              </div>
-              {linkedCount > 0 && (
-                <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                  <Link2 className="w-3 h-3" />
-                  {linkedCount} linked
-                </p>
-              )}
-            </div>
-
-            {/* Date */}
-            <div className="text-right shrink-0">
-              <p className="text-xs text-muted-foreground">Date</p>
-              <p className="text-xs font-mono text-foreground">{date}</p>
-            </div>
-
-            {/* Time */}
-            <div className="hidden sm:block text-right shrink-0">
-              <p className="text-xs text-muted-foreground">Time</p>
-              <p className="text-xs font-mono text-foreground">{time || "—"}</p>
-            </div>
-
-            {/* Primary Metric */}
-            <div className="text-right shrink-0">
-              <p className="text-xs text-muted-foreground">
-                {event.eventType === "FLR" ? "Class" : event.eventType === "CME" ? "Speed" : "Kp"}
-              </p>
-              <p className={`text-xs font-mono ${theme.text}`}>{primaryMetric}</p>
-            </div>
-
-            {/* Source (hidden on small screens) */}
-            {secondaryMetric && (
-              <div className="hidden md:block text-right shrink-0">
-                <p className="text-xs text-muted-foreground">
-                  {event.eventType === "GST" ? "Readings" : "Source"}
-                </p>
-                <p className="text-xs font-mono text-foreground">{secondaryMetric}</p>
-              </div>
+      <Card className="bg-card border-border/50 transition-all duration-300 hover:border-aurora-violet/50 hover:glow-violet bezel overflow-hidden min-h-[44px]">
+        <CardContent className="p-3 min-h-[44px] flex flex-col justify-center gap-y-2.5">
+          {/* Line 1: Event type and linked count only (no severity badge) */}
+          <div className="min-w-0 overflow-hidden flex items-center gap-2">
+            <span className={`shrink-0 ${theme.text}`}>
+              {getEventIcon(event.eventType)}
+            </span>
+            <span className={`font-display text-sm font-medium truncate ${theme.text}`}>
+              {getEventTypeLabel(event.eventType)}
+            </span>
+            {linkedCount > 0 && (
+              <span className="text-xs text-muted-foreground flex items-center gap-1 shrink-0">
+                <Link2 className="w-3 h-3" />
+                {linkedCount} linked
+              </span>
             )}
+          </div>
+
+          {/* Line 2: Data columns + severity badge on the last row */}
+          <div className="w-full shrink-0 flex items-center justify-between gap-3 sm:gap-4 flex-wrap min-w-0">
+            <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-wrap sm:flex-nowrap">
+              <div className="text-right shrink-0 min-w-0 flex flex-col items-end gap-0.5">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="text-muted-foreground cursor-help" aria-hidden="true">
+                      <Calendar className="w-3.5 h-3.5" />
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>Date</TooltipContent>
+                </Tooltip>
+                <p className="text-xs font-mono text-foreground truncate w-full text-right">{date}</p>
+              </div>
+              <div className="text-right shrink-0 flex flex-col items-end gap-0.5">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="text-muted-foreground cursor-help" aria-hidden="true">
+                      <Clock className="w-3.5 h-3.5" />
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>Time (UTC)</TooltipContent>
+                </Tooltip>
+                <p className="text-xs font-mono text-foreground">{time || "—"}</p>
+              </div>
+              <div className="text-right shrink-0 flex flex-col items-end gap-0.5">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="text-muted-foreground cursor-help" aria-hidden="true">
+                      <Gauge className="w-3.5 h-3.5" />
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {event.eventType === "FLR" ? "Class" : event.eventType === "CME" ? "Speed" : "Kp index"}
+                  </TooltipContent>
+                </Tooltip>
+                <p className={`text-xs font-mono ${theme.text}`}>{primaryMetric}</p>
+              </div>
+              <div className="text-right shrink-0 min-w-0 flex flex-col items-end gap-0.5">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="text-muted-foreground cursor-help" aria-hidden="true">
+                      <MapPin className="w-3.5 h-3.5" />
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>{event.eventType === "GST" ? "Readings" : "Source"}</TooltipContent>
+                </Tooltip>
+                <p className="text-xs font-mono text-foreground truncate w-full text-right">{secondaryMetric || "—"}</p>
+              </div>
+            </div>
+            <Badge variant="outline" className={`text-[10px] shrink-0 py-0 px-1.5 ${SEVERITY_COLORS[severity]}`}>
+              {severity.charAt(0).toUpperCase() + severity.slice(1)}
+            </Badge>
           </div>
         </CardContent>
       </Card>
@@ -283,25 +306,31 @@ export function SpaceWeatherCard({ event, variant = "default" }: SpaceWeatherCar
 export function SpaceWeatherCardSkeleton({ variant = "default" }: { variant?: SpaceWeatherCardVariant }) {
   if (variant === "compact") {
     return (
-      <Card className="bg-card border-border/50 bezel overflow-hidden">
-        <CardContent className="p-3">
-          <div className="flex items-center gap-4">
-            <div className="flex-1 min-w-0">
-              <div className="h-4 w-28 data-stream rounded mb-1" />
-              <div className="h-3 w-16 data-stream rounded" />
+      <Card className="bg-card border-border/50 bezel overflow-hidden min-h-[44px]">
+        <CardContent className="p-3 min-h-[44px] flex flex-col justify-center gap-y-2.5">
+          <div className="min-w-0">
+            <div className="h-4 w-28 data-stream rounded" />
+          </div>
+          <div className="w-full shrink-0 flex items-center justify-between gap-3 sm:gap-4 min-w-0">
+            <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+              <div className="text-right shrink-0">
+                <div className="h-3 w-8 data-stream rounded mb-0.5" />
+                <div className="h-3 w-14 data-stream rounded" />
+              </div>
+              <div className="text-right shrink-0">
+                <div className="h-3 w-8 data-stream rounded mb-0.5" />
+                <div className="h-3 w-10 data-stream rounded" />
+              </div>
+              <div className="text-right shrink-0">
+                <div className="h-3 w-10 data-stream rounded mb-0.5" />
+                <div className="h-3 w-12 data-stream rounded" />
+              </div>
+              <div className="text-right shrink-0 min-w-0">
+                <div className="h-3 w-10 data-stream rounded mb-0.5" />
+                <div className="h-3 w-14 data-stream rounded" />
+              </div>
             </div>
-            <div className="text-right">
-              <div className="h-3 w-8 data-stream rounded mb-1" />
-              <div className="h-3 w-16 data-stream rounded" />
-            </div>
-            <div className="hidden sm:block text-right">
-              <div className="h-3 w-8 data-stream rounded mb-1" />
-              <div className="h-3 w-12 data-stream rounded" />
-            </div>
-            <div className="text-right">
-              <div className="h-3 w-10 data-stream rounded mb-1" />
-              <div className="h-3 w-12 data-stream rounded" />
-            </div>
+            <div className="h-5 w-16 data-stream rounded shrink-0" />
           </div>
         </CardContent>
       </Card>

@@ -10,7 +10,7 @@ import {
 import { CloseApproach } from "@/lib/types";
 import { getSizeCategory, AU_KM, LD_KM } from "@/lib/cneos-close-approach";
 import { THEMES } from "@/lib/theme";
-import { AlertTriangle, Gauge, Ruler, Calendar } from "lucide-react";
+import { AlertTriangle, Gauge, Ruler, Calendar, Circle } from "lucide-react";
 
 const theme = THEMES["close-approaches"];
 
@@ -63,68 +63,92 @@ export function CloseApproachCard({ approach, showHighlightBadge, variant = "def
     }
   }
 
-  // Compact (list) variant - single row with key info
+  // Compact (list) variant - line 1: name only; line 2: data columns + badges
   if (variant === "compact") {
     return (
-      <Card className="bg-card border-border/50 transition-all duration-300 hover:border-destructive/50 hover:glow-red bezel overflow-hidden">
-        <CardContent className="p-3">
-          <div className="flex items-center gap-4">
-            {/* Name and badges */}
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <span className={`font-display text-sm ${theme.text} truncate`}>
-                  {approach.designation}
-                </span>
-                {showHighlightBadge === "closest" && (
-                  <Badge variant="outline" className={`text-[10px] ${theme.badge}`}>
-                    Closest
-                  </Badge>
-                )}
-                {showHighlightBadge === "fastest" && (
-                  <Badge variant="outline" className={`text-[10px] ${theme.badge}`}>
-                    Fastest
-                  </Badge>
-                )}
-                {approach.isPha && (
-                  <Badge variant="destructive" className="text-[10px]">
-                    <AlertTriangle className="w-2.5 h-2.5 mr-0.5" />
-                    PHA
-                  </Badge>
-                )}
-              </div>
-              {approach.fullName && approach.fullName !== approach.designation && (
-                <p className="text-xs text-muted-foreground truncate">
-                  {approach.fullName}
+      <Card className="bg-card border-border/50 transition-all duration-300 hover:border-destructive/50 hover:glow-red bezel overflow-hidden min-h-[44px]">
+        <CardContent className="p-3 min-h-[44px] flex flex-col justify-center gap-y-2.5">
+          {/* Line 1: Designation and fullName only (no badges) */}
+          <div className="min-w-0 overflow-hidden">
+            <p className={`font-display text-sm font-medium ${theme.text} truncate`}>
+              {approach.designation}
+            </p>
+            {approach.fullName && approach.fullName !== approach.designation && (
+              <p className="text-xs text-muted-foreground truncate mt-0.5">
+                {approach.fullName}
+              </p>
+            )}
+          </div>
+
+          {/* Line 2: Data columns + all badges on the last row */}
+          <div className="w-full shrink-0 flex items-center justify-between gap-3 sm:gap-4 flex-wrap min-w-0">
+            <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-wrap sm:flex-nowrap">
+              <div className="text-right shrink-0 min-w-0 flex flex-col items-end gap-0.5">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="text-muted-foreground cursor-help" aria-hidden="true">
+                      <Calendar className="w-3.5 h-3.5" />
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent className="border-destructive/30">Date</TooltipContent>
+                </Tooltip>
+                <p className="text-xs font-mono text-foreground truncate w-full text-right">
+                  {approach.approachTimeRaw.split(" ")[0]}
                 </p>
+              </div>
+              <div className="text-right shrink-0 flex flex-col items-end gap-0.5">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="text-muted-foreground cursor-help" aria-hidden="true">
+                      <Ruler className="w-3.5 h-3.5" />
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent className="border-destructive/30">Distance (LD)</TooltipContent>
+                </Tooltip>
+                <p className="text-xs font-mono text-foreground">
+                  {approach.distanceLd.toFixed(2)} LD
+                </p>
+              </div>
+              <div className="text-right shrink-0 flex flex-col items-end gap-0.5">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="text-muted-foreground cursor-help" aria-hidden="true">
+                      <Gauge className="w-3.5 h-3.5" />
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent className="border-destructive/30">Velocity (km/s)</TooltipContent>
+                </Tooltip>
+                <p className="text-xs font-mono text-foreground">{velocityKmS} km/s</p>
+              </div>
+              <div className="text-right shrink-0 min-w-0 flex flex-col items-end gap-0.5">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="text-muted-foreground cursor-help" aria-hidden="true">
+                      <Circle className="w-3.5 h-3.5" />
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent className="border-destructive/30">Size</TooltipContent>
+                </Tooltip>
+                <p className="text-xs font-mono text-foreground truncate w-full text-right">{diameterDisplay}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-1.5 shrink-0">
+              {showHighlightBadge === "closest" && (
+                <Badge variant="outline" className={`text-[10px] ${theme.badge}`}>
+                  Closest
+                </Badge>
               )}
-            </div>
-
-            {/* Date */}
-            <div className="hidden sm:block text-right shrink-0">
-              <p className="text-xs text-muted-foreground">Date</p>
-              <p className="text-xs font-mono text-foreground">
-                {approach.approachTimeRaw.split(" ")[0]}
-              </p>
-            </div>
-
-            {/* Distance */}
-            <div className="text-right shrink-0">
-              <p className="text-xs text-muted-foreground">Distance</p>
-              <p className="text-xs font-mono text-foreground">
-                {approach.distanceLd.toFixed(2)} LD
-              </p>
-            </div>
-
-            {/* Velocity */}
-            <div className="hidden md:block text-right shrink-0">
-              <p className="text-xs text-muted-foreground">Velocity</p>
-              <p className="text-xs font-mono text-foreground">{velocityKmS} km/s</p>
-            </div>
-
-            {/* Size */}
-            <div className="hidden lg:block text-right shrink-0">
-              <p className="text-xs text-muted-foreground">Size</p>
-              <p className="text-xs font-mono text-foreground">{diameterDisplay}</p>
+              {showHighlightBadge === "fastest" && (
+                <Badge variant="outline" className={`text-[10px] ${theme.badge}`}>
+                  Fastest
+                </Badge>
+              )}
+              {approach.isPha && (
+                <Badge variant="destructive" className="text-[10px] py-0 px-1.5">
+                  <AlertTriangle className="w-2.5 h-2.5 mr-0.5" />
+                  PHA
+                </Badge>
+              )}
             </div>
           </div>
         </CardContent>
@@ -268,25 +292,32 @@ export function CloseApproachCard({ approach, showHighlightBadge, variant = "def
 export function CloseApproachCardSkeleton({ variant = "default" }: { variant?: CloseApproachCardVariant }) {
   if (variant === "compact") {
     return (
-      <Card className="bg-card border-border/50 bezel overflow-hidden">
-        <CardContent className="p-3">
-          <div className="flex items-center gap-4">
-            <div className="flex-1 min-w-0">
-              <div className="h-4 w-32 data-stream rounded mb-1" />
-              <div className="h-3 w-24 data-stream rounded" />
+      <Card className="bg-card border-border/50 bezel overflow-hidden min-h-[44px]">
+        <CardContent className="p-3 min-h-[44px] flex flex-col justify-center gap-y-2.5">
+          <div className="min-w-0">
+            <div className="h-4 w-32 data-stream rounded" />
+            <div className="h-3 w-24 data-stream rounded mt-1" />
+          </div>
+          <div className="w-full shrink-0 flex items-center justify-between gap-3 sm:gap-4 min-w-0">
+            <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+              <div className="text-right shrink-0">
+                <div className="h-3 w-8 data-stream rounded mb-0.5" />
+                <div className="h-3 w-14 data-stream rounded" />
+              </div>
+              <div className="text-right shrink-0">
+                <div className="h-3 w-10 data-stream rounded mb-0.5" />
+                <div className="h-3 w-12 data-stream rounded" />
+              </div>
+              <div className="text-right shrink-0">
+                <div className="h-3 w-8 data-stream rounded mb-0.5" />
+                <div className="h-3 w-12 data-stream rounded" />
+              </div>
+              <div className="text-right shrink-0">
+                <div className="h-3 w-8 data-stream rounded mb-0.5" />
+                <div className="h-3 w-16 data-stream rounded" />
+              </div>
             </div>
-            <div className="hidden sm:block text-right">
-              <div className="h-3 w-8 data-stream rounded mb-1" />
-              <div className="h-3 w-16 data-stream rounded" />
-            </div>
-            <div className="text-right">
-              <div className="h-3 w-12 data-stream rounded mb-1" />
-              <div className="h-3 w-14 data-stream rounded" />
-            </div>
-            <div className="hidden md:block text-right">
-              <div className="h-3 w-12 data-stream rounded mb-1" />
-              <div className="h-3 w-14 data-stream rounded" />
-            </div>
+            <div className="h-5 w-12 data-stream rounded shrink-0" />
           </div>
         </CardContent>
       </Card>
