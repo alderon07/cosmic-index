@@ -664,3 +664,86 @@ export const FireballQuerySchema = z.object({
   order: z.enum(["asc", "desc"]).optional(),
   limit: z.coerce.number().int().min(1).max(500).default(100),
 });
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Space Weather Types (NASA DONKI)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export type SpaceWeatherEventType = "FLR" | "CME" | "GST";
+
+// Severity levels matching NOAA Space Weather Scales
+export type SpaceWeatherSeverity = "minor" | "moderate" | "strong" | "severe" | "extreme";
+
+// Base interface for all space weather events
+export interface SpaceWeatherEvent {
+  id: string;
+  eventType: SpaceWeatherEventType;
+  startTime: string; // ISO datetime
+  // linkedEvents from DONKI are objects with activityID, not just strings
+  // Keep raw shape flexible since format varies between event types
+  linkedEvents?: Array<{ activityID: string } & Record<string, unknown>>;
+}
+
+// Solar Flare
+export interface SolarFlareEvent extends SpaceWeatherEvent {
+  eventType: "FLR";
+  peakTime?: string;
+  endTime?: string;
+  classType: string; // "M1.2", "X2.5", etc.
+  sourceLocation?: string; // "N15W30"
+  activeRegionNum?: number;
+}
+
+// Coronal Mass Ejection
+export interface CMEEvent extends SpaceWeatherEvent {
+  eventType: "CME";
+  sourceLocation?: string;
+  activeRegionNum?: number;
+  speed?: number; // km/s (from analysis)
+  halfAngle?: number; // degrees
+  cmeType?: string; // "S", "C", "O" etc.
+}
+
+// Geomagnetic Storm
+export interface GSTEvent extends SpaceWeatherEvent {
+  eventType: "GST";
+  kpIndex: number; // Max Kp value
+  allKpReadings: Array<{
+    observedTime: string;
+    kpIndex: number;
+    source: string;
+  }>;
+}
+
+export type AnySpaceWeatherEvent = SolarFlareEvent | CMEEvent | GSTEvent;
+
+export interface SpaceWeatherQueryParams {
+  startDate?: string; // YYYY-MM-DD
+  endDate?: string; // YYYY-MM-DD
+  eventTypes?: SpaceWeatherEventType[]; // Filter by type
+  limit?: number;
+}
+
+export interface SpaceWeatherListResponse {
+  events: AnySpaceWeatherEvent[];
+  count: number;
+  meta: {
+    dateRange: { start: string; end: string };
+    typesIncluded: SpaceWeatherEventType[];
+    warnings?: string[]; // Partial failure notices (e.g., "CME endpoint unavailable")
+  };
+}
+
+// Zod schema for Space Weather query validation
+export const SpaceWeatherQuerySchema = z.object({
+  startDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
+  endDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
+  eventTypes: z.string().optional(), // Comma-separated: "FLR,CME,GST"
+  limit: z.coerce.number().int().min(1).max(500).default(100),
+});

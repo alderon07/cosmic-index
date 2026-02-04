@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { fetchSmallBodies, isContractMismatch, isUpstreamFailure } from "@/lib/jpl-sbdb";
+import { searchSmallBodies, isSmallBodyIndexAvailable } from "@/lib/small-body-index";
 import { SmallBodyQuerySchema } from "@/lib/types";
 import { getCacheControlHeader, CACHE_TTL } from "@/lib/cache";
 import { checkRateLimit, getClientIdentifier, getRateLimitHeaders } from "@/lib/rate-limit";
@@ -39,16 +40,24 @@ export async function GET(request: NextRequest) {
 
     const params = parseResult.data;
 
-    // Fetch small bodies
-    const result = await fetchSmallBodies(params);
+    // Use local index if available, otherwise fall back to live API
+    const useLocalIndex = isSmallBodyIndexAvailable();
+    const result = useLocalIndex
+      ? await searchSmallBodies(params)
+      : await fetchSmallBodies(params);
 
     // Return response with cache headers
-    return NextResponse.json(result, {
-      headers: {
-        "Cache-Control": getCacheControlHeader(CACHE_TTL.SMALL_BODIES_BROWSE),
-        ...getRateLimitHeaders(rateLimitResult),
-      },
-    });
+    const headers: Record<string, string> = {
+      "Cache-Control": getCacheControlHeader(CACHE_TTL.SMALL_BODIES_BROWSE),
+      ...getRateLimitHeaders(rateLimitResult),
+    };
+
+    // Add header to indicate data source (useful for debugging)
+    if (useLocalIndex) {
+      headers["X-Data-Source"] = "local-index";
+    }
+
+    return NextResponse.json(result, { headers });
   } catch (error) {
     // Log error with request ID for debugging (server-side only)
     const errorMessage = error instanceof Error ? error.message : "Unknown error";

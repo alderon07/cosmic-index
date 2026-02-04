@@ -33,6 +33,7 @@ export const CACHE_TTL = {
   CLOSE_APPROACH_UPCOMING: 30 * 60,  // 30 min for dashboard widget
   APOD: 6 * 60 * 60,                 // 6 hours (refreshes multiple times/day for freshness)
   FIREBALL_LIST: 60 * 60,            // 1 hour (data updates infrequently)
+  SPACE_WEATHER: 30 * 60,            // 30 minutes (more real-time data)
 } as const;
 
 // Cache key prefixes
@@ -49,6 +50,9 @@ export const CACHE_KEYS = {
   CLOSE_APPROACH_UPCOMING: "ca:upcoming",
   APOD: "apod",
   FIREBALL_LIST: "fireball:list",
+  SPACE_WEATHER_FLR: "sw:flr",
+  SPACE_WEATHER_CME: "sw:cme",
+  SPACE_WEATHER_GST: "sw:gst",
 } as const;
 
 // Create a hash from query parameters for cache keys

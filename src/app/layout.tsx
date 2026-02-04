@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Audiowide, Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import Link from "next/link";
-import { Circle, Star, CircleDot, Crosshair, Flame } from "lucide-react";
+import { Circle, Star, CircleDot, Crosshair, Flame, Sun } from "lucide-react";
 import { Analytics } from "@vercel/analytics/react";
 
 const audiowide = Audiowide({
@@ -155,7 +155,7 @@ export default function RootLayout({
                   Cosmic Index
                 </span>
               </Link>
-              <div className="flex items-center gap-4 sm:gap-6">
+              <div className="flex items-center gap-2 sm:gap-6">
                 <Link
                   href="/exoplanets"
                   className="font-display text-sm tracking-wide text-muted-foreground hover:text-primary transition-colors"
@@ -195,6 +195,14 @@ export default function RootLayout({
                 >
                   <Flame className="w-5 h-5 sm:hidden" />
                   <span className="hidden sm:inline">Fireballs</span>
+                </Link>
+                <Link
+                  href="/space-weather"
+                  className="font-display text-sm tracking-wide text-muted-foreground hover:text-aurora-violet transition-colors"
+                  title="Space Weather"
+                >
+                  <Sun className="w-5 h-5 sm:hidden" />
+                  <span className="hidden sm:inline">Weather</span>
                 </Link>
               </div>
             </nav>

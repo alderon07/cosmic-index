@@ -1,6 +1,6 @@
 // Centralized theme configuration for each object type
 
-export type ObjectTheme = "exoplanets" | "stars" | "small-bodies" | "close-approaches" | "fireballs";
+export type ObjectTheme = "exoplanets" | "stars" | "small-bodies" | "close-approaches" | "fireballs" | "space-weather";
 
 export interface ThemeConfig {
   // Raw color name (for documentation)
@@ -162,6 +162,30 @@ export const THEMES: Record<ObjectTheme, ThemeConfig> = {
     sortOrderSelected: "bg-radium-teal/20 text-radium-teal",
     selectItemFocus: "focus:bg-radium-teal/20 focus:text-radium-teal",
     hoverText: "hover:text-radium-teal",
+  },
+  "space-weather": {
+    colorName: "aurora-violet",
+    text: "text-aurora-violet",
+    bg: "bg-aurora-violet",
+    border: "border-aurora-violet",
+    hoverBg: "hover:bg-aurora-violet/90",
+    textOnBg: "text-void-black",
+    glow: "glow-violet",
+    selectedButton:
+      "!bg-aurora-violet !text-void-black !border-aurora-violet hover:!bg-aurora-violet/90",
+    badge: "border-aurora-violet/50 text-aurora-violet bg-aurora-violet/10",
+    filterChip: "bg-aurora-violet/20 text-aurora-violet border-aurora-violet/30",
+    filterChipHover: "hover:bg-aurora-violet/30",
+    icon: "text-aurora-violet",
+    iconContainer: "bg-aurora-violet/20",
+    sortSelect:
+      "border-aurora-violet/30 hover:border-aurora-violet/50 focus:ring-aurora-violet/50 focus:border-aurora-violet/60",
+    filterBadge: "border-aurora-violet/50 text-aurora-violet",
+    focusRing: "focus:ring-aurora-violet",
+    sortOrderBorder: "border-aurora-violet/30",
+    sortOrderSelected: "bg-aurora-violet/20 text-aurora-violet",
+    selectItemFocus: "focus:bg-aurora-violet/20 focus:text-aurora-violet",
+    hoverText: "hover:text-aurora-violet",
   },
 };
 

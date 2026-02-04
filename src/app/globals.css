@@ -37,6 +37,7 @@
   --color-amber-glow: hsl(40 100% 58%);
   --color-uranium-green: hsl(82 100% 67%);
   --color-radium-teal: hsl(179 70% 55%);
+  --color-aurora-violet: hsl(270 70% 65%);
   --color-void-black: hsl(40 15% 3%);
   --color-console-brown: hsl(30 12% 9%);
   --color-panel-bronze: hsl(30 15% 14%);
@@ -80,6 +81,7 @@
   --glow-orange: 255, 107, 53;
   --glow-amber: 255, 182, 39;
   --glow-uranium: 181, 255, 87;
+  --glow-violet: 178, 102, 255;
   --radium-teal: hsl(179 70% 55%);
 }
 
@@ -125,6 +127,12 @@
   /* Radium Teal Glow */
   .glow-teal {
     box-shadow: 0 0 20px rgba(61, 219, 217, 0.4);
+  }
+
+  /* Aurora Violet Glow (Space Weather) */
+  .glow-violet {
+    box-shadow: 0 0 20px rgba(var(--glow-violet), 0.4),
+                0 0 40px rgba(var(--glow-violet), 0.2);
   }
 
   /* Scan-line overlay (CRT effect) */

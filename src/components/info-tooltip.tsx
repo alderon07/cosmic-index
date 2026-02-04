@@ -35,6 +35,10 @@ const THEME_CLASSES: Record<ObjectTheme, { underline: string; border: string }> 
     underline: "border-radium-teal/40 hover:border-radium-teal",
     border: "border-radium-teal/30",
   },
+  "space-weather": {
+    underline: "border-aurora-violet/40 hover:border-aurora-violet",
+    border: "border-aurora-violet/30",
+  },
 };
 
 const DEFAULT_CLASSES = {
