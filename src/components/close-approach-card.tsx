@@ -67,17 +67,17 @@ export function CloseApproachCard({ approach, showHighlightBadge, variant = "def
   if (variant === "compact") {
     return (
       <Card className="py-0 bg-card border-border/50 transition-all duration-300 hover:border-destructive/50 hover:glow-red bezel overflow-hidden min-h-[44px]">
-        <CardContent className="p-3 min-h-[44px] flex flex-col md:grid md:grid-cols-[1fr_auto_1fr] md:items-center gap-y-2.5 md:gap-y-0 md:gap-x-6">
+        <CardContent className="p-3 min-h-[44px] flex flex-col md:grid md:grid-cols-[1fr_2fr_1fr] md:items-center gap-y-2.5 md:gap-y-0 md:gap-x-6">
           {/* Block 1: Designation (left on md+) */}
-          <div className="min-w-0 overflow-hidden">
+          <div className="flex flex-row gap-4 min-w-0 overflow-hidden">
             <p className={`font-display text-sm font-medium ${theme.text} truncate`}>
               {approach.designation}
             </p>
-            {approach.fullName && approach.fullName !== approach.designation && (
+            {/* {approach.fullName && approach.fullName !== approach.designation && (
               <p className="text-xs text-muted-foreground truncate mt-0.5">
                 {approach.fullName}
               </p>
-            )}
+            )} */}
           </div>
 
           {/* Block 2: Data columns (center on md+, 4-col grid for consistent spacing) */}
