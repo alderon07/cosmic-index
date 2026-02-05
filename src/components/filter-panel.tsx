@@ -95,6 +95,10 @@ interface ExoplanetFilterPanelProps {
   onReset: () => void;
   theme?: ThemeConfig;
   viewToggle?: React.ReactNode;
+  /** Controlled accordion value for keyboard shortcuts */
+  accordionValue?: string;
+  /** Callback when accordion value changes */
+  onAccordionChange?: (value: string) => void;
 }
 
 interface SmallBodyFilterPanelProps {
@@ -102,6 +106,10 @@ interface SmallBodyFilterPanelProps {
   onChange: (filters: SmallBodyFilters) => void;
   onReset: () => void;
   viewToggle?: React.ReactNode;
+  /** Controlled accordion value for keyboard shortcuts */
+  accordionValue?: string;
+  /** Callback when accordion value changes */
+  onAccordionChange?: (value: string) => void;
 }
 
 // Count active filters
@@ -191,6 +199,8 @@ export function ExoplanetFilterPanel({
   onReset,
   theme = exoplanetTheme,
   viewToggle,
+  accordionValue,
+  onAccordionChange,
 }: ExoplanetFilterPanelProps) {
   const activeCount = countExoplanetFilters(filters);
 
@@ -347,7 +357,13 @@ export function ExoplanetFilterPanel({
       </div>
 
       {/* Filter Accordion */}
-      <Accordion type="single" collapsible className="w-full">
+      <Accordion
+        type="single"
+        collapsible
+        className="w-full"
+        value={accordionValue}
+        onValueChange={onAccordionChange}
+      >
         <AccordionItem
           value="filters"
           className="border border-border/50 rounded-lg px-4 bg-card"
@@ -628,6 +644,8 @@ export function SmallBodyFilterPanel({
   onChange,
   onReset,
   viewToggle,
+  accordionValue,
+  onAccordionChange,
 }: SmallBodyFilterPanelProps) {
   const activeCount = countActiveFilters(filters);
 
@@ -725,7 +743,13 @@ export function SmallBodyFilterPanel({
       </div>
 
       {/* Filter Accordion */}
-      <Accordion type="single" collapsible className="w-full">
+      <Accordion
+        type="single"
+        collapsible
+        className="w-full"
+        value={accordionValue}
+        onValueChange={onAccordionChange}
+      >
         <AccordionItem
           value="filters"
           className="border border-border/50 rounded-lg px-4 bg-card"

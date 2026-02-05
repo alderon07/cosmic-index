@@ -44,6 +44,7 @@ import {
   LayoutGrid,
   List,
 } from "lucide-react";
+import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
 
 const theme = THEMES["fireballs"];
 
@@ -120,6 +121,7 @@ function FireballsPageContent() {
   const [data, setData] = useState<FireballListResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [filterAccordionValue, setFilterAccordionValue] = useState<string>("");
 
   // Update URL helper
   const updateUrl = useCallback(
@@ -173,6 +175,23 @@ function FireballsPageContent() {
       order: null,
     });
   }, [updateUrl]);
+
+  // Keyboard shortcut handlers
+  const toggleFilters = useCallback(() => {
+    setFilterAccordionValue((prev) => (prev === "filters" ? "" : "filters"));
+  }, []);
+
+  const toggleView = useCallback(() => {
+    handleFilterChange("view", view === "grid" ? "list" : "grid");
+  }, [view, handleFilterChange]);
+
+  // Register page-level keyboard shortcuts
+  useKeyboardShortcuts({
+    shortcuts: [
+      { key: "f", handler: toggleFilters, description: "Toggle filters" },
+      { key: "v", handler: toggleView, description: "Toggle view" },
+    ],
+  });
 
   // Fetch data
   const fetchData = useCallback(
@@ -377,7 +396,13 @@ function FireballsPageContent() {
         </div>
 
         {/* Filter Accordion */}
-        <Accordion type="single" collapsible className="w-full">
+        <Accordion
+          type="single"
+          collapsible
+          className="w-full"
+          value={filterAccordionValue}
+          onValueChange={setFilterAccordionValue}
+        >
           <AccordionItem
             value="filters"
             className="border border-border/50 rounded-lg px-4 bg-card"

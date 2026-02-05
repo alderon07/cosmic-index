@@ -13,6 +13,7 @@ import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "@/lib/constants";
 import { THEMES } from "@/lib/theme";
 import { ViewToggle, ViewMode } from "@/components/view-toggle";
 import { CircleDot } from "lucide-react";
+import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
 
 const theme = THEMES["small-bodies"];
 
@@ -67,6 +68,7 @@ function SmallBodiesPageContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedObject, setSelectedObject] = useState<AnyCosmicObject | null>(null);
+  const [filterAccordionValue, setFilterAccordionValue] = useState<string>("");
 
   // Update URL helper - preserves existing params
   const updateUrl = useCallback((updates: Record<string, string | null>) => {
@@ -139,6 +141,38 @@ function SmallBodiesPageContent() {
       view: newView === "grid" ? null : newView, // Remove from URL if default
     });
   }, [updateUrl]);
+
+  // Keyboard shortcut handlers
+  const toggleFilters = useCallback(() => {
+    setFilterAccordionValue((prev) => (prev === "filters" ? "" : "filters"));
+  }, []);
+
+  const toggleView = useCallback(() => {
+    handleViewChange(view === "grid" ? "list" : "grid");
+  }, [view, handleViewChange]);
+
+  const nextPage = useCallback(() => {
+    const totalPages = data ? Math.ceil(data.total / limit) : 0;
+    if (page < totalPages) {
+      setPage(page + 1);
+    }
+  }, [data, limit, page, setPage]);
+
+  const previousPage = useCallback(() => {
+    if (page > 1) {
+      setPage(page - 1);
+    }
+  }, [page, setPage]);
+
+  // Register page-level keyboard shortcuts
+  useKeyboardShortcuts({
+    shortcuts: [
+      { key: "f", handler: toggleFilters, description: "Toggle filters" },
+      { key: "v", handler: toggleView, description: "Toggle view" },
+      { key: "j", handler: nextPage, description: "Next page" },
+      { key: "k", handler: previousPage, description: "Previous page" },
+    ],
+  });
 
   // Fetch data when page/limit/search/filters change
   const fetchData = useCallback(async (signal?: AbortSignal) => {
@@ -242,6 +276,8 @@ function SmallBodiesPageContent() {
               theme={theme}
             />
           }
+          accordionValue={filterAccordionValue}
+          onAccordionChange={setFilterAccordionValue}
         />
       </div>
 

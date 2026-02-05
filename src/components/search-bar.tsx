@@ -58,6 +58,7 @@ export function SearchBar({
         onChange={(e) => setLocalValue(e.target.value)}
         placeholder={placeholder}
         className="pl-10 pr-10 h-11 bg-card border-border/50 focus:border-primary/50 focus:glow-orange transition-all font-mono text-sm"
+        data-search-input
       />
       {localValue && (
         <Button

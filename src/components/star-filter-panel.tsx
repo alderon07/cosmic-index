@@ -73,6 +73,10 @@ interface StarFilterPanelProps {
   onReset: () => void;
   theme?: ThemeConfig;
   viewToggle?: React.ReactNode;
+  /** Controlled accordion value for keyboard shortcuts */
+  accordionValue?: string;
+  /** Callback when accordion value changes */
+  onAccordionChange?: (value: string) => void;
 }
 
 // Count active filters (excluding sort)
@@ -115,6 +119,8 @@ export function StarFilterPanel({
   onReset,
   theme = defaultStarTheme,
   viewToggle,
+  accordionValue,
+  onAccordionChange,
 }: StarFilterPanelProps) {
   const activeCount = countActiveFilters(filters);
 
@@ -253,7 +259,13 @@ export function StarFilterPanel({
       </div>
 
       {/* Filter Accordion */}
-      <Accordion type="single" collapsible className="w-full">
+      <Accordion
+        type="single"
+        collapsible
+        className="w-full"
+        value={accordionValue}
+        onValueChange={onAccordionChange}
+      >
         <AccordionItem
           value="filters"
           className="border border-border/50 rounded-lg px-4 bg-card"

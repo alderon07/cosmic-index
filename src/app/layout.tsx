@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import { Audiowide, Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import Link from "next/link";
-import { Circle, Star, CircleDot, Crosshair, Flame, Sun } from "lucide-react";
+import { Circle, Star, CircleDot, Crosshair, Flame, Sun, Keyboard } from "lucide-react";
 import { Analytics } from "@vercel/analytics/react";
+import { KeyboardShortcutsProvider } from "@/components/keyboard-shortcuts";
 
 const audiowide = Audiowide({
   variable: "--font-display",
@@ -145,6 +146,7 @@ export default function RootLayout({
       <body
         className={`${audiowide.variable} ${inter.variable} ${jetbrainsMono.variable} antialiased min-h-screen bg-background`}
       >
+        <KeyboardShortcutsProvider>
         <div className="relative min-h-screen vignette">
           {/* Navigation */}
           <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-sm">
@@ -241,28 +243,35 @@ export default function RootLayout({
                     JPL Small-Body Database
                   </Link>
                 </p>
-                <Link
-                  href="https://ko-fi.com/sadasspanda"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="group flex items-center gap-2 px-3 py-1.5 rounded-full border border-reactor-orange/30 bg-reactor-orange/5 hover:bg-reactor-orange/10 hover:border-reactor-orange/50 transition-all duration-300"
-                >
-                  <svg
-                    className="w-4 h-4 text-reactor-orange group-hover:scale-110 transition-transform duration-300"
-                    viewBox="0 0 24 24"
-                    fill="currentColor"
-                    aria-hidden="true"
-                  >
-                    <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
-                  </svg>
-                  <span className="text-xs font-medium text-reactor-orange group-hover:text-amber-glow transition-colors duration-300">
-                    Support on Ko-fi
+                <div className="flex items-center gap-4">
+                  <span className="hidden sm:flex items-center gap-1.5 text-xs text-muted-foreground/60">
+                    <Keyboard className="w-3.5 h-3.5" />
+                    Press <kbd className="px-1 py-0.5 text-[10px] bg-muted rounded border border-border">?</kbd> for shortcuts
                   </span>
-                </Link>
+                  <Link
+                    href="https://ko-fi.com/sadasspanda"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="group flex items-center gap-2 px-3 py-1.5 rounded-full border border-reactor-orange/30 bg-reactor-orange/5 hover:bg-reactor-orange/10 hover:border-reactor-orange/50 transition-all duration-300"
+                  >
+                    <svg
+                      className="w-4 h-4 text-reactor-orange group-hover:scale-110 transition-transform duration-300"
+                      viewBox="0 0 24 24"
+                      fill="currentColor"
+                      aria-hidden="true"
+                    >
+                      <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+                    </svg>
+                    <span className="text-xs font-medium text-reactor-orange group-hover:text-amber-glow transition-colors duration-300">
+                      Support on Ko-fi
+                    </span>
+                  </Link>
+                </div>
               </div>
             </div>
           </footer>
         </div>
+        </KeyboardShortcutsProvider>
         <Analytics />
       </body>
     </html>

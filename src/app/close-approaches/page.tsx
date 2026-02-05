@@ -36,6 +36,7 @@ import {
   Ruler,
 } from "lucide-react";
 import { ViewToggle, ViewMode } from "@/components/view-toggle";
+import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
 
 const theme = THEMES["close-approaches"];
 
@@ -112,6 +113,7 @@ function CloseApproachesPageContent() {
   const [data, setData] = useState<CloseApproachListResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [filterAccordionValue, setFilterAccordionValue] = useState<string>("");
 
   // Update URL helper
   const updateUrl = useCallback(
@@ -171,6 +173,23 @@ function CloseApproachesPageContent() {
       view: newView === "grid" ? null : newView,
     });
   }, [updateUrl]);
+
+  // Keyboard shortcut handlers
+  const toggleFilters = useCallback(() => {
+    setFilterAccordionValue((prev) => (prev === "filters" ? "" : "filters"));
+  }, []);
+
+  const toggleView = useCallback(() => {
+    handleViewChange(view === "grid" ? "list" : "grid");
+  }, [view, handleViewChange]);
+
+  // Register page-level keyboard shortcuts
+  useKeyboardShortcuts({
+    shortcuts: [
+      { key: "f", handler: toggleFilters, description: "Toggle filters" },
+      { key: "v", handler: toggleView, description: "Toggle view" },
+    ],
+  });
 
   // Fetch data
   const fetchData = useCallback(async (signal?: AbortSignal) => {
@@ -366,7 +385,13 @@ function CloseApproachesPageContent() {
         </div>
 
         {/* Filter Accordion */}
-        <Accordion type="single" collapsible className="w-full">
+        <Accordion
+          type="single"
+          collapsible
+          className="w-full"
+          value={filterAccordionValue}
+          onValueChange={setFilterAccordionValue}
+        >
           <AccordionItem
             value="filters"
             className="border border-border/50 rounded-lg px-4 bg-card"
