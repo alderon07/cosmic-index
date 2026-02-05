@@ -13,6 +13,7 @@ import {
   SpaceWeatherCard,
   SpaceWeatherCardSkeleton,
 } from "@/components/space-weather-card";
+import { SpaceWeatherDetailModal } from "@/components/space-weather-detail-modal";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,6 +25,7 @@ import {
 import {
   SpaceWeatherListResponse,
   SpaceWeatherEventType,
+  AnySpaceWeatherEvent,
 } from "@/lib/types";
 import { THEMES } from "@/lib/theme";
 import {
@@ -91,6 +93,7 @@ function SpaceWeatherPageContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filterAccordionValue, setFilterAccordionValue] = useState<string>("filters");
+  const [selectedEvent, setSelectedEvent] = useState<AnySpaceWeatherEvent | null>(null);
 
   // Update URL helper
   const updateUrl = useCallback(
@@ -161,11 +164,17 @@ function SpaceWeatherPageContent() {
     handleViewChange(view === "grid" ? "list" : "grid");
   }, [view, handleViewChange]);
 
+  // Close modal handler
+  const handleCloseModal = useCallback(() => {
+    setSelectedEvent(null);
+  }, []);
+
   // Register page-level keyboard shortcuts
   useKeyboardShortcuts({
     shortcuts: [
       { key: "f", handler: toggleFilters, description: "Toggle filters" },
       { key: "v", handler: toggleView, description: "Toggle view" },
+      { key: "Escape", handler: handleCloseModal, description: "Close modal" },
     ],
   });
 
@@ -414,7 +423,11 @@ function SpaceWeatherPageContent() {
       {!isLoading && data && data.events.length > 0 && view === "grid" && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {data.events.map((event) => (
-            <SpaceWeatherCard key={event.id} event={event} />
+            <SpaceWeatherCard
+              key={event.id}
+              event={event}
+              onModalOpen={setSelectedEvent}
+            />
           ))}
         </div>
       )}
@@ -423,7 +436,12 @@ function SpaceWeatherPageContent() {
       {!isLoading && data && data.events.length > 0 && view === "list" && (
         <div className="min-w-0 overflow-hidden space-y-2">
           {data.events.map((event) => (
-            <SpaceWeatherCard key={event.id} event={event} variant="compact" />
+            <SpaceWeatherCard
+              key={event.id}
+              event={event}
+              variant="compact"
+              onModalOpen={setSelectedEvent}
+            />
           ))}
         </div>
       )}
@@ -441,6 +459,13 @@ function SpaceWeatherPageContent() {
           </p>
         </div>
       )}
+
+      {/* Event Detail Modal */}
+      <SpaceWeatherDetailModal
+        event={selectedEvent}
+        open={!!selectedEvent}
+        onOpenChange={(open) => !open && setSelectedEvent(null)}
+      />
     </div>
   );
 }

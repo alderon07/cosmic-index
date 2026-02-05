@@ -17,6 +17,7 @@ import {
   Sparkles,
   AlertTriangle,
   SquareArrowOutUpRight,
+  ChevronRight,
   Star,
   Circle,
   Timer,
@@ -64,19 +65,16 @@ export function ObjectCard({ object, onModalOpen, variant = "default" }: ObjectC
       : "Asteroid"
     : "Unknown";
 
-  const typeVariant = isExoplanet(object)
-    ? "default"
-    : isStar(object)
-    ? "outline"
-    : isSmallBody(object) && object.bodyKind === "comet"
-    ? "outline"
-    : "secondary";
+  // All type badges use outline variant with consistent styling
+  const typeVariant = "outline" as const;
 
-  const typeClassName = isStar(object)
+  const typeClassName = isExoplanet(object)
+    ? "border-primary/50 text-primary bg-primary/10"
+    : isStar(object)
     ? "border-uranium-green/50 text-uranium-green bg-uranium-green/10"
     : isSmallBody(object) && object.bodyKind === "comet"
     ? "border-radium-teal/50 text-radium-teal bg-radium-teal/10"
-    : "";
+    : "border-secondary/50 text-secondary bg-secondary/10"; // asteroids
 
   // Name color based on object type
   const nameColorClass = isExoplanet(object)
@@ -126,6 +124,12 @@ export function ObjectCard({ object, onModalOpen, variant = "default" }: ObjectC
         : SMALL_BODIES_LIST_URL_KEY;
       sessionStorage.setItem(storageKey, currentUrl);
     }
+  };
+
+  // Handle navigation icon click (navigates to detail page, stops propagation in modal mode)
+  const handleNavigateClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    storeListUrl();
   };
 
   // Compact variant for list view - with type-specific column layouts
@@ -361,8 +365,8 @@ export function ObjectCard({ object, onModalOpen, variant = "default" }: ObjectC
             </div>
           </div>
 
-          {/* Block 3: Badges (right on md+) */}
-          <div className="flex items-center gap-1.5 shrink-0 justify-end min-w-0">
+          {/* Block 3: Badges + navigation icon (right on md+) */}
+          <div className="flex shrink-0 items-center justify-end gap-2 min-w-0">
             {isSmallBody(object) && object.isNeo && (
               <Badge variant="outline" className="text-[10px] border-amber-glow/50 text-amber-glow py-0 px-1.5">
                 NEO
@@ -376,6 +380,20 @@ export function ObjectCard({ object, onModalOpen, variant = "default" }: ObjectC
             <Badge variant={typeVariant} className={`font-mono text-[10px] py-0 px-1.5 ${typeClassName}`}>
               {typeLabel}
             </Badge>
+            {onModalOpen ? (
+              <Link
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={handleNavigateClick}
+                className={`p-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity hidden md:block ${iconLinkHover}`}
+                aria-label={`Go to ${object.displayName} detail page (opens in new tab)`}
+              >
+                <SquareArrowOutUpRight className={`w-4 h-4 text-muted-foreground transition-colors ${iconHoverText}`} />
+              </Link>
+            ) : (
+              <ChevronRight className={`w-4 h-4 text-muted-foreground transition-colors hidden md:block ${iconHoverText}`} />
+            )}
           </div>
         </CardContent>
       </Card>
@@ -423,12 +441,6 @@ export function ObjectCard({ object, onModalOpen, variant = "default" }: ObjectC
     }
   };
 
-  // Handle navigation icon click (navigates to detail page)
-  const handleNavigateClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    storeListUrl();
-  };
-
   const cardContent = (
     <>
       {/* Navigation icon (only in modal mode) */}
@@ -438,7 +450,7 @@ export function ObjectCard({ object, onModalOpen, variant = "default" }: ObjectC
           target="_blank"
           rel="noopener noreferrer"
           onClick={handleNavigateClick}
-          className={`absolute bottom-3 right-3 z-10 p-1.5 rounded-md bg-background/80 opacity-0 group-hover:opacity-100 transition-opacity ${iconLinkHover}`}
+          className={`absolute top-3 right-3 z-10 p-1.5 rounded-md bg-background/80 opacity-0 group-hover:opacity-100 transition-opacity ${iconLinkHover}`}
           aria-label={`Go to ${object.displayName} detail page (opens in new tab)`}
         >
           <SquareArrowOutUpRight className={`w-4 h-4 text-muted-foreground transition-colors ${iconHoverText}`} />

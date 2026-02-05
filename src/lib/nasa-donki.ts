@@ -449,3 +449,91 @@ export async function fetchSpaceWeather(
     },
   };
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Single Event Fetch
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Parse event type from a DONKI event ID
+ * ID format: "2024-01-15T06:30:00-FLR-001" or "2024-01-15T06:30:00-CME-001"
+ */
+export function parseEventType(eventId: string): SpaceWeatherEventType | null {
+  if (eventId.includes("-FLR-")) return "FLR";
+  if (eventId.includes("-CME-")) return "CME";
+  if (eventId.includes("-GST-")) return "GST";
+  return null;
+}
+
+/**
+ * Parse date from a DONKI event ID
+ * ID format: "2024-01-15T06:30:00-FLR-001"
+ */
+export function parseEventDate(eventId: string): string | null {
+  // Extract date portion (YYYY-MM-DD) from the ID
+  const match = eventId.match(/^(\d{4}-\d{2}-\d{2})/);
+  return match ? match[1] : null;
+}
+
+/**
+ * Fetch a single space weather event by ID
+ *
+ * Strategy:
+ * 1. Parse the event type from the ID
+ * 2. Extract the date from the ID
+ * 3. Fetch events for a 3-day window around that date (to handle timezone edge cases)
+ * 4. Find the exact event by ID
+ */
+export async function fetchSpaceWeatherEventById(
+  eventId: string
+): Promise<AnySpaceWeatherEvent | null> {
+  const eventType = parseEventType(eventId);
+  const eventDate = parseEventDate(eventId);
+
+  if (!eventType || !eventDate) {
+    console.warn(`[DONKI] Could not parse event ID: ${eventId}`);
+    return null;
+  }
+
+  // Create a date window around the event (±1 day to handle timezone edge cases)
+  const date = new Date(eventDate);
+  const startDate = new Date(date);
+  startDate.setDate(startDate.getDate() - 1);
+  const endDate = new Date(date);
+  endDate.setDate(endDate.getDate() + 1);
+
+  const startStr = startDate.toISOString().split("T")[0];
+  const endStr = endDate.toISOString().split("T")[0];
+
+  let events: AnySpaceWeatherEvent[] = [];
+
+  // Fetch only the relevant event type
+  switch (eventType) {
+    case "FLR":
+      events = await fetchSolarFlaresRaw(startStr, endStr);
+      break;
+    case "CME":
+      events = await fetchCMEsRaw(startStr, endStr);
+      break;
+    case "GST":
+      events = await fetchGSTsRaw(startStr, endStr);
+      break;
+  }
+
+  // Find the exact event by ID
+  return events.find((e) => e.id === eventId) || null;
+}
+
+/**
+ * Get severity for any space weather event
+ */
+export function getEventSeverity(event: AnySpaceWeatherEvent): SpaceWeatherSeverity {
+  switch (event.eventType) {
+    case "FLR":
+      return getFlareClassSeverity(event.classType);
+    case "CME":
+      return getCMESeverity(event.speed);
+    case "GST":
+      return getKpSeverity(event.kpIndex);
+  }
+}
