@@ -2,6 +2,11 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { FireballEvent } from "@/lib/types";
 import {
   getEnergySizeCategory,
@@ -59,53 +64,82 @@ export function FireballCard({
       : "—";
 
     return (
-      <Card className={cardClassName}>
-        <CardContent className="py-3 px-4 flex flex-col gap-2">
-          <div className="flex items-center justify-between gap-2 min-w-0">
-            <div className="flex items-center gap-2 min-w-0">
-              <Calendar className={`w-4 h-4 shrink-0 ${theme.icon}`} />
-              <span className={`font-display text-sm ${theme.text} truncate`}>
-                {dateDisplay}
-              </span>
-              {!fireball.isComplete && (
-                <Badge
-                  variant="outline"
-                  className="text-xs border-muted-foreground/30 text-muted-foreground shrink-0"
-                >
-                  <AlertCircle className="w-3 h-3 mr-1" />
-                  Incomplete
-                </Badge>
-              )}
+      <Card className="py-0 bg-card border-border/50 transition-all duration-300 hover:border-radium-teal/50 hover:glow-teal bezel overflow-hidden min-h-[44px]">
+        <CardContent className="py-3 px-4 min-h-[44px] flex flex-col md:grid md:grid-cols-[1fr_auto_1fr] md:items-center gap-y-2.5 md:gap-y-0 md:gap-x-6">
+          {/* Block 1: Date (left on md+) */}
+          <div className="min-w-0 overflow-hidden flex items-center gap-2 shrink-0">
+            <Calendar className={`w-4 h-4 shrink-0 ${theme.icon}`} />
+            <span className={`font-display text-sm font-medium ${theme.text} truncate`}>
+              {dateDisplay}
+            </span>
+          </div>
+
+          {/* Block 2: Data columns (center on md+, 4-col grid for consistent spacing) */}
+          <div className="w-full md:w-auto min-w-0">
+            <div className="grid grid-cols-4 gap-x-4 sm:gap-x-6 min-w-0 w-full md:w-auto">
+              <div className="min-w-0 flex flex-col items-center gap-0.5 justify-start">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="text-muted-foreground cursor-help" aria-hidden="true">
+                      <Zap className="w-3.5 h-3.5" />
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>Energy</TooltipContent>
+                </Tooltip>
+                <p className="text-xs font-mono text-foreground truncate w-full text-center">{energyDisplay}</p>
+              </div>
+              <div className="min-w-0 flex flex-col items-center gap-0.5 justify-start">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="text-muted-foreground cursor-help" aria-hidden="true">
+                      <MapPin className="w-3.5 h-3.5" />
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>Location</TooltipContent>
+                </Tooltip>
+                <p className="text-xs font-mono text-foreground truncate w-full text-center" title={locationShort}>
+                  {locationShort}
+                </p>
+              </div>
+              <div className="min-w-0 flex flex-col items-center gap-0.5 justify-start">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="text-muted-foreground cursor-help" aria-hidden="true">
+                      <Mountain className="w-3.5 h-3.5" />
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>Altitude (km)</TooltipContent>
+                </Tooltip>
+                <p className="text-xs font-mono text-foreground truncate w-full text-center">{altShort}</p>
+              </div>
+              <div className="min-w-0 flex flex-col items-center gap-0.5 justify-start">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="text-muted-foreground cursor-help" aria-hidden="true">
+                      <Gauge className="w-3.5 h-3.5" />
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>Velocity (km/s)</TooltipContent>
+                </Tooltip>
+                <p className="text-xs font-mono text-foreground truncate w-full text-center">{velShort}</p>
+              </div>
             </div>
-            <Badge
-              variant="outline"
-              className={`text-xs shrink-0 ${theme.badge}`}
-            >
+          </div>
+
+          {/* Block 3: Badges (right on md+) */}
+          <div className="flex items-center gap-1.5 shrink-0 justify-end min-w-0">
+            {!fireball.isComplete && (
+              <Badge
+                variant="outline"
+                className="text-[10px] border-muted-foreground/30 text-muted-foreground py-0 px-1.5"
+              >
+                <AlertCircle className="w-2.5 h-2.5 mr-0.5" />
+                Incomplete
+              </Badge>
+            )}
+            <Badge variant="outline" className={`text-[10px] ${theme.badge}`}>
               {sizeCategory}
             </Badge>
-          </div>
-          <div className="flex flex-wrap items-center gap-x-8 gap-y-1 text-sm min-w-0">
-            <span className="flex items-center gap-1.5">
-              <Zap className="w-3.5 h-3.5 text-muted-foreground" />
-              <span className="font-mono text-foreground">{energyDisplay}</span>
-            </span>
-            <span className="flex items-center gap-1.5">
-              <MapPin className="w-3.5 h-3.5 text-muted-foreground" />
-              <span
-                className="font-mono text-foreground truncate max-w-[120px]"
-                title={locationShort}
-              >
-                {locationShort}
-              </span>
-            </span>
-            <span className="flex items-center gap-1.5">
-              <Mountain className="w-3.5 h-3.5 text-muted-foreground" />
-              <span className="font-mono text-foreground">{altShort}</span>
-            </span>
-            <span className="flex items-center gap-1.5">
-              <Gauge className="w-3.5 h-3.5 text-muted-foreground" />
-              <span className="font-mono text-foreground">{velShort}</span>
-            </span>
           </div>
         </CardContent>
       </Card>
@@ -239,20 +273,24 @@ export function FireballCardSkeleton({
 }) {
   if (variant === "compact") {
     return (
-      <Card className="h-full bg-card border-border/50 bezel overflow-hidden">
-        <CardContent className="py-3 px-4 flex flex-col gap-2">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <div className="h-4 w-4 data-stream rounded shrink-0" />
-              <div className="h-4 w-24 data-stream rounded" />
-            </div>
-            <div className="h-5 w-20 data-stream rounded shrink-0" />
+      <Card className="py-0 bg-card border-border/50 bezel overflow-hidden min-h-[44px]">
+        <CardContent className="py-3 px-4 min-h-[44px] flex flex-col md:grid md:grid-cols-[1fr_auto_1fr] md:items-center gap-y-2.5 md:gap-y-0 md:gap-x-6">
+          <div className="min-w-0 flex items-center gap-2">
+            <div className="h-4 w-4 data-stream rounded shrink-0" />
+            <div className="h-4 w-28 data-stream rounded" />
           </div>
-          <div className="flex flex-wrap items-center gap-x-8 gap-y-1">
-            <div className="h-4 w-16 data-stream rounded" />
-            <div className="h-4 w-20 data-stream rounded" />
-            <div className="h-4 w-14 data-stream rounded" />
-            <div className="h-4 w-14 data-stream rounded" />
+          <div className="w-full md:w-auto min-w-0">
+            <div className="grid grid-cols-4 gap-x-4 sm:gap-x-6 min-w-0 w-full md:w-auto">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="min-w-0 flex flex-col items-center gap-0.5">
+                  <div className="h-3 w-8 data-stream rounded" />
+                  <div className="h-3 data-stream rounded w-full max-w-14" />
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="flex justify-end min-w-0">
+            <div className="h-5 w-14 data-stream rounded shrink-0" />
           </div>
         </CardContent>
       </Card>

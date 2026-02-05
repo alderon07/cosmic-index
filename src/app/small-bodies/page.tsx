@@ -11,6 +11,7 @@ import { Pagination, PaginationInfo } from "@/components/pagination";
 import { AnyCosmicObject, SmallBodyData, PaginatedResponse } from "@/lib/types";
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "@/lib/constants";
 import { THEMES } from "@/lib/theme";
+import { ViewToggle, ViewMode } from "@/components/view-toggle";
 import { CircleDot } from "lucide-react";
 
 const theme = THEMES["small-bodies"];
@@ -51,6 +52,10 @@ function SmallBodiesPageContent() {
     pha,
     orbitClass,
   }), [kind, neo, pha, orbitClass]);
+
+  // Derive view mode from URL (default: grid)
+  const viewParam = searchParams.get("view");
+  const view: ViewMode = viewParam === "list" ? "list" : "grid";
 
   // Save current URL to sessionStorage for breadcrumb navigation
   useEffect(() => {
@@ -125,6 +130,13 @@ function SmallBodiesPageContent() {
       pha: null,
       orbitClass: null,
       page: null, // Reset to page 1
+    });
+  }, [updateUrl]);
+
+  // Handle view mode change
+  const handleViewChange = useCallback((newView: ViewMode) => {
+    updateUrl({
+      view: newView === "grid" ? null : newView, // Remove from URL if default
     });
   }, [updateUrl]);
 
@@ -223,6 +235,13 @@ function SmallBodiesPageContent() {
           filters={filters}
           onChange={handleFiltersChange}
           onReset={handleFilterReset}
+          viewToggle={
+            <ViewToggle
+              view={view}
+              onChange={handleViewChange}
+              theme={theme}
+            />
+          }
         />
       </div>
 
@@ -258,8 +277,8 @@ function SmallBodiesPageContent() {
         </div>
       )}
 
-      {/* Loading State */}
-      {isLoading && (
+      {/* Loading State - Grid */}
+      {isLoading && view === "grid" && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {Array.from({ length: 6 }).map((_, i) => (
             <ObjectCardSkeleton key={i} />
@@ -267,11 +286,29 @@ function SmallBodiesPageContent() {
         </div>
       )}
 
+      {/* Loading State - List */}
+      {isLoading && view === "list" && (
+        <div className="min-w-0 overflow-hidden space-y-2">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <ObjectCardSkeleton key={i} variant="compact" />
+          ))}
+        </div>
+      )}
+
       {/* Results Grid */}
-      {!isLoading && data && data.objects.length > 0 && (
+      {!isLoading && data && data.objects.length > 0 && view === "grid" && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {data.objects.map((smallBody) => (
             <ObjectCard key={smallBody.sourceId} object={smallBody} onModalOpen={setSelectedObject} />
+          ))}
+        </div>
+      )}
+
+      {/* Results List */}
+      {!isLoading && data && data.objects.length > 0 && view === "list" && (
+        <div className="min-w-0 overflow-hidden space-y-2">
+          {data.objects.map((smallBody) => (
+            <ObjectCard key={smallBody.sourceId} object={smallBody} onModalOpen={setSelectedObject} variant="compact" />
           ))}
         </div>
       )}

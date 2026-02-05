@@ -11,6 +11,7 @@ import { Pagination, PaginationInfo } from "@/components/pagination";
 import { AnyCosmicObject, StarData, PaginatedResponse, SpectralClass } from "@/lib/types";
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "@/lib/constants";
 import { THEMES } from "@/lib/theme";
+import { ViewToggle, ViewMode } from "@/components/view-toggle";
 import { Star } from "lucide-react";
 
 const theme = THEMES.stars;
@@ -57,6 +58,10 @@ function StarsPageContent() {
     sort,
     order,
   }), [spectralClass, minPlanets, multiPlanet, maxDistancePc, sort, order]);
+
+  // Derive view mode from URL (default: grid)
+  const viewParam = searchParams.get("view");
+  const view: ViewMode = viewParam === "list" ? "list" : "grid";
 
   // Save current URL to sessionStorage for breadcrumb navigation
   useEffect(() => {
@@ -140,6 +145,13 @@ function StarsPageContent() {
     });
   }, [updateUrl]);
 
+  // Handle view mode change
+  const handleViewChange = useCallback((newView: ViewMode) => {
+    updateUrl({
+      view: newView === "grid" ? null : newView,
+    });
+  }, [updateUrl]);
+
   // Fetch data when page/limit/search/filters change
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -217,6 +229,13 @@ function StarsPageContent() {
           onChange={handleFiltersChange}
           onReset={handleFilterReset}
           theme={theme}
+          viewToggle={
+            <ViewToggle
+              view={view}
+              onChange={handleViewChange}
+              theme={theme}
+            />
+          }
         />
       </div>
 
@@ -252,8 +271,8 @@ function StarsPageContent() {
         </div>
       )}
 
-      {/* Loading State */}
-      {isLoading && (
+      {/* Loading State - Grid */}
+      {isLoading && view === "grid" && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {Array.from({ length: 6 }).map((_, i) => (
             <ObjectCardSkeleton key={i} />
@@ -261,11 +280,29 @@ function StarsPageContent() {
         </div>
       )}
 
+      {/* Loading State - List */}
+      {isLoading && view === "list" && (
+        <div className="min-w-0 overflow-hidden space-y-2">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <ObjectCardSkeleton key={i} variant="compact" />
+          ))}
+        </div>
+      )}
+
       {/* Results Grid */}
-      {!isLoading && data && data.objects.length > 0 && (
+      {!isLoading && data && data.objects.length > 0 && view === "grid" && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {data.objects.map((star) => (
             <ObjectCard key={star.id} object={star} onModalOpen={setSelectedObject} />
+          ))}
+        </div>
+      )}
+
+      {/* Results List */}
+      {!isLoading && data && data.objects.length > 0 && view === "list" && (
+        <div className="min-w-0 overflow-hidden space-y-2">
+          {data.objects.map((star) => (
+            <ObjectCard key={star.id} object={star} onModalOpen={setSelectedObject} variant="compact" />
           ))}
         </div>
       )}

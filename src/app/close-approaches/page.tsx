@@ -35,6 +35,7 @@ import {
   Gauge,
   Ruler,
 } from "lucide-react";
+import { ViewToggle, ViewMode } from "@/components/view-toggle";
 
 const theme = THEMES["close-approaches"];
 
@@ -104,6 +105,10 @@ function CloseApproachesPageContent() {
 
   const filters: CloseApproachFilters = { days, distMaxLd, phaOnly, sort, order };
 
+  // Derive view mode from URL (default: grid)
+  const viewParam = searchParams.get("view");
+  const view: ViewMode = viewParam === "list" ? "list" : "grid";
+
   const [data, setData] = useState<CloseApproachListResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -157,6 +162,13 @@ function CloseApproachesPageContent() {
       phaOnly: null,
       sort: null,
       order: null,
+    });
+  }, [updateUrl]);
+
+  // Handle view mode change
+  const handleViewChange = useCallback((newView: ViewMode) => {
+    updateUrl({
+      view: newView === "grid" ? null : newView,
     });
   }, [updateUrl]);
 
@@ -347,6 +359,10 @@ function CloseApproachesPageContent() {
               <ArrowDown className="w-4 h-4" />
             </button>
           </div>
+          {/* View Toggle */}
+          <div className="ml-auto">
+            <ViewToggle view={view} onChange={handleViewChange} theme={theme} />
+          </div>
         </div>
 
         {/* Filter Accordion */}
@@ -451,8 +467,8 @@ function CloseApproachesPageContent() {
         </div>
       )}
 
-      {/* Loading State */}
-      {isLoading && (
+      {/* Loading State - Grid */}
+      {isLoading && view === "grid" && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {Array.from({ length: 6 }).map((_, i) => (
             <CloseApproachCardSkeleton key={i} />
@@ -460,11 +476,29 @@ function CloseApproachesPageContent() {
         </div>
       )}
 
+      {/* Loading State - List */}
+      {isLoading && view === "list" && (
+        <div className="min-w-0 overflow-hidden space-y-2">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <CloseApproachCardSkeleton key={i} variant="compact" />
+          ))}
+        </div>
+      )}
+
       {/* Results Grid */}
-      {!isLoading && data && data.events.length > 0 && (
+      {!isLoading && data && data.events.length > 0 && view === "grid" && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {data.events.map((approach) => (
             <CloseApproachCard key={approach.id} approach={approach} />
+          ))}
+        </div>
+      )}
+
+      {/* Results List */}
+      {!isLoading && data && data.events.length > 0 && view === "list" && (
+        <div className="min-w-0 overflow-hidden space-y-2">
+          {data.events.map((approach) => (
+            <CloseApproachCard key={approach.id} approach={approach} variant="compact" />
           ))}
         </div>
       )}

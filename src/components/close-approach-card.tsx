@@ -10,13 +10,16 @@ import {
 import { CloseApproach } from "@/lib/types";
 import { getSizeCategory, AU_KM, LD_KM } from "@/lib/cneos-close-approach";
 import { THEMES } from "@/lib/theme";
-import { AlertTriangle, Gauge, Ruler, Calendar } from "lucide-react";
+import { AlertTriangle, Gauge, Ruler, Calendar, Circle } from "lucide-react";
 
 const theme = THEMES["close-approaches"];
+
+export type CloseApproachCardVariant = "default" | "compact";
 
 interface CloseApproachCardProps {
   approach: CloseApproach;
   showHighlightBadge?: "closest" | "fastest";
+  variant?: CloseApproachCardVariant;
 }
 
 // Reusable tooltip wrapper for terms that need explanation
@@ -35,7 +38,7 @@ function InfoTooltip({ children, content }: { children: React.ReactNode; content
   );
 }
 
-export function CloseApproachCard({ approach, showHighlightBadge }: CloseApproachCardProps) {
+export function CloseApproachCard({ approach, showHighlightBadge, variant = "default" }: CloseApproachCardProps) {
   const sizeCategory = getSizeCategory(approach.diameterEstimated);
 
   // Format velocity
@@ -60,6 +63,102 @@ export function CloseApproachCard({ approach, showHighlightBadge }: CloseApproac
     }
   }
 
+  // Compact (list) variant - mobile: two lines; md+: single line [title | data | badge], data in 4-col grid
+  if (variant === "compact") {
+    return (
+      <Card className="py-0 bg-card border-border/50 transition-all duration-300 hover:border-destructive/50 hover:glow-red bezel overflow-hidden min-h-[44px]">
+        <CardContent className="p-3 min-h-[44px] flex flex-col md:grid md:grid-cols-[1fr_auto_1fr] md:items-center gap-y-2.5 md:gap-y-0 md:gap-x-6">
+          {/* Block 1: Designation (left on md+) */}
+          <div className="min-w-0 overflow-hidden">
+            <p className={`font-display text-sm font-medium ${theme.text} truncate`}>
+              {approach.designation}
+            </p>
+            {approach.fullName && approach.fullName !== approach.designation && (
+              <p className="text-xs text-muted-foreground truncate mt-0.5">
+                {approach.fullName}
+              </p>
+            )}
+          </div>
+
+          {/* Block 2: Data columns (center on md+, 4-col grid for consistent spacing) */}
+          <div className="w-full md:w-auto min-w-0">
+            <div className="grid grid-cols-4 gap-x-4 sm:gap-x-6 min-w-0 w-full md:w-auto">
+              <div className="min-w-0 flex flex-col items-center gap-0.5 justify-start">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="text-muted-foreground cursor-help" aria-hidden="true">
+                      <Calendar className="w-3.5 h-3.5" />
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent className="border-destructive/30">Date</TooltipContent>
+                </Tooltip>
+                <p className="text-xs font-mono text-foreground truncate w-full text-center">
+                  {approach.approachTimeRaw.split(" ")[0]}
+                </p>
+              </div>
+              <div className="min-w-0 flex flex-col items-center gap-0.5 justify-start">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="text-muted-foreground cursor-help" aria-hidden="true">
+                      <Ruler className="w-3.5 h-3.5" />
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent className="border-destructive/30">Distance (LD)</TooltipContent>
+                </Tooltip>
+                <p className="text-xs font-mono text-foreground truncate w-full text-center">
+                  {approach.distanceLd.toFixed(2)} LD
+                </p>
+              </div>
+              <div className="min-w-0 flex flex-col items-center gap-0.5 justify-start">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="text-muted-foreground cursor-help" aria-hidden="true">
+                      <Gauge className="w-3.5 h-3.5" />
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent className="border-destructive/30">Velocity (km/s)</TooltipContent>
+                </Tooltip>
+                <p className="text-xs font-mono text-foreground truncate w-full text-center">{velocityKmS} km/s</p>
+              </div>
+              <div className="min-w-0 flex flex-col items-center gap-0.5 justify-start">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="text-muted-foreground cursor-help" aria-hidden="true">
+                      <Circle className="w-3.5 h-3.5" />
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent className="border-destructive/30">Size</TooltipContent>
+                </Tooltip>
+                <p className="text-xs font-mono text-foreground truncate w-full text-center">{diameterDisplay}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Block 3: Badges (right on md+) */}
+          <div className="flex items-center gap-1.5 shrink-0 justify-end min-w-0">
+            {showHighlightBadge === "closest" && (
+              <Badge variant="outline" className={`text-[10px] ${theme.badge}`}>
+                Closest
+              </Badge>
+            )}
+            {showHighlightBadge === "fastest" && (
+              <Badge variant="outline" className={`text-[10px] ${theme.badge}`}>
+                Fastest
+              </Badge>
+            )}
+            {approach.isPha && (
+              <Badge variant="destructive" className="text-[10px] py-0 px-1.5">
+                <AlertTriangle className="w-2.5 h-2.5 mr-0.5" />
+                PHA
+              </Badge>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Default (grid) variant
   return (
     <Card className={`h-full bg-card border-border/50 transition-all duration-300 hover:border-destructive/50 hover:glow-red bezel scanlines overflow-hidden`}>
       <CardHeader>
@@ -192,7 +291,33 @@ export function CloseApproachCard({ approach, showHighlightBadge }: CloseApproac
   );
 }
 
-export function CloseApproachCardSkeleton() {
+export function CloseApproachCardSkeleton({ variant = "default" }: { variant?: CloseApproachCardVariant }) {
+  if (variant === "compact") {
+    return (
+      <Card className="py-0 bg-card border-border/50 bezel overflow-hidden min-h-[44px]">
+        <CardContent className="p-3 min-h-[44px] flex flex-col md:grid md:grid-cols-[1fr_auto_1fr] md:items-center gap-y-2.5 md:gap-y-0 md:gap-x-6">
+          <div className="min-w-0">
+            <div className="h-4 w-32 data-stream rounded" />
+            <div className="h-3 w-24 data-stream rounded mt-1" />
+          </div>
+          <div className="w-full md:w-auto min-w-0">
+            <div className="grid grid-cols-4 gap-x-4 sm:gap-x-6 min-w-0 w-full md:w-auto">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="min-w-0 flex flex-col items-center gap-0.5">
+                  <div className="h-3 w-8 data-stream rounded" />
+                  <div className="h-3 data-stream rounded w-full max-w-16" />
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="flex justify-end min-w-0">
+            <div className="h-5 w-12 data-stream rounded shrink-0" />
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card className="h-full bg-card border-border/50 bezel overflow-hidden">
       <CardHeader className="pb-3">
