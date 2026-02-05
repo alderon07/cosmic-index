@@ -64,20 +64,20 @@ export function FireballCard({
       : "—";
 
     return (
-      <Card className="bg-card border-border/50 transition-all duration-300 hover:border-radium-teal/50 hover:glow-teal bezel overflow-hidden min-h-[44px]">
-        <CardContent className="py-3 px-4 min-h-[44px] flex flex-col justify-center gap-y-2.5">
-          {/* Line 1: Date only (no badges) */}
-          <div className="min-w-0 overflow-hidden flex items-center gap-2">
+      <Card className="py-0 bg-card border-border/50 transition-all duration-300 hover:border-radium-teal/50 hover:glow-teal bezel overflow-hidden min-h-[44px]">
+        <CardContent className="py-3 px-4 min-h-[44px] flex flex-col md:grid md:grid-cols-[1fr_auto_1fr] md:items-center gap-y-2.5 md:gap-y-0 md:gap-x-6">
+          {/* Block 1: Date (left on md+) */}
+          <div className="min-w-0 overflow-hidden flex items-center gap-2 shrink-0">
             <Calendar className={`w-4 h-4 shrink-0 ${theme.icon}`} />
             <span className={`font-display text-sm font-medium ${theme.text} truncate`}>
               {dateDisplay}
             </span>
           </div>
 
-          {/* Line 2: Data columns + all badges on the last row */}
-          <div className="w-full shrink-0 flex items-center justify-between gap-3 sm:gap-4 flex-wrap min-w-0">
-            <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-wrap sm:flex-nowrap">
-              <div className="text-right shrink-0 w-16 flex flex-col items-end gap-0.5">
+          {/* Block 2: Data columns (center on md+, 4-col grid for consistent spacing) */}
+          <div className="w-full md:w-auto min-w-0">
+            <div className="grid grid-cols-4 gap-x-4 sm:gap-x-6 min-w-0 w-full md:w-auto">
+              <div className="min-w-0 flex flex-col items-center gap-0.5 justify-start">
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <span className="text-muted-foreground cursor-help" aria-hidden="true">
@@ -86,9 +86,9 @@ export function FireballCard({
                   </TooltipTrigger>
                   <TooltipContent>Energy</TooltipContent>
                 </Tooltip>
-                <p className="text-xs font-mono text-foreground">{energyDisplay}</p>
+                <p className="text-xs font-mono text-foreground truncate w-full text-center">{energyDisplay}</p>
               </div>
-              <div className="text-right shrink-0 min-w-0 w-20 flex flex-col items-end gap-0.5">
+              <div className="min-w-0 flex flex-col items-center gap-0.5 justify-start">
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <span className="text-muted-foreground cursor-help" aria-hidden="true">
@@ -97,11 +97,11 @@ export function FireballCard({
                   </TooltipTrigger>
                   <TooltipContent>Location</TooltipContent>
                 </Tooltip>
-                <p className="text-xs font-mono text-foreground truncate w-full text-right" title={locationShort}>
+                <p className="text-xs font-mono text-foreground truncate w-full text-center" title={locationShort}>
                   {locationShort}
                 </p>
               </div>
-              <div className="text-right shrink-0 w-14 flex flex-col items-end gap-0.5">
+              <div className="min-w-0 flex flex-col items-center gap-0.5 justify-start">
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <span className="text-muted-foreground cursor-help" aria-hidden="true">
@@ -110,9 +110,9 @@ export function FireballCard({
                   </TooltipTrigger>
                   <TooltipContent>Altitude (km)</TooltipContent>
                 </Tooltip>
-                <p className="text-xs font-mono text-foreground">{altShort}</p>
+                <p className="text-xs font-mono text-foreground truncate w-full text-center">{altShort}</p>
               </div>
-              <div className="hidden lg:flex flex-col items-end gap-0.5 text-right shrink-0 w-14">
+              <div className="min-w-0 flex flex-col items-center gap-0.5 justify-start">
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <span className="text-muted-foreground cursor-help" aria-hidden="true">
@@ -121,26 +121,25 @@ export function FireballCard({
                   </TooltipTrigger>
                   <TooltipContent>Velocity (km/s)</TooltipContent>
                 </Tooltip>
-                <p className="text-xs font-mono text-foreground">{velShort}</p>
+                <p className="text-xs font-mono text-foreground truncate w-full text-center">{velShort}</p>
               </div>
             </div>
-            <div className="flex items-center gap-1.5 shrink-0">
-              {!fireball.isComplete && (
-                <Badge
-                  variant="outline"
-                  className="text-[10px] border-muted-foreground/30 text-muted-foreground py-0 px-1.5"
-                >
-                  <AlertCircle className="w-2.5 h-2.5 mr-0.5" />
-                  Incomplete
-                </Badge>
-              )}
+          </div>
+
+          {/* Block 3: Badges (right on md+) */}
+          <div className="flex items-center gap-1.5 shrink-0 justify-end min-w-0">
+            {!fireball.isComplete && (
               <Badge
                 variant="outline"
-                className={`text-[10px] ${theme.badge}`}
+                className="text-[10px] border-muted-foreground/30 text-muted-foreground py-0 px-1.5"
               >
-                {sizeCategory}
+                <AlertCircle className="w-2.5 h-2.5 mr-0.5" />
+                Incomplete
               </Badge>
-            </div>
+            )}
+            <Badge variant="outline" className={`text-[10px] ${theme.badge}`}>
+              {sizeCategory}
+            </Badge>
           </div>
         </CardContent>
       </Card>
@@ -274,27 +273,23 @@ export function FireballCardSkeleton({
 }) {
   if (variant === "compact") {
     return (
-      <Card className="bg-card border-border/50 bezel overflow-hidden min-h-[44px]">
-        <CardContent className="py-3 px-4 min-h-[44px] flex flex-col justify-center gap-y-2.5">
+      <Card className="py-0 bg-card border-border/50 bezel overflow-hidden min-h-[44px]">
+        <CardContent className="py-3 px-4 min-h-[44px] flex flex-col md:grid md:grid-cols-[1fr_auto_1fr] md:items-center gap-y-2.5 md:gap-y-0 md:gap-x-6">
           <div className="min-w-0 flex items-center gap-2">
             <div className="h-4 w-4 data-stream rounded shrink-0" />
             <div className="h-4 w-28 data-stream rounded" />
           </div>
-          <div className="w-full shrink-0 flex items-center justify-between gap-3 sm:gap-4 min-w-0">
-            <div className="flex items-center gap-3 sm:gap-4 min-w-0">
-              <div className="text-right shrink-0 w-14">
-                <div className="h-3 w-10 data-stream rounded mb-0.5 ml-auto" />
-                <div className="h-3 w-12 data-stream rounded ml-auto" />
-              </div>
-              <div className="text-right shrink-0 min-w-0 w-16">
-                <div className="h-3 w-10 data-stream rounded mb-0.5 ml-auto" />
-                <div className="h-3 w-14 data-stream rounded ml-auto" />
-              </div>
-              <div className="text-right shrink-0 w-12">
-                <div className="h-3 w-8 data-stream rounded mb-0.5 ml-auto" />
-                <div className="h-3 w-10 data-stream rounded ml-auto" />
-              </div>
+          <div className="w-full md:w-auto min-w-0">
+            <div className="grid grid-cols-4 gap-x-4 sm:gap-x-6 min-w-0 w-full md:w-auto">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="min-w-0 flex flex-col items-center gap-0.5">
+                  <div className="h-3 w-8 data-stream rounded" />
+                  <div className="h-3 data-stream rounded w-full max-w-14" />
+                </div>
+              ))}
             </div>
+          </div>
+          <div className="flex justify-end min-w-0">
             <div className="h-5 w-14 data-stream rounded shrink-0" />
           </div>
         </CardContent>
