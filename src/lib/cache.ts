@@ -34,6 +34,7 @@ export const CACHE_TTL = {
   APOD: 6 * 60 * 60,                 // 6 hours (refreshes multiple times/day for freshness)
   FIREBALL_LIST: 60 * 60,            // 1 hour (data updates infrequently)
   SPACE_WEATHER: 30 * 60,            // 30 minutes (more real-time data)
+  SPACE_WEATHER_DETAIL: 6 * 60 * 60, // 6 hours (events don't change after recording)
 } as const;
 
 // Cache key prefixes

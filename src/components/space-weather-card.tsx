@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -33,6 +34,8 @@ import {
   MapPin,
   Gauge,
   Link2,
+  ChevronRight,
+  SquareArrowOutUpRight,
 } from "lucide-react";
 
 const theme = THEMES["space-weather"];
@@ -137,9 +140,10 @@ export type SpaceWeatherCardVariant = "default" | "compact";
 interface SpaceWeatherCardProps {
   event: AnySpaceWeatherEvent;
   variant?: SpaceWeatherCardVariant;
+  onModalOpen?: (event: AnySpaceWeatherEvent) => void;
 }
 
-export function SpaceWeatherCard({ event, variant = "default" }: SpaceWeatherCardProps) {
+export function SpaceWeatherCard({ event, variant = "default", onModalOpen }: SpaceWeatherCardProps) {
   const { date, time } = formatDateTime(event.startTime);
 
   // Get severity based on event type
@@ -177,17 +181,20 @@ export function SpaceWeatherCard({ event, variant = "default" }: SpaceWeatherCar
   const linkedCount = event.linkedEvents?.length || 0;
   const linkedSummary = formatLinkedEvents(event.linkedEvents);
 
+  // Generate detail page URL
+  const detailHref = `/space-weather/${encodeURIComponent(event.id)}`;
+
   // Compact (list) variant - mobile: two lines (title, then data+badge); desktop: single line
   if (variant === "compact") {
-    return (
+    const compactContent = (
       <Card className="py-0 bg-card border-border/50 transition-all duration-300 hover:border-aurora-violet/50 hover:glow-violet bezel overflow-hidden min-h-[44px]">
-        <CardContent className="p-3 min-h-[44px] flex flex-col md:grid md:grid-cols-[1fr_auto_1fr] md:items-center gap-y-3 md:gap-y-0 md:gap-x-6">
+        <CardContent className="p-3 min-h-[44px] flex flex-col md:grid md:grid-cols-[1fr_auto_auto] md:items-center gap-y-3 md:gap-y-0 md:gap-x-6">
           {/* Block 1: Event type and linked count (left column on md+; 1fr so title length doesn't affect data) */}
           <div className="min-w-0 overflow-hidden flex items-center gap-2 shrink-0">
             <span className={`shrink-0 ${theme.text}`}>
               {getEventIcon(event.eventType)}
             </span>
-            <span className={`font-display text-sm font-medium truncate ${theme.text}`}>
+            <span className={`font-display text-sm font-medium truncate ${theme.text} group-hover:text-aurora-violet transition-colors`}>
               {getEventTypeLabel(event.eventType)}
             </span>
             {linkedCount > 0 && (
@@ -252,32 +259,80 @@ export function SpaceWeatherCard({ event, variant = "default" }: SpaceWeatherCar
               </div>
             </div>
           </div>
-          {/* Badge (right column on md+; 1fr so badge length doesn't affect data) */}
-          <div className="flex shrink-0 justify-end min-w-0">
+          {/* Badge + chevron (right column on md+) */}
+          <div className="flex shrink-0 items-center justify-end gap-2 min-w-0">
             <Badge variant="outline" className={`text-[10px] shrink-0 py-0 px-1.5 ${SEVERITY_COLORS[severity]}`}>
               {formatSeverity(severity)}
             </Badge>
+            <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-aurora-violet transition-colors hidden md:block" />
           </div>
         </CardContent>
       </Card>
     );
+
+    // Modal mode: click opens modal
+    if (onModalOpen) {
+      return (
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => onModalOpen(event)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              onModalOpen(event);
+            }
+          }}
+          className="block w-full group cursor-pointer"
+        >
+          {compactContent}
+        </div>
+      );
+    }
+
+    // Default mode: link to detail page
+    return (
+      <Link href={detailHref} className="block group">
+        {compactContent}
+      </Link>
+    );
   }
 
-  // Default (grid) variant
-  return (
-    <Card
-      className={`h-full bg-card border-border/50 transition-all duration-300 hover:border-aurora-violet/50 hover:glow-violet bezel scanlines overflow-hidden`}
-    >
+  // Handle navigation icon click (navigates to detail page, stops propagation in modal mode)
+  const handleNavigateClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+  };
+
+  // Default (grid) variant content
+  const defaultContent = (
+    <>
+      {/* Navigation icon (only in modal mode) */}
+      {onModalOpen && (
+        <Link
+          href={detailHref}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={handleNavigateClick}
+          className="absolute top-3 right-3 z-10 p-1.5 rounded-md bg-background/80 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-aurora-violet/20"
+          aria-label={`Go to ${getEventTypeLabel(event.eventType)} detail page (opens in new tab)`}
+        >
+          <SquareArrowOutUpRight className="w-4 h-4 text-muted-foreground transition-colors hover:text-aurora-violet" />
+        </Link>
+      )}
+
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
             <CardTitle
-              className={`font-display text-lg ${theme.text} transition-colors flex items-center gap-2`}
+              className={`font-display text-lg ${theme.text} group-hover:text-aurora-violet transition-colors flex items-center gap-2`}
             >
               {getEventIcon(event.eventType)}
               {getEventTypeLabel(event.eventType)}
             </CardTitle>
           </div>
+          {!onModalOpen && (
+            <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-aurora-violet transition-colors shrink-0" />
+          )}
         </div>
       </CardHeader>
 
@@ -358,7 +413,38 @@ export function SpaceWeatherCard({ event, variant = "default" }: SpaceWeatherCar
           </div>
         </div>
       </CardContent>
-    </Card>
+    </>
+  );
+
+  // Modal mode: card click opens modal, icon navigates
+  if (onModalOpen) {
+    return (
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={() => onModalOpen(event)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onModalOpen(event);
+          }
+        }}
+        className="block h-full group cursor-pointer"
+      >
+        <Card className="h-full bg-card border-border/50 transition-all duration-300 hover:border-aurora-violet/50 hover:glow-violet bezel scanlines overflow-hidden relative">
+          {defaultContent}
+        </Card>
+      </div>
+    );
+  }
+
+  // Default mode: entire card is a link
+  return (
+    <Link href={detailHref} className="block h-full group">
+      <Card className="h-full bg-card border-border/50 transition-all duration-300 hover:border-aurora-violet/50 hover:glow-violet bezel scanlines overflow-hidden relative">
+        {defaultContent}
+      </Card>
+    </Link>
   );
 }
 

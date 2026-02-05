@@ -64,19 +64,16 @@ export function ObjectCard({ object, onModalOpen, variant = "default" }: ObjectC
       : "Asteroid"
     : "Unknown";
 
-  const typeVariant = isExoplanet(object)
-    ? "default"
-    : isStar(object)
-    ? "outline"
-    : isSmallBody(object) && object.bodyKind === "comet"
-    ? "outline"
-    : "secondary";
+  // All type badges use outline variant with consistent styling
+  const typeVariant = "outline" as const;
 
-  const typeClassName = isStar(object)
+  const typeClassName = isExoplanet(object)
+    ? "border-primary/50 text-primary bg-primary/10"
+    : isStar(object)
     ? "border-uranium-green/50 text-uranium-green bg-uranium-green/10"
     : isSmallBody(object) && object.bodyKind === "comet"
     ? "border-radium-teal/50 text-radium-teal bg-radium-teal/10"
-    : "";
+    : "border-secondary/50 text-secondary bg-secondary/10"; // asteroids
 
   // Name color based on object type
   const nameColorClass = isExoplanet(object)
@@ -438,7 +435,7 @@ export function ObjectCard({ object, onModalOpen, variant = "default" }: ObjectC
           target="_blank"
           rel="noopener noreferrer"
           onClick={handleNavigateClick}
-          className={`absolute bottom-3 right-3 z-10 p-1.5 rounded-md bg-background/80 opacity-0 group-hover:opacity-100 transition-opacity ${iconLinkHover}`}
+          className={`absolute top-3 right-3 z-10 p-1.5 rounded-md bg-background/80 opacity-0 group-hover:opacity-100 transition-opacity ${iconLinkHover}`}
           aria-label={`Go to ${object.displayName} detail page (opens in new tab)`}
         >
           <SquareArrowOutUpRight className={`w-4 h-4 text-muted-foreground transition-colors ${iconHoverText}`} />
