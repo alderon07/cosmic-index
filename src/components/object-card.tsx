@@ -330,7 +330,7 @@ export function ObjectCard({ object, onModalOpen, variant = "default" }: ObjectC
 
     const compactContent = (
       <Card className={`w-full py-0 bg-card border-border/50 transition-all duration-300 ${hoverStyles} bezel overflow-hidden min-h-[44px]`}>
-        <CardContent className="w-full py-3 px-4 min-h-[44px] flex flex-col md:grid md:grid-cols-[1fr_auto_1fr] md:items-center justify-center gap-y-2.5 md:gap-y-0 md:gap-x-6">
+        <CardContent className="w-full py-3 px-4 min-h-[44px] flex flex-col md:grid md:grid-cols-[1fr_2fr_1fr] md:items-center justify-center gap-y-2.5 md:gap-y-0 md:gap-x-6">
           {/* Block 1: Name and subtitle (left on md+; on mobile, subtitle next to title) */}
           <div className="min-w-0 overflow-hidden flex flex-row flex-wrap items-baseline gap-x-2">
             <p className={`font-display text-sm font-medium ${nameColorClass} truncate min-w-0`}>
@@ -490,7 +490,7 @@ export function ObjectCard({ object, onModalOpen, variant = "default" }: ObjectC
       </CardContent>
 
       {/* Bottom: line separator + discovery year (if any) + badges */}
-      <div className="border-t border-border/50 px-6 py-3 flex flex-wrap items-center gap-2 min-w-0">
+      <div className="border-t border-border/50 px-6 pt-3 flex flex-wrap items-center gap-2 min-w-0">
         {object.discoveredYear && (
           <p className="text-xs text-muted-foreground">
             Discovered{" "}
@@ -570,7 +570,7 @@ export function ObjectCardSkeleton({ variant = "default" }: ObjectCardSkeletonPr
   if (variant === "compact") {
     return (
       <Card className="py-0 bg-card border-border/50 bezel overflow-hidden min-h-[44px]">
-        <CardContent className="py-3 px-4 min-h-[44px] flex flex-col md:grid md:grid-cols-[1fr_auto_1fr] md:items-center justify-center gap-y-2.5 md:gap-y-0 md:gap-x-6">
+        <CardContent className="py-3 px-4 min-h-[44px] flex flex-col md:grid md:grid-cols-[1fr_2fr_1fr] md:items-center justify-center gap-y-2.5 md:gap-y-0 md:gap-x-6">
           <div className="min-w-0">
             <div className="h-4 w-32 data-stream rounded" />
             <div className="h-3 w-20 data-stream rounded mt-1" />
