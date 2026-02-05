@@ -1,5 +1,6 @@
 "use client";
 
+import { useCallback } from "react";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -184,11 +185,37 @@ export function SpaceWeatherCard({ event, variant = "default", onModalOpen }: Sp
   // Generate detail page URL
   const detailHref = `/space-weather/${encodeURIComponent(event.id)}`;
 
+  // Handle card click for modal mode
+  const handleCardClick = useCallback(() => {
+    if (onModalOpen) {
+      onModalOpen(event);
+    }
+  }, [onModalOpen, event]);
+
+  // Handle keyboard interaction
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (onModalOpen && (e.key === "Enter" || e.key === " ")) {
+      e.preventDefault();
+      onModalOpen(event);
+    }
+  }, [onModalOpen, event]);
+
+  // Handle navigation icon click (navigates to detail page, stops propagation in modal mode)
+  const handleNavigateClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+  };
+
   // Compact (list) variant - mobile: two lines (title, then data+badge); desktop: single line
   if (variant === "compact") {
     const compactContent = (
-      <Card className="py-0 bg-card border-border/50 transition-all duration-300 hover:border-aurora-violet/50 hover:glow-violet bezel overflow-hidden min-h-[44px]">
-        <CardContent className="p-3 min-h-[44px] flex flex-col md:grid md:grid-cols-[1fr_auto_auto] md:items-center gap-y-3 md:gap-y-0 md:gap-x-6">
+      <Card
+        className={`py-0 bg-card border-border/50 transition-all duration-300 hover:border-aurora-violet/50 hover:glow-violet bezel overflow-hidden min-h-[44px] ${onModalOpen ? "cursor-pointer" : ""}`}
+        onClick={onModalOpen ? handleCardClick : undefined}
+        role={onModalOpen ? "button" : undefined}
+        tabIndex={onModalOpen ? 0 : undefined}
+        onKeyDown={onModalOpen ? handleKeyDown : undefined}
+      >
+        <CardContent className="p-3 min-h-[44px] flex flex-col md:grid md:grid-cols-[1fr_2fr_1fr] md:items-center gap-y-3 md:gap-y-0 md:gap-x-6">
           {/* Block 1: Event type and linked count (left column on md+; 1fr so title length doesn't affect data) */}
           <div className="min-w-0 overflow-hidden flex items-center gap-2 shrink-0">
             <span className={`shrink-0 ${theme.text}`}>
@@ -259,32 +286,34 @@ export function SpaceWeatherCard({ event, variant = "default", onModalOpen }: Sp
               </div>
             </div>
           </div>
-          {/* Badge + chevron (right column on md+) */}
+          {/* Badge + navigation/chevron (right column on md+) */}
           <div className="flex shrink-0 items-center justify-end gap-2 min-w-0">
             <Badge variant="outline" className={`text-[10px] shrink-0 py-0 px-1.5 ${SEVERITY_COLORS[severity]}`}>
               {formatSeverity(severity)}
             </Badge>
-            <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-aurora-violet transition-colors hidden md:block" />
+            {onModalOpen ? (
+              <Link
+                href={detailHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={handleNavigateClick}
+                className="p-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity hover:bg-aurora-violet/20 hidden md:block"
+                aria-label={`Go to ${getEventTypeLabel(event.eventType)} detail page (opens in new tab)`}
+              >
+                <SquareArrowOutUpRight className="w-4 h-4 text-muted-foreground hover:text-aurora-violet transition-colors" />
+              </Link>
+            ) : (
+              <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-aurora-violet transition-colors hidden md:block" />
+            )}
           </div>
         </CardContent>
       </Card>
     );
 
-    // Modal mode: click opens modal
+    // Modal mode: Card already has click handling, just wrap in group
     if (onModalOpen) {
       return (
-        <div
-          role="button"
-          tabIndex={0}
-          onClick={() => onModalOpen(event)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault();
-              onModalOpen(event);
-            }
-          }}
-          className="block w-full group cursor-pointer"
-        >
+        <div className="block w-full group">
           {compactContent}
         </div>
       );
@@ -297,11 +326,6 @@ export function SpaceWeatherCard({ event, variant = "default", onModalOpen }: Sp
       </Link>
     );
   }
-
-  // Handle navigation icon click (navigates to detail page, stops propagation in modal mode)
-  const handleNavigateClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-  };
 
   // Default (grid) variant content
   const defaultContent = (
