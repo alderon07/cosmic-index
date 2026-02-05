@@ -278,15 +278,12 @@ export function SpaceWeatherCard({ event, variant = "default" }: SpaceWeatherCar
               {getEventTypeLabel(event.eventType)}
             </CardTitle>
           </div>
-          <Badge variant="outline" className={`text-xs ${SEVERITY_COLORS[severity]}`}>
-            {formatSeverity(severity)}
-          </Badge>
         </div>
       </CardHeader>
 
       <CardContent className="pt-0 flex flex-col flex-1 min-h-0">
         {/* Key metrics */}
-        <div className="flex flex-col justify-between md:grid md:grid-cols-2 gap-x-4 gap-y-3 pb-4">
+        <div className="grid grid-cols-2 gap-x-4 gap-y-3 pb-4">
           {/* Date */}
           <div>
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -350,9 +347,14 @@ export function SpaceWeatherCard({ event, variant = "default" }: SpaceWeatherCar
             ) : (
               <div />
             )}
-            <Badge variant="outline" className={`text-xs ${theme.badge}`}>
-              {event.eventType}
-            </Badge>
+            <div className="flex items-center gap-1.5">
+              <Badge variant="outline" className={`text-xs ${SEVERITY_COLORS[severity]}`}>
+              {formatSeverity(severity)}
+              </Badge>
+              <Badge variant="outline" className={`text-xs ${theme.badge}`}>
+                {event.eventType}
+              </Badge>
+            </div>
           </div>
         </div>
       </CardContent>
