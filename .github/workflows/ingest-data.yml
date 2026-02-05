@@ -1,9 +1,9 @@
 name: Ingest Cosmic Data
 
 on:
-  # Run monthly on the 1st at 00:00 UTC
+  # Run quarterly (1st of Jan, Apr, Jul, Oct at 00:00 UTC)
   schedule:
-    - cron: '0 0 1 * *'
+    - cron: '0 0 1 1,4,7,10 *'
 
   # Allow manual trigger
   workflow_dispatch:
