@@ -158,17 +158,6 @@ export function FireballCard({
               {dateDisplay}
             </CardTitle>
           </div>
-          <div className="flex flex-col items-end gap-1.5">
-            {!fireball.isComplete && (
-              <Badge
-                variant="outline"
-                className="text-xs border-muted-foreground/30 text-muted-foreground"
-              >
-                <AlertCircle className="w-3 h-3 mr-1" />
-                Data incomplete
-              </Badge>
-            )}
-          </div>
         </div>
       </CardHeader>
 
@@ -255,7 +244,16 @@ export function FireballCard({
 
         {/* Size category */}
         <div className="mt-auto pt-3 border-t border-border/30">
-          <div className="flex items-center justify-end">
+          <div className="flex items-center justify-end gap-1.5">
+          {!fireball.isComplete && (
+              <Badge
+                variant="outline"
+                className="text-xs border-muted-foreground/30 text-muted-foreground"
+              >
+                <AlertCircle className="w-3 h-3 mr-1" />
+                Data Incomplete
+              </Badge>
+            )}
             <Badge variant="outline" className={`text-xs ${theme.badge}`}>
               {sizeCategory}
             </Badge>

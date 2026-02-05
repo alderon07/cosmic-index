@@ -330,7 +330,7 @@ export function ObjectCard({ object, onModalOpen, variant = "default" }: ObjectC
 
     const compactContent = (
       <Card className={`w-full py-0 bg-card border-border/50 transition-all duration-300 ${hoverStyles} bezel overflow-hidden min-h-[44px]`}>
-        <CardContent className="w-full py-3 px-4 min-h-[44px] flex flex-col md:grid md:grid-cols-[1fr_2fr_1fr] md:items-center justify-center gap-y-2.5 md:gap-y-0 md:gap-x-6">
+        <CardContent className="w-full py-3 px-4 min-h-[44px] flex flex-col md:grid md:grid-cols-[1fr_auto_1fr] md:items-center justify-center gap-y-2.5 md:gap-y-0 md:gap-x-6">
           {/* Block 1: Name and subtitle (left on md+; on mobile, subtitle next to title) */}
           <div className="min-w-0 overflow-hidden flex flex-row flex-wrap items-baseline gap-x-2">
             <p className={`font-display text-sm font-medium ${nameColorClass} truncate min-w-0`}>
@@ -446,53 +446,16 @@ export function ObjectCard({ object, onModalOpen, variant = "default" }: ObjectC
       )}
 
       <CardHeader className="pb-3">
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex-1 min-w-0">
-            <CardTitle className={`font-display text-lg ${nameColorClass} transition-colors line-clamp-2`}>
-              {object.displayName}
-            </CardTitle>
-            {isSmallBody(object) && object.aliases.length > 0 && (
-              <p className="text-xs text-muted-foreground mt-1 line-clamp-1">
-                {object.aliases[0]}
-              </p>
-            )}
-          </div>
-          <Badge variant={typeVariant} className={`shrink-0 font-mono text-xs ${typeClassName}`}>
-            {typeLabel}
-          </Badge>
+        <div className="flex-1 min-w-0">
+          <CardTitle className={`font-display text-lg ${nameColorClass} transition-colors line-clamp-2`}>
+            {object.displayName}
+          </CardTitle>
+          {isSmallBody(object) && object.aliases.length > 0 && (
+            <p className="text-xs text-muted-foreground mt-1 line-clamp-1">
+              {object.aliases[0]}
+            </p>
+          )}
         </div>
-
-        {/* Additional badges for small bodies */}
-        {isSmallBody(object) && (object.isNeo || object.isPha) && (
-          <div className="flex gap-1.5 mt-2">
-            {object.isNeo && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Badge variant="outline" className="text-xs border-amber-glow/50 text-amber-glow cursor-help">
-                    <Orbit className="w-3 h-3 mr-1" />
-                    NEO
-                  </Badge>
-                </TooltipTrigger>
-                <TooltipContent className="max-w-xs border-secondary/30">
-                  {TOOLTIP_CONTENT.NEO}
-                </TooltipContent>
-              </Tooltip>
-            )}
-            {object.isPha && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Badge variant="destructive" className="text-xs cursor-help">
-                    <AlertTriangle className="w-3 h-3 mr-1" />
-                    PHA
-                  </Badge>
-                </TooltipTrigger>
-                <TooltipContent className="max-w-xs border-destructive/30">
-                  {TOOLTIP_CONTENT.PHA}
-                </TooltipContent>
-              </Tooltip>
-            )}
-          </div>
-        )}
 
         {/* Host star for exoplanets */}
         {isExoplanet(object) && object.hostStar && (
@@ -524,19 +487,50 @@ export function ObjectCard({ object, onModalOpen, variant = "default" }: ObjectC
             ))}
           </div>
         </div>
-
-        {/* Discovery year badge */}
-        {object.discoveredYear && (
-          <div className="mt-auto pt-2 pb-1 border-t border-border/30">
-            <p className="text-xs text-muted-foreground">
-              Discovered{" "}
-              <span className="font-mono text-foreground">
-                {object.discoveredYear}
-              </span>
-            </p>
-          </div>
-        )}
       </CardContent>
+
+      {/* Bottom: line separator + discovery year (if any) + badges */}
+      <div className="border-t border-border/50 px-6 py-3 flex flex-wrap items-center gap-2 min-w-0">
+        {object.discoveredYear && (
+          <p className="text-xs text-muted-foreground">
+            Discovered{" "}
+            <span className="font-mono text-foreground">
+              {object.discoveredYear}
+            </span>
+          </p>
+        )}
+        <div className="flex items-center gap-1.5 shrink-0 ml-auto justify-end">
+          {isSmallBody(object) && object.isNeo && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Badge variant="outline" className="text-xs border-amber-glow/50 text-amber-glow cursor-help">
+                  <Orbit className="w-3 h-3 mr-1" />
+                  NEO
+                </Badge>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-xs border-secondary/30">
+                {TOOLTIP_CONTENT.NEO}
+              </TooltipContent>
+            </Tooltip>
+          )}
+          {isSmallBody(object) && object.isPha && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Badge variant="destructive" className="text-xs cursor-help">
+                  <AlertTriangle className="w-3 h-3 mr-1" />
+                  PHA
+                </Badge>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-xs border-destructive/30">
+                {TOOLTIP_CONTENT.PHA}
+              </TooltipContent>
+            </Tooltip>
+          )}
+          <Badge variant={typeVariant} className={`font-mono text-xs ${typeClassName}`}>
+            {typeLabel}
+          </Badge>
+        </div>
+      </div>
     </>
   );
 
@@ -602,10 +596,7 @@ export function ObjectCardSkeleton({ variant = "default" }: ObjectCardSkeletonPr
   return (
     <Card className="h-full bg-card border-border/50 bezel overflow-hidden">
       <CardHeader className="pb-3">
-        <div className="flex items-start justify-between gap-2">
-          <div className="h-6 w-3/4 data-stream rounded" />
-          <div className="h-5 w-16 data-stream rounded" />
-        </div>
+        <div className="h-6 w-3/4 data-stream rounded" />
         <div className="h-4 w-1/2 data-stream rounded mt-2" />
       </CardHeader>
       <CardContent className="pt-0">
@@ -617,10 +608,10 @@ export function ObjectCardSkeleton({ variant = "default" }: ObjectCardSkeletonPr
             </div>
           ))}
         </div>
-        <div className="mt-4 pt-3 border-t border-border/30">
-          <div className="h-3 w-24 data-stream rounded" />
-        </div>
       </CardContent>
+      <div className="border-t border-border/50 px-6 py-3 flex items-center justify-end">
+        <div className="h-5 w-16 data-stream rounded" />
+      </div>
     </Card>
   );
 }
