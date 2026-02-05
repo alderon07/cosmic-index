@@ -4,7 +4,9 @@ import "./globals.css";
 import Link from "next/link";
 import { Circle, Star, CircleDot, Crosshair, Flame, Sun, Keyboard } from "lucide-react";
 import { Analytics } from "@vercel/analytics/react";
+import { ClerkProvider } from "@clerk/nextjs";
 import { KeyboardShortcutsProvider } from "@/components/keyboard-shortcuts";
+import { UserAuthButton } from "@/components/auth";
 
 const audiowide = Audiowide({
   variable: "--font-display",
@@ -146,6 +148,7 @@ export default function RootLayout({
       <body
         className={`${audiowide.variable} ${inter.variable} ${jetbrainsMono.variable} antialiased min-h-screen bg-background`}
       >
+        <ClerkProvider>
         <KeyboardShortcutsProvider>
         <div className="relative min-h-screen vignette">
           {/* Navigation */}
@@ -206,6 +209,9 @@ export default function RootLayout({
                   <Sun className="w-5 h-5 sm:hidden" />
                   <span className="hidden sm:inline">Weather</span>
                 </Link>
+                {/* Auth separator and button */}
+                <div className="h-4 w-px bg-border/50 mx-1 hidden sm:block" />
+                <UserAuthButton />
               </div>
             </nav>
           </header>
@@ -272,6 +278,7 @@ export default function RootLayout({
           </footer>
         </div>
         </KeyboardShortcutsProvider>
+        </ClerkProvider>
         <Analytics />
       </body>
     </html>

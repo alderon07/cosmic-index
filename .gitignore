@@ -52,3 +52,6 @@ plans/
 /cli/.goreleaser
 /cli/coverage.out
 /cli/*.test
+
+# clerk configuration (can include secrets)
+/.clerk/
