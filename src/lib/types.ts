@@ -747,3 +747,118 @@ export const SpaceWeatherQuerySchema = z.object({
   eventTypes: z.string().optional(), // Comma-separated: "FLR,CME,GST"
   limit: z.coerce.number().int().min(1).max(500).default(100),
 });
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Pro Tier Types (Saved Objects, Collections, etc.)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Saved Object - A cosmic object or event a user has saved.
+ * canonical_id format:
+ * - Catalog objects: "{type}:{slug}" e.g., "exoplanet:kepler-442-b"
+ * - Event streams: "{type}:{hash}" e.g., "fireball:a1b2c3..."
+ */
+export interface SavedObject {
+  id: number;
+  canonicalId: string;
+  displayName: string;
+  notes: string | null;
+  eventPayload: Record<string, unknown> | null; // For event stream saves
+  createdAt: string;
+}
+
+export interface SavedObjectWithType extends SavedObject {
+  objectType: string; // Parsed from canonicalId prefix
+}
+
+/**
+ * Collection - User-created folder for organizing saved objects.
+ */
+export interface Collection {
+  id: number;
+  name: string;
+  description: string | null;
+  color: string;
+  icon: string;
+  isPublic: boolean;
+  itemCount?: number; // Computed at query time
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Saved Search - Persisted search configuration.
+ */
+export interface SavedSearch {
+  id: number;
+  name: string;
+  category: "exoplanets" | "stars" | "small-bodies";
+  queryParams: Record<string, unknown>;
+  resultCount: number | null;
+  lastExecutedAt: string | null;
+  createdAt: string;
+}
+
+/**
+ * Alert - User-configured notification for cosmic events.
+ */
+export interface Alert {
+  id: number;
+  alertType: "space_weather" | "fireball" | "close_approach";
+  config: Record<string, unknown>;
+  enabled: boolean;
+  emailEnabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Zod Schemas for Pro Tier API validation
+
+export const SaveObjectInputSchema = z.object({
+  canonicalId: z.string().min(1).max(200),
+  displayName: z.string().min(1).max(200),
+  notes: z.string().max(2000).optional(),
+  eventPayload: z.record(z.unknown()).optional(),
+});
+
+export const UpdateSavedObjectSchema = z.object({
+  notes: z.string().max(2000).optional(),
+});
+
+export const CreateCollectionSchema = z.object({
+  name: z.string().min(1).max(100),
+  description: z.string().max(500).optional(),
+  color: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+  icon: z.string().max(50).optional(),
+});
+
+export const UpdateCollectionSchema = z.object({
+  name: z.string().min(1).max(100).optional(),
+  description: z.string().max(500).optional(),
+  color: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+  icon: z.string().max(50).optional(),
+  isPublic: z.boolean().optional(),
+});
+
+export const AddToCollectionSchema = z.object({
+  savedObjectId: z.number().int().positive(),
+  position: z.number().int().min(0).optional(),
+});
+
+export const CreateSavedSearchSchema = z.object({
+  name: z.string().min(1).max(100),
+  category: z.enum(["exoplanets", "stars", "small-bodies"]),
+  queryParams: z.record(z.unknown()),
+});
+
+export const CreateAlertSchema = z.object({
+  alertType: z.enum(["space_weather", "fireball", "close_approach"]),
+  config: z.record(z.unknown()),
+  emailEnabled: z.boolean().optional(),
+});
+
+export const UpdateAlertSchema = z.object({
+  config: z.record(z.unknown()).optional(),
+  enabled: z.boolean().optional(),
+  emailEnabled: z.boolean().optional(),
+});
