@@ -133,9 +133,10 @@ export function ObjectCard({ object, onModalOpen, variant = "default" }: ObjectC
     // Type-specific data extraction for optimal list display
     const renderExoplanetColumns = () => {
       const exo = object as ExoplanetData;
+      const cellClass = "min-w-0 flex flex-col items-center gap-0.5 justify-start";
       return (
         <>
-          <div className="text-right shrink-0 w-20 min-w-0 flex flex-col items-end gap-0.5">
+          <div className={cellClass}>
             <Tooltip>
               <TooltipTrigger asChild>
                 <span className="text-muted-foreground cursor-help" aria-hidden="true">
@@ -144,9 +145,9 @@ export function ObjectCard({ object, onModalOpen, variant = "default" }: ObjectC
               </TooltipTrigger>
               <TooltipContent>Host star</TooltipContent>
             </Tooltip>
-            <p className="text-xs font-mono text-foreground truncate w-full text-right">{exo.hostStar || "—"}</p>
+            <p className="text-xs font-mono text-foreground truncate w-full text-center">{exo.hostStar || "—"}</p>
           </div>
-          <div className="text-right shrink-0 w-14 flex flex-col items-end gap-0.5">
+          <div className={cellClass}>
             <Tooltip>
               <TooltipTrigger asChild>
                 <span className="text-muted-foreground cursor-help" aria-hidden="true">
@@ -155,11 +156,11 @@ export function ObjectCard({ object, onModalOpen, variant = "default" }: ObjectC
               </TooltipTrigger>
               <TooltipContent>Radius (Earth radii)</TooltipContent>
             </Tooltip>
-            <p className="text-xs font-mono text-foreground">
+            <p className="text-xs font-mono text-foreground truncate w-full text-center">
               {exo.radiusEarth ? `${exo.radiusEarth.toFixed(1)} R⊕` : "—"}
             </p>
           </div>
-          <div className="text-right shrink-0 w-16 flex flex-col items-end gap-0.5">
+          <div className={cellClass}>
             <Tooltip>
               <TooltipTrigger asChild>
                 <span className="text-muted-foreground cursor-help" aria-hidden="true">
@@ -168,11 +169,11 @@ export function ObjectCard({ object, onModalOpen, variant = "default" }: ObjectC
               </TooltipTrigger>
               <TooltipContent>Orbital period</TooltipContent>
             </Tooltip>
-            <p className="text-xs font-mono text-foreground">
+            <p className="text-xs font-mono text-foreground truncate w-full text-center">
               {exo.orbitalPeriodDays ? `${exo.orbitalPeriodDays.toFixed(1)} d` : "—"}
             </p>
           </div>
-          <div className="text-right shrink-0 w-14 flex flex-col items-end gap-0.5">
+          <div className={cellClass}>
             <Tooltip>
               <TooltipTrigger asChild>
                 <span className="text-muted-foreground cursor-help" aria-hidden="true">
@@ -181,11 +182,11 @@ export function ObjectCard({ object, onModalOpen, variant = "default" }: ObjectC
               </TooltipTrigger>
               <TooltipContent>Distance (pc)</TooltipContent>
             </Tooltip>
-            <p className="text-xs font-mono text-foreground">
+            <p className="text-xs font-mono text-foreground truncate w-full text-center">
               {exo.distanceParsecs ? `${exo.distanceParsecs.toFixed(0)} pc` : "—"}
             </p>
           </div>
-          <div className="hidden lg:flex flex-col items-end gap-0.5 text-right shrink-0 w-12">
+          <div className={cellClass}>
             <Tooltip>
               <TooltipTrigger asChild>
                 <span className="text-muted-foreground cursor-help" aria-hidden="true">
@@ -194,7 +195,7 @@ export function ObjectCard({ object, onModalOpen, variant = "default" }: ObjectC
               </TooltipTrigger>
               <TooltipContent>Discovery year</TooltipContent>
             </Tooltip>
-            <p className="text-xs font-mono text-foreground">{exo.discoveredYear || "—"}</p>
+            <p className="text-xs font-mono text-foreground truncate w-full text-center">{exo.discoveredYear || "—"}</p>
           </div>
         </>
       );
@@ -202,9 +203,10 @@ export function ObjectCard({ object, onModalOpen, variant = "default" }: ObjectC
 
     const renderStarColumns = () => {
       const star = object as StarData;
+      const cellClass = "min-w-0 flex flex-col items-center gap-0.5 justify-start";
       return (
         <>
-          <div className="text-right shrink-0 w-12 flex flex-col items-end gap-0.5">
+          <div className={cellClass}>
             <Tooltip>
               <TooltipTrigger asChild>
                 <span className="text-muted-foreground cursor-help" aria-hidden="true">
@@ -213,9 +215,9 @@ export function ObjectCard({ object, onModalOpen, variant = "default" }: ObjectC
               </TooltipTrigger>
               <TooltipContent>Spectral class</TooltipContent>
             </Tooltip>
-            <p className="text-xs font-mono text-foreground">{star.spectralClass || "—"}</p>
+            <p className="text-xs font-mono text-foreground truncate w-full text-center">{star.spectralClass || "—"}</p>
           </div>
-          <div className="text-right shrink-0 w-14 flex flex-col items-end gap-0.5">
+          <div className={cellClass}>
             <Tooltip>
               <TooltipTrigger asChild>
                 <span className="text-muted-foreground cursor-help" aria-hidden="true">
@@ -224,11 +226,11 @@ export function ObjectCard({ object, onModalOpen, variant = "default" }: ObjectC
               </TooltipTrigger>
               <TooltipContent>Temperature (K)</TooltipContent>
             </Tooltip>
-            <p className="text-xs font-mono text-foreground">
+            <p className="text-xs font-mono text-foreground truncate w-full text-center">
               {star.starTempK ? `${star.starTempK.toFixed(0)} K` : "—"}
             </p>
           </div>
-          <div className="text-right shrink-0 w-14 flex flex-col items-end gap-0.5">
+          <div className={cellClass}>
             <Tooltip>
               <TooltipTrigger asChild>
                 <span className="text-muted-foreground cursor-help" aria-hidden="true">
@@ -237,11 +239,11 @@ export function ObjectCard({ object, onModalOpen, variant = "default" }: ObjectC
               </TooltipTrigger>
               <TooltipContent>Mass (solar)</TooltipContent>
             </Tooltip>
-            <p className="text-xs font-mono text-foreground">
+            <p className="text-xs font-mono text-foreground truncate w-full text-center">
               {star.starMassSolar ? `${star.starMassSolar.toFixed(2)} M☉` : "—"}
             </p>
           </div>
-          <div className="text-right shrink-0 w-14 flex flex-col items-end gap-0.5">
+          <div className={cellClass}>
             <Tooltip>
               <TooltipTrigger asChild>
                 <span className="text-muted-foreground cursor-help" aria-hidden="true">
@@ -250,9 +252,9 @@ export function ObjectCard({ object, onModalOpen, variant = "default" }: ObjectC
               </TooltipTrigger>
               <TooltipContent>Planet count</TooltipContent>
             </Tooltip>
-            <p className="text-xs font-mono text-foreground">{star.planetCount}</p>
+            <p className="text-xs font-mono text-foreground truncate w-full text-center">{star.planetCount}</p>
           </div>
-          <div className="hidden lg:flex flex-col items-end gap-0.5 text-right shrink-0 w-16">
+          <div className={cellClass}>
             <Tooltip>
               <TooltipTrigger asChild>
                 <span className="text-muted-foreground cursor-help" aria-hidden="true">
@@ -261,7 +263,7 @@ export function ObjectCard({ object, onModalOpen, variant = "default" }: ObjectC
               </TooltipTrigger>
               <TooltipContent>Distance (pc)</TooltipContent>
             </Tooltip>
-            <p className="text-xs font-mono text-foreground">
+            <p className="text-xs font-mono text-foreground truncate w-full text-center">
               {star.distanceParsecs ? `${star.distanceParsecs.toFixed(1)} pc` : "—"}
             </p>
           </div>
@@ -271,9 +273,10 @@ export function ObjectCard({ object, onModalOpen, variant = "default" }: ObjectC
 
     const renderSmallBodyColumns = () => {
       const sb = object as SmallBodyData;
+      const cellClass = "min-w-0 flex flex-col items-center gap-0.5 justify-start";
       return (
         <>
-          <div className="text-right shrink-0 w-20 min-w-0 flex flex-col items-end gap-0.5">
+          <div className={cellClass}>
             <Tooltip>
               <TooltipTrigger asChild>
                 <span className="text-muted-foreground cursor-help" aria-hidden="true">
@@ -282,9 +285,9 @@ export function ObjectCard({ object, onModalOpen, variant = "default" }: ObjectC
               </TooltipTrigger>
               <TooltipContent>Orbit class</TooltipContent>
             </Tooltip>
-            <p className="text-xs font-mono text-foreground truncate w-full text-right">{sb.orbitClass || "—"}</p>
+            <p className="text-xs font-mono text-foreground truncate w-full text-center">{sb.orbitClass || "—"}</p>
           </div>
-          <div className="text-right shrink-0 w-16 flex flex-col items-end gap-0.5">
+          <div className={cellClass}>
             <Tooltip>
               <TooltipTrigger asChild>
                 <span className="text-muted-foreground cursor-help" aria-hidden="true">
@@ -293,11 +296,11 @@ export function ObjectCard({ object, onModalOpen, variant = "default" }: ObjectC
               </TooltipTrigger>
               <TooltipContent>Diameter (km)</TooltipContent>
             </Tooltip>
-            <p className="text-xs font-mono text-foreground">
+            <p className="text-xs font-mono text-foreground truncate w-full text-center">
               {sb.diameterKm ? `${sb.diameterKm.toFixed(1)} km` : "—"}
             </p>
           </div>
-          <div className="text-right shrink-0 w-12 flex flex-col items-end gap-0.5">
+          <div className={cellClass}>
             <Tooltip>
               <TooltipTrigger asChild>
                 <span className="text-muted-foreground cursor-help" aria-hidden="true">
@@ -306,11 +309,11 @@ export function ObjectCard({ object, onModalOpen, variant = "default" }: ObjectC
               </TooltipTrigger>
               <TooltipContent>Absolute magnitude (H)</TooltipContent>
             </Tooltip>
-            <p className="text-xs font-mono text-foreground">
+            <p className="text-xs font-mono text-foreground truncate w-full text-center">
               {sb.absoluteMagnitude ? sb.absoluteMagnitude.toFixed(1) : "—"}
             </p>
           </div>
-          <div className="text-right shrink-0 w-10 flex flex-col items-end gap-0.5">
+          <div className={cellClass}>
             <Tooltip>
               <TooltipTrigger asChild>
                 <span className="text-muted-foreground cursor-help" aria-hidden="true">
@@ -319,54 +322,60 @@ export function ObjectCard({ object, onModalOpen, variant = "default" }: ObjectC
               </TooltipTrigger>
               <TooltipContent>Discovery year</TooltipContent>
             </Tooltip>
-            <p className="text-xs font-mono text-foreground">{sb.discoveredYear || "—"}</p>
+            <p className="text-xs font-mono text-foreground truncate w-full text-center">{sb.discoveredYear || "—"}</p>
           </div>
         </>
       );
     };
 
     const compactContent = (
-      <Card className={`bg-card border-border/50 transition-all duration-300 ${hoverStyles} bezel overflow-hidden min-h-[44px]`}>
-        <CardContent className="py-3 px-4 min-h-[44px] flex flex-col justify-center gap-y-2.5">
-          {/* Line 1: Name and subtitle only (no badges) */}
-          <div className="flex-1 min-w-0 overflow-hidden">
-            <p className={`font-display text-sm font-medium ${nameColorClass} truncate`}>
+      <Card className={`w-full py-0 bg-card border-border/50 transition-all duration-300 ${hoverStyles} bezel overflow-hidden min-h-[44px]`}>
+        <CardContent className="w-full py-3 px-4 min-h-[44px] flex flex-col md:grid md:grid-cols-[1fr_2fr_1fr] md:items-center justify-center gap-y-2.5 md:gap-y-0 md:gap-x-6">
+          {/* Block 1: Name and subtitle (left on md+; on mobile, subtitle next to title) */}
+          <div className="min-w-0 overflow-hidden flex flex-row flex-wrap items-baseline gap-x-2">
+            <p className={`font-display text-sm font-medium ${nameColorClass} truncate min-w-0`}>
               {object.displayName}
             </p>
             {isExoplanet(object) && object.discoveryMethod && (
-              <p className="text-xs text-muted-foreground truncate mt-0.5">
+              <span className="text-xs text-muted-foreground shrink-0">
                 {object.discoveryMethod}
-              </p>
+              </span>
             )}
             {isSmallBody(object) && object.aliases.length > 0 && (
-              <p className="text-xs text-muted-foreground truncate mt-0.5">
+              <span className="text-xs text-muted-foreground truncate shrink-0 max-w-32">
                 {object.aliases[0]}
-              </p>
+              </span>
             )}
           </div>
 
-          {/* Line 2: Data columns + all badges on the last row */}
-          <div className="w-full shrink-0 flex items-center justify-between gap-3 sm:gap-4 flex-wrap min-w-0">
-            <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-wrap sm:flex-nowrap">
+          {/* Block 2: Data columns (center on md+, grid for consistent spacing) */}
+          <div className="w-full md:w-auto min-w-0">
+            <div
+              className={`grid min-w-0 w-full md:w-auto gap-x-4 sm:gap-x-6 ${
+                isSmallBody(object) ? "grid-cols-4" : "grid-cols-5"
+              }`}
+            >
               {isExoplanet(object) && renderExoplanetColumns()}
               {isStar(object) && renderStarColumns()}
               {isSmallBody(object) && renderSmallBodyColumns()}
             </div>
-            <div className="flex items-center gap-1.5 shrink-0">
-              {isSmallBody(object) && object.isNeo && (
-                <Badge variant="outline" className="text-[10px] border-amber-glow/50 text-amber-glow py-0 px-1.5">
-                  NEO
-                </Badge>
-              )}
-              {isSmallBody(object) && object.isPha && (
-                <Badge variant="destructive" className="text-[10px] py-0 px-1.5">
-                  PHA
-                </Badge>
-              )}
-              <Badge variant={typeVariant} className={`font-mono text-[10px] py-0 px-1.5 ${typeClassName}`}>
-                {typeLabel}
+          </div>
+
+          {/* Block 3: Badges (right on md+) */}
+          <div className="flex items-center gap-1.5 shrink-0 justify-end min-w-0">
+            {isSmallBody(object) && object.isNeo && (
+              <Badge variant="outline" className="text-[10px] border-amber-glow/50 text-amber-glow py-0 px-1.5">
+                NEO
               </Badge>
-            </div>
+            )}
+            {isSmallBody(object) && object.isPha && (
+              <Badge variant="destructive" className="text-[10px] py-0 px-1.5">
+                PHA
+              </Badge>
+            )}
+            <Badge variant={typeVariant} className={`font-mono text-[10px] py-0 px-1.5 ${typeClassName}`}>
+              {typeLabel}
+            </Badge>
           </div>
         </CardContent>
       </Card>
@@ -385,7 +394,7 @@ export function ObjectCard({ object, onModalOpen, variant = "default" }: ObjectC
               onModalOpen(object);
             }
           }}
-          className="block group cursor-pointer"
+          className="block w-full group cursor-pointer"
         >
           {compactContent}
         </div>
@@ -393,7 +402,7 @@ export function ObjectCard({ object, onModalOpen, variant = "default" }: ObjectC
     }
 
     return (
-      <Link href={href} onClick={storeListUrl} className="block group">
+      <Link href={href} onClick={storeListUrl} className="block w-full group">
         {compactContent}
       </Link>
     );
@@ -566,31 +575,23 @@ interface ObjectCardSkeletonProps {
 export function ObjectCardSkeleton({ variant = "default" }: ObjectCardSkeletonProps) {
   if (variant === "compact") {
     return (
-      <Card className="bg-card border-border/50 bezel overflow-hidden min-h-[44px]">
-        <CardContent className="py-3 px-4 min-h-[44px] flex flex-col justify-center gap-y-2.5">
+      <Card className="py-0 bg-card border-border/50 bezel overflow-hidden min-h-[44px]">
+        <CardContent className="py-3 px-4 min-h-[44px] flex flex-col md:grid md:grid-cols-[1fr_auto_1fr] md:items-center justify-center gap-y-2.5 md:gap-y-0 md:gap-x-6">
           <div className="min-w-0">
             <div className="h-4 w-32 data-stream rounded" />
             <div className="h-3 w-20 data-stream rounded mt-1" />
           </div>
-          <div className="w-full shrink-0 flex items-center justify-between gap-3 sm:gap-4 min-w-0">
-            <div className="flex items-center gap-3 sm:gap-4 min-w-0">
-              <div className="text-right shrink-0 w-14">
-                <div className="h-3 w-8 data-stream rounded mb-0.5 ml-auto" />
-                <div className="h-3 w-12 data-stream rounded ml-auto" />
-              </div>
-              <div className="text-right shrink-0 w-12">
-                <div className="h-3 w-8 data-stream rounded mb-0.5 ml-auto" />
-                <div className="h-3 w-10 data-stream rounded ml-auto" />
-              </div>
-              <div className="text-right shrink-0 w-12">
-                <div className="h-3 w-8 data-stream rounded mb-0.5 ml-auto" />
-                <div className="h-3 w-10 data-stream rounded ml-auto" />
-              </div>
-              <div className="text-right shrink-0 w-12">
-                <div className="h-3 w-8 data-stream rounded mb-0.5 ml-auto" />
-                <div className="h-3 w-10 data-stream rounded ml-auto" />
-              </div>
+          <div className="w-full md:w-auto min-w-0">
+            <div className="grid grid-cols-4 gap-x-4 sm:gap-x-6 min-w-0 w-full md:w-auto">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="min-w-0 flex flex-col items-center gap-0.5">
+                  <div className="h-3 w-8 data-stream rounded" />
+                  <div className="h-3 data-stream rounded w-full max-w-14" />
+                </div>
+              ))}
             </div>
+          </div>
+          <div className="flex justify-end min-w-0">
             <div className="h-5 w-14 data-stream rounded shrink-0" />
           </div>
         </CardContent>
