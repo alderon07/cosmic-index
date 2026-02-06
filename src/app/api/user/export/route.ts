@@ -25,7 +25,7 @@ const MAX_EXPORT_ROWS = 5000;
 const ExportSchema = z.object({
   format: z.enum(["csv", "json"]),
   category: z.enum(["exoplanets", "stars", "saved-objects"]),
-  queryParams: z.record(z.unknown()).optional(),
+  queryParams: z.record(z.string(), z.unknown()).optional(),
 });
 
 // CSV field definitions per category

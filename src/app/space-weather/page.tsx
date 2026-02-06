@@ -23,10 +23,10 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import {
-  SpaceWeatherListResponse,
   SpaceWeatherEventType,
   AnySpaceWeatherEvent,
 } from "@/lib/types";
+import { apiFetchEvents, EventStreamResult } from "@/lib/api-client";
 import { THEMES } from "@/lib/theme";
 import {
   Sun,
@@ -89,7 +89,7 @@ function SpaceWeatherPageContent() {
   const viewParam = searchParams.get("view");
   const view: ViewMode = viewParam === "list" ? "list" : "grid";
 
-  const [data, setData] = useState<SpaceWeatherListResponse | null>(null);
+  const [data, setData] = useState<EventStreamResult<AnySpaceWeatherEvent> | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filterAccordionValue, setFilterAccordionValue] = useState<string>("filters");
@@ -191,18 +191,12 @@ function SpaceWeatherPageContent() {
         }
         params.set("limit", "100");
 
-        const response = await fetch(`/api/space-weather?${params.toString()}`, {
+        const result = await apiFetchEvents<AnySpaceWeatherEvent>(`/space-weather?${params.toString()}`, {
           signal,
         });
 
         if (signal?.aborted) return;
 
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.error || "Failed to fetch space weather");
-        }
-
-        const result: SpaceWeatherListResponse = await response.json();
         setData(result);
       } catch (err) {
         if (err instanceof Error && err.name === "AbortError") {
@@ -350,7 +344,7 @@ function SpaceWeatherPageContent() {
       </div>
 
       {/* Warnings from API */}
-      {data?.meta.warnings && data.meta.warnings.length > 0 && (
+      {!!data?.meta?.warnings && (data.meta.warnings as string[]).length > 0 && (
         <div className="mb-6 p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
           <div className="flex items-start gap-2">
             <AlertTriangle className="w-4 h-4 text-yellow-500 mt-0.5 shrink-0" />
@@ -358,7 +352,7 @@ function SpaceWeatherPageContent() {
               <p className="text-sm text-yellow-500 font-medium">
                 Partial results
               </p>
-              {data.meta.warnings.map((warning, i) => (
+              {(data.meta.warnings as string[]).map((warning, i) => (
                 <p key={i} className="text-sm text-muted-foreground">
                   {warning}
                 </p>

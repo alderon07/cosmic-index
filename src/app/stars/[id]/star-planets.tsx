@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ObjectCard } from "@/components/object-card";
 import { ExoplanetData } from "@/lib/types";
+import { apiFetch } from "@/lib/api-client";
 import { Circle, Loader2 } from "lucide-react";
 
 interface StarPlanetsProps {
@@ -23,13 +24,7 @@ export function StarPlanets({ starId, hostname, planetCount }: StarPlanetsProps)
       setError(null);
 
       try {
-        const response = await fetch(`/api/stars/${starId}/planets`);
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch planets");
-        }
-
-        const data = await response.json();
+        const data = await apiFetch<{ planets: ExoplanetData[] }>(`/stars/${starId}/planets`);
         setPlanets(data.planets || []);
       } catch (err) {
         setError(err instanceof Error ? err.message : "An error occurred");

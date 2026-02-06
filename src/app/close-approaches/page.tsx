@@ -19,10 +19,11 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import {
-  CloseApproachListResponse,
+  CloseApproach,
   CloseApproachSortField,
   SortOrder,
 } from "@/lib/types";
+import { apiFetchEvents, EventStreamResult } from "@/lib/api-client";
 import { THEMES } from "@/lib/theme";
 import {
   Crosshair,
@@ -110,7 +111,7 @@ function CloseApproachesPageContent() {
   const viewParam = searchParams.get("view");
   const view: ViewMode = viewParam === "list" ? "list" : "grid";
 
-  const [data, setData] = useState<CloseApproachListResponse | null>(null);
+  const [data, setData] = useState<EventStreamResult<CloseApproach> | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filterAccordionValue, setFilterAccordionValue] = useState<string>("");
@@ -206,18 +207,12 @@ function CloseApproachesPageContent() {
       params.set("order", order);
       params.set("limit", "100");
 
-      const response = await fetch(`/api/close-approaches?${params.toString()}`, {
+      const result = await apiFetchEvents<CloseApproach>(`/close-approaches?${params.toString()}`, {
         signal,
       });
 
       if (signal?.aborted) return;
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "Failed to fetch close approaches");
-      }
-
-      const result: CloseApproachListResponse = await response.json();
       setData(result);
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") {
@@ -262,28 +257,28 @@ function CloseApproachesPageContent() {
       </div>
 
       {/* Highlight Cards */}
-      {!isLoading && data?.highlights && (
+      {!isLoading && !!data?.meta?.highlights && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-12 mb-12">
-          {data.highlights.closestApproach && (
+          {(data.meta.highlights as { closestApproach?: CloseApproach })?.closestApproach && (
             <div>
               <h2 className="text-sm font-display text-muted-foreground mb-2 flex items-center gap-2">
                 <Ruler className={`w-4 h-4 ${theme.icon}`} />
                 Closest Approach
               </h2>
               <CloseApproachCard
-                approach={data.highlights.closestApproach}
+                approach={(data.meta.highlights as { closestApproach: CloseApproach }).closestApproach}
                 showHighlightBadge="closest"
               />
             </div>
           )}
-          {data.highlights.fastestFlyby && (
+          {(data.meta.highlights as { fastestFlyby?: CloseApproach })?.fastestFlyby && (
             <div>
               <h2 className="text-sm font-display text-muted-foreground mb-2 flex items-center gap-2">
                 <Gauge className={`w-4 h-4 ${theme.icon}`} />
                 Fastest Flyby
               </h2>
               <CloseApproachCard
-                approach={data.highlights.fastestFlyby}
+                approach={(data.meta.highlights as { fastestFlyby: CloseApproach }).fastestFlyby}
                 showHighlightBadge="fastest"
               />
             </div>
@@ -474,7 +469,7 @@ function CloseApproachesPageContent() {
             Showing <span className="font-mono text-foreground">{data.events.length}</span> close
             approaches in the next <span className="font-mono text-foreground">{days}</span> days
             within <span className="font-mono text-foreground">{distMaxLd}</span> lunar distances
-            {data.meta.phaFilterApplied && " (PHAs only)"}
+            {!!data.meta?.phaFilterApplied && " (PHAs only)"}
           </p>
         </div>
       )}

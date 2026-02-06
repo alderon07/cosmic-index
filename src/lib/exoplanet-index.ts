@@ -10,6 +10,16 @@ import {
   formatNumber,
 } from "./types";
 import { DEFAULT_PAGE_SIZE } from "./constants";
+import {
+  CursorPayload,
+  decodeCursor,
+  encodeCursor,
+  validateCursor,
+  hashFilters,
+  buildKeysetWhereClause,
+  EXOPLANET_SORT_CONFIG,
+  CursorValidationError,
+} from "./cursor";
 
 // Lazy singleton for Turso client
 let client: Client | null = null;
@@ -307,25 +317,136 @@ export class ExoplanetIndexUnavailableError extends Error {
   }
 }
 
+// Extended result type for cursor-aware responses
+export interface ExoplanetSearchResult extends PaginatedResponse<ExoplanetData> {
+  nextCursor?: string;
+  usedCursor: boolean;
+}
+
+// Default sort/order
+const DEFAULT_EXOPLANET_SORT = "discovered";
+const DEFAULT_EXOPLANET_ORDER: SortOrder = "desc";
+
+/** Extract the primary sort value from an ExoplanetRow for cursor minting */
+function getExoplanetSortValue(row: ExoplanetRow, sort: string): string | number | null {
+  switch (sort) {
+    case "name": return row.pl_name;
+    case "distance": return row.distance_parsecs;
+    case "radius": return row.radius_earth;
+    case "mass": return row.mass_earth;
+    case "discovered":
+    default: return row.disc_year;
+  }
+}
+
 // Search exoplanets with pagination using FTS for text search
 export async function searchExoplanets(
   params: ExoplanetQueryParams
-): Promise<PaginatedResponse<ExoplanetData>> {
+): Promise<ExoplanetSearchResult> {
   const db = getClient();
 
   if (!db) {
     throw new ExoplanetIndexUnavailableError();
   }
 
-  const page = params.page ?? 1;
   const limit = params.limit ?? DEFAULT_PAGE_SIZE;
-  const offset = (page - 1) * limit;
+  const effectiveSort = params.sort || DEFAULT_EXOPLANET_SORT;
+  const effectiveOrder = params.order || DEFAULT_EXOPLANET_SORT_DIRECTIONS[effectiveSort] || DEFAULT_EXOPLANET_ORDER;
+  const useCursor = params.paginationMode === "cursor" || params.cursor !== undefined;
 
   const orderBy = buildOrderByClause(params.sort, params.order);
 
+  // FTS queries don't support cursor pagination (BM25 ranking isn't keyset-compatible)
+  // Fall back to offset for FTS
+  const hasFtsQuery = params.query && params.query.trim();
+
+  // ── Cursor mode (non-FTS only) ──────────────────────────────────────────
+  if (useCursor && !hasFtsQuery) {
+    const filterHash = await hashFilters(params as Record<string, unknown>);
+    const sortConfig = EXOPLANET_SORT_CONFIG[effectiveSort];
+
+    let cursorPayload: CursorPayload | undefined;
+    if (params.cursor) {
+      const decoded = decodeCursor(params.cursor);
+      if (!decoded) {
+        throw new CursorValidationError("MALFORMED");
+      }
+      const validation = validateCursor(decoded, effectiveSort, effectiveOrder, filterHash);
+      if (!validation.valid) {
+        throw new CursorValidationError(validation.reason);
+      }
+      cursorPayload = validation.payload;
+    }
+
+    const { clause: filterClause, args: filterArgs } = buildWhereClause(params);
+
+    // Build cursor WHERE clause
+    let cursorClause = "";
+    let cursorArgs: (string | number)[] = [];
+    if (cursorPayload && sortConfig) {
+      const keyset = buildKeysetWhereClause(cursorPayload, sortConfig, effectiveOrder);
+      cursorClause = keyset.clause;
+      cursorArgs = keyset.args;
+    }
+
+    const allConditions: string[] = [];
+    const allArgs: (string | number)[] = [];
+
+    if (filterClause) {
+      allConditions.push(filterClause.replace(/^WHERE\s+/i, ""));
+      allArgs.push(...filterArgs);
+    }
+    if (cursorClause) {
+      allConditions.push(cursorClause);
+      allArgs.push(...cursorArgs);
+    }
+
+    const combinedWhere = allConditions.length > 0
+      ? `WHERE ${allConditions.join(" AND ")}`
+      : "";
+
+    const dataQuery = `SELECT * FROM exoplanets ${combinedWhere} ${orderBy} LIMIT ?`;
+    const dataArgs = [...allArgs, limit + 1];
+    const dataResult = await db.execute({ sql: dataQuery, args: dataArgs });
+
+    const hasMore = dataResult.rows.length > limit;
+    const rows = dataResult.rows.slice(0, limit);
+    const objects = rows.map((row) => transformExoplanetRow(row as unknown as ExoplanetRow));
+
+    let nextCursor: string | undefined;
+    if (hasMore && rows.length > 0) {
+      const lastRow = rows[rows.length - 1] as unknown as ExoplanetRow;
+      const primaryValue = sortConfig
+        ? getExoplanetSortValue(lastRow, effectiveSort)
+        : lastRow.pl_name;
+      nextCursor = encodeCursor({
+        cv: 1,
+        s: effectiveSort,
+        o: effectiveOrder,
+        f: filterHash,
+        v: [primaryValue, lastRow.id],
+        d: "n",
+      });
+    }
+
+    return {
+      objects,
+      total: 0,
+      page: 0,
+      limit,
+      hasMore,
+      nextCursor,
+      usedCursor: true,
+    };
+  }
+
+  // ── Offset mode (default, also used for FTS queries) ─────────────────────
+  const page = params.page ?? 1;
+  const offset = (page - 1) * limit;
+
   // If there's a text query, use FTS for fast search
-  if (params.query && params.query.trim()) {
-    const ftsQuery = params.query.trim();
+  if (hasFtsQuery) {
+    const ftsQuery = params.query!.trim();
     const { clause: filterClause, args: filterArgs } = buildWhereClause(params, true);
 
     // Build FTS query - search pl_name and hostname
@@ -371,6 +492,7 @@ export async function searchExoplanets(
       page,
       limit,
       hasMore: page * limit < total,
+      usedCursor: false,
     };
   }
 
@@ -395,6 +517,7 @@ export async function searchExoplanets(
     page,
     limit,
     hasMore: page * limit < total,
+    usedCursor: false,
   };
 }
 
