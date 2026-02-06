@@ -86,7 +86,7 @@ function checkRateLimitMemory(
   };
 }
 
-type RateLimitType = keyof typeof RATE_LIMITS;
+export type RateLimitType = keyof typeof RATE_LIMITS;
 
 interface RateLimitResult {
   allowed: boolean;
@@ -163,9 +163,26 @@ export function getClientIdentifier(request: Request): string {
 }
 
 // Create rate limit headers for response
-export function getRateLimitHeaders(result: RateLimitResult): Record<string, string> {
+// Includes both legacy X-RateLimit-* headers and IETF draft-standard RateLimit-* headers.
+// - X-RateLimit-Reset: epoch milliseconds (legacy convention)
+// - RateLimit-Reset: seconds until reset (IETF draft convention, NOT epoch)
+export function getRateLimitHeaders(
+  result: RateLimitResult,
+  type?: RateLimitType,
+): Record<string, string> {
+  const config = type ? RATE_LIMITS[type] : undefined;
+  const windowLimit = config?.requests ?? 100;
+  const resetSeconds = Math.max(1, Math.ceil((result.resetTime - Date.now()) / 1000));
+  const windowSeconds = config ? Math.ceil(config.windowMs / 1000) : 60;
+
   return {
+    // Legacy headers (backward compat)
     "X-RateLimit-Remaining": result.remaining.toString(),
     "X-RateLimit-Reset": result.resetTime.toString(),
+    // IETF draft-standard headers
+    "RateLimit-Limit": windowLimit.toString(),
+    "RateLimit-Remaining": result.remaining.toString(),
+    "RateLimit-Reset": resetSeconds.toString(),
+    "RateLimit-Policy": `${windowLimit};w=${windowSeconds}`,
   };
 }

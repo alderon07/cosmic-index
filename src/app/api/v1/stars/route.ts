@@ -1,56 +1,62 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { searchStars } from "@/lib/star-index";
 import { StarQuerySchema } from "@/lib/types";
 import { getCacheControlHeader, CACHE_TTL } from "@/lib/cache";
-import { checkRateLimit, getClientIdentifier, getRateLimitHeaders } from "@/lib/rate-limit";
+import { initRequest, withRateLimit, validateParams, validateNoPaginationConflict } from "@/lib/api-middleware";
+import { apiPaginated, apiError, handleRouteError } from "@/lib/api-response";
+import { CursorValidationError } from "@/lib/cursor";
+import { ErrorCode, ERROR_STATUS } from "@/lib/api-errors";
 
 export async function GET(request: NextRequest) {
+  const { requestId } = initRequest();
+
+  const rateLimit = await withRateLimit(request, "BROWSE", requestId);
+  if (rateLimit instanceof Response) return rateLimit;
+
+  const searchParams = Object.fromEntries(request.nextUrl.searchParams);
+  const params = validateParams(searchParams, StarQuerySchema, requestId);
+  if (params instanceof Response) return params;
+
+  // Strict: cursor + page can't coexist
+  const conflict = validateNoPaginationConflict(params.data, requestId);
+  if (conflict) return conflict;
+
   try {
-    // Rate limiting
-    const clientId = getClientIdentifier(request);
-    const rateLimitResult = await checkRateLimit(clientId, "BROWSE");
+    const result = await searchStars(params.data);
 
-    if (!rateLimitResult.allowed) {
-      return NextResponse.json(
-        { error: "Rate limit exceeded. Please try again later." },
-        {
-          status: 429,
-          headers: getRateLimitHeaders(rateLimitResult),
-        }
-      );
-    }
-
-    // Parse and validate query parameters
-    const searchParams = Object.fromEntries(request.nextUrl.searchParams);
-    const parseResult = StarQuerySchema.safeParse(searchParams);
-
-    if (!parseResult.success) {
-      return NextResponse.json(
-        {
-          error: "Invalid query parameters",
-          details: parseResult.error.flatten(),
-        },
-        { status: 400 }
-      );
-    }
-
-    const params = parseResult.data;
-
-    // Search stars from Turso
-    const result = await searchStars(params);
-
-    // Return response with cache headers
-    return NextResponse.json(result, {
-      headers: {
+    if (result.usedCursor) {
+      return apiPaginated(result.objects, {
+        mode: "cursor",
+        limit: result.limit,
+        hasMore: result.hasMore,
+        ...(result.nextCursor ? { nextCursor: result.nextCursor } : {}),
+      }, requestId, {
         "Cache-Control": getCacheControlHeader(CACHE_TTL.STARS_BROWSE),
-        ...getRateLimitHeaders(rateLimitResult),
-      },
+        ...rateLimit.headers,
+      });
+    }
+
+    return apiPaginated(result.objects, {
+      mode: "offset",
+      page: result.page,
+      limit: result.limit,
+      total: result.total,
+      hasMore: result.hasMore,
+    }, requestId, {
+      "Cache-Control": getCacheControlHeader(CACHE_TTL.STARS_BROWSE),
+      ...rateLimit.headers,
     });
   } catch (error) {
-    console.error("Error fetching stars:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch stars. Please try again later." },
-      { status: 500 }
-    );
+    if (error instanceof CursorValidationError) {
+      return apiError(
+        ErrorCode.VALIDATION_ERROR,
+        "Invalid cursor for this request.",
+        ERROR_STATUS[ErrorCode.VALIDATION_ERROR],
+        requestId,
+        { reason: error.reason },
+        rateLimit.headers,
+      );
+    }
+    return handleRouteError(error, requestId, rateLimit.headers);
   }
 }

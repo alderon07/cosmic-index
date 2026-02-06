@@ -8,7 +8,8 @@ import { ObjectDetailModal } from "@/components/object-detail-modal";
 import { SearchBar } from "@/components/search-bar";
 import { SmallBodyFilterPanel, SmallBodyFilters } from "@/components/filter-panel";
 import { Pagination, PaginationInfo } from "@/components/pagination";
-import { AnyCosmicObject, SmallBodyData, PaginatedResponse } from "@/lib/types";
+import { AnyCosmicObject, SmallBodyData } from "@/lib/types";
+import { apiFetchPaginated, PaginatedResult } from "@/lib/api-client";
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "@/lib/constants";
 import { THEMES } from "@/lib/theme";
 import { ViewToggle, ViewMode } from "@/components/view-toggle";
@@ -64,7 +65,7 @@ function SmallBodiesPageContent() {
     saveListUrl("small-bodies", query ? `${pathname}?${query}` : pathname);
   }, [searchParams, pathname]);
 
-  const [data, setData] = useState<PaginatedResponse<SmallBodyData> | null>(null);
+  const [data, setData] = useState<PaginatedResult<SmallBodyData> | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedObject, setSelectedObject] = useState<AnyCosmicObject | null>(null);
@@ -97,7 +98,7 @@ function SmallBodiesPageContent() {
 
   // Clamp page when data loads (handle out-of-range)
   useEffect(() => {
-    if (data && data.total > 0) {
+    if (data && data.total && data.total > 0) {
       const maxPage = Math.ceil(data.total / limit);
       if (page > maxPage) {
         setPage(maxPage);
@@ -152,7 +153,7 @@ function SmallBodiesPageContent() {
   }, [view, handleViewChange]);
 
   const nextPage = useCallback(() => {
-    const totalPages = data ? Math.ceil(data.total / limit) : 0;
+    const totalPages = data?.total ? Math.ceil(data.total / limit) : 0;
     if (page < totalPages) {
       setPage(page + 1);
     }
@@ -190,19 +191,13 @@ function SmallBodiesPageContent() {
       params.set("page", page.toString());
       params.set("limit", limit.toString());
 
-      const response = await fetch(`/api/small-bodies?${params.toString()}`, {
+      const result = await apiFetchPaginated<SmallBodyData>(`/small-bodies?${params.toString()}`, {
         signal,
       });
 
       // If request was aborted, don't update state
       if (signal?.aborted) return;
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "Failed to fetch small bodies");
-      }
-
-      const result: PaginatedResponse<SmallBodyData> = await response.json();
       setData(result);
     } catch (err) {
       // Ignore abort errors (user navigated away or query changed)
@@ -228,7 +223,7 @@ function SmallBodiesPageContent() {
     };
   }, [fetchData]);
 
-  const totalPages = data ? Math.ceil(data.total / limit) : 0;
+  const totalPages = data?.total ? Math.ceil(data.total / limit) : 0;
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -287,7 +282,7 @@ function SmallBodiesPageContent() {
           <PaginationInfo
             currentPage={page}
             pageSize={limit}
-            totalItems={data.total}
+            totalItems={data.total ?? 0}
           />
           {totalPages > 1 && (
             <Pagination

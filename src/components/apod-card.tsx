@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { APODData } from "@/lib/types";
+import { apiFetch } from "@/lib/api-client";
 import { Calendar, ExternalLink, ChevronDown, ChevronUp, Play, ImageIcon } from "lucide-react";
 
 interface APODCardProps {
@@ -21,11 +22,7 @@ export function APODCard({ className }: APODCardProps) {
   useEffect(() => {
     async function fetchApod() {
       try {
-        const response = await fetch("/api/apod");
-        if (!response.ok) {
-          throw new Error("Failed to fetch APOD");
-        }
-        const data: APODData = await response.json();
+        const data = await apiFetch<APODData>("/apod");
         setApod(data);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load");

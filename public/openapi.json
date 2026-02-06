@@ -1,0 +1,1591 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Cosmic Index API",
+    "version": "1.0.0",
+    "description": "A retrofuturistic web encyclopedia API for exploring cosmic objects. Aggregates data from NASA's Exoplanet Archive, JPL's Small-Body Database, NASA DONKI, CNEOS, and other NASA APIs into a unified read-only interface.",
+    "contact": {
+      "name": "Cosmic Index"
+    },
+    "license": {
+      "name": "MIT"
+    }
+  },
+  "servers": [
+    {
+      "url": "/api/v1",
+      "description": "Cosmic Index API v1"
+    }
+  ],
+  "tags": [
+    { "name": "Exoplanets", "description": "Browse and retrieve exoplanet data from NASA Exoplanet Archive" },
+    { "name": "Stars", "description": "Browse and retrieve host star data from the Turso index" },
+    { "name": "Small Bodies", "description": "Browse and retrieve asteroid and comet data from JPL SBDB" },
+    { "name": "Close Approaches", "description": "Near-Earth asteroid close approach events from CNEOS" },
+    { "name": "Fireballs", "description": "Atmospheric impact (fireball) events from CNEOS" },
+    { "name": "Space Weather", "description": "Space weather events (solar flares, CMEs, geomagnetic storms) from NASA DONKI" },
+    { "name": "APOD", "description": "NASA Astronomy Picture of the Day" },
+    { "name": "Images", "description": "NASA Image Library search for cosmic objects" }
+  ],
+  "paths": {
+    "/exoplanets": {
+      "get": {
+        "operationId": "listExoplanets",
+        "summary": "Browse exoplanets",
+        "description": "Search and browse exoplanets with filtering, sorting, and pagination. Supports both offset-based and cursor-based pagination modes. When no pagination mode is specified, defaults to offset mode.",
+        "tags": ["Exoplanets"],
+        "parameters": [
+          { "$ref": "#/components/parameters/QuerySearch" },
+          {
+            "name": "discoveryMethod",
+            "in": "query",
+            "description": "Filter by discovery method (e.g., Transit, Radial Velocity, Imaging, Microlensing).",
+            "schema": { "type": "string", "maxLength": 64 }
+          },
+          {
+            "name": "year",
+            "in": "query",
+            "description": "Filter by discovery year.",
+            "schema": { "type": "integer", "minimum": 1900, "maximum": 2100 }
+          },
+          {
+            "name": "hasRadius",
+            "in": "query",
+            "description": "Filter to exoplanets with a known radius measurement.",
+            "schema": { "type": "boolean" }
+          },
+          {
+            "name": "hasMass",
+            "in": "query",
+            "description": "Filter to exoplanets with a known mass measurement.",
+            "schema": { "type": "boolean" }
+          },
+          {
+            "name": "sizeCategory",
+            "in": "query",
+            "description": "Filter by size category based on Earth radii: earth (0.5-1.5), super-earth (1.5-2.5), neptune (2.5-10), jupiter (10+).",
+            "schema": { "type": "string", "enum": ["earth", "super-earth", "neptune", "jupiter"] }
+          },
+          {
+            "name": "habitable",
+            "in": "query",
+            "description": "Filter to potentially habitable exoplanets (equilibrium temperature in habitable zone range).",
+            "schema": { "type": "boolean" }
+          },
+          {
+            "name": "facility",
+            "in": "query",
+            "description": "Filter by discovery facility (e.g., Kepler, TESS, K2).",
+            "schema": { "type": "string", "maxLength": 64 }
+          },
+          {
+            "name": "multiPlanet",
+            "in": "query",
+            "description": "Filter to exoplanets in multi-planet systems.",
+            "schema": { "type": "boolean" }
+          },
+          {
+            "name": "maxDistancePc",
+            "in": "query",
+            "description": "Maximum distance from Earth in parsecs.",
+            "schema": { "type": "number", "exclusiveMinimum": 0, "maximum": 100000 }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "Sort field for results.",
+            "schema": { "type": "string", "enum": ["name", "discovered", "distance", "radius", "mass"] }
+          },
+          { "$ref": "#/components/parameters/SortOrder" },
+          { "$ref": "#/components/parameters/Page" },
+          { "$ref": "#/components/parameters/BrowseLimit" },
+          { "$ref": "#/components/parameters/PaginationMode" },
+          { "$ref": "#/components/parameters/Cursor" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated list of exoplanets.",
+            "headers": { "$ref": "#/components/headers/StandardResponseHeaders" },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/PaginatedEnvelope" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": { "$ref": "#/components/schemas/ExoplanetData" }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/ValidationError" },
+          "429": { "$ref": "#/components/responses/RateLimitExceeded" },
+          "500": { "$ref": "#/components/responses/InternalError" },
+          "502": { "$ref": "#/components/responses/ContractMismatch" },
+          "503": { "$ref": "#/components/responses/UpstreamUnavailable" }
+        }
+      }
+    },
+    "/exoplanets/{id}": {
+      "get": {
+        "operationId": "getExoplanet",
+        "summary": "Get exoplanet by slug",
+        "description": "Retrieve a single exoplanet by its URL-safe slug ID. Tries the Turso index first, then falls back to the NASA TAP API.",
+        "tags": ["Exoplanets"],
+        "parameters": [
+          { "$ref": "#/components/parameters/ResourceId" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Exoplanet detail.",
+            "headers": { "$ref": "#/components/headers/StandardResponseHeaders" },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/DetailEnvelope" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": { "$ref": "#/components/schemas/ExoplanetData" }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "429": { "$ref": "#/components/responses/RateLimitExceeded" },
+          "500": { "$ref": "#/components/responses/InternalError" },
+          "502": { "$ref": "#/components/responses/ContractMismatch" },
+          "503": { "$ref": "#/components/responses/UpstreamUnavailable" }
+        }
+      }
+    },
+    "/stars": {
+      "get": {
+        "operationId": "listStars",
+        "summary": "Browse host stars",
+        "description": "Search and browse host stars from the Turso index with filtering, sorting, and pagination. Supports both offset-based and cursor-based pagination modes.",
+        "tags": ["Stars"],
+        "parameters": [
+          { "$ref": "#/components/parameters/QuerySearch" },
+          {
+            "name": "spectralClass",
+            "in": "query",
+            "description": "Filter by spectral class.",
+            "schema": { "type": "string", "enum": ["O", "B", "A", "F", "G", "K", "M"] }
+          },
+          {
+            "name": "minPlanets",
+            "in": "query",
+            "description": "Minimum number of known planets orbiting the star.",
+            "schema": { "type": "integer", "minimum": 1, "maximum": 50 }
+          },
+          {
+            "name": "multiPlanet",
+            "in": "query",
+            "description": "Shorthand for minPlanets >= 2. Filter to multi-planet systems.",
+            "schema": { "type": "boolean" }
+          },
+          {
+            "name": "maxDistancePc",
+            "in": "query",
+            "description": "Maximum distance from Earth in parsecs.",
+            "schema": { "type": "number", "exclusiveMinimum": 0, "maximum": 100000 }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "Sort field for results.",
+            "schema": { "type": "string", "enum": ["name", "distance", "vmag", "planetCount", "planetCountDesc"] }
+          },
+          { "$ref": "#/components/parameters/SortOrder" },
+          { "$ref": "#/components/parameters/Page" },
+          { "$ref": "#/components/parameters/BrowseLimit" },
+          { "$ref": "#/components/parameters/PaginationMode" },
+          { "$ref": "#/components/parameters/Cursor" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated list of stars.",
+            "headers": { "$ref": "#/components/headers/StandardResponseHeaders" },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/PaginatedEnvelope" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": { "$ref": "#/components/schemas/StarData" }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/ValidationError" },
+          "429": { "$ref": "#/components/responses/RateLimitExceeded" },
+          "500": { "$ref": "#/components/responses/InternalError" },
+          "503": { "$ref": "#/components/responses/IndexUnavailable" }
+        }
+      }
+    },
+    "/stars/{id}": {
+      "get": {
+        "operationId": "getStar",
+        "summary": "Get star by slug",
+        "description": "Retrieve a single host star by its URL-safe slug ID from the Turso index.",
+        "tags": ["Stars"],
+        "parameters": [
+          { "$ref": "#/components/parameters/ResourceId" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Star detail.",
+            "headers": { "$ref": "#/components/headers/StandardResponseHeaders" },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/DetailEnvelope" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": { "$ref": "#/components/schemas/StarData" }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "429": { "$ref": "#/components/responses/RateLimitExceeded" },
+          "500": { "$ref": "#/components/responses/InternalError" },
+          "503": { "$ref": "#/components/responses/IndexUnavailable" }
+        }
+      }
+    },
+    "/stars/{id}/planets": {
+      "get": {
+        "operationId": "getStarPlanets",
+        "summary": "Get planets orbiting a star",
+        "description": "Retrieve all known exoplanets orbiting the specified host star. The star must exist in the index; planets are fetched from the NASA TAP API.",
+        "tags": ["Stars"],
+        "parameters": [
+          { "$ref": "#/components/parameters/ResourceId" }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of exoplanets orbiting the star.",
+            "headers": { "$ref": "#/components/headers/StandardResponseHeaders" },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/DetailEnvelope" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "required": ["planets"],
+                          "properties": {
+                            "planets": {
+                              "type": "array",
+                              "items": { "$ref": "#/components/schemas/ExoplanetData" }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "429": { "$ref": "#/components/responses/RateLimitExceeded" },
+          "500": { "$ref": "#/components/responses/InternalError" },
+          "502": { "$ref": "#/components/responses/ContractMismatch" },
+          "503": { "$ref": "#/components/responses/UpstreamUnavailable" }
+        }
+      }
+    },
+    "/small-bodies": {
+      "get": {
+        "operationId": "listSmallBodies",
+        "summary": "Browse asteroids and comets",
+        "description": "Search and browse small solar system bodies (asteroids and comets) from JPL's Small-Body Database. Supports both offset-based and cursor-based pagination modes.",
+        "tags": ["Small Bodies"],
+        "parameters": [
+          { "$ref": "#/components/parameters/QuerySearch" },
+          {
+            "name": "kind",
+            "in": "query",
+            "description": "Filter by body type.",
+            "schema": { "type": "string", "enum": ["asteroid", "comet"] }
+          },
+          {
+            "name": "neo",
+            "in": "query",
+            "description": "Filter to near-Earth objects.",
+            "schema": { "type": "boolean" }
+          },
+          {
+            "name": "pha",
+            "in": "query",
+            "description": "Filter to potentially hazardous asteroids.",
+            "schema": { "type": "boolean" }
+          },
+          {
+            "name": "orbitClass",
+            "in": "query",
+            "description": "Filter by orbit class code (e.g., APO, AMO, ATE, MBA, TJN, JFC, HTC). See JPL SBDB orbit class definitions.",
+            "schema": { "type": "string", "maxLength": 10 }
+          },
+          { "$ref": "#/components/parameters/Page" },
+          { "$ref": "#/components/parameters/BrowseLimit" },
+          { "$ref": "#/components/parameters/PaginationMode" },
+          { "$ref": "#/components/parameters/Cursor" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated list of small bodies.",
+            "headers": { "$ref": "#/components/headers/StandardResponseHeaders" },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/PaginatedEnvelope" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": { "$ref": "#/components/schemas/SmallBodyData" }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/ValidationError" },
+          "429": { "$ref": "#/components/responses/RateLimitExceeded" },
+          "500": { "$ref": "#/components/responses/InternalError" },
+          "502": { "$ref": "#/components/responses/ContractMismatch" },
+          "503": { "$ref": "#/components/responses/UpstreamUnavailable" }
+        }
+      }
+    },
+    "/small-bodies/{id}": {
+      "get": {
+        "operationId": "getSmallBody",
+        "summary": "Get small body by slug",
+        "description": "Retrieve a single asteroid or comet by its URL-safe slug ID. Slug resolution handles provisional designations, periodic comets, numbered asteroids, and modern comet designations.",
+        "tags": ["Small Bodies"],
+        "parameters": [
+          { "$ref": "#/components/parameters/ResourceId" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Small body detail.",
+            "headers": { "$ref": "#/components/headers/StandardResponseHeaders" },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/DetailEnvelope" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": { "$ref": "#/components/schemas/SmallBodyData" }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "429": { "$ref": "#/components/responses/RateLimitExceeded" },
+          "500": { "$ref": "#/components/responses/InternalError" },
+          "502": { "$ref": "#/components/responses/ContractMismatch" },
+          "503": { "$ref": "#/components/responses/UpstreamUnavailable" }
+        }
+      }
+    },
+    "/close-approaches": {
+      "get": {
+        "operationId": "listCloseApproaches",
+        "summary": "List close asteroid approaches",
+        "description": "Retrieve upcoming close approach events for near-Earth asteroids from the CNEOS flyby radar. Returns all matching events as a flat list (pagination mode is always \"none\"). Results include precomputed highlights for the closest and fastest flybys.",
+        "tags": ["Close Approaches"],
+        "parameters": [
+          {
+            "name": "dateMin",
+            "in": "query",
+            "description": "Start date for the search window. Accepts ISO date strings or relative values like \"now\" (default: \"now\").",
+            "schema": { "type": "string", "maxLength": 20 }
+          },
+          {
+            "name": "dateMax",
+            "in": "query",
+            "description": "End date for the search window. Accepts ISO date strings or relative values like \"+60\" for 60 days from now (default: \"+60\").",
+            "schema": { "type": "string", "maxLength": 20 }
+          },
+          {
+            "name": "distMaxLd",
+            "in": "query",
+            "description": "Maximum approach distance in lunar distances (LD). Converted to AU internally (default: 10).",
+            "schema": { "type": "number", "exclusiveMinimum": 0, "maximum": 100 }
+          },
+          {
+            "name": "phaOnly",
+            "in": "query",
+            "description": "Filter to only potentially hazardous asteroids (PHAs).",
+            "schema": { "type": "boolean" }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "Sort field for results.",
+            "schema": { "type": "string", "enum": ["date", "dist", "h", "v-rel"] }
+          },
+          { "$ref": "#/components/parameters/SortOrder" },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Maximum number of events to return.",
+            "schema": { "type": "integer", "minimum": 1, "maximum": 200 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of close approach events.",
+            "headers": { "$ref": "#/components/headers/StandardResponseHeaders" },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["data", "pagination", "meta"],
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/CloseApproach" }
+                    },
+                    "pagination": { "$ref": "#/components/schemas/NonePagination" },
+                    "meta": {
+                      "allOf": [
+                        { "$ref": "#/components/schemas/ApiMeta" },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "count": { "type": "integer", "description": "Number of events returned." },
+                            "limitApplied": { "type": "integer", "description": "The effective limit used." },
+                            "phaFilterApplied": { "type": "boolean", "description": "Whether PHA-only filtering was active." },
+                            "queryApplied": {
+                              "type": "object",
+                              "additionalProperties": { "type": "string" },
+                              "description": "Debug: the query parameters sent to the CNEOS API."
+                            },
+                            "highlights": {
+                              "type": "object",
+                              "description": "Precomputed highlights for the UI.",
+                              "properties": {
+                                "closestApproach": { "$ref": "#/components/schemas/CloseApproach" },
+                                "fastestFlyby": { "$ref": "#/components/schemas/CloseApproach" }
+                              }
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/ValidationError" },
+          "429": { "$ref": "#/components/responses/RateLimitExceeded" },
+          "500": { "$ref": "#/components/responses/InternalError" },
+          "503": { "$ref": "#/components/responses/UpstreamUnavailable" }
+        }
+      }
+    },
+    "/fireballs": {
+      "get": {
+        "operationId": "listFireballs",
+        "summary": "List fireball events",
+        "description": "Retrieve atmospheric impact (fireball) events from the CNEOS fireball database. Returns all matching events as a flat list (pagination mode is always \"none\").",
+        "tags": ["Fireballs"],
+        "parameters": [
+          {
+            "name": "dateMin",
+            "in": "query",
+            "description": "Start date for the search window (YYYY-MM-DD).",
+            "schema": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" }
+          },
+          {
+            "name": "dateMax",
+            "in": "query",
+            "description": "End date for the search window (YYYY-MM-DD).",
+            "schema": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" }
+          },
+          {
+            "name": "reqLoc",
+            "in": "query",
+            "description": "Only return events with latitude/longitude data.",
+            "schema": { "type": "boolean" }
+          },
+          {
+            "name": "reqAlt",
+            "in": "query",
+            "description": "Only return events with altitude data.",
+            "schema": { "type": "boolean" }
+          },
+          {
+            "name": "reqVel",
+            "in": "query",
+            "description": "Only return events with velocity data.",
+            "schema": { "type": "boolean" }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "Sort field for results.",
+            "schema": { "type": "string", "enum": ["date", "energy", "impact-e", "vel", "alt"] }
+          },
+          { "$ref": "#/components/parameters/SortOrder" },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Maximum number of events to return (default: 100).",
+            "schema": { "type": "integer", "minimum": 1, "maximum": 500, "default": 100 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of fireball events.",
+            "headers": { "$ref": "#/components/headers/StandardResponseHeaders" },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["data", "pagination", "meta"],
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/FireballEvent" }
+                    },
+                    "pagination": { "$ref": "#/components/schemas/NonePagination" },
+                    "meta": {
+                      "allOf": [
+                        { "$ref": "#/components/schemas/ApiMeta" },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "count": { "type": "integer", "description": "Number of events returned." },
+                            "limitApplied": { "type": "integer", "description": "The effective limit used." },
+                            "filtersApplied": {
+                              "type": "object",
+                              "additionalProperties": { "type": "string" },
+                              "description": "Debug: the filter parameters sent to the CNEOS API."
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/ValidationError" },
+          "429": { "$ref": "#/components/responses/RateLimitExceeded" },
+          "500": { "$ref": "#/components/responses/InternalError" },
+          "503": { "$ref": "#/components/responses/UpstreamUnavailable" }
+        }
+      }
+    },
+    "/space-weather": {
+      "get": {
+        "operationId": "listSpaceWeather",
+        "summary": "List space weather events",
+        "description": "Retrieve recent space weather events from NASA DONKI, including solar flares (FLR), coronal mass ejections (CME), and geomagnetic storms (GST). Returns all matching events as a flat list (pagination mode is always \"none\"). Partial failures (e.g., one endpoint unavailable) are reported in meta.warnings rather than failing the entire request.",
+        "tags": ["Space Weather"],
+        "parameters": [
+          {
+            "name": "startDate",
+            "in": "query",
+            "description": "Start date for the search window (YYYY-MM-DD).",
+            "schema": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" }
+          },
+          {
+            "name": "endDate",
+            "in": "query",
+            "description": "End date for the search window (YYYY-MM-DD).",
+            "schema": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" }
+          },
+          {
+            "name": "eventTypes",
+            "in": "query",
+            "description": "Comma-separated list of event types to include. Valid values: FLR, CME, GST.",
+            "schema": { "type": "string" },
+            "example": "FLR,CME"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Maximum number of events to return (default: 100).",
+            "schema": { "type": "integer", "minimum": 1, "maximum": 500, "default": 100 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of space weather events.",
+            "headers": { "$ref": "#/components/headers/StandardResponseHeaders" },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["data", "pagination", "meta"],
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/AnySpaceWeatherEvent" }
+                    },
+                    "pagination": { "$ref": "#/components/schemas/NonePagination" },
+                    "meta": {
+                      "allOf": [
+                        { "$ref": "#/components/schemas/ApiMeta" },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "count": { "type": "integer", "description": "Number of events returned." },
+                            "limitApplied": { "type": "integer", "description": "The effective limit used." },
+                            "dateRange": {
+                              "type": "object",
+                              "required": ["start", "end"],
+                              "properties": {
+                                "start": { "type": "string", "description": "Start of the queried date range." },
+                                "end": { "type": "string", "description": "End of the queried date range." }
+                              }
+                            },
+                            "typesIncluded": {
+                              "type": "array",
+                              "items": { "type": "string", "enum": ["FLR", "CME", "GST"] },
+                              "description": "Which event types were included in the response."
+                            },
+                            "warnings": {
+                              "type": "array",
+                              "items": { "type": "string" },
+                              "description": "Partial failure notices (e.g., 'CME endpoint unavailable')."
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/ValidationError" },
+          "429": { "$ref": "#/components/responses/RateLimitExceeded" },
+          "500": { "$ref": "#/components/responses/InternalError" },
+          "503": { "$ref": "#/components/responses/UpstreamUnavailable" }
+        }
+      }
+    },
+    "/space-weather/{id}": {
+      "get": {
+        "operationId": "getSpaceWeatherEvent",
+        "summary": "Get space weather event by ID",
+        "description": "Retrieve a single space weather event by its DONKI activity ID. Returns the event data along with computed severity level and reference links.",
+        "tags": ["Space Weather"],
+        "parameters": [
+          { "$ref": "#/components/parameters/ResourceId" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Space weather event detail.",
+            "headers": { "$ref": "#/components/headers/StandardResponseHeaders" },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/DetailEnvelope" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "required": ["event", "severity", "typeLabel", "links"],
+                          "properties": {
+                            "event": { "$ref": "#/components/schemas/AnySpaceWeatherEvent" },
+                            "severity": {
+                              "type": ["string", "null"],
+                              "enum": ["minor", "moderate", "strong", "severe", "extreme", null],
+                              "description": "Computed severity level matching NOAA Space Weather Scales."
+                            },
+                            "typeLabel": {
+                              "type": "string",
+                              "description": "Human-readable label for the event type (e.g., 'Solar Flare', 'Coronal Mass Ejection')."
+                            },
+                            "links": {
+                              "type": "object",
+                              "properties": {
+                                "donkiSearch": { "type": "string", "format": "uri" },
+                                "noaaSwpc": { "type": "string", "format": "uri" }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "429": { "$ref": "#/components/responses/RateLimitExceeded" },
+          "500": { "$ref": "#/components/responses/InternalError" },
+          "503": { "$ref": "#/components/responses/UpstreamUnavailable" }
+        }
+      }
+    },
+    "/apod": {
+      "get": {
+        "operationId": "getApod",
+        "summary": "Get Astronomy Picture of the Day",
+        "description": "Retrieve the NASA Astronomy Picture of the Day. Optionally specify a date to retrieve a historical APOD. The archive begins on 1995-06-16; future dates are not allowed.",
+        "tags": ["APOD"],
+        "parameters": [
+          {
+            "name": "date",
+            "in": "query",
+            "description": "Date for the APOD in YYYY-MM-DD format. Defaults to today. Must be between 1995-06-16 and today.",
+            "schema": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+            "example": "2024-12-25"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Astronomy Picture of the Day.",
+            "headers": { "$ref": "#/components/headers/StandardResponseHeaders" },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/DetailEnvelope" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": { "$ref": "#/components/schemas/APODData" }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/ValidationError" },
+          "429": { "$ref": "#/components/responses/RateLimitExceeded" },
+          "500": { "$ref": "#/components/responses/InternalError" },
+          "503": { "$ref": "#/components/responses/UpstreamUnavailable" }
+        }
+      }
+    },
+    "/images/object": {
+      "get": {
+        "operationId": "searchObjectImages",
+        "summary": "Search NASA images for a cosmic object",
+        "description": "Search the NASA Image Library for images related to a specific cosmic object. The search strategy varies by object type (exoplanet, star, small body) and may include the host star name or body kind for more relevant results.",
+        "tags": ["Images"],
+        "parameters": [
+          {
+            "name": "type",
+            "in": "query",
+            "required": true,
+            "description": "The type of cosmic object to search images for.",
+            "schema": { "type": "string", "enum": ["EXOPLANET", "SMALL_BODY", "STAR"] }
+          },
+          {
+            "name": "name",
+            "in": "query",
+            "required": true,
+            "description": "The name of the cosmic object.",
+            "schema": { "type": "string", "minLength": 1, "maxLength": 200 }
+          },
+          {
+            "name": "hostStar",
+            "in": "query",
+            "description": "Host star name (used to refine image searches for exoplanets).",
+            "schema": { "type": "string", "maxLength": 200 }
+          },
+          {
+            "name": "bodyKind",
+            "in": "query",
+            "description": "Body kind (used to refine image searches for small bodies).",
+            "schema": { "type": "string", "enum": ["asteroid", "comet"] }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "NASA image search results.",
+            "headers": { "$ref": "#/components/headers/StandardResponseHeaders" },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    { "$ref": "#/components/schemas/DetailEnvelope" },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "required": ["images", "totalHits", "usedQuery"],
+                          "properties": {
+                            "images": {
+                              "type": "array",
+                              "items": { "$ref": "#/components/schemas/NasaImage" }
+                            },
+                            "totalHits": {
+                              "type": "integer",
+                              "description": "Total number of matching images from NASA."
+                            },
+                            "usedQuery": {
+                              "type": "string",
+                              "description": "The actual search query that produced results."
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/ValidationError" },
+          "429": { "$ref": "#/components/responses/RateLimitExceeded" },
+          "500": { "$ref": "#/components/responses/InternalError" },
+          "503": { "$ref": "#/components/responses/UpstreamUnavailable" }
+        }
+      }
+    }
+  },
+  "components": {
+    "parameters": {
+      "ResourceId": {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "description": "URL-safe slug identifier for the resource. Created via `encodeURIComponent(name)` and reversible via `decodeURIComponent()`.",
+        "schema": { "type": "string" }
+      },
+      "QuerySearch": {
+        "name": "query",
+        "in": "query",
+        "description": "Free-text search query. Normalized via Unicode NFKC before matching.",
+        "schema": { "type": "string", "maxLength": 128 }
+      },
+      "Page": {
+        "name": "page",
+        "in": "query",
+        "description": "Page number for offset-based pagination. Must not be combined with cursor-mode signals.",
+        "schema": { "type": "integer", "minimum": 1 }
+      },
+      "BrowseLimit": {
+        "name": "limit",
+        "in": "query",
+        "description": "Number of items per page (default: 24, max: 48).",
+        "schema": { "type": "integer", "minimum": 1, "maximum": 48, "default": 24 }
+      },
+      "PaginationMode": {
+        "name": "paginationMode",
+        "in": "query",
+        "description": "Choose pagination strategy. Offset mode returns page/total; cursor mode returns an opaque cursor token for the next page. Do not combine signals from different modes (e.g., cursor + page is a PAGINATION_CONFLICT error).",
+        "schema": { "type": "string", "enum": ["offset", "cursor"] }
+      },
+      "Cursor": {
+        "name": "cursor",
+        "in": "query",
+        "description": "Opaque cursor token for cursor-based pagination. Obtain this from the `pagination.nextCursor` field of a previous response. Cursors are tied to the sort/filter parameters that produced them; changing filters invalidates the cursor.",
+        "schema": { "type": "string", "maxLength": 500 }
+      },
+      "SortOrder": {
+        "name": "order",
+        "in": "query",
+        "description": "Sort order.",
+        "schema": { "type": "string", "enum": ["asc", "desc"] }
+      }
+    },
+    "headers": {
+      "StandardResponseHeaders": {
+        "X-Request-Id": {
+          "description": "Unique identifier for this request, useful for debugging and tracing.",
+          "schema": { "type": "string", "format": "uuid" }
+        },
+        "Api-Version": {
+          "description": "API version number.",
+          "schema": { "type": "string", "example": "1" }
+        },
+        "Vary": {
+          "description": "Indicates which request headers affect caching.",
+          "schema": { "type": "string", "example": "Accept-Encoding" }
+        },
+        "RateLimit-Limit": {
+          "description": "The maximum number of requests allowed in the current window (IETF draft).",
+          "schema": { "type": "string" }
+        },
+        "RateLimit-Remaining": {
+          "description": "The number of requests remaining in the current window (IETF draft).",
+          "schema": { "type": "string" }
+        },
+        "RateLimit-Reset": {
+          "description": "Seconds until the rate limit window resets (IETF draft convention, NOT epoch).",
+          "schema": { "type": "string" }
+        },
+        "RateLimit-Policy": {
+          "description": "Rate limit policy in the format `{limit};w={window_seconds}` (IETF draft).",
+          "schema": { "type": "string", "example": "100;w=60" }
+        },
+        "X-RateLimit-Remaining": {
+          "description": "The number of requests remaining in the current window (legacy).",
+          "schema": { "type": "string" }
+        },
+        "X-RateLimit-Reset": {
+          "description": "Epoch milliseconds when the rate limit window resets (legacy).",
+          "schema": { "type": "string" }
+        }
+      }
+    },
+    "schemas": {
+      "ApiMeta": {
+        "type": "object",
+        "required": ["requestId", "apiVersion", "timestamp"],
+        "properties": {
+          "requestId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Unique identifier for this request."
+          },
+          "apiVersion": {
+            "type": "string",
+            "description": "API version.",
+            "example": "1"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO-8601 timestamp of when the response was generated."
+          }
+        },
+        "additionalProperties": true
+      },
+      "DetailEnvelope": {
+        "type": "object",
+        "required": ["data", "meta"],
+        "description": "Standard success envelope for detail (single resource) endpoints.",
+        "properties": {
+          "data": {},
+          "meta": { "$ref": "#/components/schemas/ApiMeta" }
+        }
+      },
+      "PaginatedEnvelope": {
+        "type": "object",
+        "required": ["data", "pagination", "meta"],
+        "description": "Standard success envelope for paginated (browse/event) endpoints.",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {}
+          },
+          "pagination": { "$ref": "#/components/schemas/Pagination" },
+          "meta": { "$ref": "#/components/schemas/ApiMeta" }
+        }
+      },
+      "Pagination": {
+        "description": "Discriminated union of pagination modes. The `mode` field determines which additional fields are present.",
+        "oneOf": [
+          { "$ref": "#/components/schemas/OffsetPagination" },
+          { "$ref": "#/components/schemas/CursorPagination" },
+          { "$ref": "#/components/schemas/NonePagination" }
+        ],
+        "discriminator": {
+          "propertyName": "mode",
+          "mapping": {
+            "offset": "#/components/schemas/OffsetPagination",
+            "cursor": "#/components/schemas/CursorPagination",
+            "none": "#/components/schemas/NonePagination"
+          }
+        }
+      },
+      "OffsetPagination": {
+        "type": "object",
+        "required": ["mode", "page", "limit", "hasMore"],
+        "description": "Offset-based pagination. The `total` field may be absent if the upstream source does not provide a count.",
+        "properties": {
+          "mode": { "type": "string", "const": "offset" },
+          "page": { "type": "integer", "minimum": 1, "description": "Current page number (1-indexed)." },
+          "limit": { "type": "integer", "description": "Number of items per page." },
+          "total": { "type": "integer", "description": "Total number of matching items, if known." },
+          "hasMore": { "type": "boolean", "description": "Whether more pages exist after this one." }
+        }
+      },
+      "CursorPagination": {
+        "type": "object",
+        "required": ["mode", "limit", "hasMore"],
+        "description": "Cursor-based pagination. The `nextCursor` field is present only when `hasMore` is true. Cursors encode sort/filter state and are invalidated if those parameters change.",
+        "properties": {
+          "mode": { "type": "string", "const": "cursor" },
+          "limit": { "type": "integer", "description": "Number of items per page." },
+          "hasMore": { "type": "boolean", "description": "Whether more items exist after this page." },
+          "nextCursor": {
+            "type": "string",
+            "description": "Opaque cursor token. Pass this as the `cursor` query parameter to fetch the next page. Only present when `hasMore` is true."
+          }
+        }
+      },
+      "NonePagination": {
+        "type": "object",
+        "required": ["mode", "hasMore"],
+        "description": "No pagination — the full result set is returned. Used by event stream endpoints (close approaches, fireballs, space weather).",
+        "properties": {
+          "mode": { "type": "string", "const": "none" },
+          "hasMore": { "type": "boolean", "const": false }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "required": ["error", "meta"],
+        "description": "Standard error envelope. Clients should switch on `error.code` rather than HTTP status codes.",
+        "properties": {
+          "error": {
+            "type": "object",
+            "required": ["code", "message"],
+            "properties": {
+              "code": { "$ref": "#/components/schemas/ErrorCode" },
+              "message": { "type": "string", "description": "Human-readable error message." },
+              "details": {
+                "description": "Additional error context (e.g., Zod validation errors, cursor rejection reason)."
+              }
+            }
+          },
+          "meta": { "$ref": "#/components/schemas/ApiMeta" }
+        }
+      },
+      "ErrorCode": {
+        "type": "string",
+        "description": "Machine-readable error code. Clients should switch on this field.",
+        "enum": [
+          "VALIDATION_ERROR",
+          "INVALID_DATE_RANGE",
+          "PAGINATION_CONFLICT",
+          "NOT_FOUND",
+          "METHOD_NOT_ALLOWED",
+          "RATE_LIMIT_EXCEEDED",
+          "INTERNAL_ERROR",
+          "CONTRACT_MISMATCH",
+          "UPSTREAM_UNAVAILABLE",
+          "INDEX_UNAVAILABLE"
+        ]
+      },
+      "KeyFact": {
+        "type": "object",
+        "required": ["label", "value"],
+        "properties": {
+          "label": { "type": "string" },
+          "value": { "type": "string" },
+          "unit": { "type": "string" }
+        }
+      },
+      "SourceLink": {
+        "type": "object",
+        "required": ["label", "url"],
+        "properties": {
+          "label": { "type": "string" },
+          "url": { "type": "string", "format": "uri" }
+        }
+      },
+      "CosmicObjectBase": {
+        "type": "object",
+        "required": ["id", "type", "displayName", "aliases", "source", "sourceId", "summary", "keyFacts", "links"],
+        "description": "Base properties shared by all cosmic objects (exoplanets, stars, small bodies).",
+        "properties": {
+          "id": { "type": "string", "description": "URL-safe slug identifier." },
+          "type": { "type": "string", "enum": ["EXOPLANET", "SMALL_BODY", "STAR"] },
+          "displayName": { "type": "string", "description": "Human-readable display name." },
+          "aliases": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Alternative names or designations."
+          },
+          "source": { "type": "string", "enum": ["NASA_EXOPLANET_ARCHIVE", "JPL_SBDB"] },
+          "sourceId": { "type": "string", "description": "Original upstream identifier." },
+          "summary": { "type": "string", "description": "Auto-generated description of the object." },
+          "keyFacts": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/KeyFact" }
+          },
+          "links": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/SourceLink" }
+          },
+          "discoveredYear": { "type": "integer" }
+        }
+      },
+      "ExoplanetData": {
+        "allOf": [
+          { "$ref": "#/components/schemas/CosmicObjectBase" },
+          {
+            "type": "object",
+            "required": ["type", "hostStar", "discoveryMethod"],
+            "properties": {
+              "type": { "type": "string", "const": "EXOPLANET" },
+              "hostStar": { "type": "string", "description": "Name of the host star." },
+              "discoveryMethod": { "type": "string", "description": "Method used to discover the exoplanet (e.g., Transit, Radial Velocity)." },
+              "discoveryFacility": { "type": "string", "description": "Facility or mission that discovered the exoplanet." },
+              "orbitalPeriodDays": { "type": "number", "description": "Orbital period in days." },
+              "radiusEarth": { "type": "number", "description": "Radius in Earth radii." },
+              "massEarth": { "type": "number", "description": "Mass in Earth masses." },
+              "massIsEstimated": { "type": "boolean", "description": "Whether the mass value is an estimate rather than a measurement." },
+              "distanceParsecs": { "type": "number", "description": "Distance from Earth in parsecs." },
+              "equilibriumTempK": { "type": "number", "description": "Equilibrium temperature in Kelvin." },
+              "starsInSystem": { "type": "integer", "description": "Number of stars in the system." },
+              "planetsInSystem": { "type": "integer", "description": "Number of planets in the system." },
+              "spectralType": { "type": "string", "description": "Spectral type of the host star." },
+              "starTempK": { "type": "number", "description": "Host star effective temperature in Kelvin." },
+              "starMassSolar": { "type": "number", "description": "Host star mass in solar masses." },
+              "starRadiusSolar": { "type": "number", "description": "Host star radius in solar radii." },
+              "starLuminosity": { "type": "number", "description": "Host star luminosity (log solar luminosities)." },
+              "ra": { "type": "number", "description": "Right ascension in degrees." },
+              "dec": { "type": "number", "description": "Declination in degrees." }
+            }
+          }
+        ]
+      },
+      "StarData": {
+        "allOf": [
+          { "$ref": "#/components/schemas/CosmicObjectBase" },
+          {
+            "type": "object",
+            "required": ["type", "hostname", "planetCount"],
+            "properties": {
+              "type": { "type": "string", "const": "STAR" },
+              "hostname": { "type": "string", "description": "Canonical host star name." },
+              "spectralType": { "type": "string", "description": "Full spectral type string (e.g., G2V)." },
+              "spectralClass": {
+                "type": "string",
+                "enum": ["O", "B", "A", "F", "G", "K", "M", "Unknown"],
+                "description": "Derived spectral class letter."
+              },
+              "starTempK": { "type": "number", "description": "Effective temperature in Kelvin." },
+              "starMassSolar": { "type": "number", "description": "Mass in solar masses." },
+              "starRadiusSolar": { "type": "number", "description": "Radius in solar radii." },
+              "starLuminosity": { "type": "number", "description": "Luminosity (log solar luminosities)." },
+              "metallicityFeH": { "type": "number", "description": "Metallicity [Fe/H] in dex." },
+              "ageGyr": { "type": "number", "description": "Estimated age in billions of years." },
+              "distanceParsecs": { "type": "number", "description": "Distance from Earth in parsecs." },
+              "vMag": { "type": "number", "description": "Visual (V-band) magnitude." },
+              "kMag": { "type": "number", "description": "Infrared (K-band) magnitude." },
+              "ra": { "type": "number", "description": "Right ascension in degrees." },
+              "dec": { "type": "number", "description": "Declination in degrees." },
+              "starsInSystem": { "type": "integer", "description": "Number of stars in the system." },
+              "planetsInSystem": { "type": "integer", "description": "Number of planets in the system." },
+              "planetCount": { "type": "integer", "description": "Number of known planets orbiting this star." }
+            }
+          }
+        ]
+      },
+      "SmallBodyData": {
+        "allOf": [
+          { "$ref": "#/components/schemas/CosmicObjectBase" },
+          {
+            "type": "object",
+            "required": ["type", "bodyKind", "orbitClass", "isNeo", "isPha"],
+            "properties": {
+              "type": { "type": "string", "const": "SMALL_BODY" },
+              "bodyKind": { "type": "string", "enum": ["asteroid", "comet"], "description": "Whether the body is an asteroid or comet." },
+              "orbitClass": { "type": "string", "description": "Orbit class code (e.g., APO, MBA, JFC, HTC)." },
+              "isNeo": { "type": "boolean", "description": "Whether this is a near-Earth object." },
+              "isPha": { "type": "boolean", "description": "Whether this is a potentially hazardous asteroid." },
+              "diameterKm": { "type": "number", "description": "Measured diameter in kilometers." },
+              "absoluteMagnitude": { "type": "number", "description": "Absolute magnitude (H)." }
+            }
+          }
+        ]
+      },
+      "CloseApproach": {
+        "type": "object",
+        "required": [
+          "id", "designation", "orbitId", "approachTimeRaw",
+          "distanceAu", "distanceKm", "distanceLd",
+          "distanceMinAu", "distanceMaxAu",
+          "relativeVelocityKmS", "absoluteMagnitude"
+        ],
+        "description": "A close approach event for a near-Earth asteroid.",
+        "properties": {
+          "id": { "type": "string", "description": "Unique event ID derived from designation, orbit ID, and close-approach date." },
+          "designation": { "type": "string", "description": "Object designation (e.g., '2024 YY8', '433 Eros')." },
+          "orbitId": { "type": "string", "description": "Orbit solution ID." },
+          "fullName": { "type": "string", "description": "Formatted full name of the object." },
+          "approachTimeRaw": { "type": "string", "description": "Raw close-approach date/time string from the API (e.g., '2025-Jan-01 05:24')." },
+          "timeUncertainty": { "type": "string", "description": "Formatted timing uncertainty (e.g., '00:19' meaning plus/minus 19 minutes)." },
+          "jd": { "type": "number", "description": "Julian date of the close approach." },
+          "distanceAu": { "type": "number", "description": "Nominal distance in astronomical units." },
+          "distanceKm": { "type": "number", "description": "Nominal distance in kilometers." },
+          "distanceLd": { "type": "number", "description": "Nominal distance in lunar distances." },
+          "distanceMinAu": { "type": "number", "description": "3-sigma minimum distance in AU." },
+          "distanceMaxAu": { "type": "number", "description": "3-sigma maximum distance in AU." },
+          "relativeVelocityKmS": { "type": "number", "description": "Relative velocity in km/s." },
+          "velocityInfinityKmS": { "type": "number", "description": "Velocity at infinity (hyperbolic excess velocity) in km/s." },
+          "absoluteMagnitude": { "type": "number", "description": "Absolute magnitude (H value)." },
+          "diameterMeasured": {
+            "type": "object",
+            "description": "Measured diameter from the API (often absent).",
+            "required": ["km"],
+            "properties": {
+              "km": { "type": "number" },
+              "sigma": { "type": "number" }
+            }
+          },
+          "diameterEstimated": {
+            "type": "object",
+            "description": "Estimated diameter range computed from H value and albedo assumptions.",
+            "required": ["minKm", "maxKm", "albedoRange"],
+            "properties": {
+              "minKm": { "type": "number" },
+              "maxKm": { "type": "number" },
+              "albedoRange": {
+                "type": "array",
+                "items": { "type": "number" },
+                "minItems": 2,
+                "maxItems": 2,
+                "description": "Assumed albedo range [low, high] (e.g., [0.05, 0.25])."
+              }
+            }
+          },
+          "isPha": { "type": "boolean", "description": "Whether this object is a potentially hazardous asteroid." }
+        }
+      },
+      "FireballEvent": {
+        "type": "object",
+        "required": [
+          "id", "date", "dateRaw", "radiatedEnergyJ",
+          "hasLocation", "hasAltitude", "hasVelocity", "isComplete"
+        ],
+        "description": "An atmospheric impact (fireball) event.",
+        "properties": {
+          "id": { "type": "string", "description": "Generated date-based slug identifier." },
+          "date": { "type": "string", "format": "date-time", "description": "ISO datetime of the event." },
+          "dateRaw": { "type": "string", "description": "Raw date string from the CNEOS API." },
+          "radiatedEnergyJ": { "type": "number", "description": "Total radiated energy in Joules (x10^10 scale)." },
+          "impactEnergyKt": { "type": "number", "description": "Impact energy in kilotons of TNT equivalent." },
+          "latitude": { "type": "number", "description": "Latitude at peak brightness (positive = N, negative = S)." },
+          "longitude": { "type": "number", "description": "Longitude at peak brightness (positive = E, negative = W)." },
+          "altitudeKm": { "type": "number", "description": "Altitude at peak brightness in kilometers." },
+          "velocityKmS": { "type": "number", "description": "Entry velocity in km/s." },
+          "hasLocation": { "type": "boolean", "description": "Whether latitude and longitude are both present." },
+          "hasAltitude": { "type": "boolean", "description": "Whether altitude data is present." },
+          "hasVelocity": { "type": "boolean", "description": "Whether velocity data is present." },
+          "isComplete": { "type": "boolean", "description": "Whether all optional fields are present." }
+        }
+      },
+      "SpaceWeatherEventBase": {
+        "type": "object",
+        "required": ["id", "eventType", "startTime"],
+        "description": "Base properties shared by all space weather events.",
+        "properties": {
+          "id": { "type": "string", "description": "DONKI activity ID." },
+          "eventType": { "type": "string", "enum": ["FLR", "CME", "GST"] },
+          "startTime": { "type": "string", "format": "date-time", "description": "ISO datetime when the event started." },
+          "linkedEvents": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["activityID"],
+              "properties": {
+                "activityID": { "type": "string" }
+              },
+              "additionalProperties": true
+            },
+            "description": "Linked DONKI events."
+          }
+        }
+      },
+      "SolarFlareEvent": {
+        "allOf": [
+          { "$ref": "#/components/schemas/SpaceWeatherEventBase" },
+          {
+            "type": "object",
+            "required": ["eventType", "classType"],
+            "properties": {
+              "eventType": { "type": "string", "const": "FLR" },
+              "peakTime": { "type": "string", "format": "date-time", "description": "ISO datetime of peak intensity." },
+              "endTime": { "type": "string", "format": "date-time", "description": "ISO datetime when the flare ended." },
+              "classType": { "type": "string", "description": "X-ray class (e.g., 'M1.2', 'X2.5')." },
+              "sourceLocation": { "type": "string", "description": "Heliographic coordinates (e.g., 'N15W30')." },
+              "activeRegionNum": { "type": "integer", "description": "NOAA active region number." }
+            }
+          }
+        ]
+      },
+      "CMEEvent": {
+        "allOf": [
+          { "$ref": "#/components/schemas/SpaceWeatherEventBase" },
+          {
+            "type": "object",
+            "required": ["eventType"],
+            "properties": {
+              "eventType": { "type": "string", "const": "CME" },
+              "sourceLocation": { "type": "string", "description": "Heliographic coordinates." },
+              "activeRegionNum": { "type": "integer", "description": "NOAA active region number." },
+              "speed": { "type": "number", "description": "CME speed in km/s (from analysis)." },
+              "halfAngle": { "type": "number", "description": "Half-angle of the CME in degrees." },
+              "cmeType": { "type": "string", "description": "CME type code (e.g., 'S', 'C', 'O')." }
+            }
+          }
+        ]
+      },
+      "GSTEvent": {
+        "allOf": [
+          { "$ref": "#/components/schemas/SpaceWeatherEventBase" },
+          {
+            "type": "object",
+            "required": ["eventType", "kpIndex", "allKpReadings"],
+            "properties": {
+              "eventType": { "type": "string", "const": "GST" },
+              "kpIndex": { "type": "number", "description": "Maximum Kp index value during the storm." },
+              "allKpReadings": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["observedTime", "kpIndex", "source"],
+                  "properties": {
+                    "observedTime": { "type": "string", "format": "date-time" },
+                    "kpIndex": { "type": "number" },
+                    "source": { "type": "string" }
+                  }
+                },
+                "description": "All individual Kp readings for this storm."
+              }
+            }
+          }
+        ]
+      },
+      "AnySpaceWeatherEvent": {
+        "description": "A space weather event, discriminated by `eventType`.",
+        "oneOf": [
+          { "$ref": "#/components/schemas/SolarFlareEvent" },
+          { "$ref": "#/components/schemas/CMEEvent" },
+          { "$ref": "#/components/schemas/GSTEvent" }
+        ],
+        "discriminator": {
+          "propertyName": "eventType",
+          "mapping": {
+            "FLR": "#/components/schemas/SolarFlareEvent",
+            "CME": "#/components/schemas/CMEEvent",
+            "GST": "#/components/schemas/GSTEvent"
+          }
+        }
+      },
+      "APODData": {
+        "type": "object",
+        "required": ["date", "title", "explanation", "imageUrl", "mediaType"],
+        "description": "NASA Astronomy Picture of the Day.",
+        "properties": {
+          "date": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$", "description": "Date of the APOD (YYYY-MM-DD)." },
+          "title": { "type": "string" },
+          "explanation": { "type": "string", "description": "Detailed explanation of the image or video." },
+          "imageUrl": { "type": "string", "format": "uri", "description": "URL of the standard resolution image (or video embed URL)." },
+          "imageUrlHd": { "type": "string", "format": "uri", "description": "URL of the high-definition image, if available." },
+          "mediaType": { "type": "string", "enum": ["image", "video"], "description": "Whether the APOD is an image or video." },
+          "copyright": { "type": "string", "description": "Copyright holder, if the APOD is not in the public domain." },
+          "thumbnailUrl": { "type": "string", "format": "uri", "description": "Thumbnail URL (primarily for video APODs)." }
+        }
+      },
+      "NasaImage": {
+        "type": "object",
+        "required": ["nasaId", "title", "thumbnailUrl", "imageUrl"],
+        "description": "An image from the NASA Image Library.",
+        "properties": {
+          "nasaId": { "type": "string", "description": "NASA image identifier." },
+          "title": { "type": "string" },
+          "description": { "type": "string" },
+          "center": { "type": "string", "description": "NASA center that produced the image." },
+          "dateCreated": { "type": "string", "format": "date-time" },
+          "keywords": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "credit": { "type": "string" },
+          "thumbnailUrl": { "type": "string", "format": "uri" },
+          "imageUrl": { "type": "string", "format": "uri" }
+        }
+      }
+    },
+    "responses": {
+      "ValidationError": {
+        "description": "Invalid query parameters (400). Returned when Zod validation fails, a date range is invalid, or cursor/page pagination modes conflict.",
+        "headers": { "$ref": "#/components/headers/StandardResponseHeaders" },
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+            "examples": {
+              "validationError": {
+                "summary": "Zod validation failure",
+                "value": {
+                  "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "Invalid query parameters.",
+                    "details": {
+                      "fieldErrors": { "limit": ["Number must be less than or equal to 48"] },
+                      "formErrors": []
+                    }
+                  },
+                  "meta": { "requestId": "550e8400-e29b-41d4-a716-446655440000", "apiVersion": "1", "timestamp": "2025-01-15T12:00:00.000Z" }
+                }
+              },
+              "paginationConflict": {
+                "summary": "Cursor and offset mixed",
+                "value": {
+                  "error": {
+                    "code": "PAGINATION_CONFLICT",
+                    "message": "Contradictory pagination: cannot combine cursor-mode signals (cursor, paginationMode=cursor) with offset-mode signals (page, paginationMode=offset). Use one or the other."
+                  },
+                  "meta": { "requestId": "550e8400-e29b-41d4-a716-446655440000", "apiVersion": "1", "timestamp": "2025-01-15T12:00:00.000Z" }
+                }
+              },
+              "invalidDateRange": {
+                "summary": "Future APOD date requested",
+                "value": {
+                  "error": {
+                    "code": "INVALID_DATE_RANGE",
+                    "message": "Cannot request APOD for a future date."
+                  },
+                  "meta": { "requestId": "550e8400-e29b-41d4-a716-446655440000", "apiVersion": "1", "timestamp": "2025-01-15T12:00:00.000Z" }
+                }
+              }
+            }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "Resource not found (404).",
+        "headers": { "$ref": "#/components/headers/StandardResponseHeaders" },
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+            "example": {
+              "error": { "code": "NOT_FOUND", "message": "Exoplanet not found." },
+              "meta": { "requestId": "550e8400-e29b-41d4-a716-446655440000", "apiVersion": "1", "timestamp": "2025-01-15T12:00:00.000Z" }
+            }
+          }
+        }
+      },
+      "RateLimitExceeded": {
+        "description": "Rate limit exceeded (429). Browse endpoints allow 100 req/min; detail endpoints allow 200 req/min.",
+        "headers": {
+          "$ref": "#/components/headers/StandardResponseHeaders",
+          "Retry-After": {
+            "description": "Seconds until the client may retry.",
+            "schema": { "type": "string" }
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+            "example": {
+              "error": { "code": "RATE_LIMIT_EXCEEDED", "message": "Rate limit exceeded. Please try again later." },
+              "meta": { "requestId": "550e8400-e29b-41d4-a716-446655440000", "apiVersion": "1", "timestamp": "2025-01-15T12:00:00.000Z" }
+            }
+          }
+        }
+      },
+      "InternalError": {
+        "description": "Unexpected internal error (500).",
+        "headers": { "$ref": "#/components/headers/StandardResponseHeaders" },
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+            "example": {
+              "error": { "code": "INTERNAL_ERROR", "message": "An unexpected error occurred. Please try again later." },
+              "meta": { "requestId": "550e8400-e29b-41d4-a716-446655440000", "apiVersion": "1", "timestamp": "2025-01-15T12:00:00.000Z" }
+            }
+          }
+        }
+      },
+      "ContractMismatch": {
+        "description": "Upstream API response format changed unexpectedly (502). This indicates the upstream data source (NASA, JPL, etc.) changed their response shape and the API client contract no longer matches.",
+        "headers": { "$ref": "#/components/headers/StandardResponseHeaders" },
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+            "example": {
+              "error": { "code": "CONTRACT_MISMATCH", "message": "Upstream API response format has changed. This is being investigated." },
+              "meta": { "requestId": "550e8400-e29b-41d4-a716-446655440000", "apiVersion": "1", "timestamp": "2025-01-15T12:00:00.000Z" }
+            }
+          }
+        }
+      },
+      "UpstreamUnavailable": {
+        "description": "Upstream data source temporarily unavailable (503). Includes a Retry-After header.",
+        "headers": {
+          "$ref": "#/components/headers/StandardResponseHeaders",
+          "Retry-After": {
+            "description": "Seconds until the client should retry.",
+            "schema": { "type": "string" }
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+            "example": {
+              "error": { "code": "UPSTREAM_UNAVAILABLE", "message": "Upstream data source is temporarily unavailable. Please try again." },
+              "meta": { "requestId": "550e8400-e29b-41d4-a716-446655440000", "apiVersion": "1", "timestamp": "2025-01-15T12:00:00.000Z" }
+            }
+          }
+        }
+      },
+      "IndexUnavailable": {
+        "description": "Turso database index temporarily unavailable (503). This specifically affects the Stars feature. Includes a Retry-After header.",
+        "headers": {
+          "$ref": "#/components/headers/StandardResponseHeaders",
+          "Retry-After": {
+            "description": "Seconds until the client should retry.",
+            "schema": { "type": "string" }
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+            "example": {
+              "error": { "code": "INDEX_UNAVAILABLE", "message": "Index is temporarily unavailable. Please try again later." },
+              "meta": { "requestId": "550e8400-e29b-41d4-a716-446655440000", "apiVersion": "1", "timestamp": "2025-01-15T12:00:00.000Z" }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,31 +1,24 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { getExoplanetBySlug } from "@/lib/exoplanet-index";
 import { fetchExoplanetBySlug } from "@/lib/nasa-exoplanet";
 import { getCacheControlHeader, CACHE_TTL } from "@/lib/cache";
-import { checkRateLimit, getClientIdentifier, getRateLimitHeaders } from "@/lib/rate-limit";
 import { ExoplanetDataSchema } from "@/lib/types";
+import { initRequest, withRateLimit } from "@/lib/api-middleware";
+import { apiSuccess, apiError, handleRouteError } from "@/lib/api-response";
+import { ErrorCode, ERROR_STATUS } from "@/lib/api-errors";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
+  const { requestId } = initRequest();
+
+  const rateLimit = await withRateLimit(request, "DETAIL", requestId);
+  if (rateLimit instanceof Response) return rateLimit;
+
+  const { id } = await params;
+
   try {
-    const { id } = await params;
-
-    // Rate limiting
-    const clientId = getClientIdentifier(request);
-    const rateLimitResult = await checkRateLimit(clientId, "DETAIL");
-
-    if (!rateLimitResult.allowed) {
-      return NextResponse.json(
-        { error: "Rate limit exceeded. Please try again later." },
-        {
-          status: 429,
-          headers: getRateLimitHeaders(rateLimitResult),
-        }
-      );
-    }
-
     // Try Turso index first (fast, no external API call)
     let exoplanet = await getExoplanetBySlug(id);
 
@@ -35,27 +28,23 @@ export async function GET(
     }
 
     if (!exoplanet) {
-      return NextResponse.json(
-        { error: "Exoplanet not found" },
-        { status: 404 }
+      return apiError(
+        ErrorCode.NOT_FOUND,
+        "Exoplanet not found.",
+        ERROR_STATUS[ErrorCode.NOT_FOUND],
+        requestId,
+        undefined,
+        rateLimit.headers,
       );
     }
 
-    // Validate with schema to ensure all fields are present (prevents field stripping)
     const validated = ExoplanetDataSchema.parse(exoplanet);
 
-    // Return response with cache headers
-    return NextResponse.json(validated, {
-      headers: {
-        "Cache-Control": getCacheControlHeader(CACHE_TTL.EXOPLANETS_DETAIL),
-        ...getRateLimitHeaders(rateLimitResult),
-      },
+    return apiSuccess(validated, requestId, {
+      "Cache-Control": getCacheControlHeader(CACHE_TTL.EXOPLANETS_DETAIL),
+      ...rateLimit.headers,
     });
   } catch (error) {
-    console.error("Error fetching exoplanet:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch exoplanet. Please try again later." },
-      { status: 500 }
-    );
+    return handleRouteError(error, requestId, rateLimit.headers);
   }
 }

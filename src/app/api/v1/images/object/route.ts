@@ -1,10 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { z } from "zod";
 import { getCacheControlHeader, CACHE_TTL } from "@/lib/cache";
-import { checkRateLimit, getClientIdentifier, getRateLimitHeaders } from "@/lib/rate-limit";
 import { searchImagesForObjectWithTtl } from "@/lib/nasa-images";
+import { initRequest, withRateLimit, validateParams } from "@/lib/api-middleware";
+import { apiSuccess, handleRouteError } from "@/lib/api-response";
 
-// Zod schema for query parameters
 const ImageQuerySchema = z.object({
   type: z.enum(["EXOPLANET", "SMALL_BODY", "STAR"]),
   name: z
@@ -20,35 +20,18 @@ const ImageQuerySchema = z.object({
 });
 
 export async function GET(request: NextRequest) {
+  const { requestId } = initRequest();
+
+  const rateLimit = await withRateLimit(request, "DETAIL", requestId);
+  if (rateLimit instanceof Response) return rateLimit;
+
+  const searchParams = Object.fromEntries(request.nextUrl.searchParams);
+  const params = validateParams(searchParams, ImageQuerySchema, requestId);
+  if (params instanceof Response) return params;
+
   try {
-    // Rate limiting
-    const clientId = getClientIdentifier(request);
-    const rateLimitResult = await checkRateLimit(clientId, "DETAIL");
+    const { type, name, hostStar, bodyKind } = params.data;
 
-    if (!rateLimitResult.allowed) {
-      return NextResponse.json(
-        { error: "Rate limit exceeded. Please try again later." },
-        {
-          status: 429,
-          headers: getRateLimitHeaders(rateLimitResult),
-        }
-      );
-    }
-
-    // Parse and validate query params
-    const searchParams = Object.fromEntries(request.nextUrl.searchParams);
-    const parsed = ImageQuerySchema.safeParse(searchParams);
-
-    if (!parsed.success) {
-      return NextResponse.json(
-        { error: "Invalid parameters", details: parsed.error.flatten() },
-        { status: 400 }
-      );
-    }
-
-    const { type, name, hostStar, bodyKind } = parsed.data;
-
-    // Search for images (handles query chain + asset resolution + caching)
     const result = await searchImagesForObjectWithTtl({
       type,
       name,
@@ -56,22 +39,15 @@ export async function GET(request: NextRequest) {
       bodyKind,
     });
 
-    // Use shorter cache header if no images found
     const ttl = result.images.length > 0
       ? CACHE_TTL.NASA_IMAGES
       : CACHE_TTL.NASA_IMAGES_EMPTY;
 
-    return NextResponse.json(result, {
-      headers: {
-        "Cache-Control": getCacheControlHeader(ttl),
-        ...getRateLimitHeaders(rateLimitResult),
-      },
+    return apiSuccess(result, requestId, {
+      "Cache-Control": getCacheControlHeader(ttl),
+      ...rateLimit.headers,
     });
   } catch (error) {
-    console.error("[NASA Images Route] Error:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch images. Please try again later." },
-      { status: 500 }
-    );
+    return handleRouteError(error, requestId, rateLimit.headers);
   }
 }

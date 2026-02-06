@@ -11,6 +11,16 @@ import {
   formatNumber,
 } from "./types";
 import { DEFAULT_PAGE_SIZE } from "./constants";
+import {
+  CursorPayload,
+  decodeCursor,
+  encodeCursor,
+  validateCursor,
+  hashFilters,
+  buildKeysetWhereClause,
+  STAR_SORT_CONFIG,
+  CursorValidationError,
+} from "./cursor";
 
 // Lazy singleton for Turso client
 let client: Client | null = null;
@@ -215,10 +225,20 @@ function buildOrderByClause(sort?: StarQueryParams["sort"], order?: SortOrder): 
   }
 }
 
-// Search stars with pagination
+// Extended result type for cursor-aware responses
+export interface StarSearchResult extends PaginatedResponse<StarData> {
+  nextCursor?: string;
+  usedCursor: boolean;
+}
+
+// Default sort map for resolving effective sort/order
+const DEFAULT_STAR_SORT = "name";
+const DEFAULT_STAR_ORDER: SortOrder = "asc";
+
+// Search stars with pagination (offset or cursor mode)
 export async function searchStars(
   params: StarQueryParams
-): Promise<PaginatedResponse<StarData>> {
+): Promise<StarSearchResult> {
   const db = getClient();
 
   if (!db) {
@@ -228,11 +248,102 @@ export async function searchStars(
       page: params.page ?? 1,
       limit: params.limit ?? DEFAULT_PAGE_SIZE,
       hasMore: false,
+      usedCursor: false,
     };
   }
 
-  const page = params.page ?? 1;
   const limit = params.limit ?? DEFAULT_PAGE_SIZE;
+  const effectiveSort = params.sort || DEFAULT_STAR_SORT;
+  const effectiveOrder = params.order || DEFAULT_STAR_SORT_DIRECTIONS[effectiveSort] || DEFAULT_STAR_ORDER;
+  const useCursor = params.paginationMode === "cursor" || params.cursor !== undefined;
+
+  // ── Cursor mode ──────────────────────────────────────────────────────────
+  if (useCursor) {
+    const filterHash = await hashFilters(params as Record<string, unknown>);
+    const sortConfig = STAR_SORT_CONFIG[effectiveSort];
+
+    // Validate cursor if provided
+    let cursorPayload: CursorPayload | undefined;
+    if (params.cursor) {
+      const decoded = decodeCursor(params.cursor);
+      if (!decoded) {
+        throw new CursorValidationError("MALFORMED");
+      }
+      const validation = validateCursor(decoded, effectiveSort, effectiveOrder, filterHash);
+      if (!validation.valid) {
+        throw new CursorValidationError(validation.reason);
+      }
+      cursorPayload = validation.payload;
+    }
+
+    const { clause: filterClause, args: filterArgs } = buildWhereClause(params);
+    const orderBy = buildOrderByClause(params.sort, params.order);
+
+    // Build cursor WHERE clause
+    let cursorClause = "";
+    let cursorArgs: (string | number)[] = [];
+    if (cursorPayload && sortConfig) {
+      const keyset = buildKeysetWhereClause(cursorPayload, sortConfig, effectiveOrder);
+      cursorClause = keyset.clause;
+      cursorArgs = keyset.args;
+    }
+
+    // Combine filter + cursor WHERE clauses
+    const allConditions: string[] = [];
+    const allArgs: (string | number)[] = [];
+
+    if (filterClause) {
+      allConditions.push(filterClause.replace(/^WHERE\s+/i, ""));
+      allArgs.push(...filterArgs);
+    }
+    if (cursorClause) {
+      allConditions.push(cursorClause);
+      allArgs.push(...cursorArgs);
+    }
+
+    const combinedWhere = allConditions.length > 0
+      ? `WHERE ${allConditions.join(" AND ")}`
+      : "";
+
+    // Fetch limit + 1 for hasMore detection
+    const dataQuery = `SELECT * FROM stars ${combinedWhere} ${orderBy} LIMIT ?`;
+    const dataArgs = [...allArgs, limit + 1];
+    const dataResult = await db.execute({ sql: dataQuery, args: dataArgs });
+
+    const hasMore = dataResult.rows.length > limit;
+    const rows = dataResult.rows.slice(0, limit);
+    const objects = rows.map((row) => transformStarRow(row as unknown as StarRow));
+
+    // Mint next cursor from last row
+    let nextCursor: string | undefined;
+    if (hasMore && rows.length > 0) {
+      const lastRow = rows[rows.length - 1] as unknown as StarRow;
+      const primaryValue = sortConfig
+        ? getStarSortValue(lastRow, effectiveSort)
+        : lastRow.hostname;
+      nextCursor = encodeCursor({
+        cv: 1,
+        s: effectiveSort,
+        o: effectiveOrder,
+        f: filterHash,
+        v: [primaryValue, lastRow.id],
+        d: "n",
+      });
+    }
+
+    return {
+      objects,
+      total: 0, // Not computed in cursor mode
+      page: 0,
+      limit,
+      hasMore,
+      nextCursor,
+      usedCursor: true,
+    };
+  }
+
+  // ── Offset mode (default) ────────────────────────────────────────────────
+  const page = params.page ?? 1;
   const offset = (page - 1) * limit;
 
   const { clause, args } = buildWhereClause(params);
@@ -256,8 +367,24 @@ export async function searchStars(
     page,
     limit,
     hasMore: page * limit < total,
+    usedCursor: false,
   };
 }
+
+/** Extract the primary sort value from a StarRow for cursor minting */
+function getStarSortValue(row: StarRow, sort: string): string | number | null {
+  switch (sort) {
+    case "distance": return row.distance_parsecs;
+    case "vmag": return row.vmag;
+    case "planetCount":
+    case "planetCountDesc": return row.planet_count;
+    case "name":
+    default: return row.hostname;
+  }
+}
+
+// CursorValidationError is re-exported from cursor.ts
+export { CursorValidationError } from "./cursor";
 
 // Get star by slug (URL-safe identifier)
 export async function getStarBySlug(slug: string): Promise<StarData | null> {

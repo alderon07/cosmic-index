@@ -8,7 +8,8 @@ import { ObjectDetailModal } from "@/components/object-detail-modal";
 import { SearchBar } from "@/components/search-bar";
 import { ExoplanetFilterPanel, ExoplanetFilters } from "@/components/filter-panel";
 import { Pagination, PaginationInfo } from "@/components/pagination";
-import { AnyCosmicObject, ExoplanetData, PaginatedResponse } from "@/lib/types";
+import { AnyCosmicObject, ExoplanetData } from "@/lib/types";
+import { apiFetchPaginated, PaginatedResult } from "@/lib/api-client";
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "@/lib/constants";
 import { THEMES } from "@/lib/theme";
 import { ViewToggle, ViewMode } from "@/components/view-toggle";
@@ -79,7 +80,7 @@ function ExoplanetsPageContent() {
     saveListUrl("exoplanets", query ? `${pathname}?${query}` : pathname);
   }, [searchParams, pathname]);
 
-  const [data, setData] = useState<PaginatedResponse<ExoplanetData> | null>(null);
+  const [data, setData] = useState<PaginatedResult<ExoplanetData> | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedObject, setSelectedObject] = useState<AnyCosmicObject | null>(null);
@@ -112,7 +113,7 @@ function ExoplanetsPageContent() {
 
   // Clamp page when data loads (handle out-of-range)
   useEffect(() => {
-    if (data && data.total > 0) {
+    if (data && data.total && data.total > 0) {
       const maxPage = Math.ceil(data.total / limit);
       if (page > maxPage) {
         setPage(maxPage);
@@ -182,7 +183,7 @@ function ExoplanetsPageContent() {
   }, [view, handleViewChange]);
 
   const nextPage = useCallback(() => {
-    const totalPages = data ? Math.ceil(data.total / limit) : 0;
+    const totalPages = data?.total ? Math.ceil(data.total / limit) : 0;
     if (page < totalPages) {
       setPage(page + 1);
     }
@@ -227,13 +228,7 @@ function ExoplanetsPageContent() {
       params.set("page", page.toString());
       params.set("limit", limit.toString());
 
-      const response = await fetch(`/api/exoplanets?${params.toString()}`);
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch exoplanets");
-      }
-
-      const result: PaginatedResponse<ExoplanetData> = await response.json();
+      const result = await apiFetchPaginated<ExoplanetData>(`/exoplanets?${params.toString()}`);
       setData(result);
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
@@ -246,7 +241,7 @@ function ExoplanetsPageContent() {
     fetchData();
   }, [fetchData]);
 
-  const totalPages = data ? Math.ceil(data.total / limit) : 0;
+  const totalPages = data?.total ? Math.ceil(data.total / limit) : 0;
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -305,7 +300,7 @@ function ExoplanetsPageContent() {
           <PaginationInfo
             currentPage={page}
             pageSize={limit}
-            totalItems={data.total}
+            totalItems={data.total ?? 0}
           />
           {totalPages > 1 && (
             <Pagination

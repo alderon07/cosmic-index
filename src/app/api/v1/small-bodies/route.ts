@@ -1,126 +1,112 @@
-import { NextRequest, NextResponse } from "next/server";
-import {
-  fetchSmallBodies,
-  isContractMismatch,
-  isUpstreamFailure,
-} from "@/lib/jpl-sbdb";
+import { NextRequest } from "next/server";
+import { fetchSmallBodies } from "@/lib/jpl-sbdb";
 import { SmallBodyQuerySchema } from "@/lib/types";
 import { getCacheControlHeader, CACHE_TTL } from "@/lib/cache";
+import { initRequest, withRateLimit, validateParams, validateNoPaginationConflict } from "@/lib/api-middleware";
+import { apiPaginated, apiError, handleRouteError } from "@/lib/api-response";
 import {
-  checkRateLimit,
-  getClientIdentifier,
-  getRateLimitHeaders,
-} from "@/lib/rate-limit";
+  decodeCursor,
+  encodeCursor,
+  validateCursor,
+  hashFilters,
+  CursorValidationError,
+} from "@/lib/cursor";
+import { ErrorCode, ERROR_STATUS } from "@/lib/api-errors";
 
 export async function GET(request: NextRequest) {
-  // Generate request ID for debugging
-  const requestId = crypto.randomUUID();
+  const { requestId } = initRequest();
+
+  const rateLimit = await withRateLimit(request, "BROWSE", requestId);
+  if (rateLimit instanceof Response) return rateLimit;
+
+  const searchParams = Object.fromEntries(request.nextUrl.searchParams);
+  const params = validateParams(searchParams, SmallBodyQuerySchema, requestId);
+  if (params instanceof Response) return params;
+
+  // Strict: cursor + page can't coexist
+  const conflict = validateNoPaginationConflict(params.data, requestId);
+  if (conflict) return conflict;
+
+  const useCursor = params.data.paginationMode === "cursor" || params.data.cursor !== undefined;
 
   try {
-    // Rate limiting
-    const clientId = getClientIdentifier(request);
-    const rateLimitResult = await checkRateLimit(clientId, "BROWSE");
+    if (useCursor) {
+      // Offset-encoded cursor mode for SBDB
+      // The cursor encodes the offset value, validated against sort/filter fingerprint
+      const effectiveSort = "name"; // SBDB has a fixed sort
+      const effectiveOrder = "asc" as const;
+      const filterHash = await hashFilters(params.data as Record<string, unknown>);
+      const limit = params.data.limit ?? 24;
 
-    if (!rateLimitResult.allowed) {
-      return NextResponse.json(
-        { error: "Rate limit exceeded. Please try again later." },
-        {
-          status: 429,
-          headers: getRateLimitHeaders(rateLimitResult),
+      let page = 1;
+      if (params.data.cursor) {
+        const decoded = decodeCursor(params.data.cursor);
+        if (!decoded) {
+          throw new CursorValidationError("MALFORMED");
         }
-      );
-    }
+        const validation = validateCursor(decoded, effectiveSort, effectiveOrder, filterHash);
+        if (!validation.valid) {
+          throw new CursorValidationError(validation.reason);
+        }
+        // Decode offset from cursor values — v[0] is the offset
+        const offset = decoded.v[0] as number;
+        page = Math.floor(offset / limit) + 1;
+      }
 
-    // Parse and validate query parameters
-    const searchParams = Object.fromEntries(request.nextUrl.searchParams);
-    const parseResult = SmallBodyQuerySchema.safeParse(searchParams);
+      const result = await fetchSmallBodies({ ...params.data, page, limit });
 
-    if (!parseResult.success) {
-      return NextResponse.json(
-        {
-          error: "Invalid query parameters",
-          details: parseResult.error.flatten(),
-        },
-        { status: 400 }
-      );
-    }
+      // Mint next cursor
+      let nextCursor: string | undefined;
+      if (result.hasMore) {
+        const nextOffset = page * limit;
+        nextCursor = encodeCursor({
+          cv: 1,
+          s: effectiveSort,
+          o: effectiveOrder,
+          f: filterHash,
+          v: [nextOffset, 0],
+          d: "n",
+        });
+      }
 
-    const params = parseResult.data;
-
-    // Fetch small bodies
-    const result = await fetchSmallBodies(params);
-
-    // Return response with cache headers
-    return NextResponse.json(result, {
-      headers: {
+      return apiPaginated(result.objects, {
+        mode: "cursor",
+        limit: result.limit,
+        hasMore: result.hasMore,
+        ...(nextCursor ? { nextCursor } : {}),
+      }, requestId, {
         "Cache-Control": getCacheControlHeader(CACHE_TTL.SMALL_BODIES_BROWSE),
-        ...getRateLimitHeaders(rateLimitResult),
-      },
+        ...rateLimit.headers,
+      });
+    }
+
+    // Offset mode (default)
+    const result = await fetchSmallBodies({
+      ...params.data,
+      page: params.data.page ?? 1,
+    });
+
+    return apiPaginated(result.objects, {
+      mode: "offset",
+      page: result.page,
+      limit: result.limit,
+      total: result.total,
+      hasMore: result.hasMore,
+    }, requestId, {
+      "Cache-Control": getCacheControlHeader(CACHE_TTL.SMALL_BODIES_BROWSE),
+      ...rateLimit.headers,
     });
   } catch (error) {
-    // Log error with request ID for debugging (server-side only)
-    const errorMessage =
-      error instanceof Error ? error.message : "Unknown error";
-    const errorType =
-      error instanceof Error ? error.constructor.name : "Unknown";
-
-    console.error(`[${requestId}] Error fetching small bodies:`, {
-      type: errorType,
-      message: errorMessage,
-      stack: error instanceof Error ? error.stack : undefined,
-    });
-
-    // Honest error classification
-    // 1. Upstream failure (5xx/timeout) -> 503 "temporarily unavailable"
-    // 2. Contract mismatch (400/422/parse errors) -> return empty results, not an error
-    // 3. Request cancelled -> don't surface as error
-    // 4. Other errors -> 500
-
-    if (error instanceof Error && error.message.includes("cancelled")) {
-      // User cancelled the request - not an error
-      return NextResponse.json(
-        { objects: [], total: 0, page: 1, limit: 20, hasMore: false },
-        { status: 200 }
-      );
-    }
-
-    if (isUpstreamFailure(error)) {
-      return NextResponse.json(
-        {
-          error: "Search temporarily unavailable. Please try again.",
-          requestId,
-        },
-        { status: 503 }
-      );
-    }
-
-    if (isContractMismatch(error)) {
-      // Contract mismatch - return empty results rather than failing
-      // This prevents user-facing errors on API contract changes
-      console.warn(
-        `[${requestId}] Contract mismatch, returning empty results:`,
-        errorMessage
-      );
-      return NextResponse.json(
-        { objects: [], total: 0, page: 1, limit: 20, hasMore: false },
-        {
-          status: 200,
-          headers: {
-            "Cache-Control": getCacheControlHeader(
-              CACHE_TTL.SMALL_BODIES_BROWSE
-            ),
-          },
-        }
-      );
-    }
-
-    // Unknown error
-    return NextResponse.json(
-      {
-        error: "Failed to fetch small bodies. Please try again later.",
+    if (error instanceof CursorValidationError) {
+      return apiError(
+        ErrorCode.VALIDATION_ERROR,
+        "Invalid cursor for this request.",
+        ERROR_STATUS[ErrorCode.VALIDATION_ERROR],
         requestId,
-      },
-      { status: 500 }
-    );
+        { reason: error.reason },
+        rateLimit.headers,
+      );
+    }
+    return handleRouteError(error, requestId, rateLimit.headers);
   }
 }

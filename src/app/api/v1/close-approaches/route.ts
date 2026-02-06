@@ -1,78 +1,41 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { fetchCloseApproaches } from "@/lib/cneos-close-approach";
 import { CloseApproachQuerySchema } from "@/lib/types";
 import { getCacheControlHeader, CACHE_TTL } from "@/lib/cache";
-import { checkRateLimit, getClientIdentifier, getRateLimitHeaders } from "@/lib/rate-limit";
+import { initRequest, withRateLimit, validateParams } from "@/lib/api-middleware";
+import { apiPaginated, handleRouteError } from "@/lib/api-response";
 
 export async function GET(request: NextRequest) {
-  const requestId = crypto.randomUUID();
+  const { requestId } = initRequest();
+
+  const rateLimit = await withRateLimit(request, "BROWSE", requestId);
+  if (rateLimit instanceof Response) return rateLimit;
+
+  const searchParams = Object.fromEntries(request.nextUrl.searchParams);
+  const params = validateParams(searchParams, CloseApproachQuerySchema, requestId);
+  if (params instanceof Response) return params;
 
   try {
-    // Rate limiting
-    const clientId = getClientIdentifier(request);
-    const rateLimitResult = await checkRateLimit(clientId, "BROWSE");
+    const result = await fetchCloseApproaches(params.data);
 
-    if (!rateLimitResult.allowed) {
-      return NextResponse.json(
-        { error: "Rate limit exceeded. Please try again later." },
-        {
-          status: 429,
-          headers: getRateLimitHeaders(rateLimitResult),
-        }
-      );
-    }
+    // Extract limit from params (CloseApproachQuerySchema has optional limit)
+    const limitApplied = params.data.limit ?? 100;
 
-    // Parse and validate query parameters
-    const searchParams = Object.fromEntries(request.nextUrl.searchParams);
-    const parseResult = CloseApproachQuerySchema.safeParse(searchParams);
-
-    if (!parseResult.success) {
-      return NextResponse.json(
-        {
-          error: "Invalid query parameters",
-          details: parseResult.error.flatten(),
-        },
-        { status: 400 }
-      );
-    }
-
-    const params = parseResult.data;
-
-    // Fetch close approaches
-    const result = await fetchCloseApproaches(params);
-
-    // Return response with cache headers
-    return NextResponse.json(result, {
-      headers: {
-        "Cache-Control": getCacheControlHeader(CACHE_TTL.CLOSE_APPROACH_LIST),
-        ...getRateLimitHeaders(rateLimitResult),
-      },
+    return apiPaginated(result.events, {
+      mode: "none",
+      hasMore: false as const,
+    }, requestId, {
+      "Cache-Control": getCacheControlHeader(CACHE_TTL.CLOSE_APPROACH_LIST),
+      ...rateLimit.headers,
+    }, {
+      count: result.events.length,
+      limitApplied,
+      ...(params.data.limit !== undefined ? { limitRequested: params.data.limit } : {}),
+      phaFilterApplied: result.meta.phaFilterApplied,
+      queryApplied: result.meta.queryApplied,
+      ...(result.highlights ? { highlights: result.highlights } : {}),
     });
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
-
-    console.error(`[${requestId}] Error fetching close approaches:`, {
-      message: errorMessage,
-      stack: error instanceof Error ? error.stack : undefined,
-    });
-
-    // Handle timeout errors
-    if (errorMessage.includes("timed out")) {
-      return NextResponse.json(
-        {
-          error: "CNEOS API temporarily unavailable. Please try again.",
-          requestId,
-        },
-        { status: 503 }
-      );
-    }
-
-    return NextResponse.json(
-      {
-        error: "Failed to fetch close approaches. Please try again later.",
-        requestId,
-      },
-      { status: 500 }
-    );
+    return handleRouteError(error, requestId, rateLimit.headers);
   }
 }

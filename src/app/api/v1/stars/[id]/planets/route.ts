@@ -1,58 +1,43 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { getStarBySlug } from "@/lib/star-index";
 import { fetchExoplanetsForHostStar } from "@/lib/nasa-exoplanet";
 import { getCacheControlHeader, CACHE_TTL } from "@/lib/cache";
-import { checkRateLimit, getClientIdentifier, getRateLimitHeaders } from "@/lib/rate-limit";
+import { initRequest, withRateLimit } from "@/lib/api-middleware";
+import { apiSuccess, apiError, handleRouteError } from "@/lib/api-response";
+import { ErrorCode, ERROR_STATUS } from "@/lib/api-errors";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
+  const { requestId } = initRequest();
+
+  const rateLimit = await withRateLimit(request, "DETAIL", requestId);
+  if (rateLimit instanceof Response) return rateLimit;
+
+  const { id } = await params;
+
   try {
-    const { id } = await params;
-
-    // Rate limiting
-    const clientId = getClientIdentifier(request);
-    const rateLimitResult = await checkRateLimit(clientId, "DETAIL");
-
-    if (!rateLimitResult.allowed) {
-      return NextResponse.json(
-        { error: "Rate limit exceeded. Please try again later." },
-        {
-          status: 429,
-          headers: getRateLimitHeaders(rateLimitResult),
-        }
-      );
-    }
-
-    // Get star first to verify it exists and get hostname
     const star = await getStarBySlug(id);
 
     if (!star) {
-      return NextResponse.json(
-        { error: "Star not found" },
-        { status: 404 }
+      return apiError(
+        ErrorCode.NOT_FOUND,
+        "Star not found.",
+        ERROR_STATUS[ErrorCode.NOT_FOUND],
+        requestId,
+        undefined,
+        rateLimit.headers,
       );
     }
 
-    // Fetch exoplanets for this host star from TAP API (with Redis caching)
     const planets = await fetchExoplanetsForHostStar(star.hostname);
 
-    // Return response with cache headers
-    return NextResponse.json(
-      { planets },
-      {
-        headers: {
-          "Cache-Control": getCacheControlHeader(CACHE_TTL.STARS_PLANETS),
-          ...getRateLimitHeaders(rateLimitResult),
-        },
-      }
-    );
+    return apiSuccess({ planets }, requestId, {
+      "Cache-Control": getCacheControlHeader(CACHE_TTL.STARS_PLANETS),
+      ...rateLimit.headers,
+    });
   } catch (error) {
-    console.error("Error fetching planets for star:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch planets. Please try again later." },
-      { status: 500 }
-    );
+    return handleRouteError(error, requestId, rateLimit.headers);
   }
 }

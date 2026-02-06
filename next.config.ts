@@ -1,6 +1,25 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Rewrite unversioned /api/* to /api/v1/* for backward compatibility.
+  // Explicit per-route — a wildcard /api/:path* would double-prefix /api/v1/ requests.
+  async rewrites() {
+    return [
+      { source: '/api/exoplanets', destination: '/api/v1/exoplanets' },
+      { source: '/api/exoplanets/:id', destination: '/api/v1/exoplanets/:id' },
+      { source: '/api/stars', destination: '/api/v1/stars' },
+      { source: '/api/stars/:id', destination: '/api/v1/stars/:id' },
+      { source: '/api/stars/:id/planets', destination: '/api/v1/stars/:id/planets' },
+      { source: '/api/small-bodies', destination: '/api/v1/small-bodies' },
+      { source: '/api/small-bodies/:id', destination: '/api/v1/small-bodies/:id' },
+      { source: '/api/close-approaches', destination: '/api/v1/close-approaches' },
+      { source: '/api/apod', destination: '/api/v1/apod' },
+      { source: '/api/fireballs', destination: '/api/v1/fireballs' },
+      { source: '/api/space-weather', destination: '/api/v1/space-weather' },
+      { source: '/api/space-weather/:id', destination: '/api/v1/space-weather/:id' },
+      { source: '/api/images/object', destination: '/api/v1/images/object' },
+    ];
+  },
   // Allow external API domains
   images: {
     remotePatterns: [
