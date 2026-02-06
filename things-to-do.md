@@ -530,7 +530,8 @@ This is what enables:
 | Fireballs | CNEOS fireball API, browse page with incomplete data handling (`/api/fireballs`) |
 | Space Weather | NASA DONKI integration for FLR, CME, GST with aurora-violet theme (`/api/space-weather`, `/space-weather`) |
 | Space Weather SEO | Added layout.tsx with metadata, OpenGraph, Twitter cards, canonical URL |
-| Space Weather UX | Linked events now show event types (e.g., "1 Flare, 2 CMEs") instead of just count |
+| Space Weather UX | Linked events show event types (e.g., "1 Flare, 2 CMEs"); list view has hover nav icon (open in new tab / chevron) |
+| Space Weather Detail | `/space-weather/[id]` page with full event info and source links |
 | Keyboard Shortcuts | GitHub-style `g` prefix navigation, page actions (`f`, `v`, `j`, `k`), help dialog (`?`), search focus (`/`, `Ctrl+K`) |
 | Media Gallery | NASA Image Library on detail pages with thumbnails, lightbox, fallback queries (`/api/images/object`) |
 | **Pro Tier Backend** | Full implementation - see details below |
@@ -565,8 +566,6 @@ This is what enables:
 2. **User Dashboard Pages** - `/user/saved-objects`, `/user/collections` *(needs Clerk)*
 3. **Saved Searches UI** - Dropdown in filter panels *(needs Clerk)*
 4. **Export Button** - Add to browse pages *(needs Clerk)*
-5. **Space Weather Detail Pages** - `/space-weather/[id]` with full event info, source links
-6. **Small Bodies Local Index** - Move from live JPL to SQLite for faster browse
 
 ## 🔮 Future / Lower Priority
 
@@ -576,7 +575,6 @@ This is what enables:
 - Onboarding flow for new Pro subscribers
 
 ### Space Weather
-- Space weather detail pages (`/space-weather/[id]`) - full event info, source links
 - Linked event navigation - click linked events to navigate to them
 - Event correlation view - visualize FLR → CME → GST causal chains
 
