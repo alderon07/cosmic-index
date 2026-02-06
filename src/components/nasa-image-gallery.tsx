@@ -10,6 +10,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import type { AnyCosmicObject } from "@/lib/types";
+import { apiFetch } from "@/lib/api-client";
 
 interface NasaImage {
   nasaId: string;
@@ -62,14 +63,10 @@ export function NasaImageGallery({ object, compact }: NasaImageGalleryProps) {
 
     const controller = new AbortController();
 
-    fetch(`/api/images/object?${params.toString()}`, {
+    apiFetch<NasaImagesResult>(`/images/object?${params.toString()}`, {
       signal: controller.signal,
     })
-      .then((res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.json();
-      })
-      .then((data: NasaImagesResult) => {
+      .then((data) => {
         setImages(data.images ?? []);
       })
       .catch((err) => {

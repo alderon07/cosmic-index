@@ -25,10 +25,11 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import {
-  FireballListResponse,
+  FireballEvent,
   FireballSortField,
   SortOrder,
 } from "@/lib/types";
+import { apiFetchEvents, EventStreamResult } from "@/lib/api-client";
 import { THEMES } from "@/lib/theme";
 import {
   Flame,
@@ -118,7 +119,7 @@ function FireballsPageContent() {
     view,
   };
 
-  const [data, setData] = useState<FireballListResponse | null>(null);
+  const [data, setData] = useState<EventStreamResult<FireballEvent> | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filterAccordionValue, setFilterAccordionValue] = useState<string>("");
@@ -208,18 +209,12 @@ function FireballsPageContent() {
         params.set("order", order);
         params.set("limit", "100");
 
-        const response = await fetch(`/api/fireballs?${params.toString()}`, {
+        const result = await apiFetchEvents<FireballEvent>(`/fireballs?${params.toString()}`, {
           signal,
         });
 
         if (signal?.aborted) return;
 
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.error || "Failed to fetch fireballs");
-        }
-
-        const result: FireballListResponse = await response.json();
         setData(result);
       } catch (err) {
         if (err instanceof Error && err.name === "AbortError") {

@@ -134,6 +134,8 @@ export interface ExoplanetQueryParams {
   order?: SortOrder;
   page?: number;
   limit?: number;
+  paginationMode?: "offset" | "cursor";
+  cursor?: string;
 }
 
 export interface SmallBodyQueryParams {
@@ -144,6 +146,8 @@ export interface SmallBodyQueryParams {
   orbitClass?: string;
   page?: number;
   limit?: number;
+  paginationMode?: "offset" | "cursor";
+  cursor?: string;
 }
 
 export interface StarQueryParams {
@@ -156,6 +160,8 @@ export interface StarQueryParams {
   limit?: number;
   sort?: "name" | "distance" | "vmag" | "planetCount" | "planetCountDesc";
   order?: SortOrder;
+  paginationMode?: "offset" | "cursor";
+  cursor?: string;
 }
 
 // Zod Schemas for Validation
@@ -275,8 +281,10 @@ export const ExoplanetQuerySchema = z.object({
   maxDistancePc: z.coerce.number().positive().max(100_000).optional(),
   sort: z.enum(["name", "discovered", "distance", "radius", "mass"]).optional(),
   order: z.enum(["asc", "desc"]).optional(),
-  page: z.coerce.number().int().min(1).default(1),
+  page: z.coerce.number().int().min(1).optional(),
   limit: z.coerce.number().int().min(1).max(MAX_PAGE_SIZE).default(DEFAULT_PAGE_SIZE),
+  paginationMode: z.enum(["offset", "cursor"]).optional(),
+  cursor: z.string().max(500).optional(),
 });
 
 export type ExoplanetSortOption = z.infer<typeof ExoplanetQuerySchema>["sort"];
@@ -287,8 +295,10 @@ export const SmallBodyQuerySchema = z.object({
   neo: z.coerce.boolean().optional(),
   pha: z.coerce.boolean().optional(),
   orbitClass: normalizedString(10).optional(),
-  page: z.coerce.number().int().min(1).default(1),
+  page: z.coerce.number().int().min(1).optional(),
   limit: z.coerce.number().int().min(1).max(MAX_PAGE_SIZE).default(DEFAULT_PAGE_SIZE),
+  paginationMode: z.enum(["offset", "cursor"]).optional(),
+  cursor: z.string().max(500).optional(),
 });
 
 export const StarQuerySchema = z.object({
@@ -297,10 +307,12 @@ export const StarQuerySchema = z.object({
   minPlanets: z.coerce.number().int().min(1).max(50).optional(),
   multiPlanet: z.coerce.boolean().optional(),
   maxDistancePc: z.coerce.number().positive().max(100_000).optional(),
-  page: z.coerce.number().int().min(1).default(1),
+  page: z.coerce.number().int().min(1).optional(),
   limit: z.coerce.number().int().min(1).max(MAX_PAGE_SIZE).default(DEFAULT_PAGE_SIZE),
   sort: z.enum(["name", "distance", "vmag", "planetCount", "planetCountDesc"]).optional(),
   order: z.enum(["asc", "desc"]).optional(),
+  paginationMode: z.enum(["offset", "cursor"]).optional(),
+  cursor: z.string().max(500).optional(),
 });
 
 // NASA Exoplanet Archive Raw Response Schema

@@ -28,8 +28,8 @@ const MAX_OBJECTS = 2000;
 export async function GET(request: NextRequest) {
   try {
     // Rate limiting - sitemaps are expensive, limit to 10 req/hour
-    const clientId = getClientIdentifier(request);
-    const rateLimitResult = await checkRateLimit(clientId, "SITEMAP");
+    const { id: clientId, confidence } = getClientIdentifier(request);
+    const rateLimitResult = await checkRateLimit(clientId, "SITEMAP", confidence);
 
     if (!rateLimitResult.allowed) {
       return new NextResponse("Rate limit exceeded. Please try again later.", {

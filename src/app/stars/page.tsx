@@ -8,7 +8,8 @@ import { ObjectDetailModal } from "@/components/object-detail-modal";
 import { SearchBar } from "@/components/search-bar";
 import { StarFilterPanel, StarFilters } from "@/components/star-filter-panel";
 import { Pagination, PaginationInfo } from "@/components/pagination";
-import { AnyCosmicObject, StarData, PaginatedResponse, SpectralClass } from "@/lib/types";
+import { AnyCosmicObject, StarData, SpectralClass } from "@/lib/types";
+import { apiFetchPaginated, PaginatedResult } from "@/lib/api-client";
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "@/lib/constants";
 import { THEMES } from "@/lib/theme";
 import { ViewToggle, ViewMode } from "@/components/view-toggle";
@@ -70,7 +71,7 @@ function StarsPageContent() {
     saveListUrl("stars", query ? `${pathname}?${query}` : pathname);
   }, [searchParams, pathname]);
 
-  const [data, setData] = useState<PaginatedResponse<StarData> | null>(null);
+  const [data, setData] = useState<PaginatedResult<StarData> | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedObject, setSelectedObject] = useState<AnyCosmicObject | null>(null);
@@ -103,7 +104,7 @@ function StarsPageContent() {
 
   // Clamp page when data loads
   useEffect(() => {
-    if (data && data.total > 0) {
+    if (data && data.total && data.total > 0) {
       const maxPage = Math.ceil(data.total / limit);
       if (page > maxPage) {
         setPage(maxPage);
@@ -164,7 +165,7 @@ function StarsPageContent() {
   }, [view, handleViewChange]);
 
   const nextPage = useCallback(() => {
-    const totalPages = data ? Math.ceil(data.total / limit) : 0;
+    const totalPages = data?.total ? Math.ceil(data.total / limit) : 0;
     if (page < totalPages) {
       setPage(page + 1);
     }
@@ -204,13 +205,7 @@ function StarsPageContent() {
       params.set("page", page.toString());
       params.set("limit", limit.toString());
 
-      const response = await fetch(`/api/stars?${params.toString()}`);
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch stars");
-      }
-
-      const result: PaginatedResponse<StarData> = await response.json();
+      const result = await apiFetchPaginated<StarData>(`/stars?${params.toString()}`);
       setData(result);
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
@@ -223,7 +218,7 @@ function StarsPageContent() {
     fetchData();
   }, [fetchData]);
 
-  const totalPages = data ? Math.ceil(data.total / limit) : 0;
+  const totalPages = data?.total ? Math.ceil(data.total / limit) : 0;
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -281,7 +276,7 @@ function StarsPageContent() {
           <PaginationInfo
             currentPage={page}
             pageSize={limit}
-            totalItems={data.total}
+            totalItems={data.total ?? 0}
           />
           {totalPages > 1 && (
             <Pagination
