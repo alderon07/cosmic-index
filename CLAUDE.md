@@ -68,8 +68,22 @@ All cosmic objects implement `CosmicObject` base interface (`src/lib/types.ts`):
 ### Caching & Rate Limiting
 
 - Redis caching via Upstash with TTL (12h browse, 24h-7d detail)
-- Sliding window rate limiter using Redis sorted sets
-- Both gracefully degrade when Redis unavailable
+- Both cache and rate limiter gracefully degrade when Redis unavailable (in-memory fallback)
+
+**Rate Limiting** (`src/lib/rate-limit.ts`):
+
+- Atomic sliding window using a Lua script executed via `@upstash/redis` `createScript()` (EVALSHA)
+- Per-type limits: BROWSE (100/min), DETAIL (200/min), SITEMAP (10/hour)
+- Global per-client cap: 300 req/min across all endpoint types (checked in `api-middleware.ts`)
+- Burst smoothing micro-windows: e.g., BROWSE max 20 per 10s, DETAIL max 40 per 10s
+- Denied requests do NOT consume rate limit slots (the Lua script only ZADDs on allow)
+- Redis keys namespaced: `ratelimit:cosmic:${NODE_ENV}:${type}:<clientId>`
+
+**Client Identification** (three-tier with confidence-based scaling):
+
+1. **IP** (`confidence: "ip"`, full limits): Extracted from provider headers (CF-Connecting-IP, Fly-Client-IP — gated by `TRUST_CLOUDFLARE_HEADERS` / `TRUST_FLY_HEADERS` env vars), then `x-forwarded-for` (first hop), then `x-real-ip`. All validated with `net.isIP()`.
+2. **Fingerprint** (`confidence: "fingerprint"`, half limits): DJB2 hash of `User-Agent + Sec-CH-UA + Accept-Language`. Used when no valid IP is found but browser headers exist.
+3. **Unknown** (`confidence: "unknown"`, 1/10th limits): No identifying information at all. Replaces the old shared `"anonymous"` bucket.
 
 ### Input Validation
 
@@ -96,11 +110,13 @@ All list endpoints return `PaginatedResponse<T>` with: objects, total, page, lim
 ### Environment Variables
 
 ```
-UPSTASH_REDIS_REST_URL    # Optional: Redis cache
-UPSTASH_REDIS_REST_TOKEN  # Optional: Redis cache
-TURSO_DATABASE_URL        # Required for Stars: Turso database URL
-TURSO_AUTH_TOKEN          # Required for Stars: Turso auth token
-DEBUG_API                 # Optional: Enable SBDB debug logging
+UPSTASH_REDIS_REST_URL       # Optional: Redis cache + rate limiting
+UPSTASH_REDIS_REST_TOKEN     # Optional: Redis cache + rate limiting
+TURSO_DATABASE_URL           # Required for Stars: Turso database URL
+TURSO_AUTH_TOKEN             # Required for Stars: Turso auth token
+DEBUG_API                    # Optional: Enable SBDB debug logging
+TRUST_CLOUDFLARE_HEADERS     # Optional: "true" to trust CF-Connecting-IP for rate limiting
+TRUST_FLY_HEADERS            # Optional: "true" to trust Fly-Client-IP for rate limiting
 ```
 
 ## Turso Database Setup (Stars Feature)

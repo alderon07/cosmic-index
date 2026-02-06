@@ -954,11 +954,11 @@
           "schema": { "type": "string", "example": "Accept-Encoding" }
         },
         "RateLimit-Limit": {
-          "description": "The maximum number of requests allowed in the current window (IETF draft).",
+          "description": "The effective maximum number of requests allowed in the current per-endpoint window. May be lower than the base limit if the client was identified by fingerprint (half) or is unidentifiable (1/10th).",
           "schema": { "type": "string" }
         },
         "RateLimit-Remaining": {
-          "description": "The number of requests remaining in the current window (IETF draft).",
+          "description": "The minimum of per-endpoint remaining and global remaining requests. Reflects the tighter of the two constraints.",
           "schema": { "type": "string" }
         },
         "RateLimit-Reset": {
@@ -966,7 +966,7 @@
           "schema": { "type": "string" }
         },
         "RateLimit-Policy": {
-          "description": "Rate limit policy in the format `{limit};w={window_seconds}` (IETF draft).",
+          "description": "Rate limit policy in the format `{effective_limit};w={window_seconds}` (IETF draft). Describes the per-endpoint window; the global cap (300/min) is not represented here.",
           "schema": { "type": "string", "example": "100;w=60" }
         },
         "X-RateLimit-Remaining": {
@@ -1504,7 +1504,7 @@
         }
       },
       "RateLimitExceeded": {
-        "description": "Rate limit exceeded (429). Browse endpoints allow 100 req/min; detail endpoints allow 200 req/min.",
+        "description": "Rate limit exceeded (429). Requests are subject to per-endpoint limits (browse: 100/min, detail: 200/min, sitemap: 10/hr), a global per-client cap (300/min across all endpoints), and burst micro-windows (e.g., browse max 20 per 10s). Effective limits scale by client identification confidence: IP-identified clients get full limits, fingerprint-identified clients get half, and unidentifiable clients get 1/10th. Check the RateLimit-* response headers for your current quota.",
         "headers": {
           "$ref": "#/components/headers/StandardResponseHeaders",
           "Retry-After": {

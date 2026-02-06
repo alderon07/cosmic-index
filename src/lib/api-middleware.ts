@@ -25,31 +25,55 @@ export interface RateLimitPass {
  * Check rate limit and return either:
  * - A `RateLimitPass` with headers to merge into the response, or
  * - A `NextResponse` (429) to return immediately.
+ *
+ * Checks both the per-type limit and a global per-client cap.
  */
 export async function withRateLimit(
   request: NextRequest,
   type: "BROWSE" | "DETAIL" | "SITEMAP",
   requestId: string,
 ): Promise<RateLimitPass | NextResponse> {
-  const clientId = getClientIdentifier(request);
-  const result = await checkRateLimit(clientId, type);
+  const { id: clientId, confidence } = getClientIdentifier(request);
 
-  if (!result.allowed) {
-    const resetSeconds = Math.max(1, Math.ceil((result.resetTime - Date.now()) / 1000));
-    return apiError(
-      ErrorCode.RATE_LIMIT_EXCEEDED,
-      "Rate limit exceeded. Please try again later.",
-      ERROR_STATUS[ErrorCode.RATE_LIMIT_EXCEEDED],
-      requestId,
-      undefined,
-      {
-        ...getRateLimitHeaders(result, type),
-        "Retry-After": resetSeconds.toString(),
-      },
-    );
+  // Check per-type limit
+  const typeResult = await checkRateLimit(clientId, type, confidence);
+
+  if (!typeResult.allowed) {
+    return rateLimitError(typeResult, type, requestId);
   }
 
-  return { headers: getRateLimitHeaders(result, type) };
+  // Check global cap (across all endpoint types)
+  const globalResult = await checkRateLimit(clientId, "GLOBAL", confidence);
+
+  if (!globalResult.allowed) {
+    return rateLimitError(globalResult, type, requestId);
+  }
+
+  // Merge headers — use per-type policy but report the tighter remaining
+  const headers = getRateLimitHeaders(typeResult, type);
+  headers["RateLimit-Remaining"] = Math.min(typeResult.remaining, globalResult.remaining).toString();
+  headers["X-RateLimit-Remaining"] = headers["RateLimit-Remaining"];
+
+  return { headers };
+}
+
+function rateLimitError(
+  result: { resetTime: number; allowed: boolean; remaining: number; effectiveLimit: number },
+  type: "BROWSE" | "DETAIL" | "SITEMAP",
+  requestId: string,
+): NextResponse {
+  const resetSeconds = Math.max(1, Math.ceil((result.resetTime - Date.now()) / 1000));
+  return apiError(
+    ErrorCode.RATE_LIMIT_EXCEEDED,
+    "Rate limit exceeded. Please try again later.",
+    ERROR_STATUS[ErrorCode.RATE_LIMIT_EXCEEDED],
+    requestId,
+    undefined,
+    {
+      ...getRateLimitHeaders(result, type),
+      "Retry-After": resetSeconds.toString(),
+    },
+  );
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
