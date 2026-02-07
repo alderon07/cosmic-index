@@ -1,8 +1,10 @@
 import { Metadata } from "next";
-import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { getUserDb } from "@/lib/user-db";
 import { BillingContent } from "./billing-content";
+import { getAuthUser } from "@/lib/auth";
+import { isMockUserStoreEnabled } from "@/lib/runtime-mode";
+import { getMockUserRecord } from "@/lib/mock-user-store";
 
 export const metadata: Metadata = {
   title: "Billing",
@@ -14,33 +16,35 @@ export const metadata: Metadata = {
  *
  * Server component that:
  * 1. Checks authentication (redirects if not signed in)
- * 2. Fetches user tier from database
+ * 2. Fetches user tier from database or mock store
  * 3. Renders client component with tier info
- *
- * The middleware already protects /settings/*, but we do an explicit check
- * here to get the userId for database lookup.
  */
 export default async function BillingPage() {
-  const { userId } = await auth();
-
-  if (!userId) {
+  const user = await getAuthUser();
+  if (!user) {
     redirect("/");
   }
 
   // Fetch tier from database (source of truth)
-  let tier: "free" | "pro" = "free";
+  let tier: "free" | "pro" = user.tier;
   let hasStripeCustomer = false;
 
-  const db = getUserDb();
-  if (db) {
-    const result = await db.execute({
-      sql: "SELECT tier, stripe_customer_id FROM users WHERE id = ?",
-      args: [userId],
-    });
+  if (isMockUserStoreEnabled()) {
+    const mockUser = getMockUserRecord(user.userId);
+    tier = mockUser.tier;
+    hasStripeCustomer = Boolean(mockUser.stripeCustomerId);
+  } else {
+    const db = getUserDb();
+    if (db) {
+      const result = await db.execute({
+        sql: "SELECT tier, stripe_customer_id FROM users WHERE id = ?",
+        args: [user.userId],
+      });
 
-    if (result.rows.length > 0) {
-      tier = (result.rows[0].tier as "free" | "pro") ?? "free";
-      hasStripeCustomer = !!result.rows[0].stripe_customer_id;
+      if (result.rows.length > 0) {
+        tier = (result.rows[0].tier as "free" | "pro") ?? "free";
+        hasStripeCustomer = !!result.rows[0].stripe_customer_id;
+      }
     }
   }
 

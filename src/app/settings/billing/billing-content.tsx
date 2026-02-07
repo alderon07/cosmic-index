@@ -35,6 +35,7 @@ export function BillingContent({ tier, hasStripeCustomer }: BillingContentProps)
 
   const success = searchParams.get("success") === "true";
   const canceled = searchParams.get("canceled") === "true";
+  const isMockFlow = searchParams.get("mock") === "1";
 
   const handleUpgrade = async () => {
     setIsLoading(true);
@@ -79,7 +80,9 @@ export function BillingContent({ tier, hasStripeCustomer }: BillingContentProps)
         <div className="p-4 rounded-lg border border-uranium-green/50 bg-uranium-green/10 text-uranium-green">
           <p className="font-medium">Welcome to Pro!</p>
           <p className="text-sm opacity-80">
-            Your subscription is now active. Enjoy all the premium features!
+            {isMockFlow
+              ? "Mock billing flow completed. Pro features are enabled locally."
+              : "Your subscription is now active. Enjoy all the premium features!"}
           </p>
         </div>
       )}
@@ -87,7 +90,9 @@ export function BillingContent({ tier, hasStripeCustomer }: BillingContentProps)
       {canceled && (
         <div className="p-4 rounded-lg border border-muted-foreground/50 bg-muted/50 text-muted-foreground">
           <p className="text-sm">
-            Checkout was canceled. You can upgrade anytime when you&apos;re ready.
+            {isMockFlow
+              ? "Mock manage-subscription flow completed. Account was switched to free tier."
+              : "Checkout was canceled. You can upgrade anytime when you&apos;re ready."}
           </p>
         </div>
       )}

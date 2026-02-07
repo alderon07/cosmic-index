@@ -2,33 +2,26 @@ import { NextRequest } from "next/server";
 import { requirePro, authErrorResponse } from "@/lib/auth";
 import { getUserDb } from "@/lib/user-db";
 import { z } from "zod";
+import { isMockUserStoreEnabled } from "@/lib/runtime-mode";
+import { listSavedObjects } from "@/lib/mock-user-store";
+import { searchExoplanets } from "@/lib/exoplanet-index";
+import { searchStars } from "@/lib/star-index";
+import { fetchSmallBodies } from "@/lib/jpl-sbdb";
 
 /**
  * POST /api/user/export
  *
  * Export cosmic objects data as CSV or JSON.
- *
- * Features:
- * - Streaming response to handle large datasets
- * - Row limit (5000) to prevent timeouts
- * - Pro-only feature
- * - Minimal audit logging (just count, not full params)
- *
- * Supports exporting:
- * - exoplanets: From exoplanets table
- * - stars: From stars table
- * - saved-objects: User's saved objects
  */
 
 const MAX_EXPORT_ROWS = 5000;
 
 const ExportSchema = z.object({
   format: z.enum(["csv", "json"]),
-  category: z.enum(["exoplanets", "stars", "saved-objects"]),
+  category: z.enum(["exoplanets", "stars", "small-bodies", "saved-objects"]),
   queryParams: z.record(z.string(), z.unknown()).optional(),
 });
 
-// CSV field definitions per category
 const CSV_FIELDS: Record<string, { key: string; header: string }[]> = {
   exoplanets: [
     { key: "pl_name", header: "Planet Name" },
@@ -52,6 +45,15 @@ const CSV_FIELDS: Record<string, { key: string; header: string }[]> = {
     { key: "planet_count", header: "Planet Count" },
     { key: "vmag", header: "V Magnitude" },
   ],
+  "small-bodies": [
+    { key: "display_name", header: "Name" },
+    { key: "kind", header: "Type" },
+    { key: "orbit_class", header: "Orbit Class" },
+    { key: "neo", header: "Near-Earth Object" },
+    { key: "pha", header: "Potentially Hazardous" },
+    { key: "diameter_km", header: "Diameter (km)" },
+    { key: "absolute_magnitude", header: "Absolute Magnitude (H)" },
+  ],
   "saved-objects": [
     { key: "canonical_id", header: "Object ID" },
     { key: "display_name", header: "Name" },
@@ -68,7 +70,6 @@ function getCSVHeader(category: string): string {
 function escapeCSV(value: unknown): string {
   if (value === null || value === undefined) return "";
   const str = String(value);
-  // Escape quotes and wrap in quotes if contains comma, quote, or newline
   if (str.includes(",") || str.includes('"') || str.includes("\n")) {
     return `"${str.replace(/"/g, '""')}"`;
   }
@@ -80,14 +81,114 @@ function toCSVRow(row: Record<string, unknown>, category: string): string {
   return fields.map((f) => escapeCSV(row[f.key])).join(",");
 }
 
+async function buildExportRows(params: {
+  category: "exoplanets" | "stars" | "small-bodies" | "saved-objects";
+  userId: string;
+  useMockStore: boolean;
+}): Promise<Record<string, unknown>[]> {
+  const { category, userId, useMockStore } = params;
+  const db = getUserDb();
+
+  if (category === "saved-objects") {
+    if (useMockStore || !db) {
+      const saved = listSavedObjects(userId, 1, MAX_EXPORT_ROWS).objects;
+      return saved.map((item) => ({
+        canonical_id: item.canonicalId,
+        display_name: item.displayName,
+        notes: item.notes,
+        created_at: item.createdAt,
+      }));
+    }
+
+    const result = await db.execute({
+      sql: `
+        SELECT canonical_id, display_name, notes, created_at
+        FROM saved_objects
+        WHERE user_id = ?
+        ORDER BY created_at DESC
+        LIMIT ?
+      `,
+      args: [userId, MAX_EXPORT_ROWS],
+    });
+
+    return result.rows as Record<string, unknown>[];
+  }
+
+  if (category === "exoplanets") {
+    if (!useMockStore && db) {
+      const result = await db.execute({
+        sql: `
+          SELECT pl_name, hostname, discovery_method, disc_year,
+                 orbital_period_days, radius_earth, mass_earth,
+                 equilibrium_temp_k, distance_parsecs
+          FROM exoplanets
+          ORDER BY pl_name ASC
+          LIMIT ?
+        `,
+        args: [MAX_EXPORT_ROWS],
+      });
+      return result.rows as Record<string, unknown>[];
+    }
+
+    const result = await searchExoplanets({ page: 1, limit: 500, sort: "name" });
+    return result.objects.slice(0, MAX_EXPORT_ROWS).map((item) => ({
+      pl_name: item.displayName,
+      hostname: item.hostStar,
+      discovery_method: item.discoveryMethod,
+      disc_year: item.discoveredYear ?? null,
+      orbital_period_days: item.orbitalPeriodDays ?? null,
+      radius_earth: item.radiusEarth ?? null,
+      mass_earth: item.massEarth ?? null,
+      equilibrium_temp_k: item.equilibriumTempK ?? null,
+      distance_parsecs: item.distanceParsecs ?? null,
+    }));
+  }
+
+  if (category === "stars") {
+    if (!useMockStore && db) {
+      const result = await db.execute({
+        sql: `
+          SELECT hostname, spectral_class, spectral_type, star_temp_k,
+                 star_mass_solar, star_radius_solar, distance_parsecs,
+                 planet_count, vmag
+          FROM stars
+          ORDER BY hostname ASC
+          LIMIT ?
+        `,
+        args: [MAX_EXPORT_ROWS],
+      });
+      return result.rows as Record<string, unknown>[];
+    }
+
+    const result = await searchStars({ page: 1, limit: 500, sort: "name" });
+    return result.objects.slice(0, MAX_EXPORT_ROWS).map((item) => ({
+      hostname: item.displayName,
+      spectral_class: item.spectralClass ?? null,
+      spectral_type: item.spectralType ?? null,
+      star_temp_k: item.starTempK ?? null,
+      star_mass_solar: item.starMassSolar ?? null,
+      star_radius_solar: item.starRadiusSolar ?? null,
+      distance_parsecs: item.distanceParsecs ?? null,
+      planet_count: item.planetCount,
+      vmag: item.vMag ?? null,
+    }));
+  }
+
+  const smallBodies = await fetchSmallBodies({ page: 1, limit: 500 });
+  return smallBodies.objects.slice(0, MAX_EXPORT_ROWS).map((item) => ({
+    display_name: item.displayName,
+    kind: item.bodyKind,
+    orbit_class: item.orbitClass,
+    neo: item.isNeo,
+    pha: item.isPha,
+    diameter_km: item.diameterKm ?? null,
+    absolute_magnitude: item.absoluteMagnitude ?? null,
+  }));
+}
+
 export async function POST(request: NextRequest) {
   try {
     const user = await requirePro();
-    const db = getUserDb();
-
-    if (!db) {
-      return Response.json({ error: "Database not configured" }, { status: 500 });
-    }
 
     const body = await request.json();
     const parseResult = ExportSchema.safeParse(body);
@@ -100,109 +201,44 @@ export async function POST(request: NextRequest) {
     }
 
     const { format, category } = parseResult.data;
+    const useMockStore = isMockUserStoreEnabled();
 
-    // Build query based on category
-    let sql: string;
-    let args: (string | number)[] = [];
-
-    switch (category) {
-      case "exoplanets":
-        sql = `
-          SELECT pl_name, hostname, discovery_method, disc_year,
-                 orbital_period_days, radius_earth, mass_earth,
-                 equilibrium_temp_k, distance_parsecs
-          FROM exoplanets
-          ORDER BY pl_name ASC
-          LIMIT ?
-        `;
-        args = [MAX_EXPORT_ROWS];
-        break;
-
-      case "stars":
-        sql = `
-          SELECT hostname, spectral_class, spectral_type, star_temp_k,
-                 star_mass_solar, star_radius_solar, distance_parsecs,
-                 planet_count, vmag
-          FROM stars
-          ORDER BY hostname ASC
-          LIMIT ?
-        `;
-        args = [MAX_EXPORT_ROWS];
-        break;
-
-      case "saved-objects":
-        sql = `
-          SELECT canonical_id, display_name, notes, created_at
-          FROM saved_objects
-          WHERE user_id = ?
-          ORDER BY created_at DESC
-          LIMIT ?
-        `;
-        args = [user.userId, MAX_EXPORT_ROWS];
-        break;
-
-      default:
-        return Response.json({ error: "Invalid category" }, { status: 400 });
-    }
-
-    const encoder = new TextEncoder();
-    let finalRowCount = 0;
-
-    const stream = new ReadableStream({
-      async start(controller) {
-        try {
-          // Write header
-          if (format === "csv") {
-            controller.enqueue(encoder.encode(getCSVHeader(category) + "\n"));
-          } else {
-            controller.enqueue(encoder.encode("[\n"));
-          }
-
-          // Fetch data
-          const result = await db.execute({ sql, args });
-
-          // Stream rows
-          for (let i = 0; i < result.rows.length; i++) {
-            const row = result.rows[i] as Record<string, unknown>;
-
-            const line =
-              format === "csv"
-                ? toCSVRow(row, category) + "\n"
-                : (i > 0 ? "," : "") + JSON.stringify(row) + "\n";
-
-            controller.enqueue(encoder.encode(line));
-            finalRowCount++;
-          }
-
-          // Write footer
-          if (format === "json") {
-            controller.enqueue(encoder.encode("]\n"));
-          }
-
-          // Log export (best-effort, don't block download)
-          try {
-            await db.execute({
-              sql: `
-                INSERT INTO export_history (user_id, category, record_count)
-                VALUES (?, ?, ?)
-              `,
-              args: [user.userId, category, finalRowCount],
-            });
-          } catch {
-            // Ignore logging errors
-          }
-        } catch (error) {
-          console.error("Export stream error:", error);
-          controller.error(error);
-        } finally {
-          controller.close();
-        }
-      },
+    const rows = await buildExportRows({
+      category,
+      userId: user.userId,
+      useMockStore,
     });
+
+    const limitedRows = rows.slice(0, MAX_EXPORT_ROWS);
+
+    const payload =
+      format === "csv"
+        ? [
+            getCSVHeader(category),
+            ...limitedRows.map((row) => toCSVRow(row, category)),
+          ].join("\n")
+        : JSON.stringify(limitedRows, null, 2);
 
     const filename = `cosmic-index-${category}-${new Date().toISOString().split("T")[0]}.${format}`;
 
-    return new Response(stream, {
+    if (!useMockStore) {
+      const db = getUserDb();
+      if (db) {
+        try {
+          await db.execute({
+            sql: `
+              INSERT INTO export_history (user_id, category, record_count)
+              VALUES (?, ?, ?)
+            `,
+            args: [user.userId, category, limitedRows.length],
+          });
+        } catch {
+          // Ignore export logging errors
+        }
+      }
+    }
+
+    return new Response(payload + (format === "csv" ? "\n" : ""), {
       headers: {
         "Content-Type": format === "csv" ? "text/csv" : "application/json",
         "Content-Disposition": `attachment; filename="${filename}"`,

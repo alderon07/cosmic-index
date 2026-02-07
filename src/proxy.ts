@@ -1,36 +1,43 @@
-import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+import { NextFetchEvent, NextRequest, NextResponse } from "next/server";
+import { isClerkServerConfigured, isMockAuthEnabled } from "@/lib/runtime-mode";
 
 /**
- * Clerk middleware for page-level authentication.
+ * Authentication middleware.
  *
- * IMPORTANT: This middleware protects PAGES only, not API routes.
- * - Pages: redirect to sign-in (good UX for browser navigation)
- * - APIs: use requireAuth() internally which returns 401 JSON (expected by API clients)
- *
- * This split ensures:
- * 1. Users get a smooth redirect experience when accessing protected pages
- * 2. API clients receive proper JSON error responses, not HTML redirects
+ * - Mock mode: no redirects, allows local development without Clerk.
+ * - Clerk mode: page protection is enforced by Clerk middleware.
+ * - Fallback mode: when auth is disabled and Clerk is not configured,
+ *   protected pages redirect home.
  */
 
-// Only page routes that require authentication (not APIs!)
-const isProtectedPage = createRouteMatcher([
-  "/settings(.*)",
-  "/user/(.*)", // User dashboard pages (saved objects, collections, etc.)
-]);
-
-export default clerkMiddleware(async (auth, request) => {
-  if (isProtectedPage(request)) {
-    await auth.protect(); // Redirects to sign-in for pages
+export default async function proxy(request: NextRequest, event: NextFetchEvent) {
+  if (isMockAuthEnabled()) {
+    return NextResponse.next();
   }
-  // API routes: NO middleware protection
-  // They call requireAuth() which returns 401 JSON
-});
+
+  if (!isClerkServerConfigured()) {
+    if (
+      request.nextUrl.pathname.startsWith("/settings") ||
+      request.nextUrl.pathname.startsWith("/user/")
+    ) {
+      return NextResponse.redirect(new URL("/", request.url));
+    }
+    return NextResponse.next();
+  }
+
+  const { clerkMiddleware, createRouteMatcher } = await import("@clerk/nextjs/server");
+  const isProtectedPage = createRouteMatcher(["/settings(.*)", "/user/(.*)"]);
+
+  return clerkMiddleware(async (auth, req) => {
+    if (isProtectedPage(req)) {
+      await auth.protect();
+    }
+  })(request, event);
+}
 
 export const config = {
   matcher: [
-    // Skip Next.js internals and static files
     "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
-    // Always run for API routes
     "/(api|trpc)(.*)",
   ],
 };

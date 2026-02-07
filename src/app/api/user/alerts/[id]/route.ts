@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { requirePro, authErrorResponse } from "@/lib/auth";
 import { requireUserDb } from "@/lib/user-db";
 import { UpdateAlertSchema, Alert } from "@/lib/types";
+import { isMockUserStoreEnabled } from "@/lib/runtime-mode";
+import {
+  deleteAlert,
+  getAlertById,
+  updateAlert,
+} from "@/lib/mock-user-store";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -15,13 +21,22 @@ interface RouteParams {
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     const user = await requirePro();
-    const db = requireUserDb();
     const { id } = await params;
 
     const alertId = parseInt(id, 10);
     if (isNaN(alertId)) {
       return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
     }
+
+    if (isMockUserStoreEnabled()) {
+      const alert = getAlertById(user.userId, alertId);
+      if (!alert) {
+        return NextResponse.json({ error: "Not found" }, { status: 404 });
+      }
+      return NextResponse.json(alert);
+    }
+
+    const db = requireUserDb();
 
     const result = await db.execute({
       sql: `
@@ -61,7 +76,6 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
   try {
     const user = await requirePro();
-    const db = requireUserDb();
     const { id } = await params;
 
     const alertId = parseInt(id, 10);
@@ -80,6 +94,16 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     }
 
     const updates = parseResult.data;
+
+    if (isMockUserStoreEnabled()) {
+      const updated = updateAlert(user.userId, alertId, updates);
+      if (!updated) {
+        return NextResponse.json({ error: "Not found" }, { status: 404 });
+      }
+      return NextResponse.json(updated);
+    }
+
+    const db = requireUserDb();
 
     // Build dynamic UPDATE query
     const setClauses: string[] = ['updated_at = datetime("now")'];
@@ -139,13 +163,22 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
     const user = await requirePro();
-    const db = requireUserDb();
     const { id } = await params;
 
     const alertId = parseInt(id, 10);
     if (isNaN(alertId)) {
       return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
     }
+
+    if (isMockUserStoreEnabled()) {
+      const deleted = deleteAlert(user.userId, alertId);
+      if (!deleted) {
+        return NextResponse.json({ error: "Not found" }, { status: 404 });
+      }
+      return NextResponse.json({ success: true });
+    }
+
+    const db = requireUserDb();
 
     const result = await db.execute({
       sql: "DELETE FROM alerts WHERE id = ? AND user_id = ? RETURNING id",

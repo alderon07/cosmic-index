@@ -4,11 +4,11 @@ import "./globals.css";
 import Link from "next/link";
 import { Circle, Star, CircleDot, Crosshair, Flame, Sun, Keyboard } from "lucide-react";
 import { Analytics } from "@vercel/analytics/react";
-import { ClerkProvider } from "@clerk/nextjs";
 import { KeyboardShortcutsProvider } from "@/components/keyboard-shortcuts/keyboard-shortcuts-provider";
 import { UserAuthButton } from "@/components/auth/user-auth-button";
 import { CompareProvider } from "@/components/compare/compare-provider";
 import { CompareTray } from "@/components/compare/compare-tray";
+import { AppAuthProvider } from "@/components/auth/app-auth-provider";
 
 const audiowide = Audiowide({
   variable: "--font-display",
@@ -150,7 +150,7 @@ export default function RootLayout({
       <body
         className={`${audiowide.variable} ${inter.variable} ${jetbrainsMono.variable} antialiased min-h-screen bg-background`}
       >
-        <ClerkProvider>
+        <AppAuthProvider>
         <CompareProvider>
         <KeyboardShortcutsProvider>
         <div className="relative min-h-screen vignette">
@@ -283,7 +283,7 @@ export default function RootLayout({
         </div>
         </KeyboardShortcutsProvider>
         </CompareProvider>
-        </ClerkProvider>
+        </AppAuthProvider>
         <Analytics />
       </body>
     </html>

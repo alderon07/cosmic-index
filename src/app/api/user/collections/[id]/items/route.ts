@@ -3,6 +3,11 @@ import { requireAuth, authErrorResponse } from "@/lib/auth";
 import { requireUserDb } from "@/lib/user-db";
 import { AddToCollectionSchema } from "@/lib/types";
 import { z } from "zod";
+import { isMockUserStoreEnabled } from "@/lib/runtime-mode";
+import {
+  addCollectionItem,
+  removeCollectionItem,
+} from "@/lib/mock-user-store";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -21,7 +26,6 @@ const RemoveFromCollectionSchema = z.object({
 export async function POST(request: NextRequest, { params }: RouteParams) {
   try {
     const user = await requireAuth();
-    const db = requireUserDb();
     const { id } = await params;
 
     const collectionId = parseInt(id, 10);
@@ -40,6 +44,38 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     const { savedObjectId, position } = parseResult.data;
+
+    if (isMockUserStoreEnabled()) {
+      const result = addCollectionItem({
+        userId: user.userId,
+        collectionId,
+        savedObjectId,
+        position,
+      });
+
+      if (result === "COLLECTION_NOT_FOUND") {
+        return NextResponse.json(
+          { error: "Collection not found" },
+          { status: 404 }
+        );
+      }
+      if (result === "OBJECT_NOT_FOUND") {
+        return NextResponse.json(
+          { error: "Saved object not found" },
+          { status: 404 }
+        );
+      }
+      if (result === "DUPLICATE") {
+        return NextResponse.json(
+          { error: "Item already in collection" },
+          { status: 409 }
+        );
+      }
+
+      return NextResponse.json(result, { status: 201 });
+    }
+
+    const db = requireUserDb();
 
     // Verify collection ownership
     const collectionCheck = await db.execute({
@@ -116,7 +152,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
     const user = await requireAuth();
-    const db = requireUserDb();
     const { id } = await params;
 
     const collectionId = parseInt(id, 10);
@@ -135,6 +170,22 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     }
 
     const { savedObjectId } = parseResult.data;
+
+    if (isMockUserStoreEnabled()) {
+      const removed = removeCollectionItem({
+        userId: user.userId,
+        collectionId,
+        savedObjectId,
+      });
+
+      if (!removed) {
+        return NextResponse.json({ error: "Item not in collection" }, { status: 404 });
+      }
+
+      return NextResponse.json({ success: true });
+    }
+
+    const db = requireUserDb();
 
     // Verify collection ownership (implicitly through join)
     const result = await db.execute({

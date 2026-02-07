@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { requirePro, authErrorResponse } from "@/lib/auth";
 import { requireUserDb } from "@/lib/user-db";
 import { CreateAlertSchema, Alert } from "@/lib/types";
+import { isMockUserStoreEnabled } from "@/lib/runtime-mode";
+import { createAlert, listAlerts } from "@/lib/mock-user-store";
 
 /**
  * GET /api/user/alerts
@@ -11,6 +13,11 @@ import { CreateAlertSchema, Alert } from "@/lib/types";
 export async function GET() {
   try {
     const user = await requirePro();
+
+    if (isMockUserStoreEnabled()) {
+      return NextResponse.json({ alerts: listAlerts(user.userId) });
+    }
+
     const db = requireUserDb();
 
     const result = await db.execute({
@@ -47,7 +54,6 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const user = await requirePro();
-    const db = requireUserDb();
 
     const body = await request.json();
     const parseResult = CreateAlertSchema.safeParse(body);
@@ -60,6 +66,18 @@ export async function POST(request: NextRequest) {
     }
 
     const { alertType, config, emailEnabled } = parseResult.data;
+
+    if (isMockUserStoreEnabled()) {
+      const alert = createAlert({
+        userId: user.userId,
+        alertType,
+        config,
+        emailEnabled: emailEnabled ?? true,
+      });
+      return NextResponse.json(alert, { status: 201 });
+    }
+
+    const db = requireUserDb();
 
     const result = await db.execute({
       sql: `

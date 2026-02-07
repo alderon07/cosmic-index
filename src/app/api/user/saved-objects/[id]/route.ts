@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAuth, authErrorResponse } from "@/lib/auth";
 import { requireUserDb } from "@/lib/user-db";
 import { UpdateSavedObjectSchema, SavedObject } from "@/lib/types";
+import { isMockUserStoreEnabled } from "@/lib/runtime-mode";
+import {
+  getSavedObjectById,
+  updateSavedObject,
+  deleteSavedObject,
+} from "@/lib/mock-user-store";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -15,13 +21,22 @@ interface RouteParams {
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     const user = await requireAuth();
-    const db = requireUserDb();
     const { id } = await params;
 
     const objectId = parseInt(id, 10);
     if (isNaN(objectId)) {
       return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
     }
+
+    if (isMockUserStoreEnabled()) {
+      const object = getSavedObjectById(user.userId, objectId);
+      if (!object) {
+        return NextResponse.json({ error: "Not found" }, { status: 404 });
+      }
+      return NextResponse.json(object);
+    }
+
+    const db = requireUserDb();
 
     const result = await db.execute({
       sql: `
@@ -62,7 +77,6 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
   try {
     const user = await requireAuth();
-    const db = requireUserDb();
     const { id } = await params;
 
     const objectId = parseInt(id, 10);
@@ -81,6 +95,16 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     }
 
     const { notes } = parseResult.data;
+
+    if (isMockUserStoreEnabled()) {
+      const updated = updateSavedObject(user.userId, objectId, notes ?? null);
+      if (!updated) {
+        return NextResponse.json({ error: "Not found" }, { status: 404 });
+      }
+      return NextResponse.json(updated);
+    }
+
+    const db = requireUserDb();
 
     // Check ownership and update
     const result = await db.execute({
@@ -123,13 +147,22 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
     const user = await requireAuth();
-    const db = requireUserDb();
     const { id } = await params;
 
     const objectId = parseInt(id, 10);
     if (isNaN(objectId)) {
       return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
     }
+
+    if (isMockUserStoreEnabled()) {
+      const deleted = deleteSavedObject(user.userId, objectId);
+      if (!deleted) {
+        return NextResponse.json({ error: "Not found" }, { status: 404 });
+      }
+      return NextResponse.json({ success: true });
+    }
+
+    const db = requireUserDb();
 
     // Delete with ownership check
     const result = await db.execute({

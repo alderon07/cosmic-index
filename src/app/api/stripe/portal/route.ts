@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { requireAuth, authErrorResponse } from "@/lib/auth";
 import { requireStripe, APP_URL } from "@/lib/stripe";
 import { requireUserDb } from "@/lib/user-db";
+import { isMockStripeEnabled, isMockUserStoreEnabled } from "@/lib/runtime-mode";
+import { setMockUserTier } from "@/lib/mock-user-store";
 
 /**
  * POST /api/stripe/portal
@@ -14,6 +16,16 @@ import { requireUserDb } from "@/lib/user-db";
 export async function POST() {
   try {
     const user = await requireAuth();
+
+    if (isMockStripeEnabled()) {
+      if (isMockUserStoreEnabled()) {
+        setMockUserTier(user.userId, "free");
+      }
+      return NextResponse.json({
+        url: `${APP_URL}/settings/billing?canceled=true&mock=1`,
+      });
+    }
+
     const stripe = requireStripe();
     const db = requireUserDb();
 

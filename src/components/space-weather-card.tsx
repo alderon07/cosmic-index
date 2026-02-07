@@ -38,6 +38,8 @@ import {
   ChevronRight,
   SquareArrowOutUpRight,
 } from "lucide-react";
+import { eventObjectId } from "@/lib/canonical-id";
+import { SaveEventButton } from "@/components/save-event-button";
 
 const theme = THEMES["space-weather"];
 
@@ -154,6 +156,14 @@ interface SpaceWeatherCardProps {
 }
 
 export function SpaceWeatherCard({ event, variant = "default", onModalOpen }: SpaceWeatherCardProps) {
+  const eventTypeForCanonical =
+    event.eventType === "FLR" ? "flr" : event.eventType === "CME" ? "cme" : "gst";
+  const canonicalId = eventObjectId(eventTypeForCanonical, {
+    id: event.id,
+    start: event.startTime,
+    type: event.eventType,
+  });
+
   const { date, time } = formatDateTime(event.startTime);
 
   // Get severity based on event type
@@ -297,6 +307,7 @@ export function SpaceWeatherCard({ event, variant = "default", onModalOpen }: Sp
           </div>
           {/* Badge + navigation/chevron (right column on md+) */}
           <div className="flex shrink-0 items-center justify-end gap-2 min-w-0">
+            <SaveEventButton canonicalId={canonicalId} displayName={`${getEventTypeLabel(event.eventType)} ${date}`} eventPayload={event} />
             <Badge variant="outline" className={`text-[10px] shrink-0 py-0 px-1.5 ${SEVERITY_COLORS[severity]}`}>
               {formatSeverity(severity)}
             </Badge>
@@ -436,6 +447,7 @@ export function SpaceWeatherCard({ event, variant = "default", onModalOpen }: Sp
               <div />
             )}
             <div className="flex items-center gap-1.5">
+              <SaveEventButton canonicalId={canonicalId} displayName={`${getEventTypeLabel(event.eventType)} ${date}`} eventPayload={event} />
               <Badge variant="outline" className={`text-xs ${SEVERITY_COLORS[severity]}`}>
               {formatSeverity(severity)}
               </Badge>

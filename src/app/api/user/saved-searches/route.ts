@@ -3,6 +3,8 @@ import { requireAuth, authErrorResponse } from "@/lib/auth";
 import { requireUserDb } from "@/lib/user-db";
 import { CreateSavedSearchSchema, SavedSearch } from "@/lib/types";
 import { canonicalizeAndHash } from "@/lib/saved-searches";
+import { isMockUserStoreEnabled } from "@/lib/runtime-mode";
+import { createSavedSearch, listSavedSearches } from "@/lib/mock-user-store";
 
 /**
  * GET /api/user/saved-searches
@@ -13,9 +15,20 @@ import { canonicalizeAndHash } from "@/lib/saved-searches";
 export async function GET(request: NextRequest) {
   try {
     const user = await requireAuth();
-    const db = requireUserDb();
 
     const category = request.nextUrl.searchParams.get("category");
+    const parsedCategory =
+      category === "exoplanets" || category === "stars" || category === "small-bodies"
+        ? category
+        : undefined;
+
+    if (isMockUserStoreEnabled()) {
+      return NextResponse.json({
+        searches: listSavedSearches(user.userId, parsedCategory),
+      });
+    }
+
+    const db = requireUserDb();
 
     let sql = `
       SELECT id, name, category, query_params, result_count, last_executed_at, created_at
@@ -59,7 +72,6 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const user = await requireAuth();
-    const db = requireUserDb();
 
     const body = await request.json();
     const parseResult = CreateSavedSearchSchema.safeParse(body);
@@ -72,6 +84,18 @@ export async function POST(request: NextRequest) {
     }
 
     const { name, category, queryParams } = parseResult.data;
+
+    if (isMockUserStoreEnabled()) {
+      const savedSearch = createSavedSearch({
+        userId: user.userId,
+        name,
+        category,
+        queryParams,
+      });
+      return NextResponse.json(savedSearch, { status: 201 });
+    }
+
+    const db = requireUserDb();
 
     // Canonicalize and hash the query params
     const { canonical, hash } = canonicalizeAndHash(queryParams);
