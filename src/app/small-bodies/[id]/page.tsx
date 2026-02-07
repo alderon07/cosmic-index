@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import { cache } from "react";
 import { ObjectDetail } from "@/components/object-detail";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { THEMES } from "@/lib/theme";
@@ -11,12 +12,14 @@ interface SmallBodyDetailPageProps {
   params: Promise<{ id: string }>;
 }
 
+const getSmallBodyById = cache(async (id: string) => fetchSmallBodyBySlug(id));
+
 // Generate dynamic metadata for SEO
 export async function generateMetadata({
   params,
 }: SmallBodyDetailPageProps): Promise<Metadata> {
   const { id } = await params;
-  const smallBody = await fetchSmallBodyBySlug(id);
+  const smallBody = await getSmallBodyById(id);
 
   if (!smallBody) {
     return {
@@ -131,7 +134,7 @@ export default async function SmallBodyDetailPage({
   params,
 }: SmallBodyDetailPageProps) {
   const { id } = await params;
-  const smallBody = await fetchSmallBodyBySlug(id);
+  const smallBody = await getSmallBodyById(id);
 
   if (!smallBody) {
     notFound();

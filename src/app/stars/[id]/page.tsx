@@ -1,10 +1,12 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import { cache } from "react";
 import { ObjectDetail } from "@/components/object-detail";
 import { DataSources } from "@/components/data-sources";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { StarPlanets } from "./star-planets";
 import { getStarBySlug } from "@/lib/star-index";
+import { fetchExoplanetsForHostStar } from "@/lib/nasa-exoplanet";
 import { StarData } from "@/lib/types";
 import { BASE_URL } from "@/lib/config";
 
@@ -12,12 +14,17 @@ interface StarDetailPageProps {
   params: Promise<{ id: string }>;
 }
 
+const getStarDetailById = cache(async (id: string) => getStarBySlug(id));
+const getPlanetsForHostStar = cache(async (hostname: string) =>
+  fetchExoplanetsForHostStar(hostname)
+);
+
 // Generate dynamic metadata for SEO
 export async function generateMetadata({
   params,
 }: StarDetailPageProps): Promise<Metadata> {
   const { id } = await params;
-  const star = await getStarBySlug(id);
+  const star = await getStarDetailById(id);
 
   if (!star) {
     return {
@@ -124,7 +131,7 @@ function generateStarJsonLd(star: StarData, slug: string) {
 
 export default async function StarDetailPage({ params }: StarDetailPageProps) {
   const { id } = await params;
-  const star = await getStarBySlug(id);
+  const star = await getStarDetailById(id);
 
   if (!star) {
     notFound();
@@ -137,6 +144,17 @@ export default async function StarDetailPage({ params }: StarDetailPageProps) {
     { label: "Stars", href: "/stars" },
     { label: star.displayName },
   ];
+
+  let planetsError: string | null = null;
+  let planets: Awaited<ReturnType<typeof fetchExoplanetsForHostStar>> = [];
+  if (star.planetCount > 0) {
+    try {
+      planets = await getPlanetsForHostStar(star.hostname);
+    } catch (error) {
+      planetsError =
+        error instanceof Error ? error.message : "Failed to load planets for this star";
+    }
+  }
 
   return (
     <>
@@ -153,9 +171,10 @@ export default async function StarDetailPage({ params }: StarDetailPageProps) {
         {star.planetCount > 0 && (
           <div className="mt-8">
             <StarPlanets
-              starId={id}
               hostname={star.hostname}
               planetCount={star.planetCount}
+              planets={planets}
+              error={planetsError}
             />
           </div>
         )}

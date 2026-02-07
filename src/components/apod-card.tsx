@@ -11,15 +11,21 @@ import { Calendar, ExternalLink, ChevronDown, ChevronUp, Play, ImageIcon } from 
 
 interface APODCardProps {
   className?: string;
+  initialApod?: APODData | null;
+  initialError?: string | null;
 }
 
-export function APODCard({ className }: APODCardProps) {
-  const [apod, setApod] = useState<APODData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+export function APODCard({ className, initialApod = null, initialError = null }: APODCardProps) {
+  const [apod, setApod] = useState<APODData | null>(initialApod);
+  const [loading, setLoading] = useState(!initialApod && !initialError);
+  const [error, setError] = useState<string | null>(initialError);
   const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
+    if (initialApod || initialError) {
+      return;
+    }
+
     async function fetchApod() {
       try {
         const data = await apiFetch<APODData>("/apod");
@@ -32,7 +38,7 @@ export function APODCard({ className }: APODCardProps) {
     }
 
     fetchApod();
-  }, []);
+  }, [initialApod, initialError]);
 
   if (loading) {
     return <APODCardSkeleton className={className} />;

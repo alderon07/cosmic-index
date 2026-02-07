@@ -62,23 +62,32 @@ function getEventIcon(type: AnySpaceWeatherEvent["eventType"]) {
 }
 
 function formatDateTime(isoString: string): { date: string; time: string } {
-  try {
-    const d = new Date(isoString);
-    return {
-      date: d.toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      }),
-      time: d.toLocaleTimeString("en-US", {
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: false,
-      }),
-    };
-  } catch {
+  const d = new Date(isoString);
+  if (Number.isNaN(d.getTime())) {
     return { date: isoString, time: "" };
   }
+
+  const monthNames = [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+  ];
+
+  const date = `${monthNames[d.getUTCMonth()]} ${d.getUTCDate()}, ${d.getUTCFullYear()}`;
+  const time = `${String(d.getUTCHours()).padStart(2, "0")}:${String(
+    d.getUTCMinutes()
+  ).padStart(2, "0")}`;
+
+  return { date, time };
 }
 
 function getPrimaryMetricLabel(eventType: AnySpaceWeatherEvent["eventType"]): string {

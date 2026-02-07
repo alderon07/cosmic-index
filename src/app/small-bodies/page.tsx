@@ -1,412 +1,88 @@
-"use client";
+import { Suspense } from "react";
+import {
+  SmallBodyData,
+  SmallBodyQueryParams,
+  SmallBodyQuerySchema,
+} from "@/lib/types";
+import { fetchSmallBodies } from "@/lib/jpl-sbdb";
+import {
+  SmallBodiesLoadingSkeleton,
+  SmallBodiesPageClient,
+} from "./small-bodies-page-client";
+import { PaginatedResult } from "@/lib/api-client";
+import { DEFAULT_PAGE_SIZE } from "@/lib/constants";
 
-import { useState, useEffect, useCallback, useMemo, Suspense, startTransition } from "react";
-import { useSearchParams, useRouter, usePathname } from "next/navigation";
-import { saveListUrl } from "@/lib/list-url-store";
-import { ObjectCard, ObjectCardSkeleton } from "@/components/object-card";
-import { ObjectDetailModal } from "@/components/object-detail-modal";
-import { SearchBar } from "@/components/search-bar";
-import { SmallBodyFilterPanel, SmallBodyFilters } from "@/components/filter-panel";
-import { Pagination, PaginationInfo } from "@/components/pagination";
-import { AnyCosmicObject, SmallBodyData } from "@/lib/types";
-import { apiFetchPaginated, PaginatedResult } from "@/lib/api-client";
-import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "@/lib/constants";
-import { THEMES } from "@/lib/theme";
-import { ViewToggle, ViewMode } from "@/components/view-toggle";
-import { CircleDot } from "lucide-react";
-import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
+interface SmallBodiesPageProps {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}
 
-const theme = THEMES["small-bodies"];
-
-function SmallBodiesPageContent() {
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  const pathname = usePathname();
-
-  // Derive all query state from URL (URL is source of truth)
-  const page = (() => {
-    const param = searchParams.get("page");
-    const parsed = param ? parseInt(param, 10) : 1;
-    return isNaN(parsed) || parsed < 1 ? 1 : parsed;
-  })();
-
-  const limit = (() => {
-    const param = searchParams.get("limit");
-    const parsed = param ? parseInt(param, 10) : DEFAULT_PAGE_SIZE;
-    if (isNaN(parsed) || !PAGE_SIZE_OPTIONS.includes(parsed as typeof PAGE_SIZE_OPTIONS[number])) {
-      return DEFAULT_PAGE_SIZE;
+function toSingleValueParams(
+  params: Record<string, string | string[] | undefined>
+): Record<string, string> {
+  const entries: Array<[string, string]> = [];
+  for (const [key, value] of Object.entries(params)) {
+    if (typeof value === "string") {
+      entries.push([key, value]);
+    } else if (Array.isArray(value) && value.length > 0) {
+      entries.push([key, value[0]]);
     }
-    return parsed;
-  })();
+  }
+  return Object.fromEntries(entries);
+}
 
-  // Derive search query from URL
-  const searchQuery = searchParams.get("query") || "";
+function buildInitialFetchKey(params: SmallBodyQueryParams): string {
+  const query = new URLSearchParams();
+  if (params.query) query.set("query", params.query);
+  if (params.kind) query.set("kind", params.kind);
+  if (params.neo) query.set("neo", "true");
+  if (params.pha) query.set("pha", "true");
+  if (params.orbitClass) query.set("orbitClass", params.orbitClass);
+  query.set("page", (params.page ?? 1).toString());
+  query.set("limit", (params.limit ?? DEFAULT_PAGE_SIZE).toString());
+  return query.toString();
+}
 
-  // Derive filters from URL (memoized to avoid unnecessary re-renders)
-  const kind = (searchParams.get("kind") as SmallBodyFilters["kind"]) || undefined;
-  const neo = searchParams.get("neo") === "true" || undefined;
-  const pha = searchParams.get("pha") === "true" || undefined;
-  const orbitClass = searchParams.get("orbitClass") || undefined;
+export default async function SmallBodiesPage({
+  searchParams,
+}: SmallBodiesPageProps) {
+  const resolvedSearchParams = await searchParams;
+  const rawParams = toSingleValueParams(resolvedSearchParams);
+  const parsed = SmallBodyQuerySchema.safeParse(rawParams);
 
-  const filters: SmallBodyFilters = useMemo(() => ({
-    kind,
-    neo,
-    pha,
-    orbitClass,
-  }), [kind, neo, pha, orbitClass]);
+  let initialData: PaginatedResult<SmallBodyData> | null = null;
+  let initialError: string | null = null;
+  let initialFetchKey = buildInitialFetchKey({ page: 1, limit: DEFAULT_PAGE_SIZE });
 
-  // Derive view mode from URL (default: grid)
-  const viewParam = searchParams.get("view");
-  const view: ViewMode = viewParam === "list" ? "list" : "grid";
-
-  // Save current URL to sessionStorage for breadcrumb navigation
-  useEffect(() => {
-    const query = searchParams.toString();
-    saveListUrl("small-bodies", query ? `${pathname}?${query}` : pathname);
-  }, [searchParams, pathname]);
-
-  const [data, setData] = useState<PaginatedResult<SmallBodyData> | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [selectedObject, setSelectedObject] = useState<AnyCosmicObject | null>(null);
-  const [filterAccordionValue, setFilterAccordionValue] = useState<string>("");
-
-  // Update URL helper - preserves existing params
-  const updateUrl = useCallback((updates: Record<string, string | null>) => {
-    const params = new URLSearchParams(searchParams.toString());
-
-    for (const [key, value] of Object.entries(updates)) {
-      if (value === null) {
-        params.delete(key);
-      } else {
-        params.set(key, value);
-      }
-    }
-
-    const query = params.toString();
-    startTransition(() => {
-      router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
-    });
-  }, [searchParams, pathname, router]);
-
-  // Page change handler (called by Pagination component)
-  const setPage = useCallback((newPage: number) => {
-    updateUrl({
-      page: newPage === 1 ? null : newPage.toString(), // Clean URL for page 1
-    });
-  }, [updateUrl]);
-
-  // Clamp page when data loads (handle out-of-range)
-  useEffect(() => {
-    if (data && data.total && data.total > 0) {
-      const maxPage = Math.ceil(data.total / limit);
-      if (page > maxPage) {
-        setPage(maxPage);
-      }
-    }
-  }, [data, limit, page, setPage]);
-
-  // Update search query in URL (resets to page 1)
-  const handleSearchChange = useCallback((query: string) => {
-    updateUrl({
-      query: query || null, // Remove from URL if empty
-      page: null, // Reset to page 1
-    });
-  }, [updateUrl]);
-
-  // Update filters in URL (resets to page 1)
-  const handleFiltersChange = useCallback((newFilters: SmallBodyFilters) => {
-    updateUrl({
-      kind: newFilters.kind ?? null,
-      neo: newFilters.neo ? "true" : null,
-      pha: newFilters.pha ? "true" : null,
-      orbitClass: newFilters.orbitClass ?? null,
-      page: null, // Reset to page 1
-    });
-  }, [updateUrl]);
-
-  // Clear all filters from URL (resets to page 1)
-  const handleFilterReset = useCallback(() => {
-    updateUrl({
-      kind: null,
-      neo: null,
-      pha: null,
-      orbitClass: null,
-      page: null, // Reset to page 1
-    });
-  }, [updateUrl]);
-
-  // Handle view mode change
-  const handleViewChange = useCallback((newView: ViewMode) => {
-    updateUrl({
-      view: newView === "grid" ? null : newView, // Remove from URL if default
-    });
-  }, [updateUrl]);
-
-  // Keyboard shortcut handlers
-  const toggleFilters = useCallback(() => {
-    setFilterAccordionValue((prev) => (prev === "filters" ? "" : "filters"));
-  }, []);
-
-  const toggleView = useCallback(() => {
-    handleViewChange(view === "grid" ? "list" : "grid");
-  }, [view, handleViewChange]);
-
-  const nextPage = useCallback(() => {
-    const totalPages = data?.total ? Math.ceil(data.total / limit) : 0;
-    if (page < totalPages) {
-      setPage(page + 1);
-    }
-  }, [data, limit, page, setPage]);
-
-  const previousPage = useCallback(() => {
-    if (page > 1) {
-      setPage(page - 1);
-    }
-  }, [page, setPage]);
-
-  // Register page-level keyboard shortcuts
-  useKeyboardShortcuts({
-    shortcuts: [
-      { key: "f", handler: toggleFilters, description: "Toggle filters" },
-      { key: "v", handler: toggleView, description: "Toggle view" },
-      { key: "j", handler: nextPage, description: "Next page" },
-      { key: "k", handler: previousPage, description: "Previous page" },
-    ],
-  });
-
-  // Fetch data when page/limit/search/filters change
-  const fetchData = useCallback(async (signal?: AbortSignal) => {
-    setIsLoading(true);
-    setError(null);
-
+  if (!parsed.success) {
+    initialError = "Invalid query parameters.";
+  } else {
+    const query = parsed.data;
+    initialFetchKey = buildInitialFetchKey(query);
     try {
-      const params = new URLSearchParams();
-
-      if (searchQuery) params.set("query", searchQuery);
-      if (filters.kind) params.set("kind", filters.kind);
-      if (filters.neo) params.set("neo", "true");
-      if (filters.pha) params.set("pha", "true");
-      if (filters.orbitClass) params.set("orbitClass", filters.orbitClass);
-      params.set("page", page.toString());
-      params.set("limit", limit.toString());
-
-      const result = await apiFetchPaginated<SmallBodyData>(`/small-bodies?${params.toString()}`, {
-        signal,
+      const result = await fetchSmallBodies({
+        ...query,
+        page: query.page ?? 1,
       });
-
-      // If request was aborted, don't update state
-      if (signal?.aborted) return;
-
-      setData(result);
-    } catch (err) {
-      // Ignore abort errors (user navigated away or query changed)
-      if (err instanceof Error && err.name === "AbortError") {
-        return;
-      }
-      setError(err instanceof Error ? err.message : "An error occurred");
-    } finally {
-      // Only set loading false if not aborted
-      if (!signal?.aborted) {
-        setIsLoading(false);
-      }
+      initialData = {
+        objects: result.objects,
+        total: result.total,
+        page: result.page,
+        limit: result.limit,
+        hasMore: result.hasMore,
+        mode: "offset",
+      };
+    } catch (error) {
+      initialError = error instanceof Error ? error.message : "An error occurred";
     }
-  }, [searchQuery, filters, page, limit]);
-
-  // Use AbortController to cancel in-flight requests when query/filters/page change
-  useEffect(() => {
-    const controller = new AbortController();
-    fetchData(controller.signal);
-
-    return () => {
-      controller.abort(); // Cancel on cleanup (re-render or unmount)
-    };
-  }, [fetchData]);
-
-  const totalPages = data?.total ? Math.ceil(data.total / limit) : 0;
+  }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      {/* Page Header */}
-      <div className="mb-8">
-        <div className="flex items-center gap-3 mb-2">
-          <div className={`w-10 h-10 rounded-lg ${theme.iconContainer} flex items-center justify-center`}>
-            <CircleDot className={`w-5 h-5 ${theme.icon}`} />
-          </div>
-        <h1 className="font-display text-3xl md:text-4xl text-foreground">
-          Small Bodies
-        </h1>
-      </div>
-      <p className="text-muted-foreground mb-2">
-        Discover asteroids and comets from JPL&apos;s Small-Body Database
-      </p>
-      <p className="text-sm text-muted-foreground/80">
-        Small bodies are celestial objects in our solar system that are smaller than planets or dwarf planets.
-        This category includes asteroids, rocky remnants from the early solar system, and comets, icy bodies
-        that develop tails when they approach the Sun. Some small bodies, known as Near-Earth Objects (NEOs),
-        have orbits that bring them close to Earth.
-      </p>
-      </div>
-
-      {/* Search and Filters */}
-      <div className="space-y-4 mb-8">
-        <SearchBar
-          value={searchQuery}
-          onChange={handleSearchChange}
-          placeholder="Search asteroids and comets..."
-          isLoading={isLoading}
-        />
-        <p className="text-xs text-muted-foreground/70 italic">
-          Search by asteroid or comet name, designation, or number. Use filters to narrow results by type, classification, or other criteria.
-        </p>
-
-        <SmallBodyFilterPanel
-          filters={filters}
-          onChange={handleFiltersChange}
-          onReset={handleFilterReset}
-          viewToggle={
-            <ViewToggle
-              view={view}
-              onChange={handleViewChange}
-              theme={theme}
-            />
-          }
-          accordionValue={filterAccordionValue}
-          onAccordionChange={setFilterAccordionValue}
-        />
-      </div>
-
-      {/* Results Info and Top Pagination */}
-      {data && !isLoading && (
-        <div className="flex flex-col gap-4 md:flex-row items-center md:justify-between mb-6">
-          <PaginationInfo
-            currentPage={page}
-            pageSize={limit}
-            totalItems={data.total ?? 0}
-          />
-          {totalPages > 1 && (
-            <Pagination
-              currentPage={page}
-              totalPages={totalPages}
-              onPageChange={setPage}
-              theme="small-bodies"
-            />
-          )}
-        </div>
-      )}
-
-      {/* Error State */}
-      {error && (
-        <div className="p-6 bg-destructive/10 border border-destructive/50 rounded-lg text-center">
-          <p className="text-destructive">{error}</p>
-          <button
-            onClick={() => fetchData()}
-            className="mt-4 text-sm text-primary hover:underline"
-          >
-            Try again
-          </button>
-        </div>
-      )}
-
-      {/* Loading State - Grid */}
-      {isLoading && view === "grid" && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <ObjectCardSkeleton key={i} />
-          ))}
-        </div>
-      )}
-
-      {/* Loading State - List */}
-      {isLoading && view === "list" && (
-        <div className="min-w-0 overflow-hidden space-y-2">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <ObjectCardSkeleton key={i} variant="compact" />
-          ))}
-        </div>
-      )}
-
-      {/* Results Grid */}
-      {!isLoading && data && data.objects.length > 0 && view === "grid" && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {data.objects.map((smallBody) => (
-            <ObjectCard key={smallBody.sourceId} object={smallBody} onModalOpen={setSelectedObject} />
-          ))}
-        </div>
-      )}
-
-      {/* Results List */}
-      {!isLoading && data && data.objects.length > 0 && view === "list" && (
-        <div className="min-w-0 overflow-hidden space-y-2">
-          {data.objects.map((smallBody) => (
-            <ObjectCard key={smallBody.sourceId} object={smallBody} onModalOpen={setSelectedObject} variant="compact" />
-          ))}
-        </div>
-      )}
-
-      {/* Empty State */}
-      {!isLoading && data && data.objects.length === 0 && (
-        <div className="p-12 text-center">
-          <CircleDot className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-          <h2 className="font-display text-xl text-foreground mb-2">
-            No small bodies found
-          </h2>
-          <p className="text-muted-foreground">
-            Try adjusting your search or filters
-          </p>
-        </div>
-      )}
-
-      {/* Pagination */}
-      {!isLoading && data && totalPages > 1 && (
-        <div className="mt-8 flex justify-center">
-          <Pagination
-            currentPage={page}
-            totalPages={totalPages}
-            onPageChange={setPage}
-            theme="small-bodies"
-          />
-        </div>
-      )}
-
-      {/* Object Detail Modal */}
-      <ObjectDetailModal
-        object={selectedObject}
-        open={selectedObject !== null}
-        onOpenChange={(open) => !open && setSelectedObject(null)}
+    <Suspense fallback={<SmallBodiesLoadingSkeleton />}>
+      <SmallBodiesPageClient
+        initialData={initialData}
+        initialError={initialError}
+        initialFetchKey={initialFetchKey}
       />
-    </div>
-  );
-}
-
-// Loading skeleton for Suspense fallback
-function LoadingSkeleton() {
-  return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="mb-8">
-        <div className="flex items-center gap-3 mb-2">
-          <div className={`w-10 h-10 rounded-lg ${theme.iconContainer} flex items-center justify-center`}>
-            <CircleDot className={`w-5 h-5 ${theme.icon}`} />
-          </div>
-          <h1 className="font-display text-3xl md:text-4xl text-foreground">
-            Small Bodies
-          </h1>
-        </div>
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <ObjectCardSkeleton key={i} />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// Suspense wrapper (required for useSearchParams in Next.js 15)
-export default function SmallBodiesPage() {
-  return (
-    <Suspense fallback={<LoadingSkeleton />}>
-      <SmallBodiesPageContent />
     </Suspense>
   );
 }
