@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   AnyCosmicObject,
   ExoplanetData,
@@ -34,6 +35,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { TOOLTIP_CONTENT } from "@/components/info-tooltip";
+import { useCompare } from "@/components/compare/use-compare";
+import { trackEvent } from "@/lib/analytics-events";
 
 // SessionStorage keys for storing list page URLs
 const EXOPLANETS_LIST_URL_KEY = "exoplanetsListUrl";
@@ -112,10 +115,22 @@ export function ObjectCard({ object, onModalOpen, variant = "default" }: ObjectC
 
   // Get first 3-4 key facts
   const displayFacts = object.keyFacts.slice(0, 4);
+  const { addObject, isInCompare } = useCompare();
+  const compareSupported = isExoplanet(object);
+  const alreadyInCompare = compareSupported && isInCompare(object.id);
+
+  const trackCardViewed = (view: "grid" | "list") => {
+    trackEvent("object_card_viewed", {
+      objectId: object.id,
+      objectType: object.type,
+      view,
+    });
+  };
 
   // Store current list page URL when clicking to navigate to detail page
   const storeListUrl = () => {
     if (typeof window !== "undefined") {
+      trackCardViewed(variant === "compact" ? "list" : "grid");
       const currentUrl = window.location.pathname + window.location.search;
       const storageKey = isExoplanet(object)
         ? EXOPLANETS_LIST_URL_KEY
@@ -130,6 +145,15 @@ export function ObjectCard({ object, onModalOpen, variant = "default" }: ObjectC
   const handleNavigateClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     storeListUrl();
+  };
+
+  const handleCompareClick = (
+    e: React.MouseEvent<HTMLButtonElement>,
+    source: "object-card-grid" | "object-card-list"
+  ) => {
+    e.preventDefault();
+    e.stopPropagation();
+    addObject(object, source);
   };
 
   // Compact variant for list view - with type-specific column layouts
@@ -367,6 +391,36 @@ export function ObjectCard({ object, onModalOpen, variant = "default" }: ObjectC
 
           {/* Block 3: Badges + navigation icon (right on md+) */}
           <div className="flex shrink-0 items-center justify-end gap-2 min-w-0">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={alreadyInCompare ? "default" : "outline"}
+                  onClick={(e) => handleCompareClick(e, "object-card-list")}
+                  className={`h-6 px-2 text-[10px] font-mono ${
+                    compareSupported
+                      ? alreadyInCompare
+                        ? "glow-orange"
+                        : "border-primary/40 text-primary hover:bg-primary/10"
+                      : "border-border/60 text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {compareSupported
+                    ? alreadyInCompare
+                      ? "In"
+                      : "Cmp"
+                    : "Cmp"}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                {compareSupported
+                  ? alreadyInCompare
+                    ? "Already in compare"
+                    : "Add to compare"
+                  : "Compare is currently limited to exoplanets while we validate the feature."}
+              </TooltipContent>
+            </Tooltip>
             {isSmallBody(object) && object.isNeo && (
               <Badge variant="outline" className="text-[10px] border-amber-glow/50 text-amber-glow py-0 px-1.5">
                 NEO
@@ -405,10 +459,14 @@ export function ObjectCard({ object, onModalOpen, variant = "default" }: ObjectC
         <div
           role="button"
           tabIndex={0}
-          onClick={() => onModalOpen(object)}
+          onClick={() => {
+            trackCardViewed("list");
+            onModalOpen(object);
+          }}
           onKeyDown={(e) => {
             if (e.key === "Enter" || e.key === " ") {
               e.preventDefault();
+              trackCardViewed("list");
               onModalOpen(object);
             }
           }}
@@ -429,6 +487,7 @@ export function ObjectCard({ object, onModalOpen, variant = "default" }: ObjectC
   // Handle card click - opens modal if onModalOpen provided
   const handleCardClick = () => {
     if (onModalOpen) {
+      trackCardViewed("grid");
       onModalOpen(object);
     }
   };
@@ -437,6 +496,7 @@ export function ObjectCard({ object, onModalOpen, variant = "default" }: ObjectC
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (onModalOpen && (e.key === "Enter" || e.key === " ")) {
       e.preventDefault();
+      trackCardViewed("grid");
       onModalOpen(object);
     }
   };
@@ -512,6 +572,36 @@ export function ObjectCard({ object, onModalOpen, variant = "default" }: ObjectC
           </p>
         )}
         <div className="flex items-center gap-1.5 shrink-0 ml-auto justify-end">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                size="sm"
+                variant={alreadyInCompare ? "default" : "outline"}
+                onClick={(e) => handleCompareClick(e, "object-card-grid")}
+                className={`h-6 px-2 text-[10px] font-mono ${
+                  compareSupported
+                    ? alreadyInCompare
+                      ? "glow-orange"
+                      : "border-primary/40 text-primary hover:bg-primary/10"
+                    : "border-border/60 text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {compareSupported
+                  ? alreadyInCompare
+                    ? "In Compare"
+                    : "Compare"
+                  : "Compare"}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-xs">
+              {compareSupported
+                ? alreadyInCompare
+                  ? "Already in compare"
+                  : "Add to compare"
+                : "Compare is currently limited to exoplanets while we validate the feature."}
+            </TooltipContent>
+          </Tooltip>
           {isSmallBody(object) && object.isNeo && (
             <Tooltip>
               <TooltipTrigger asChild>

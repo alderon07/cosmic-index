@@ -47,6 +47,8 @@ import {
   List,
 } from "lucide-react";
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
+import { EventTimeline } from "@/components/timeline/event-timeline";
+import { buildTimelineBuckets } from "@/lib/timeline-buckets";
 
 const theme = THEMES["fireballs"];
 
@@ -278,6 +280,22 @@ export function FireballsPageClient({
     () => data?.events.reduce((count, event) => (event.isComplete ? count + 1 : count), 0) ?? 0,
     [data?.events]
   );
+
+  const timelineBuckets = useMemo(() => {
+    if (!data?.events || data.events.length === 0) return [];
+    const parsedDates = data.events
+      .map((event) => new Date(event.date))
+      .filter((date) => !Number.isNaN(date.getTime()))
+      .sort((a, b) => a.getTime() - b.getTime());
+
+    if (parsedDates.length === 0) return [];
+
+    return buildTimelineBuckets({
+      events: data.events.map((event) => ({ timestamp: event.date })),
+      startDate: parsedDates[0],
+      endDate: parsedDates[parsedDates.length - 1],
+    });
+  }, [data?.events]);
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -517,6 +535,16 @@ export function FireballsPageClient({
             )}
           </p>
         </div>
+      )}
+
+      {!isLoading && timelineBuckets.length > 0 && (
+        <EventTimeline
+          title="Fireball Activity Timeline"
+          pageType="fireballs"
+          theme="fireballs"
+          buckets={timelineBuckets}
+          actionable={false}
+        />
       )}
 
       {/* Error State */}

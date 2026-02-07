@@ -7,6 +7,8 @@ import { Analytics } from "@vercel/analytics/react";
 import { ClerkProvider } from "@clerk/nextjs";
 import { KeyboardShortcutsProvider } from "@/components/keyboard-shortcuts/keyboard-shortcuts-provider";
 import { UserAuthButton } from "@/components/auth/user-auth-button";
+import { CompareProvider } from "@/components/compare/compare-provider";
+import { CompareTray } from "@/components/compare/compare-tray";
 
 const audiowide = Audiowide({
   variable: "--font-display",
@@ -149,6 +151,7 @@ export default function RootLayout({
         className={`${audiowide.variable} ${inter.variable} ${jetbrainsMono.variable} antialiased min-h-screen bg-background`}
       >
         <ClerkProvider>
+        <CompareProvider>
         <KeyboardShortcutsProvider>
         <div className="relative min-h-screen vignette">
           {/* Navigation */}
@@ -218,6 +221,7 @@ export default function RootLayout({
 
           {/* Main Content */}
           <main>{children}</main>
+          <CompareTray />
 
           {/* Footer */}
           <footer className="border-t border-border/50 mt-auto">
@@ -278,6 +282,7 @@ export default function RootLayout({
           </footer>
         </div>
         </KeyboardShortcutsProvider>
+        </CompareProvider>
         </ClerkProvider>
         <Analytics />
       </body>
