@@ -15,6 +15,8 @@ import { THEMES } from "@/lib/theme";
 import { ViewToggle, ViewMode } from "@/components/view-toggle";
 import { CircleDot } from "lucide-react";
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
+import { SavedSearchControls } from "@/components/saved-search-controls";
+import { ExportButton } from "@/components/export-button";
 
 const theme = THEMES["small-bodies"];
 
@@ -169,6 +171,25 @@ export function SmallBodiesPageClient({
     });
   }, [updateUrl]);
 
+  const handleApplySavedSearch = useCallback(
+    (queryParams: Record<string, unknown>) => {
+      const asString = (value: unknown): string | null =>
+        typeof value === "string" && value ? value : null;
+      const asBoolean = (value: unknown): string | null =>
+        typeof value === "boolean" && value ? "true" : null;
+
+      updateUrl({
+        query: asString(queryParams.query),
+        kind: asString(queryParams.kind),
+        neo: asBoolean(queryParams.neo),
+        pha: asBoolean(queryParams.pha),
+        orbitClass: asString(queryParams.orbitClass),
+        page: null,
+      });
+    },
+    [updateUrl]
+  );
+
   // Handle view mode change
   const handleViewChange = useCallback((newView: ViewMode) => {
     updateUrl({
@@ -300,6 +321,15 @@ export function SmallBodiesPageClient({
         <p className="text-xs text-muted-foreground/70 italic">
           Search by asteroid or comet name, designation, or number. Use filters to narrow results by type, classification, or other criteria.
         </p>
+        <SavedSearchControls
+          category="small-bodies"
+          currentParams={{
+            query: searchQuery || undefined,
+            ...filters,
+          }}
+          onApply={handleApplySavedSearch}
+          theme={theme}
+        />
 
         <SmallBodyFilterPanel
           filters={filters}
@@ -319,20 +349,28 @@ export function SmallBodiesPageClient({
 
       {/* Results Info and Top Pagination */}
       {data && !isLoading && (
-        <div className="flex flex-col gap-4 md:flex-row items-center md:justify-between mb-6">
+        <div className="mb-6 flex flex-col items-center gap-4 md:flex-row md:items-center md:justify-between">
           <PaginationInfo
             currentPage={page}
             pageSize={limit}
             totalItems={data.total ?? 0}
+            className="text-center md:text-left"
           />
-          {totalPages > 1 && (
-            <Pagination
-              currentPage={page}
-              totalPages={totalPages}
-              onPageChange={setPage}
-              theme="small-bodies"
-            />
-          )}
+          <div className="flex w-full flex-col items-center gap-2 md:w-auto md:flex-row md:flex-nowrap md:items-center md:justify-end">
+            {totalPages > 1 && (
+              <div className="order-1 w-full md:order-2 md:w-auto">
+                <Pagination
+                  currentPage={page}
+                  totalPages={totalPages}
+                  onPageChange={setPage}
+                  theme="small-bodies"
+                />
+              </div>
+            )}
+            <div className="order-2 md:order-1">
+              <ExportButton category="small-bodies" theme={theme} />
+            </div>
+          </div>
         </div>
       )}
 

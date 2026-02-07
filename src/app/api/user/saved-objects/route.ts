@@ -3,6 +3,8 @@ import { requireAuth, authErrorResponse } from "@/lib/auth";
 import { requireUserDb } from "@/lib/user-db";
 import { SaveObjectInputSchema, SavedObject } from "@/lib/types";
 import { parseCanonicalId } from "@/lib/canonical-id";
+import { isMockUserStoreEnabled } from "@/lib/runtime-mode";
+import { listSavedObjects, saveObject } from "@/lib/mock-user-store";
 
 /**
  * GET /api/user/saved-objects
@@ -13,11 +15,22 @@ import { parseCanonicalId } from "@/lib/canonical-id";
 export async function GET(request: NextRequest) {
   try {
     const user = await requireAuth();
-    const db = requireUserDb();
-
     const searchParams = request.nextUrl.searchParams;
     const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
     const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "24", 10)));
+
+    if (isMockUserStoreEnabled()) {
+      const result = listSavedObjects(user.userId, page, limit);
+      return NextResponse.json({
+        objects: result.objects,
+        total: result.total,
+        page,
+        limit,
+        hasMore: result.hasMore,
+      });
+    }
+
+    const db = requireUserDb();
     const offset = (page - 1) * limit;
 
     // Get total count
@@ -71,7 +84,6 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const user = await requireAuth();
-    const db = requireUserDb();
 
     const body = await request.json();
     const parseResult = SaveObjectInputSchema.safeParse(body);
@@ -93,6 +105,20 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    if (isMockUserStoreEnabled()) {
+      const savedObject = saveObject({
+        userId: user.userId,
+        canonicalId,
+        displayName,
+        notes: notes ?? null,
+        eventPayload: eventPayload ?? null,
+      });
+
+      return NextResponse.json(savedObject, { status: 201 });
+    }
+
+    const db = requireUserDb();
 
     // Upsert: INSERT OR REPLACE based on unique constraint
     // This handles the case where user saves the same object twice

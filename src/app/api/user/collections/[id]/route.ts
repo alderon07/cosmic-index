@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAuth, authErrorResponse } from "@/lib/auth";
 import { requireUserDb } from "@/lib/user-db";
 import { UpdateCollectionSchema, Collection, SavedObject } from "@/lib/types";
+import { isMockUserStoreEnabled } from "@/lib/runtime-mode";
+import {
+  deleteCollection,
+  getCollectionWithItems,
+  updateCollection,
+} from "@/lib/mock-user-store";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -15,13 +21,26 @@ interface RouteParams {
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     const user = await requireAuth();
-    const db = requireUserDb();
     const { id } = await params;
 
     const collectionId = parseInt(id, 10);
     if (isNaN(collectionId)) {
       return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
     }
+
+    if (isMockUserStoreEnabled()) {
+      const result = getCollectionWithItems(user.userId, collectionId);
+      if (!result) {
+        return NextResponse.json({ error: "Not found" }, { status: 404 });
+      }
+      return NextResponse.json({
+        collection: result.collection,
+        items: result.items,
+        itemCount: result.items.length,
+      });
+    }
+
+    const db = requireUserDb();
 
     // Get collection
     const collectionResult = await db.execute({
@@ -100,7 +119,6 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
   try {
     const user = await requireAuth();
-    const db = requireUserDb();
     const { id } = await params;
 
     const collectionId = parseInt(id, 10);
@@ -119,6 +137,22 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     }
 
     const updates = parseResult.data;
+
+    if (isMockUserStoreEnabled()) {
+      const updated = updateCollection(user.userId, collectionId, updates);
+      if (!updated) {
+        return NextResponse.json({ error: "Not found" }, { status: 404 });
+      }
+      if (updated === "DUPLICATE") {
+        return NextResponse.json(
+          { error: "A collection with this name already exists" },
+          { status: 409 }
+        );
+      }
+      return NextResponse.json(updated);
+    }
+
+    const db = requireUserDb();
 
     // Build dynamic UPDATE query
     const setClauses: string[] = ['updated_at = datetime("now")'];
@@ -197,13 +231,22 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
     const user = await requireAuth();
-    const db = requireUserDb();
     const { id } = await params;
 
     const collectionId = parseInt(id, 10);
     if (isNaN(collectionId)) {
       return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
     }
+
+    if (isMockUserStoreEnabled()) {
+      const deleted = deleteCollection(user.userId, collectionId);
+      if (!deleted) {
+        return NextResponse.json({ error: "Not found" }, { status: 404 });
+      }
+      return NextResponse.json({ success: true });
+    }
+
+    const db = requireUserDb();
 
     const result = await db.execute({
       sql: "DELETE FROM collections WHERE id = ? AND user_id = ? RETURNING id",

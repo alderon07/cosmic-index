@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { useAuth } from "@clerk/nextjs";
 import { Heart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -17,6 +16,7 @@ import {
   isSmallBody,
 } from "@/lib/types";
 import { catalogObjectId, CatalogObjectType } from "@/lib/canonical-id";
+import { useAppAuth } from "@/components/auth/app-auth-provider";
 
 /**
  * SaveButton Component
@@ -55,7 +55,7 @@ export function SaveButton({
   onSaveChange,
   className,
 }: SaveButtonProps) {
-  const { isSignedIn, isLoaded } = useAuth();
+  const { isSignedIn, isLoaded } = useAppAuth();
   const [isSaved, setIsSaved] = useState(initialIsSaved);
   const [savedObjectId, setSavedObjectId] = useState<number | null>(
     initialSavedObjectId

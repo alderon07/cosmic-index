@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { requireAuth, authErrorResponse } from "@/lib/auth";
 import { requireStripe, STRIPE_PRICES, APP_URL } from "@/lib/stripe";
 import { getUserDb } from "@/lib/user-db";
+import { isMockStripeEnabled, isMockUserStoreEnabled } from "@/lib/runtime-mode";
+import { setMockUserTier, setMockStripeCustomer } from "@/lib/mock-user-store";
 
 /**
  * POST /api/stripe/checkout
@@ -17,6 +19,17 @@ import { getUserDb } from "@/lib/user-db";
 export async function POST() {
   try {
     const user = await requireAuth();
+
+    if (isMockStripeEnabled()) {
+      if (isMockUserStoreEnabled()) {
+        setMockUserTier(user.userId, "pro");
+        setMockStripeCustomer(user.userId, "cus_mock_pro");
+      }
+      return NextResponse.json({
+        url: `${APP_URL}/settings/billing?success=true&mock=1`,
+      });
+    }
+
     const stripe = requireStripe();
     const db = getUserDb();
 

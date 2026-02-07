@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAuth, authErrorResponse } from "@/lib/auth";
 import { requireUserDb } from "@/lib/user-db";
 import { CreateCollectionSchema, Collection } from "@/lib/types";
+import { isMockUserStoreEnabled } from "@/lib/runtime-mode";
+import { createCollection, listCollections } from "@/lib/mock-user-store";
 
 /**
  * GET /api/user/collections
@@ -12,6 +14,11 @@ import { CreateCollectionSchema, Collection } from "@/lib/types";
 export async function GET() {
   try {
     const user = await requireAuth();
+
+    if (isMockUserStoreEnabled()) {
+      return NextResponse.json({ collections: listCollections(user.userId) });
+    }
+
     const db = requireUserDb();
 
     const result = await db.execute({
@@ -62,7 +69,6 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const user = await requireAuth();
-    const db = requireUserDb();
 
     const body = await request.json();
     const parseResult = CreateCollectionSchema.safeParse(body);
@@ -75,6 +81,27 @@ export async function POST(request: NextRequest) {
     }
 
     const { name, description, color, icon } = parseResult.data;
+
+    if (isMockUserStoreEnabled()) {
+      const collection = createCollection({
+        userId: user.userId,
+        name,
+        description: description ?? null,
+        color,
+        icon,
+      });
+
+      if (collection === "DUPLICATE") {
+        return NextResponse.json(
+          { error: "A collection with this name already exists" },
+          { status: 409 }
+        );
+      }
+
+      return NextResponse.json(collection, { status: 201 });
+    }
+
+    const db = requireUserDb();
 
     try {
       const result = await db.execute({

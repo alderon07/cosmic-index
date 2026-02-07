@@ -37,6 +37,7 @@ import {
 import { TOOLTIP_CONTENT } from "@/components/info-tooltip";
 import { useCompare } from "@/components/compare/use-compare";
 import { trackEvent } from "@/lib/analytics-events";
+import { SaveButton } from "@/components/save-button";
 
 // SessionStorage keys for storing list page URLs
 const EXOPLANETS_LIST_URL_KEY = "exoplanetsListUrl";
@@ -391,6 +392,7 @@ export function ObjectCard({ object, onModalOpen, variant = "default" }: ObjectC
 
           {/* Block 3: Badges + navigation icon (right on md+) */}
           <div className="flex shrink-0 items-center justify-end gap-2 min-w-0">
+            <SaveButton object={object} variant="icon" />
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
@@ -572,6 +574,7 @@ export function ObjectCard({ object, onModalOpen, variant = "default" }: ObjectC
           </p>
         )}
         <div className="flex items-center gap-1.5 shrink-0 ml-auto justify-end">
+          <SaveButton object={object} variant="icon" />
           <Tooltip>
             <TooltipTrigger asChild>
               <Button

@@ -31,6 +31,7 @@ import { InfoTooltip, TOOLTIP_CONTENT } from "@/components/info-tooltip";
 import { ObjectVisualizerPanel } from "@/components/visualizers/object-visualizer-panel";
 import { useCompare } from "@/components/compare/use-compare";
 import { trackEvent } from "@/lib/analytics-events";
+import { SaveButton } from "@/components/save-button";
 
 const NasaImageGallery = dynamic(
   () => import("./nasa-image-gallery").then((m) => m.NasaImageGallery),
@@ -150,6 +151,8 @@ export function ObjectDetail({
                   : "Compare (Exoplanets only)"}
               </Button>
             )}
+
+            <SaveButton object={object} variant="button" />
           </div>
 
           <h1 className="font-display text-2xl sm:text-3xl md:text-4xl lg:text-5xl text-foreground mb-2 nixie break-words">

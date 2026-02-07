@@ -1,5 +1,12 @@
-import { auth, currentUser } from "@clerk/nextjs/server";
 import { getUserDb } from "./user-db";
+import {
+  getMockUserEmail,
+  getMockUserId,
+  getMockUserTier,
+  isMockAuthEnabled,
+  isMockProEnabled,
+  isClerkServerConfigured,
+} from "./runtime-mode";
 
 /**
  * Authentication Utilities
@@ -43,6 +50,40 @@ export class AuthError extends Error {
   }
 }
 
+interface ClerkUserSnapshot {
+  userId: string | null;
+  email: string;
+}
+
+async function getClerkUserSnapshot(): Promise<ClerkUserSnapshot> {
+  if (!isClerkServerConfigured()) {
+    return { userId: null, email: "" };
+  }
+
+  const { auth, currentUser } = await import("@clerk/nextjs/server");
+  const { userId } = await auth();
+
+  if (!userId) {
+    return { userId: null, email: "" };
+  }
+
+  const clerkUser = await currentUser();
+  return {
+    userId,
+    email: clerkUser?.emailAddresses[0]?.emailAddress ?? "",
+  };
+}
+
+function buildMockUser(): AuthUser {
+  const tier = getMockUserTier();
+  return {
+    userId: getMockUserId(),
+    email: getMockUserEmail(),
+    tier,
+    isPro: tier === "pro",
+  };
+}
+
 /**
  * Get the current authenticated user with tier information.
  * Returns null if not signed in.
@@ -55,17 +96,21 @@ export class AuthError extends Error {
  * Write optimization: Most requests = 1 read, 0 writes.
  */
 export async function getAuthUser(): Promise<AuthUser | null> {
-  const { userId } = await auth();
-  if (!userId) return null;
+  if (isMockAuthEnabled()) {
+    return buildMockUser();
+  }
+
+  const clerk = await getClerkUserSnapshot();
+  if (!clerk.userId) {
+    return null;
+  }
 
   const db = getUserDb();
   if (!db) {
     // Database not configured - return basic auth without tier
-    const clerkUser = await currentUser();
-    const email = clerkUser?.emailAddresses[0]?.emailAddress ?? "";
     return {
-      userId,
-      email,
+      userId: clerk.userId,
+      email: clerk.email,
       tier: "free",
       isPro: false,
     };
@@ -74,21 +119,18 @@ export async function getAuthUser(): Promise<AuthUser | null> {
   // First: read (no write yet)
   const result = await db.execute({
     sql: "SELECT tier, email FROM users WHERE id = ?",
-    args: [userId],
+    args: [clerk.userId],
   });
-
-  const clerkUser = await currentUser();
-  const currentEmail = clerkUser?.emailAddresses[0]?.emailAddress ?? "";
 
   if (result.rows.length === 0) {
     // User doesn't exist in DB - create them (first visit)
     await db.execute({
       sql: "INSERT INTO users (id, email) VALUES (?, ?)",
-      args: [userId, currentEmail],
+      args: [clerk.userId, clerk.email],
     });
     return {
-      userId,
-      email: currentEmail,
+      userId: clerk.userId,
+      email: clerk.email,
       tier: "free",
       isPro: false,
     };
@@ -99,16 +141,16 @@ export async function getAuthUser(): Promise<AuthUser | null> {
   const tier = (row.tier as UserTier) ?? "free";
 
   // Only update if email changed (rare - Clerk email updates)
-  if (dbEmail !== currentEmail && currentEmail) {
+  if (dbEmail !== clerk.email && clerk.email) {
     await db.execute({
       sql: 'UPDATE users SET email = ?, updated_at = datetime("now") WHERE id = ?',
-      args: [currentEmail, userId],
+      args: [clerk.email, clerk.userId],
     });
   }
 
   return {
-    userId,
-    email: currentEmail || dbEmail,
+    userId: clerk.userId,
+    email: clerk.email || dbEmail,
     tier,
     isPro: tier === "pro",
   };
@@ -137,6 +179,13 @@ export async function requireAuth(): Promise<AuthUser> {
  */
 export async function requirePro(): Promise<AuthUser> {
   const user = await requireAuth();
+  if (isMockAuthEnabled()) {
+    if (!isMockProEnabled()) {
+      throw new AuthError("Pro subscription required", 403, "PRO_REQUIRED");
+    }
+    return user;
+  }
+
   if (!user.isPro) {
     throw new AuthError("Pro subscription required", 403, "PRO_REQUIRED");
   }

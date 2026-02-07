@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { authErrorResponse, getAuthUser } from "@/lib/auth";
 import { getUserDb } from "@/lib/user-db";
 import { z } from "zod";
+import { isMockUserStoreEnabled } from "@/lib/runtime-mode";
+import { checkSavedObjects } from "@/lib/mock-user-store";
 
 const CheckSavedSchema = z.object({
   canonicalIds: z.array(z.string()).min(1).max(100),
@@ -29,12 +31,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ saved: {} });
     }
 
-    const db = getUserDb();
-    if (!db) {
-      // Database not configured - return empty results
-      return NextResponse.json({ saved: {} });
-    }
-
     const body = await request.json();
     const parseResult = CheckSavedSchema.safeParse(body);
 
@@ -46,6 +42,18 @@ export async function POST(request: NextRequest) {
     }
 
     const { canonicalIds } = parseResult.data;
+
+    if (isMockUserStoreEnabled()) {
+      return NextResponse.json({
+        saved: checkSavedObjects(user.userId, canonicalIds),
+      });
+    }
+
+    const db = getUserDb();
+    if (!db) {
+      // Database not configured - return empty results
+      return NextResponse.json({ saved: {} });
+    }
 
     // Build query with parameterized IN clause
     const placeholders = canonicalIds.map(() => "?").join(", ");

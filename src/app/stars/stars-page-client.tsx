@@ -15,6 +15,8 @@ import { THEMES } from "@/lib/theme";
 import { ViewToggle, ViewMode } from "@/components/view-toggle";
 import { Star } from "lucide-react";
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
+import { SavedSearchControls } from "@/components/saved-search-controls";
+import { ExportButton } from "@/components/export-button";
 
 const theme = THEMES.stars;
 
@@ -183,6 +185,29 @@ export function StarsPageClient({
     });
   }, [updateUrl]);
 
+  const handleApplySavedSearch = useCallback(
+    (queryParams: Record<string, unknown>) => {
+      const asString = (value: unknown): string | null =>
+        typeof value === "string" && value ? value : null;
+      const asBoolean = (value: unknown): string | null =>
+        typeof value === "boolean" && value ? "true" : null;
+      const asNumber = (value: unknown): string | null =>
+        typeof value === "number" && Number.isFinite(value) ? value.toString() : null;
+
+      updateUrl({
+        query: asString(queryParams.query),
+        spectralClass: asString(queryParams.spectralClass),
+        minPlanets: asNumber(queryParams.minPlanets),
+        multiPlanet: asBoolean(queryParams.multiPlanet),
+        maxDistancePc: asNumber(queryParams.maxDistancePc),
+        sort: asString(queryParams.sort),
+        order: asString(queryParams.order),
+        page: null,
+      });
+    },
+    [updateUrl]
+  );
+
   // Handle view mode change
   const handleViewChange = useCallback((newView: ViewMode) => {
     updateUrl({
@@ -292,6 +317,15 @@ export function StarsPageClient({
         <p className="text-xs text-muted-foreground/70 italic">
           Search by star name. Use filters to narrow results by spectral class, planet count, or distance.
         </p>
+        <SavedSearchControls
+          category="stars"
+          currentParams={{
+            query: searchQuery || undefined,
+            ...filters,
+          }}
+          onApply={handleApplySavedSearch}
+          theme={theme}
+        />
 
         <StarFilterPanel
           filters={filters}
@@ -312,20 +346,28 @@ export function StarsPageClient({
 
       {/* Results Info and Top Pagination */}
       {data && !isLoading && (
-        <div className="flex flex-col gap-4 md:flex-row items-center md:justify-between mb-6">
+        <div className="mb-6 flex flex-col items-center gap-4 md:flex-row md:items-center md:justify-between">
           <PaginationInfo
             currentPage={page}
             pageSize={limit}
             totalItems={data.total ?? 0}
+            className="text-center md:text-left"
           />
-          {totalPages > 1 && (
-            <Pagination
-              currentPage={page}
-              totalPages={totalPages}
-              onPageChange={setPage}
-              theme="stars"
-            />
-          )}
+          <div className="flex w-full flex-col items-center gap-2 md:w-auto md:flex-row md:flex-nowrap md:items-center md:justify-end">
+            {totalPages > 1 && (
+              <div className="order-1 w-full md:order-2 md:w-auto">
+                <Pagination
+                  currentPage={page}
+                  totalPages={totalPages}
+                  onPageChange={setPage}
+                  theme="stars"
+                />
+              </div>
+            )}
+            <div className="order-2 md:order-1">
+              <ExportButton category="stars" theme={theme} />
+            </div>
+          </div>
         </div>
       )}
 

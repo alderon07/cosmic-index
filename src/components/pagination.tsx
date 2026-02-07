@@ -68,76 +68,80 @@ export function Pagination({
   const activeStyles = `${themeConfig.selectedButton} ${themeConfig.glow}`;
 
   return (
-    <nav
-      className="flex items-center justify-center gap-1"
-      aria-label="Pagination"
-    >
-      {/* Previous Button */}
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => onPageChange(currentPage - 1)}
-        disabled={currentPage <= 1}
-        className="gap-1"
-        aria-label="Go to previous page"
+    <div className="max-w-full overflow-x-auto">
+      <div className="flex justify-center">
+      <nav
+        className="inline-flex min-w-max items-center gap-1"
+        aria-label="Pagination"
       >
-        <ChevronLeft className="w-4 h-4" />
-        <span className="hidden sm:inline">Prev</span>
-      </Button>
+        {/* Previous Button */}
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => onPageChange(currentPage - 1)}
+          disabled={currentPage <= 1}
+          className="gap-1"
+          aria-label="Go to previous page"
+        >
+          <ChevronLeft className="w-4 h-4" />
+          <span className="hidden sm:inline">Prev</span>
+        </Button>
 
-      {/* Page Numbers */}
-      <div className="flex items-center gap-1">
-        {pages.map((page, index) => {
-          if (page === "ellipsis") {
+        {/* Page Numbers */}
+        <div className="flex items-center gap-1">
+          {pages.map((page, index) => {
+            if (page === "ellipsis") {
+              return (
+                <span
+                  key={`ellipsis-${index}`}
+                  className="px-2 py-1 text-muted-foreground"
+                >
+                  <MoreHorizontal className="w-4 h-4" />
+                </span>
+              );
+            }
+
+            const isActive = page === currentPage;
+
+            // Use default variant for exoplanets, secondary for small-bodies, outline+override for stars
+            const getVariant = () => {
+              if (!isActive) return "outline";
+              if (theme === "exoplanets") return "default";
+              if (theme === "small-bodies") return "secondary";
+              return "outline"; // stars uses outline with override classes
+            };
+
             return (
-              <span
-                key={`ellipsis-${index}`}
-                className="px-2 py-1 text-muted-foreground"
+              <Button
+                key={page}
+                variant={getVariant()}
+                size="sm"
+                onClick={() => onPageChange(page)}
+                className={`h-8 min-w-8 px-2 font-mono sm:h-9 sm:min-w-9 ${isActive ? activeStyles : ""}`}
+                aria-label={`Go to page ${page}`}
+                aria-current={isActive ? "page" : undefined}
               >
-                <MoreHorizontal className="w-4 h-4" />
-              </span>
+                {page}
+              </Button>
             );
-          }
+          })}
+        </div>
 
-          const isActive = page === currentPage;
-
-          // Use default variant for exoplanets, secondary for small-bodies, outline+override for stars
-          const getVariant = () => {
-            if (!isActive) return "outline";
-            if (theme === "exoplanets") return "default";
-            if (theme === "small-bodies") return "secondary";
-            return "outline"; // stars uses outline with override classes
-          };
-
-          return (
-            <Button
-              key={page}
-              variant={getVariant()}
-              size="sm"
-              onClick={() => onPageChange(page)}
-              className={`min-w-9 h-9 px-2 font-mono ${isActive ? activeStyles : ""}`}
-              aria-label={`Go to page ${page}`}
-              aria-current={isActive ? "page" : undefined}
-            >
-              {page}
-            </Button>
-          );
-        })}
+        {/* Next Button */}
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => onPageChange(currentPage + 1)}
+          disabled={currentPage >= totalPages}
+          className="gap-1"
+          aria-label="Go to next page"
+        >
+          <span className="hidden sm:inline">Next</span>
+          <ChevronRight className="w-4 h-4" />
+        </Button>
+      </nav>
       </div>
-
-      {/* Next Button */}
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => onPageChange(currentPage + 1)}
-        disabled={currentPage >= totalPages}
-        className="gap-1"
-        aria-label="Go to next page"
-      >
-        <span className="hidden sm:inline">Next</span>
-        <ChevronRight className="w-4 h-4" />
-      </Button>
-    </nav>
+    </div>
   );
 }
 
@@ -178,18 +182,20 @@ interface PaginationInfoProps {
   currentPage: number;
   pageSize: number;
   totalItems: number;
+  className?: string;
 }
 
 export function PaginationInfo({
   currentPage,
   pageSize,
   totalItems,
+  className,
 }: PaginationInfoProps) {
   const start = (currentPage - 1) * pageSize + 1;
   const end = Math.min(currentPage * pageSize, totalItems);
 
   return (
-    <p className="text-sm text-muted-foreground">
+    <p className={`text-sm text-muted-foreground ${className ?? ""}`}>
       Showing{" "}
       <span className="font-mono text-foreground">
         {start}-{end}
