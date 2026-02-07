@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import { cache } from "react";
 import { ObjectDetail } from "@/components/object-detail";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { fetchExoplanetBySlug } from "@/lib/nasa-exoplanet";
@@ -11,12 +12,14 @@ interface ExoplanetDetailPageProps {
   params: Promise<{ id: string }>;
 }
 
+const getExoplanetById = cache(async (id: string) => fetchExoplanetBySlug(id));
+
 // Generate dynamic metadata for SEO
 export async function generateMetadata({
   params,
 }: ExoplanetDetailPageProps): Promise<Metadata> {
   const { id } = await params;
-  const exoplanet = await fetchExoplanetBySlug(id);
+  const exoplanet = await getExoplanetById(id);
 
   if (!exoplanet) {
     return {
@@ -142,7 +145,7 @@ export default async function ExoplanetDetailPage({
   params,
 }: ExoplanetDetailPageProps) {
   const { id } = await params;
-  const exoplanet = await fetchExoplanetBySlug(id);
+  const exoplanet = await getExoplanetById(id);
 
   if (!exoplanet) {
     notFound();

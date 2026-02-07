@@ -5,8 +5,8 @@ import Link from "next/link";
 import { Circle, Star, CircleDot, Crosshair, Flame, Sun, Keyboard } from "lucide-react";
 import { Analytics } from "@vercel/analytics/react";
 import { ClerkProvider } from "@clerk/nextjs";
-import { KeyboardShortcutsProvider } from "@/components/keyboard-shortcuts";
-import { UserAuthButton } from "@/components/auth";
+import { KeyboardShortcutsProvider } from "@/components/keyboard-shortcuts/keyboard-shortcuts-provider";
+import { UserAuthButton } from "@/components/auth/user-auth-button";
 
 const audiowide = Audiowide({
   variable: "--font-display",

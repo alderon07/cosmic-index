@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { ChevronRight, Home } from "lucide-react";
 import { getCategoryFromPath, getListUrl } from "@/lib/list-url-store";
 import { BASE_URL } from "@/lib/config";
@@ -89,7 +90,7 @@ export function Breadcrumbs({
                   <ChevronRight className="w-4 h-4 mx-1 flex-shrink-0" />
                 )}
                 {item.href && !isLast ? (
-                  <a
+                  <Link
                     href={item.href}
                     className={`transition-colors flex items-center gap-1 ${
                       linkHoverClassName ?? "hover:text-primary"
@@ -97,7 +98,7 @@ export function Breadcrumbs({
                   >
                     {isFirst && <Home className="w-4 h-4" />}
                     <span>{item.label}</span>
-                  </a>
+                  </Link>
                 ) : (
                   <span
                     className={`flex items-center gap-1 ${

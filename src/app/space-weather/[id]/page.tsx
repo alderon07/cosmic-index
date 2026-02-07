@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import { cache } from "react";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { SpaceWeatherDetail } from "@/components/space-weather-detail";
 import {
@@ -20,6 +21,11 @@ interface SpaceWeatherDetailPageProps {
   params: Promise<{ id: string }>;
 }
 
+const getSpaceWeatherEventById = cache(async (id: string) => {
+  const eventId = decodeURIComponent(id);
+  return fetchSpaceWeatherEventById(eventId);
+});
+
 function formatDate(isoString: string): string {
   try {
     const d = new Date(isoString);
@@ -39,8 +45,7 @@ export async function generateMetadata({
   params,
 }: SpaceWeatherDetailPageProps): Promise<Metadata> {
   const { id } = await params;
-  const eventId = decodeURIComponent(id);
-  const event = await fetchSpaceWeatherEventById(eventId);
+  const event = await getSpaceWeatherEventById(id);
 
   if (!event) {
     return {
@@ -86,8 +91,7 @@ export default async function SpaceWeatherDetailPage({
   params,
 }: SpaceWeatherDetailPageProps) {
   const { id } = await params;
-  const eventId = decodeURIComponent(id);
-  const event = await fetchSpaceWeatherEventById(eventId);
+  const event = await getSpaceWeatherEventById(id);
 
   if (!event) {
     notFound();

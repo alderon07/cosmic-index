@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -9,7 +10,6 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { AnyCosmicObject, isExoplanet, isSmallBody, isStar } from "@/lib/types";
-import { NasaImageGallery } from "./nasa-image-gallery";
 import {
   ExternalLink,
   Orbit,
@@ -26,6 +26,11 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { InfoTooltip, TOOLTIP_CONTENT } from "@/components/info-tooltip";
+
+const NasaImageGallery = dynamic(
+  () => import("./nasa-image-gallery").then((m) => m.NasaImageGallery),
+  { ssr: false }
+);
 
 interface ObjectDetailProps {
   object: AnyCosmicObject;

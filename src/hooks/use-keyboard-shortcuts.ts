@@ -11,6 +11,32 @@ import {
 // Timeout for g-prefix sequences (ms)
 const SEQUENCE_TIMEOUT = 1500;
 
+// Shared global listener registry so provider + page hooks don't each add document listeners.
+const shortcutSubscribers = new Set<(event: KeyboardEvent) => void>();
+let isGlobalListenerAttached = false;
+
+function dispatchKeyboardEvent(event: KeyboardEvent) {
+  for (const subscriber of shortcutSubscribers) {
+    subscriber(event);
+  }
+}
+
+function ensureGlobalKeyboardListener() {
+  if (isGlobalListenerAttached || typeof document === "undefined") {
+    return;
+  }
+  document.addEventListener("keydown", dispatchKeyboardEvent);
+  isGlobalListenerAttached = true;
+}
+
+function teardownGlobalKeyboardListenerIfIdle() {
+  if (!isGlobalListenerAttached || shortcutSubscribers.size > 0 || typeof document === "undefined") {
+    return;
+  }
+  document.removeEventListener("keydown", dispatchKeyboardEvent);
+  isGlobalListenerAttached = false;
+}
+
 export interface ShortcutHandler {
   key: string;
   handler: () => void;
@@ -162,10 +188,12 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions = {}) 
   useEffect(() => {
     if (!enabled) return;
 
-    document.addEventListener("keydown", handleKeyDown);
+    shortcutSubscribers.add(handleKeyDown);
+    ensureGlobalKeyboardListener();
 
     return () => {
-      document.removeEventListener("keydown", handleKeyDown);
+      shortcutSubscribers.delete(handleKeyDown);
+      teardownGlobalKeyboardListenerIfIdle();
       clearGPrefix();
     };
   }, [enabled, handleKeyDown, clearGPrefix]);
