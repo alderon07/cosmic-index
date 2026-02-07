@@ -39,6 +39,8 @@ import {
 } from "lucide-react";
 import { ViewToggle, ViewMode } from "@/components/view-toggle";
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
+import { EventTimeline } from "@/components/timeline/event-timeline";
+import { buildTimelineBuckets } from "@/lib/timeline-buckets";
 
 const theme = THEMES["space-weather"];
 
@@ -270,6 +272,19 @@ export function SpaceWeatherPageClient({
     return counts;
   }, [data?.events]);
 
+  const timelineBuckets = useMemo(() => {
+    if (!data?.events || data.events.length === 0) return [];
+
+    const endDate = new Date();
+    const startDate = new Date(endDate.getTime() - 29 * 24 * 60 * 60 * 1000);
+
+    return buildTimelineBuckets({
+      events: data.events.map((event) => ({ timestamp: event.startTime })),
+      startDate,
+      endDate,
+    });
+  }, [data?.events]);
+
   return (
     <div className="container mx-auto px-4 py-8">
       {/* Page Header */}
@@ -423,6 +438,16 @@ export function SpaceWeatherPageClient({
             )}
           </p>
         </div>
+      )}
+
+      {!isLoading && timelineBuckets.length > 0 && (
+        <EventTimeline
+          title="Space Weather Timeline"
+          pageType="space-weather"
+          theme="space-weather"
+          buckets={timelineBuckets}
+          actionable={false}
+        />
       )}
 
       {/* Error State */}

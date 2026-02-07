@@ -1,7 +1,9 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Accordion,
@@ -26,6 +28,9 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { InfoTooltip, TOOLTIP_CONTENT } from "@/components/info-tooltip";
+import { ObjectVisualizerPanel } from "@/components/visualizers/object-visualizer-panel";
+import { useCompare } from "@/components/compare/use-compare";
+import { trackEvent } from "@/lib/analytics-events";
 
 const NasaImageGallery = dynamic(
   () => import("./nasa-image-gallery").then((m) => m.NasaImageGallery),
@@ -36,13 +41,24 @@ interface ObjectDetailProps {
   object: AnyCosmicObject;
   hideDataSources?: boolean;
   compact?: boolean;
+  showCompare?: boolean;
 }
 
 export function ObjectDetail({
   object,
   hideDataSources,
   compact,
+  showCompare = true,
 }: ObjectDetailProps) {
+  const { addObject, isInCompare, isObjectSupported } = useCompare();
+
+  useEffect(() => {
+    trackEvent("object_detail_viewed", {
+      objectId: object.id,
+      objectType: object.type,
+    });
+  }, [object.id, object.type]);
+
   const typeLabel = isExoplanet(object)
     ? "Exoplanet"
     : isStar(object)
@@ -52,6 +68,8 @@ export function ObjectDetail({
       ? "Comet"
       : "Asteroid"
     : "Unknown";
+  const compareSupported = isObjectSupported(object);
+  const alreadyInCompare = compareSupported && isInCompare(object.id);
 
   return (
     <div className="space-y-6 min-w-0">
@@ -110,6 +128,28 @@ export function ObjectDetail({
                 </TooltipContent>
               </Tooltip>
             )}
+
+            {showCompare && (
+              <Button
+                type="button"
+                variant={alreadyInCompare ? "default" : "outline"}
+                size="sm"
+                onClick={() => addObject(object, "object-detail")}
+                className={
+                  compareSupported
+                    ? alreadyInCompare
+                      ? "glow-orange"
+                      : "border-primary/40 text-primary hover:bg-primary/10"
+                    : "border-border/60 text-muted-foreground hover:text-foreground"
+                }
+              >
+                {compareSupported
+                  ? alreadyInCompare
+                    ? "In Compare"
+                    : "Add to Compare"
+                  : "Compare (Exoplanets only)"}
+              </Button>
+            )}
           </div>
 
           <h1 className="font-display text-2xl sm:text-3xl md:text-4xl lg:text-5xl text-foreground mb-2 nixie break-words">
@@ -161,6 +201,9 @@ export function ObjectDetail({
           <p className="text-foreground leading-relaxed">{object.summary}</p>
         </CardContent>
       </Card>
+
+      {/* Visualized metrics */}
+      <ObjectVisualizerPanel object={object} />
 
       {/* NASA Images */}
       <NasaImageGallery object={object} compact={compact} />

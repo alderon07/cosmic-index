@@ -7,6 +7,7 @@
     "build": "bun run next build",
     "start": "bun run next start",
     "lint": "bun run eslint",
+    "test": "bun test",
     "sbdb:diag": "npx tsx scripts/sbdb-diag.ts",
     "ingest:stars": "npx tsx scripts/ingest-stars.ts",
     "ingest:exoplanets": "npx tsx scripts/ingest-exoplanets.ts"

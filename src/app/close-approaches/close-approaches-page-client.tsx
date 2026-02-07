@@ -38,6 +38,11 @@ import {
 } from "lucide-react";
 import { ViewToggle, ViewMode } from "@/components/view-toggle";
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
+import { EventTimeline } from "@/components/timeline/event-timeline";
+import {
+  buildTimelineBuckets,
+  parseCloseApproachTimestamp,
+} from "@/lib/timeline-buckets";
 
 const theme = THEMES["close-approaches"];
 
@@ -267,6 +272,21 @@ export function CloseApproachesPageClient({
   }, [fetchData, currentFetchKey, initialFetchKey]);
 
   const activeFilterCount = countActiveFilters(filters);
+  const timelineBuckets = useMemo(() => {
+    if (!data?.events || data.events.length === 0) return [];
+
+    const now = new Date();
+    const windowDays = Number.parseInt(days, 10);
+    const endDate = new Date(now.getTime() + (Number.isNaN(windowDays) ? 60 : windowDays) * 24 * 60 * 60 * 1000);
+
+    return buildTimelineBuckets({
+      events: data.events
+        .map((event) => ({ timestamp: parseCloseApproachTimestamp(event.approachTimeRaw) }))
+        .filter((event): event is { timestamp: string } => Boolean(event.timestamp)),
+      startDate: now,
+      endDate,
+    });
+  }, [data?.events, days]);
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -506,6 +526,16 @@ export function CloseApproachesPageClient({
             {!!data.meta?.phaFilterApplied && " (PHAs only)"}
           </p>
         </div>
+      )}
+
+      {!isLoading && timelineBuckets.length > 0 && (
+        <EventTimeline
+          title="Approach Density Timeline"
+          pageType="close-approaches"
+          theme="close-approaches"
+          buckets={timelineBuckets}
+          actionable={false}
+        />
       )}
 
       {/* Error State */}
