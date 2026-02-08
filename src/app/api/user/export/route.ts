@@ -1,25 +1,48 @@
 import { NextRequest } from "next/server";
-import { requirePro, authErrorResponse } from "@/lib/auth";
-import { getUserDb } from "@/lib/user-db";
 import { z } from "zod";
+import crypto from "node:crypto";
+
+import { requireAuth, authErrorResponse } from "@/lib/auth";
+import { getUserDb } from "@/lib/user-db";
 import { isMockUserStoreEnabled } from "@/lib/runtime-mode";
 import { listSavedObjects } from "@/lib/mock-user-store";
 import { searchExoplanets } from "@/lib/exoplanet-index";
 import { searchStars } from "@/lib/star-index";
 import { fetchSmallBodies } from "@/lib/jpl-sbdb";
+import {
+  ExoplanetQuerySchema,
+  SmallBodyQuerySchema,
+  StarQuerySchema,
+  type ExoplanetQueryParams,
+  type SmallBodyQueryParams,
+  type StarQueryParams,
+} from "@/lib/types";
+import {
+  computeFilterHash,
+  decodeExportCursor,
+  encodeExportCursor,
+  generateExportFilename,
+  type ExportCursor,
+} from "@/lib/export-utils";
+import { getTierLimits } from "@/lib/tier-limits";
 
 /**
  * POST /api/user/export
  *
- * Export cosmic objects data as CSV or JSON.
+ * Export cosmic objects data as CSV or NDJSON.
  */
 
-const MAX_EXPORT_ROWS = 5000;
+const EXPORT_CHUNK_SIZE = 1000;
+const EXPORT_TIMEOUT_MS = 45_000;
+const CURSOR_EXPIRY_MS = 24 * 60 * 60 * 1000;
+const WINDOW_SECONDS = 60 * 60;
+const WINDOW_MS = WINDOW_SECONDS * 1000;
 
 const ExportSchema = z.object({
-  format: z.enum(["csv", "json"]),
+  format: z.enum(["csv", "ndjson"]),
   category: z.enum(["exoplanets", "stars", "small-bodies", "saved-objects"]),
   queryParams: z.record(z.string(), z.unknown()).optional(),
+  cursor: z.string().optional(),
 });
 
 const CSV_FIELDS: Record<string, { key: string; header: string }[]> = {
@@ -62,6 +85,35 @@ const CSV_FIELDS: Record<string, { key: string; header: string }[]> = {
   ],
 };
 
+const EXPORTABLE_FILTERS: Record<string, string[]> = {
+  exoplanets: [
+    "query",
+    "discoveryMethod",
+    "year",
+    "hasRadius",
+    "hasMass",
+    "sizeCategory",
+    "habitable",
+    "facility",
+    "multiPlanet",
+    "maxDistancePc",
+    "sort",
+    "order",
+  ],
+  stars: [
+    "query",
+    "spectralClass",
+    "minPlanets",
+    "multiPlanet",
+    "maxDistancePc",
+    "sort",
+    "order",
+  ],
+  "small-bodies": ["query", "kind", "neo", "pha", "orbitClass"],
+};
+
+const mockExportUsage = new Map<string, { requestTimestamps: number[]; rowEvents: Array<{ at: number; rows: number }> }>();
+
 function getCSVHeader(category: string): string {
   const fields = CSV_FIELDS[category] || CSV_FIELDS["saved-objects"];
   return fields.map((f) => f.header).join(",");
@@ -81,114 +133,134 @@ function toCSVRow(row: Record<string, unknown>, category: string): string {
   return fields.map((f) => escapeCSV(row[f.key])).join(",");
 }
 
-async function buildExportRows(params: {
-  category: "exoplanets" | "stars" | "small-bodies" | "saved-objects";
-  userId: string;
-  useMockStore: boolean;
-}): Promise<Record<string, unknown>[]> {
-  const { category, userId, useMockStore } = params;
+function pickExportableFilters(
+  category: "exoplanets" | "stars" | "small-bodies",
+  rawParams: Record<string, unknown>,
+  parsedParams: Record<string, unknown>
+): Record<string, unknown> {
+  const allowlist = EXPORTABLE_FILTERS[category] ?? [];
+  const filters: Record<string, unknown> = {};
+  for (const key of allowlist) {
+    if (Object.prototype.hasOwnProperty.call(rawParams, key)) {
+      filters[key] = parsedParams[key];
+    }
+  }
+  return filters;
+}
+
+function getLimitFromRaw(rawParams: Record<string, unknown>, parsedParams: Record<string, unknown>): number | undefined {
+  if (!Object.prototype.hasOwnProperty.call(rawParams, "limit")) return undefined;
+  const raw = parsedParams.limit;
+  if (typeof raw !== "number" || Number.isNaN(raw)) return undefined;
+  return Math.max(1, Math.floor(raw));
+}
+
+function getExportRateHeaders(params: {
+  requestLimit: number;
+  requestRemaining: number;
+  rowLimit: number;
+  rowRemaining: number;
+}): Record<string, string> {
+  return {
+    "X-RateLimit-Export-Requests-Limit": params.requestLimit.toString(),
+    "X-RateLimit-Export-Requests-Remaining": Math.max(0, params.requestRemaining).toString(),
+    "X-RateLimit-Export-Rows-Limit": params.rowLimit.toString(),
+    "X-RateLimit-Export-Rows-Remaining": Math.max(0, params.rowRemaining).toString(),
+  };
+}
+
+function getMockUsage(userId: string, now: number) {
+  const usage = mockExportUsage.get(userId) ?? { requestTimestamps: [], rowEvents: [] };
+  usage.requestTimestamps = usage.requestTimestamps.filter((ts) => ts > now - WINDOW_MS);
+  usage.rowEvents = usage.rowEvents.filter((event) => event.at > now - WINDOW_MS);
+  mockExportUsage.set(userId, usage);
+  const requestCount = usage.requestTimestamps.length;
+  const rowsUsed = usage.rowEvents.reduce((sum, event) => sum + event.rows, 0);
+  return { usage, requestCount, rowsUsed };
+}
+
+async function getDbUsage(userId: string, now: number) {
   const db = getUserDb();
+  if (!db) return null;
 
-  if (category === "saved-objects") {
-    if (useMockStore || !db) {
-      const saved = listSavedObjects(userId, 1, MAX_EXPORT_ROWS).objects;
-      return saved.map((item) => ({
-        canonical_id: item.canonicalId,
-        display_name: item.displayName,
-        notes: item.notes,
-        created_at: item.createdAt,
-      }));
+  const startedAfter = now - WINDOW_MS;
+  const requestResult = await db.execute({
+    sql: `
+      SELECT COUNT(*) as request_count
+      FROM export_history
+      WHERE user_id = ? AND started_at >= ?
+    `,
+    args: [userId, startedAfter],
+  });
+  const requestCount = Number(requestResult.rows[0]?.request_count ?? 0);
+
+  const rowResult = await db.execute({
+    sql: `
+      SELECT COALESCE(SUM(exported_count), 0) as rows_used
+      FROM export_history
+      WHERE user_id = ?
+        AND started_at >= ?
+        AND status IN ('complete', 'partial_budget', 'partial_timeout')
+    `,
+    args: [userId, startedAfter],
+  });
+  const rowsUsed = Number(rowResult.rows[0]?.rows_used ?? 0);
+
+  return { requestCount, rowsUsed };
+}
+
+async function enforceExportLimits(params: {
+  userId: string;
+  requestLimit: number;
+  rowLimit: number;
+  estimatedRows: number;
+  useMockStore: boolean;
+}) {
+  const now = Date.now();
+
+  if (!params.useMockStore) {
+    const dbUsage = await getDbUsage(params.userId, now);
+    if (!dbUsage) {
+      throw new Error("LIMIT_BACKEND_UNAVAILABLE");
     }
 
-    const result = await db.execute({
-      sql: `
-        SELECT canonical_id, display_name, notes, created_at
-        FROM saved_objects
-        WHERE user_id = ?
-        ORDER BY created_at DESC
-        LIMIT ?
-      `,
-      args: [userId, MAX_EXPORT_ROWS],
-    });
+    const requestRemaining = params.requestLimit - dbUsage.requestCount - 1;
+    const rowRemaining = params.rowLimit - dbUsage.rowsUsed - params.estimatedRows;
 
-    return result.rows as Record<string, unknown>[];
-  }
-
-  if (category === "exoplanets") {
-    if (!useMockStore && db) {
-      const result = await db.execute({
-        sql: `
-          SELECT pl_name, hostname, discovery_method, disc_year,
-                 orbital_period_days, radius_earth, mass_earth,
-                 equilibrium_temp_k, distance_parsecs
-          FROM exoplanets
-          ORDER BY pl_name ASC
-          LIMIT ?
-        `,
-        args: [MAX_EXPORT_ROWS],
-      });
-      return result.rows as Record<string, unknown>[];
+    if (requestRemaining < 0 || rowRemaining < 0) {
+      throw new Error("RATE_LIMIT_EXCEEDED");
     }
 
-    const result = await searchExoplanets({ page: 1, limit: 500, sort: "name" });
-    return result.objects.slice(0, MAX_EXPORT_ROWS).map((item) => ({
-      pl_name: item.displayName,
-      hostname: item.hostStar,
-      discovery_method: item.discoveryMethod,
-      disc_year: item.discoveredYear ?? null,
-      orbital_period_days: item.orbitalPeriodDays ?? null,
-      radius_earth: item.radiusEarth ?? null,
-      mass_earth: item.massEarth ?? null,
-      equilibrium_temp_k: item.equilibriumTempK ?? null,
-      distance_parsecs: item.distanceParsecs ?? null,
-    }));
+    return {
+      requestRemaining,
+      rowRemaining,
+    };
   }
 
-  if (category === "stars") {
-    if (!useMockStore && db) {
-      const result = await db.execute({
-        sql: `
-          SELECT hostname, spectral_class, spectral_type, star_temp_k,
-                 star_mass_solar, star_radius_solar, distance_parsecs,
-                 planet_count, vmag
-          FROM stars
-          ORDER BY hostname ASC
-          LIMIT ?
-        `,
-        args: [MAX_EXPORT_ROWS],
-      });
-      return result.rows as Record<string, unknown>[];
-    }
+  const { usage, requestCount, rowsUsed } = getMockUsage(params.userId, now);
+  const requestRemaining = params.requestLimit - requestCount - 1;
+  const rowRemaining = params.rowLimit - rowsUsed - params.estimatedRows;
 
-    const result = await searchStars({ page: 1, limit: 500, sort: "name" });
-    return result.objects.slice(0, MAX_EXPORT_ROWS).map((item) => ({
-      hostname: item.displayName,
-      spectral_class: item.spectralClass ?? null,
-      spectral_type: item.spectralType ?? null,
-      star_temp_k: item.starTempK ?? null,
-      star_mass_solar: item.starMassSolar ?? null,
-      star_radius_solar: item.starRadiusSolar ?? null,
-      distance_parsecs: item.distanceParsecs ?? null,
-      planet_count: item.planetCount,
-      vmag: item.vMag ?? null,
-    }));
+  if (requestRemaining < 0 || rowRemaining < 0) {
+    throw new Error("RATE_LIMIT_EXCEEDED");
   }
 
-  const smallBodies = await fetchSmallBodies({ page: 1, limit: 500 });
-  return smallBodies.objects.slice(0, MAX_EXPORT_ROWS).map((item) => ({
-    display_name: item.displayName,
-    kind: item.bodyKind,
-    orbit_class: item.orbitClass,
-    neo: item.isNeo,
-    pha: item.isPha,
-    diameter_km: item.diameterKm ?? null,
-    absolute_magnitude: item.absoluteMagnitude ?? null,
-  }));
+  usage.requestTimestamps.push(now);
+  usage.rowEvents.push({ at: now, rows: params.estimatedRows });
+
+  return {
+    requestRemaining,
+    rowRemaining,
+  };
 }
 
 export async function POST(request: NextRequest) {
+  const requestId = crypto.randomUUID();
+  const baseHeaders = { "X-Request-Id": requestId };
+
   try {
-    const user = await requirePro();
+    const user = await requireAuth();
+    const tierLimits = getTierLimits(user.tier);
 
     const body = await request.json();
     const parseResult = ExportSchema.safeParse(body);
@@ -196,55 +268,499 @@ export async function POST(request: NextRequest) {
     if (!parseResult.success) {
       return Response.json(
         { error: "Invalid request", details: parseResult.error.flatten() },
-        { status: 400 }
+        { status: 400, headers: baseHeaders }
       );
     }
 
-    const { format, category } = parseResult.data;
+    const { format, category, queryParams = {}, cursor } = parseResult.data;
     const useMockStore = isMockUserStoreEnabled();
 
-    const rows = await buildExportRows({
-      category,
-      userId: user.userId,
-      useMockStore,
-    });
-
-    const limitedRows = rows.slice(0, MAX_EXPORT_ROWS);
-
-    const payload =
-      format === "csv"
-        ? [
-            getCSVHeader(category),
-            ...limitedRows.map((row) => toCSVRow(row, category)),
-          ].join("\n")
-        : JSON.stringify(limitedRows, null, 2);
-
-    const filename = `cosmic-index-${category}-${new Date().toISOString().split("T")[0]}.${format}`;
-
-    if (!useMockStore) {
-      const db = getUserDb();
-      if (db) {
-        try {
-          await db.execute({
-            sql: `
-              INSERT INTO export_history (user_id, category, record_count)
-              VALUES (?, ?, ?)
-            `,
-            args: [user.userId, category, limitedRows.length],
-          });
-        } catch {
-          // Ignore export logging errors
-        }
+    if (format === "csv") {
+      const hasLimit = Object.prototype.hasOwnProperty.call(queryParams, "limit");
+      const rawLimit = queryParams.limit;
+      const limitValue =
+        typeof rawLimit === "number"
+          ? rawLimit
+          : typeof rawLimit === "string"
+          ? Number(rawLimit)
+          : undefined;
+      if (!hasLimit || limitValue === undefined || Number.isNaN(limitValue) || limitValue > tierLimits.CSV_MAX_ROWS) {
+        return Response.json(
+          {
+            error: "csv_row_limit_exceeded",
+            message: `CSV exports limited to ${tierLimits.CSV_MAX_ROWS} rows. Use format=ndjson.`,
+          },
+          { status: 400, headers: baseHeaders }
+        );
       }
     }
 
-    return new Response(payload + (format === "csv" ? "\n" : ""), {
-      headers: {
-        "Content-Type": format === "csv" ? "text/csv" : "application/json",
-        "Content-Disposition": `attachment; filename="${filename}"`,
-        "Cache-Control": "no-cache",
+    let filters: Record<string, unknown> = {};
+    let userLimit: number | undefined;
+
+    if (category === "exoplanets") {
+      const result = ExoplanetQuerySchema.safeParse(queryParams);
+      if (!result.success) {
+        return Response.json(
+          {
+            error: "invalid_filters",
+            message: "Invalid filters",
+            details: result.error.flatten(),
+          },
+          { status: 400, headers: baseHeaders }
+        );
+      }
+      filters = pickExportableFilters("exoplanets", queryParams, result.data as Record<string, unknown>);
+      userLimit = getLimitFromRaw(queryParams, result.data as Record<string, unknown>);
+    } else if (category === "stars") {
+      const result = StarQuerySchema.safeParse(queryParams);
+      if (!result.success) {
+        return Response.json(
+          {
+            error: "invalid_filters",
+            message: "Invalid filters",
+            details: result.error.flatten(),
+          },
+          { status: 400, headers: baseHeaders }
+        );
+      }
+      filters = pickExportableFilters("stars", queryParams, result.data as Record<string, unknown>);
+      userLimit = getLimitFromRaw(queryParams, result.data as Record<string, unknown>);
+    } else if (category === "small-bodies") {
+      const result = SmallBodyQuerySchema.safeParse(queryParams);
+      if (!result.success) {
+        return Response.json(
+          {
+            error: "invalid_filters",
+            message: "Invalid filters",
+            details: result.error.flatten(),
+          },
+          { status: 400, headers: baseHeaders }
+        );
+      }
+      filters = pickExportableFilters("small-bodies", queryParams, result.data as Record<string, unknown>);
+      userLimit = getLimitFromRaw(queryParams, result.data as Record<string, unknown>);
+    } else if (category === "saved-objects") {
+      const rawLimit = queryParams.limit;
+      const limitValue =
+        typeof rawLimit === "number"
+          ? rawLimit
+          : typeof rawLimit === "string"
+          ? Number(rawLimit)
+          : undefined;
+      if (limitValue !== undefined && !Number.isNaN(limitValue)) {
+        userLimit = Math.max(1, Math.floor(limitValue));
+      }
+    }
+
+    if ((category === "saved-objects" || category === "small-bodies") && cursor) {
+      return Response.json(
+        { error: "resume_not_supported", message: `Resume not supported for ${category}.` },
+        { status: 400, headers: baseHeaders }
+      );
+    }
+
+    const filterHash = computeFilterHash(filters);
+    let resumeCursor: ExportCursor | null = null;
+
+    if (cursor) {
+      resumeCursor = decodeExportCursor(cursor);
+      if (!resumeCursor) {
+        return Response.json(
+          { error: "invalid_cursor_format", message: "Invalid cursor format." },
+          { status: 400, headers: baseHeaders }
+        );
+      }
+      if (resumeCursor.expiresAt <= Date.now()) {
+        return Response.json(
+          { error: "cursor_expired", message: "Cursor expired, start a new export." },
+          { status: 400, headers: baseHeaders }
+        );
+      }
+      if (resumeCursor.category !== category) {
+        return Response.json(
+          { error: "cursor_category_mismatch", message: "Cursor category mismatch." },
+          { status: 400, headers: baseHeaders }
+        );
+      }
+      if (resumeCursor.filterHash !== filterHash) {
+        return Response.json(
+          { error: "cursor_filter_mismatch", message: "Cursor filters do not match request." },
+          { status: 400, headers: baseHeaders }
+        );
+      }
+    }
+
+    const maxRows = Math.min(userLimit ?? tierLimits.MAX_EXPORT_ROWS, tierLimits.MAX_EXPORT_ROWS);
+    const estimatedRows = maxRows;
+
+    let rateLimitHeaders: Record<string, string>;
+    try {
+      const limitResult = await enforceExportLimits({
+        userId: user.userId,
+        requestLimit: tierLimits.EXPORT_REQUESTS_PER_HOUR,
+        rowLimit: tierLimits.EXPORT_ROWS_PER_HOUR,
+        estimatedRows,
+        useMockStore,
+      });
+      rateLimitHeaders = getExportRateHeaders({
+        requestLimit: tierLimits.EXPORT_REQUESTS_PER_HOUR,
+        requestRemaining: limitResult.requestRemaining,
+        rowLimit: tierLimits.EXPORT_ROWS_PER_HOUR,
+        rowRemaining: limitResult.rowRemaining,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "UNKNOWN";
+      if (message === "LIMIT_BACKEND_UNAVAILABLE") {
+        return Response.json(
+          { error: "service_unavailable", message: "Rate limiting unavailable.", retryAfter: 60 },
+          {
+            status: 503,
+            headers: {
+              ...baseHeaders,
+              "Retry-After": "60",
+            },
+          }
+        );
+      }
+
+      return Response.json(
+        { error: "rate_limit_exceeded", retryAfter: WINDOW_SECONDS },
+        {
+          status: 429,
+          headers: {
+            ...baseHeaders,
+            "Retry-After": WINDOW_SECONDS.toString(),
+            ...getExportRateHeaders({
+              requestLimit: tierLimits.EXPORT_REQUESTS_PER_HOUR,
+              requestRemaining: 0,
+              rowLimit: tierLimits.EXPORT_ROWS_PER_HOUR,
+              rowRemaining: 0,
+            }),
+          },
+        }
+      );
+    }
+
+    const filename = generateExportFilename(category, format);
+    const headers = {
+      ...baseHeaders,
+      ...rateLimitHeaders,
+      "Content-Type": format === "csv" ? "text/csv" : "application/x-ndjson",
+      "Content-Disposition": `attachment; filename="${filename}"`,
+      "Cache-Control": "no-store",
+    };
+
+    const db = getUserDb();
+    const startedAt = Date.now();
+    let exportId: number | null = null;
+
+    if (!useMockStore && db) {
+      try {
+        const result = await db.execute({
+          sql: `
+            INSERT INTO export_history (request_id, user_id, category, format, status, started_at, filters_hash)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+          `,
+          args: [requestId, user.userId, category, format, "started", startedAt, filterHash],
+        });
+        exportId = (result as { lastInsertRowid?: number }).lastInsertRowid ?? null;
+      } catch {
+        exportId = null;
+      }
+    }
+
+    let exportedCount = 0;
+    let finalStatus: "complete" | "partial_timeout" | "partial_budget" | "failed_error" = "complete";
+    let finalErrorCode: string | null = null;
+    let finalResumeCursor: string | null = null;
+    let timeoutFired = false;
+
+    const timeout = setTimeout(() => {
+      timeoutFired = true;
+    }, EXPORT_TIMEOUT_MS);
+
+    let finalized = false;
+    const finalize = async () => {
+      if (finalized) return;
+      finalized = true;
+      clearTimeout(timeout);
+
+      if (!useMockStore && db && exportId !== null) {
+        const completedAt = Date.now();
+        const durationMs = completedAt - startedAt;
+        try {
+          await db.execute({
+            sql: `
+              UPDATE export_history
+              SET status = ?, exported_count = ?, completed_at = ?, duration_ms = ?, error_code = ?
+              WHERE id = ?
+            `,
+            args: [finalStatus, exportedCount, completedAt, durationMs, finalErrorCode, exportId],
+          });
+        } catch {
+          // Ignore logging failures.
+        }
+      }
+    };
+
+    const stream = new ReadableStream<Uint8Array>({
+      async start(controller) {
+        const encoder = new TextEncoder();
+        const writeNdjson = (line: string) => controller.enqueue(encoder.encode(`${line}\n`));
+
+        try {
+          if (format === "ndjson") {
+            writeNdjson(JSON.stringify({ meta: { requestId, format: "ndjson", schema: "v1" } }));
+          } else {
+            controller.enqueue(encoder.encode(`${getCSVHeader(category)}\n`));
+          }
+
+          if (category === "saved-objects") {
+            const limit = Math.min(maxRows, format === "csv" ? tierLimits.CSV_MAX_ROWS : maxRows);
+
+            if (useMockStore || !db) {
+              const saved = listSavedObjects(user.userId, 1, limit).objects;
+              for (const item of saved) {
+                if (timeoutFired) break;
+                const row = {
+                  canonical_id: item.canonicalId,
+                  display_name: item.displayName,
+                  notes: item.notes,
+                  created_at: item.createdAt,
+                };
+                if (format === "csv") {
+                  controller.enqueue(encoder.encode(`${toCSVRow(row, category)}\n`));
+                } else {
+                  writeNdjson(JSON.stringify(row));
+                }
+                exportedCount += 1;
+                if (exportedCount >= limit) break;
+              }
+            } else {
+              let offset = 0;
+              while (exportedCount < limit && !timeoutFired) {
+                const batchLimit = Math.min(EXPORT_CHUNK_SIZE, limit - exportedCount);
+                const result = await db.execute({
+                  sql: `
+                    SELECT canonical_id, display_name, notes, created_at
+                    FROM saved_objects
+                    WHERE user_id = ?
+                    ORDER BY created_at DESC
+                    LIMIT ? OFFSET ?
+                  `,
+                  args: [user.userId, batchLimit, offset],
+                });
+
+                const rows = result.rows as Record<string, unknown>[];
+                if (rows.length === 0) break;
+                for (const row of rows) {
+                  if (timeoutFired) break;
+                  if (format === "csv") {
+                    controller.enqueue(encoder.encode(`${toCSVRow(row, category)}\n`));
+                  } else {
+                    writeNdjson(JSON.stringify(row));
+                  }
+                  exportedCount += 1;
+                  if (exportedCount >= limit) break;
+                }
+
+                offset += rows.length;
+                if (rows.length < batchLimit) break;
+              }
+            }
+          } else if (category === "exoplanets") {
+            let cursorValue = resumeCursor?.lastId;
+            let hasMore = true;
+
+            while (hasMore && exportedCount < maxRows && !timeoutFired) {
+              const limit = Math.min(EXPORT_CHUNK_SIZE, maxRows - exportedCount);
+              const exoplanetParams: ExoplanetQueryParams = {
+                ...(filters as ExoplanetQueryParams),
+                paginationMode: "cursor",
+                cursor: cursorValue,
+                limit,
+              };
+              const result = await searchExoplanets(exoplanetParams);
+
+              if (result.objects.length === 0) break;
+              for (const item of result.objects) {
+                if (timeoutFired) break;
+                const row = {
+                  pl_name: item.displayName,
+                  hostname: item.hostStar,
+                  discovery_method: item.discoveryMethod,
+                  disc_year: item.discoveredYear ?? null,
+                  orbital_period_days: item.orbitalPeriodDays ?? null,
+                  radius_earth: item.radiusEarth ?? null,
+                  mass_earth: item.massEarth ?? null,
+                  equilibrium_temp_k: item.equilibriumTempK ?? null,
+                  distance_parsecs: item.distanceParsecs ?? null,
+                };
+                if (format === "csv") {
+                  controller.enqueue(encoder.encode(`${toCSVRow(row, category)}\n`));
+                } else {
+                  writeNdjson(JSON.stringify(row));
+                }
+                exportedCount += 1;
+                if (exportedCount >= maxRows) break;
+              }
+
+              hasMore = result.hasMore;
+              cursorValue = result.nextCursor;
+              if (!cursorValue) break;
+            }
+
+            if (cursorValue && (exportedCount >= maxRows || timeoutFired || hasMore)) {
+              finalResumeCursor = encodeExportCursor({
+                category: "exoplanets",
+                lastId: cursorValue,
+                filterHash,
+                expiresAt: Date.now() + CURSOR_EXPIRY_MS,
+              });
+            }
+          } else if (category === "stars") {
+            let cursorValue = resumeCursor?.lastId;
+            let hasMore = true;
+
+            while (hasMore && exportedCount < maxRows && !timeoutFired) {
+              const limit = Math.min(EXPORT_CHUNK_SIZE, maxRows - exportedCount);
+              const starParams: StarQueryParams = {
+                ...(filters as StarQueryParams),
+                paginationMode: "cursor",
+                cursor: cursorValue,
+                limit,
+              };
+              const result = await searchStars(starParams);
+
+              if (result.objects.length === 0) break;
+              for (const item of result.objects) {
+                if (timeoutFired) break;
+                const row = {
+                  hostname: item.displayName,
+                  spectral_class: item.spectralClass ?? null,
+                  spectral_type: item.spectralType ?? null,
+                  star_temp_k: item.starTempK ?? null,
+                  star_mass_solar: item.starMassSolar ?? null,
+                  star_radius_solar: item.starRadiusSolar ?? null,
+                  distance_parsecs: item.distanceParsecs ?? null,
+                  planet_count: item.planetCount,
+                  vmag: item.vMag ?? null,
+                };
+                if (format === "csv") {
+                  controller.enqueue(encoder.encode(`${toCSVRow(row, category)}\n`));
+                } else {
+                  writeNdjson(JSON.stringify(row));
+                }
+                exportedCount += 1;
+                if (exportedCount >= maxRows) break;
+              }
+
+              hasMore = result.hasMore;
+              cursorValue = result.nextCursor;
+              if (!cursorValue) break;
+            }
+
+            if (cursorValue && (exportedCount >= maxRows || timeoutFired || hasMore)) {
+              finalResumeCursor = encodeExportCursor({
+                category: "stars",
+                lastId: cursorValue,
+                filterHash,
+                expiresAt: Date.now() + CURSOR_EXPIRY_MS,
+              });
+            }
+          } else {
+            let page = 1;
+            let hasMore = true;
+
+            while (hasMore && exportedCount < maxRows && !timeoutFired) {
+              const limit = Math.min(EXPORT_CHUNK_SIZE, maxRows - exportedCount);
+              const smallBodyParams: SmallBodyQueryParams = {
+                ...(filters as SmallBodyQueryParams),
+                page,
+                limit,
+              };
+              const result = await fetchSmallBodies(smallBodyParams);
+
+              if (result.objects.length === 0) break;
+              for (const item of result.objects) {
+                if (timeoutFired) break;
+                const row = {
+                  display_name: item.displayName,
+                  kind: item.bodyKind,
+                  orbit_class: item.orbitClass,
+                  neo: item.isNeo,
+                  pha: item.isPha,
+                  diameter_km: item.diameterKm ?? null,
+                  absolute_magnitude: item.absoluteMagnitude ?? null,
+                };
+                if (format === "csv") {
+                  controller.enqueue(encoder.encode(`${toCSVRow(row, category)}\n`));
+                } else {
+                  writeNdjson(JSON.stringify(row));
+                }
+                exportedCount += 1;
+                if (exportedCount >= maxRows) break;
+              }
+
+              hasMore = result.hasMore;
+              page += 1;
+            }
+          }
+
+          if (timeoutFired) {
+            finalStatus = "partial_timeout";
+            finalErrorCode = "timeout";
+            if (format === "ndjson") {
+              writeNdjson(
+                JSON.stringify({
+                  meta: {
+                    status: "partial_timeout",
+                    exported: exportedCount,
+                    ...(finalResumeCursor ? { resumeCursor: finalResumeCursor } : {}),
+                  },
+                })
+              );
+            }
+          } else if (format === "ndjson") {
+            writeNdjson(
+              JSON.stringify({
+                meta: {
+                  status: "complete",
+                  exported: exportedCount,
+                  ...(finalResumeCursor ? { resumeCursor: finalResumeCursor } : {}),
+                },
+              })
+            );
+          }
+
+          controller.close();
+        } catch {
+          finalStatus = "failed_error";
+          finalErrorCode = "unknown_error";
+          if (format === "ndjson") {
+            writeNdjson(
+              JSON.stringify({
+                meta: {
+                  status: "partial_timeout",
+                  exported: exportedCount,
+                },
+              })
+            );
+          }
+          controller.close();
+        } finally {
+          await finalize();
+        }
+      },
+      async cancel() {
+        finalStatus = "failed_error";
+        finalErrorCode = "abort_signal";
+        await finalize();
       },
     });
+
+    return new Response(stream, { headers });
   } catch (error) {
     return authErrorResponse(error);
   }

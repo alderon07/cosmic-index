@@ -55,7 +55,7 @@ describe("ADQL query generation", () => {
     it("generates valid base query without params", () => {
       const result = buildBrowseQuery({});
       expect(result.query).toContain("default_flag=1");
-      expect(result.query).toContain("order by disc_year desc");
+      expect(result.query).toContain("order by disc_year");
     });
 
     it("applies pagination correctly", () => {

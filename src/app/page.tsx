@@ -1,9 +1,7 @@
 import Link from "next/link";
-import { Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { APODCardSkeleton } from "@/components/apod-card";
-import { APODCardServer } from "@/components/apod-card-server";
+import { APODCard } from "@/components/apod-card";
 import {
   Circle,
   CircleDot,
@@ -104,9 +102,7 @@ export default function HomePage() {
 
       {/* APOD Daily Feature */}
       <section className="container mx-auto px-4 py-8">
-        <Suspense fallback={<APODCardSkeleton />}>
-          <APODCardServer />
-        </Suspense>
+        <APODCard />
       </section>
 
       {/* Feature Sections */}

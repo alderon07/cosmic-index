@@ -4,7 +4,13 @@ import { requireUserDb } from "@/lib/user-db";
 import { CreateSavedSearchSchema, SavedSearch } from "@/lib/types";
 import { canonicalizeAndHash } from "@/lib/saved-searches";
 import { isMockUserStoreEnabled } from "@/lib/runtime-mode";
-import { createSavedSearch, listSavedSearches } from "@/lib/mock-user-store";
+import {
+  countSavedSearches,
+  createSavedSearch,
+  hasSavedSearchByHash,
+  listSavedSearches,
+} from "@/lib/mock-user-store";
+import { getTierLimits, getUpgradePayload } from "@/lib/tier-limits";
 
 /**
  * GET /api/user/saved-searches
@@ -15,6 +21,7 @@ import { createSavedSearch, listSavedSearches } from "@/lib/mock-user-store";
 export async function GET(request: NextRequest) {
   try {
     const user = await requireAuth();
+    const limits = getTierLimits(user.tier);
 
     const category = request.nextUrl.searchParams.get("category");
     const parsedCategory =
@@ -23,8 +30,15 @@ export async function GET(request: NextRequest) {
         : undefined;
 
     if (isMockUserStoreEnabled()) {
+      const searches = listSavedSearches(user.userId, parsedCategory);
+      const total = countSavedSearches(user.userId);
       return NextResponse.json({
-        searches: listSavedSearches(user.userId, parsedCategory),
+        searches,
+        usage: {
+          current: total,
+          limit: limits.MAX_SAVED_SEARCHES,
+          remaining: Math.max(0, limits.MAX_SAVED_SEARCHES - total),
+        },
       });
     }
 
@@ -37,14 +51,20 @@ export async function GET(request: NextRequest) {
     `;
     const args: (string | number)[] = [user.userId];
 
-    if (category) {
+    if (parsedCategory) {
       sql += " AND category = ?";
-      args.push(category);
+      args.push(parsedCategory);
     }
 
     sql += " ORDER BY last_executed_at DESC NULLS LAST, created_at DESC";
 
-    const result = await db.execute({ sql, args });
+    const [result, countResult] = await Promise.all([
+      db.execute({ sql, args }),
+      db.execute({
+        sql: "SELECT COUNT(*) as total FROM saved_searches WHERE user_id = ?",
+        args: [user.userId],
+      }),
+    ]);
 
     const searches: SavedSearch[] = result.rows.map((row) => ({
       id: row.id as number,
@@ -56,7 +76,16 @@ export async function GET(request: NextRequest) {
       createdAt: row.created_at as string,
     }));
 
-    return NextResponse.json({ searches });
+    const total = Number(countResult.rows[0]?.total ?? 0);
+
+    return NextResponse.json({
+      searches,
+      usage: {
+        current: total,
+        limit: limits.MAX_SAVED_SEARCHES,
+        remaining: Math.max(0, limits.MAX_SAVED_SEARCHES - total),
+      },
+    });
   } catch (error) {
     return authErrorResponse(error);
   }
@@ -72,6 +101,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const user = await requireAuth();
+    const limits = getTierLimits(user.tier);
 
     const body = await request.json();
     const parseResult = CreateSavedSearchSchema.safeParse(body);
@@ -84,8 +114,26 @@ export async function POST(request: NextRequest) {
     }
 
     const { name, category, queryParams } = parseResult.data;
+    const { canonical, hash } = canonicalizeAndHash(queryParams);
 
     if (isMockUserStoreEnabled()) {
+      const isDuplicate = hasSavedSearchByHash(user.userId, category, hash);
+      if (!isDuplicate) {
+        const total = countSavedSearches(user.userId);
+        if (total >= limits.MAX_SAVED_SEARCHES) {
+          return NextResponse.json(
+            {
+              error: "saved_searches_limit_reached",
+              message: `You've reached your limit of ${limits.MAX_SAVED_SEARCHES} saved searches.`,
+              current: total,
+              limit: limits.MAX_SAVED_SEARCHES,
+              upgrade: getUpgradePayload("saved_searches"),
+            },
+            { status: 403 }
+          );
+        }
+      }
+
       const savedSearch = createSavedSearch({
         userId: user.userId,
         name,
@@ -97,10 +145,37 @@ export async function POST(request: NextRequest) {
 
     const db = requireUserDb();
 
-    // Canonicalize and hash the query params
-    const { canonical, hash } = canonicalizeAndHash(queryParams);
+    const duplicateResult = await db.execute({
+      sql: `
+        SELECT id
+        FROM saved_searches
+        WHERE user_id = ? AND category = ? AND params_hash = ?
+        LIMIT 1
+      `,
+      args: [user.userId, category, hash],
+    });
 
-    // Upsert: INSERT or update existing search with same params
+    if (duplicateResult.rows.length === 0) {
+      const countResult = await db.execute({
+        sql: "SELECT COUNT(*) as total FROM saved_searches WHERE user_id = ?",
+        args: [user.userId],
+      });
+      const total = Number(countResult.rows[0]?.total ?? 0);
+
+      if (total >= limits.MAX_SAVED_SEARCHES) {
+        return NextResponse.json(
+          {
+            error: "saved_searches_limit_reached",
+            message: `You've reached your limit of ${limits.MAX_SAVED_SEARCHES} saved searches.`,
+            current: total,
+            limit: limits.MAX_SAVED_SEARCHES,
+            upgrade: getUpgradePayload("saved_searches"),
+          },
+          { status: 403 }
+        );
+      }
+    }
+
     await db.execute({
       sql: `
         INSERT INTO saved_searches (user_id, name, category, query_params, params_hash, last_executed_at)
@@ -112,7 +187,6 @@ export async function POST(request: NextRequest) {
       args: [user.userId, name, category, canonical, hash],
     });
 
-    // Fetch the saved/updated record
     const result = await db.execute({
       sql: `
         SELECT id, name, category, query_params, result_count, last_executed_at, created_at
@@ -123,10 +197,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (result.rows.length === 0) {
-      return NextResponse.json(
-        { error: "Failed to save search" },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: "Failed to save search" }, { status: 500 });
     }
 
     const row = result.rows[0];
