@@ -15,7 +15,7 @@ import { ThemeConfig, THEMES } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 
 type ExportCategory = "exoplanets" | "stars" | "small-bodies";
-type ExportFormat = "csv" | "json";
+type ExportFormat = "csv" | "ndjson";
 
 interface ExportButtonProps {
   category: ExportCategory;
@@ -30,7 +30,7 @@ export function ExportButton({
   const [format, setFormat] = useState<ExportFormat>("csv");
   const [isLoading, setIsLoading] = useState(false);
 
-  if (!auth.isSignedIn || !auth.isPro) {
+  if (!auth.isSignedIn) {
     return null;
   }
 
@@ -79,8 +79,8 @@ export function ExportButton({
           <SelectItem value="csv" className={theme.selectItemFocus}>
             CSV
           </SelectItem>
-          <SelectItem value="json" className={theme.selectItemFocus}>
-            JSON
+          <SelectItem value="ndjson" className={theme.selectItemFocus}>
+            NDJSON
           </SelectItem>
         </SelectContent>
       </Select>

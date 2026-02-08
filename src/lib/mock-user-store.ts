@@ -234,6 +234,29 @@ export function listSavedObjects(
   };
 }
 
+export function countSavedObjects(userId: string): number {
+  const store = getStore();
+  return store.savedObjects.filter((obj) => obj.userId === userId).length;
+}
+
+export function countSavedObjectsSince(userId: string, sinceIso: string): number {
+  const store = getStore();
+  return store.savedObjects.filter(
+    (obj) => obj.userId === userId && obj.createdAt >= sinceIso
+  ).length;
+}
+
+export function getSavedObjectByCanonicalId(
+  userId: string,
+  canonicalId: string
+): SavedObject | null {
+  const store = getStore();
+  const object = store.savedObjects.find(
+    (obj) => obj.userId === userId && obj.canonicalId === canonicalId
+  );
+  return object ? { ...object } : null;
+}
+
 export function getSavedObjectById(userId: string, id: number): SavedObject | null {
   const store = getStore();
   const object = store.savedObjects.find((obj) => obj.userId === userId && obj.id === id);
@@ -553,6 +576,25 @@ export function listSavedSearches(
       lastExecutedAt: search.lastExecutedAt,
       createdAt: search.createdAt,
     }));
+}
+
+export function countSavedSearches(userId: string): number {
+  const store = getStore();
+  return store.savedSearches.filter((search) => search.userId === userId).length;
+}
+
+export function hasSavedSearchByHash(
+  userId: string,
+  category: "exoplanets" | "stars" | "small-bodies",
+  paramsHash: string
+): boolean {
+  const store = getStore();
+  return store.savedSearches.some(
+    (search) =>
+      search.userId === userId &&
+      search.category === category &&
+      search.paramsHash === paramsHash
+  );
 }
 
 export function createSavedSearch(input: {

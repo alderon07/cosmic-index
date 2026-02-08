@@ -20,14 +20,19 @@
 
 ## Database
 
-- [ ] Run the Pro tier migration:
-  ```bash
-  turso db shell cosmic-index < db/migrations/001_pro_features.sql
-  ```
+- [ ] Defer DB migrations until Turso write quota resets on **March 1, 2026**
+- [ ] On/after March 1, execute the runbook:
+  - `docs/migration-runbook-2026-03-01.md`
+- [ ] Apply pending migrations per runbook:
+  - `db/migrations/001_pro_features.sql` (only if base tables are missing)
+  - `db/migrations/002_export_history_audit.sql` (apply missing `export_history` columns safely)
+  - `db/migrations/003_tier_limit_indexes.sql`
 
-- [ ] Verify tables were created:
+- [ ] Verify schema after migration run:
   ```bash
-  turso db shell cosmic-index "SELECT name FROM sqlite_master WHERE type='table'"
+  turso db shell cosmic-index "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name;"
+  turso db shell cosmic-index "PRAGMA table_info(export_history);"
+  turso db shell cosmic-index "SELECT name FROM sqlite_master WHERE type='index' ORDER BY name;"
   ```
 
 ## UI Integration

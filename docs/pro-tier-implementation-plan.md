@@ -153,6 +153,13 @@ export async function requireAuth(): Promise<AuthUser> {
 
 ## Phase 2: Database Schema
 
+### 2.0 Execution Status (Deferred)
+
+- `Updated`: February 8, 2026
+- `Constraint`: Turso write quota exhausted in current billing window
+- `DB migrations`: Deferred until quota reset on **March 1, 2026**
+- `Runbook`: `docs/migration-runbook-2026-03-01.md`
+
 ### 2.1 Canonical Object ID Format
 
 **Two strategies based on ID stability:**
