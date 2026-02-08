@@ -6,6 +6,7 @@ import { Bookmark, Trash2, FolderHeart } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { ExportButton } from "@/components/export-button";
 import { parseCanonicalId } from "@/lib/canonical-id";
 import { useAppAuth } from "@/components/auth/app-auth-provider";
 
@@ -127,16 +128,19 @@ export function SavedObjectsPageContent() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
-      <div className="mb-6 flex items-center justify-between gap-3">
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="font-display text-3xl text-foreground">Saved Objects</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Catalog objects and events you&apos;ve bookmarked
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={() => void loadItems()} disabled={isLoading}>
-          Refresh
-        </Button>
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+          <ExportButton category="saved-objects" />
+          <Button variant="outline" size="sm" onClick={() => void loadItems()} disabled={isLoading}>
+            Refresh
+          </Button>
+        </div>
       </div>
 
       {isLoading ? (

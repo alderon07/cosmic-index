@@ -153,7 +153,7 @@ export default function RootLayout({
         <AppAuthProvider>
         <CompareProvider>
         <KeyboardShortcutsProvider>
-        <div className="relative min-h-screen vignette">
+        <div className="relative min-h-screen vignette flex flex-col">
           {/* Navigation */}
           <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-sm">
             <nav className="container mx-auto px-4 h-16 flex items-center justify-between">
@@ -220,7 +220,7 @@ export default function RootLayout({
           </header>
 
           {/* Main Content */}
-          <main>{children}</main>
+          <main className="flex-1">{children}</main>
           <CompareTray />
 
           {/* Footer */}

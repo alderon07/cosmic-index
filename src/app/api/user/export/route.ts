@@ -284,11 +284,17 @@ export async function POST(request: NextRequest) {
           : typeof rawLimit === "string"
           ? Number(rawLimit)
           : undefined;
-      if (!hasLimit || limitValue === undefined || Number.isNaN(limitValue) || limitValue > tierLimits.CSV_MAX_ROWS) {
+      if (
+        hasLimit &&
+        (limitValue === undefined ||
+          Number.isNaN(limitValue) ||
+          limitValue < 1 ||
+          limitValue > tierLimits.CSV_MAX_ROWS)
+      ) {
         return Response.json(
           {
             error: "csv_row_limit_exceeded",
-            message: `CSV exports limited to ${tierLimits.CSV_MAX_ROWS} rows. Use format=ndjson.`,
+            message: `CSV exports support 1-${tierLimits.CSV_MAX_ROWS} rows. Use format=ndjson for larger exports.`,
           },
           { status: 400, headers: baseHeaders }
         );
@@ -391,7 +397,10 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const maxRows = Math.min(userLimit ?? tierLimits.MAX_EXPORT_ROWS, tierLimits.MAX_EXPORT_ROWS);
+    const requestedMaxRows = Math.min(userLimit ?? tierLimits.MAX_EXPORT_ROWS, tierLimits.MAX_EXPORT_ROWS);
+    const maxRows = format === "csv"
+      ? Math.min(requestedMaxRows, tierLimits.CSV_MAX_ROWS)
+      : requestedMaxRows;
     const estimatedRows = maxRows;
 
     let rateLimitHeaders: Record<string, string>;
@@ -517,7 +526,7 @@ export async function POST(request: NextRequest) {
           }
 
           if (category === "saved-objects") {
-            const limit = Math.min(maxRows, format === "csv" ? tierLimits.CSV_MAX_ROWS : maxRows);
+            const limit = maxRows;
 
             if (useMockStore || !db) {
               const saved = listSavedObjects(user.userId, 1, limit).objects;

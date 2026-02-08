@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { BookmarkPlus, RefreshCw } from "lucide-react";
+import { BookmarkPlus, Loader2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -37,7 +37,8 @@ export function SavedSearchControls({
   const auth = useAppAuth();
   const [searches, setSearches] = useState<SavedSearchItem[]>([]);
   const [selectedId, setSelectedId] = useState<string>("none");
-  const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const loadSearches = useCallback(async () => {
     if (!auth.isSignedIn) return;
@@ -61,7 +62,7 @@ export function SavedSearchControls({
   }
 
   const handleSave = async () => {
-    if (isLoading) return;
+    if (isSaving || isRefreshing) return;
 
     const rawName = window.prompt("Name this saved search:");
     if (!rawName) return;
@@ -69,7 +70,7 @@ export function SavedSearchControls({
     const name = rawName.trim();
     if (!name) return;
 
-    setIsLoading(true);
+    setIsSaving(true);
     try {
       const response = await fetch("/api/user/saved-searches", {
         method: "POST",
@@ -89,7 +90,18 @@ export function SavedSearchControls({
     } catch (error) {
       console.error("Save search failed", error);
     } finally {
-      setIsLoading(false);
+      setIsSaving(false);
+    }
+  };
+
+  const handleRefresh = async () => {
+    if (isRefreshing || isSaving) return;
+
+    setIsRefreshing(true);
+    try {
+      await loadSearches();
+    } finally {
+      setIsRefreshing(false);
     }
   };
 
@@ -138,10 +150,14 @@ export function SavedSearchControls({
         onClick={() => {
           void handleSave();
         }}
-        disabled={isLoading}
+        disabled={isSaving || isRefreshing}
       >
-        <BookmarkPlus className="h-3.5 w-3.5" />
-        Save Search
+        {isSaving ? (
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+        ) : (
+          <BookmarkPlus className="h-3.5 w-3.5" />
+        )}
+        {isSaving ? "Saving..." : "Save Search"}
       </Button>
       <Button
         type="button"
@@ -149,11 +165,13 @@ export function SavedSearchControls({
         variant="outline"
         className={cn("h-8 w-8 px-0", theme.sortSelect, "text-muted-foreground", theme.hoverText)}
         onClick={() => {
-          void loadSearches();
+          void handleRefresh();
         }}
-        title="Refresh saved searches"
+        title={isRefreshing ? "Refreshing saved searches..." : "Refresh saved searches"}
+        disabled={isRefreshing || isSaving}
+        aria-busy={isRefreshing}
       >
-        <RefreshCw className="h-3.5 w-3.5" />
+        <RefreshCw className={cn("h-3.5 w-3.5", isRefreshing && "animate-spin")} />
       </Button>
     </div>
   );

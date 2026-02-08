@@ -14,7 +14,7 @@ import { useAppAuth } from "@/components/auth/app-auth-provider";
 import { ThemeConfig, THEMES } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 
-type ExportCategory = "exoplanets" | "stars" | "small-bodies";
+type ExportCategory = "exoplanets" | "stars" | "small-bodies" | "saved-objects";
 type ExportFormat = "csv" | "ndjson";
 
 interface ExportButtonProps {
