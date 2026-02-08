@@ -63,11 +63,26 @@ mock.module("@/lib/jpl-sbdb", () => ({
 const { POST } = await import("@/app/api/user/export/route");
 
 describe("/api/user/export", () => {
-  it("rejects CSV without explicit limit", async () => {
+  it("allows CSV without explicit limit by applying tier default cap", async () => {
     const req = new Request("http://localhost/api/user/export", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ format: "csv", category: "exoplanets", queryParams: {} }),
+    });
+
+    const res = await POST(req as unknown as NextRequest);
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Content-Type")).toContain("text/csv");
+    const text = await res.text();
+    expect(text).toContain("Planet Name");
+    expect(text).toContain("Kepler-22b");
+  });
+
+  it("rejects CSV when limit exceeds tier cap", async () => {
+    const req = new Request("http://localhost/api/user/export", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ format: "csv", category: "exoplanets", queryParams: { limit: 50000 } }),
     });
 
     const res = await POST(req as unknown as NextRequest);

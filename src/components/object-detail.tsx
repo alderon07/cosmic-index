@@ -208,9 +208,6 @@ export function ObjectDetail({
       {/* Visualized metrics */}
       <ObjectVisualizerPanel object={object} />
 
-      {/* NASA Images */}
-      <NasaImageGallery object={object} compact={compact} />
-
       {/* Key Facts Grid */}
       <Card className="bg-card border-border/50 bezel">
         <CardHeader>
@@ -714,6 +711,9 @@ export function ObjectDetail({
           </>
         )}
       </Accordion>
+
+      {/* NASA Images */}
+      <NasaImageGallery object={object} compact={compact} />
 
       {/* Source Links */}
       {!hideDataSources && (
