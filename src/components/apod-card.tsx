@@ -5,6 +5,7 @@ import Image from "next/image";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { APODData } from "@/lib/types";
 import { apiFetch } from "@/lib/api-client";
 import { Calendar, ExternalLink, ChevronDown, ChevronUp, Play, ImageIcon } from "lucide-react";
@@ -195,25 +196,25 @@ export function APODCardSkeleton({ className }: { className?: string }) {
     <Card className={`bg-card border-border/50 bezel overflow-hidden ${className}`}>
       <div className="grid md:grid-cols-2 gap-0">
         {/* Image Skeleton */}
-        <div className="relative aspect-video md:aspect-auto md:min-h-[320px] bg-accent animate-pulse" />
+        <Skeleton className="relative aspect-video md:aspect-auto md:min-h-[320px] rounded-none" />
 
         {/* Content Skeleton */}
         <div className="p-6 flex flex-col">
           <div className="hidden md:block mb-4">
-            <div className="h-5 w-48 bg-accent animate-pulse rounded mb-3" />
-            <div className="h-7 w-3/4 bg-accent animate-pulse rounded mb-2" />
-            <div className="h-4 w-40 bg-accent animate-pulse rounded" />
+            <Skeleton className="h-5 w-48 mb-3" />
+            <Skeleton className="h-7 w-3/4 mb-2" />
+            <Skeleton className="h-4 w-40" />
           </div>
 
           <div className="flex-1 space-y-2">
-            <div className="h-4 w-full bg-accent animate-pulse rounded" />
-            <div className="h-4 w-full bg-accent animate-pulse rounded" />
-            <div className="h-4 w-3/4 bg-accent animate-pulse rounded" />
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-3/4" />
           </div>
 
           <div className="mt-4 pt-4 border-t border-border/30 flex items-center justify-between">
-            <div className="h-3 w-24 bg-accent animate-pulse rounded" />
-            <div className="h-3 w-32 bg-accent animate-pulse rounded" />
+            <Skeleton className="h-3 w-24" />
+            <Skeleton className="h-3 w-32" />
           </div>
         </div>
       </div>
