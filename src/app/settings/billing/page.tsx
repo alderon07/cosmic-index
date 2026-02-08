@@ -11,6 +11,9 @@ export const metadata: Metadata = {
   description: "Manage your Cosmic Index subscription",
 };
 
+// Authenticated settings page must render per-request.
+export const dynamic = "force-dynamic";
+
 /**
  * Billing Settings Page
  *
