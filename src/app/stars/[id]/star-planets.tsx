@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ObjectCard } from "@/components/object-card";
+import { DETAIL_CARD_SURFACE_CLASS } from "@/lib/theme";
 import { ExoplanetData } from "@/lib/types";
 import { Circle } from "lucide-react";
 
@@ -12,7 +13,10 @@ interface StarPlanetsProps {
 
 export function StarPlanets({ hostname, planetCount, planets, error }: StarPlanetsProps) {
   return (
-    <Card className="bg-card border-border/50 bezel">
+    <Card
+      tone="neutral"
+      className={DETAIL_CARD_SURFACE_CLASS}
+    >
       <CardHeader>
         <CardTitle className="font-display flex items-center gap-2">
           <Circle className="w-5 h-5 text-primary" />

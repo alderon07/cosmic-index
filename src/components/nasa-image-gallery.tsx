@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import type { AnyCosmicObject } from "@/lib/types";
 import { apiFetch } from "@/lib/api-client";
+import { DETAIL_CARD_SURFACE_CLASS } from "@/lib/theme";
 
 interface NasaImage {
   nasaId: string;
@@ -115,7 +116,10 @@ export function NasaImageGallery({ object, compact }: NasaImageGalleryProps) {
   // Loading state
   if (loading) {
     return (
-      <Card className="bg-card border-border/50 bezel overflow-hidden">
+      <Card
+        tone="neutral"
+        className={`${DETAIL_CARD_SURFACE_CLASS} overflow-hidden`}
+      >
         <CardHeader>
           <CardTitle className="font-display flex items-center gap-2">
             <Camera className="w-5 h-5 text-primary" />
@@ -145,7 +149,10 @@ export function NasaImageGallery({ object, compact }: NasaImageGalleryProps) {
 
   return (
     <>
-      <Card className="bg-card border-border/50 bezel overflow-hidden">
+      <Card
+        tone="neutral"
+        className={`${DETAIL_CARD_SURFACE_CLASS} overflow-hidden`}
+      >
         <CardHeader>
           <CardTitle className="font-display flex items-center gap-2">
             <Camera className="w-5 h-5 text-primary" />

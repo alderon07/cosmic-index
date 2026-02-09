@@ -166,7 +166,7 @@ export default function RootLayout({
               <div className="flex items-center gap-2 sm:gap-6">
                 <Link
                   href="/exoplanets"
-                  className="font-display text-sm tracking-wide text-orange-100/75 transition-colors hover:text-orange-300"
+                  className="font-display text-sm tracking-wide text-orange-100/75 transition-colors hover:text-primary"
                   title="Exoplanets"
                 >
                   <Circle className="w-5 h-5 sm:hidden" />
@@ -174,7 +174,7 @@ export default function RootLayout({
                 </Link>
                 <Link
                   href="/stars"
-                  className="font-display text-sm tracking-wide text-orange-100/75 transition-colors hover:text-amber-200"
+                  className="font-display text-sm tracking-wide text-orange-100/75 transition-colors hover:text-uranium-green"
                   title="Stars"
                 >
                   <Star className="w-5 h-5 sm:hidden" />
@@ -182,23 +182,23 @@ export default function RootLayout({
                 </Link>
                 <Link
                   href="/small-bodies"
-                  className="font-display text-sm tracking-wide text-orange-100/75 transition-colors hover:text-amber-300"
+                  className="font-display text-sm tracking-wide text-orange-100/75 transition-colors hover:text-secondary"
                   title="Small Bodies"
                 >
                   <CircleDot className="w-5 h-5 sm:hidden" />
-                  <span className="hidden sm:inline">Small Bodies</span>
+                  <span className="hidden sm:inline">Small-Bodies</span>
                 </Link>
                 <Link
                   href="/close-approaches"
-                  className="font-display text-sm tracking-wide text-orange-100/75 transition-colors hover:text-orange-300"
+                  className="font-display text-sm tracking-wide text-orange-100/75 transition-colors hover:text-destructive"
                   title="Close Approaches"
                 >
                   <Crosshair className="w-5 h-5 sm:hidden" />
-                  <span className="hidden sm:inline">Flybys</span>
+                  <span className="hidden sm:inline">Close-Approaches</span>
                 </Link>
                 <Link
                   href="/fireballs"
-                  className="font-display text-sm tracking-wide text-orange-100/75 transition-colors hover:text-orange-300"
+                  className="font-display text-sm tracking-wide text-orange-100/75 transition-colors hover:text-radium-teal"
                   title="Fireballs"
                 >
                   <Flame className="w-5 h-5 sm:hidden" />
@@ -206,7 +206,7 @@ export default function RootLayout({
                 </Link>
                 <Link
                   href="/space-weather"
-                  className="font-display text-sm tracking-wide text-orange-100/75 transition-colors hover:text-amber-200"
+                  className="font-display text-sm tracking-wide text-orange-100/75 transition-colors hover:text-aurora-violet"
                   title="Space Weather"
                 >
                   <CloudLightning className="w-5 h-5 sm:hidden" />

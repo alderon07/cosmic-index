@@ -35,6 +35,7 @@ export function ObjectDetailModal({
       <DialogContent
         className="max-w-4xl md:max-w-5xl lg:max-w-6xl max-h-[90vh] overflow-y-auto overflow-x-hidden bg-background border-border"
         showCloseButton={true}
+        onOpenAutoFocus={(event) => event.preventDefault()}
       >
         <DialogHeader className="flex flex-row items-center justify-between pr-8">
           <DialogTitle className="sr-only">{object.displayName}</DialogTitle>

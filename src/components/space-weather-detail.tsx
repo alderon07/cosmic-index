@@ -26,7 +26,11 @@ import {
   getEventTypeLabel,
   parseEventType,
 } from "@/lib/nasa-donki";
-import { THEMES } from "@/lib/theme";
+import {
+  DETAIL_ACCORDION_SURFACE_CLASS,
+  DETAIL_CARD_SURFACE_CLASS,
+  THEMES,
+} from "@/lib/theme";
 import {
   Sun,
   Cloud,
@@ -236,7 +240,7 @@ export function SpaceWeatherDetail({ event, compact }: SpaceWeatherDetailProps) 
       </div>
 
       {/* Overview */}
-      <Card className="bg-card border-border/50 bezel">
+      <Card tone="neutral" className={DETAIL_CARD_SURFACE_CLASS}>
         <CardHeader>
           <CardTitle className="font-display flex items-center gap-2">
             <Info className="w-5 h-5 text-primary" />
@@ -249,7 +253,7 @@ export function SpaceWeatherDetail({ event, compact }: SpaceWeatherDetailProps) 
       </Card>
 
       {/* Key Measurements */}
-      <Card className="bg-card border-border/50 bezel">
+      <Card tone="neutral" className={DETAIL_CARD_SURFACE_CLASS}>
         <CardHeader>
           <CardTitle className="font-display flex items-center gap-2">
             <Gauge className="w-5 h-5 text-secondary" />
@@ -293,7 +297,7 @@ export function SpaceWeatherDetail({ event, compact }: SpaceWeatherDetailProps) 
         {/* Timing Details */}
         <AccordionItem
           value="timing"
-          className="bg-card border border-border/50 rounded-lg px-4 bezel"
+          className={DETAIL_ACCORDION_SURFACE_CLASS}
         >
           <AccordionTrigger className="font-display hover:no-underline">
             <span className="flex items-center gap-2">
@@ -336,7 +340,7 @@ export function SpaceWeatherDetail({ event, compact }: SpaceWeatherDetailProps) 
         {event.eventType === "FLR" && (
           <AccordionItem
             value="measurements"
-            className="bg-card border border-border/50 rounded-lg px-4 bezel"
+            className={DETAIL_ACCORDION_SURFACE_CLASS}
           >
             <AccordionTrigger className="font-display hover:no-underline">
               <span className="flex items-center gap-2">
@@ -376,7 +380,7 @@ export function SpaceWeatherDetail({ event, compact }: SpaceWeatherDetailProps) 
         {event.eventType === "CME" && (
           <AccordionItem
             value="measurements"
-            className="bg-card border border-border/50 rounded-lg px-4 bezel"
+            className={DETAIL_ACCORDION_SURFACE_CLASS}
           >
             <AccordionTrigger className="font-display hover:no-underline">
               <span className="flex items-center gap-2">
@@ -424,7 +428,7 @@ export function SpaceWeatherDetail({ event, compact }: SpaceWeatherDetailProps) 
         {event.eventType === "GST" && (
           <AccordionItem
             value="measurements"
-            className="bg-card border border-border/50 rounded-lg px-4 bezel"
+            className={DETAIL_ACCORDION_SURFACE_CLASS}
           >
             <AccordionTrigger className="font-display hover:no-underline">
               <span className="flex items-center gap-2">
@@ -492,7 +496,7 @@ export function SpaceWeatherDetail({ event, compact }: SpaceWeatherDetailProps) 
         {event.linkedEvents && event.linkedEvents.length > 0 && (
           <AccordionItem
             value="linked-events"
-            className="bg-card border border-border/50 rounded-lg px-4 bezel"
+            className={DETAIL_ACCORDION_SURFACE_CLASS}
           >
             <AccordionTrigger className="font-display hover:no-underline">
               <span className="flex items-center gap-2">
@@ -542,7 +546,7 @@ export function SpaceWeatherDetail({ event, compact }: SpaceWeatherDetailProps) 
 
       {/* Data Sources */}
       {!compact && (
-        <Card className="bg-card border-border/50 bezel">
+        <Card tone="neutral" className={DETAIL_CARD_SURFACE_CLASS}>
           <CardHeader>
             <CardTitle className="font-display text-base">
               Data Sources
@@ -554,7 +558,7 @@ export function SpaceWeatherDetail({ event, compact }: SpaceWeatherDetailProps) 
                 href={donkiSearchUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-muted/50 hover:bg-muted rounded-md text-foreground hover:text-primary transition-colors"
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-muted/50 hover:bg-muted rounded-md text-foreground ${theme.hoverText} transition-colors`}
               >
                 <ExternalLink className="w-3.5 h-3.5" />
                 NASA DONKI Search
@@ -563,7 +567,7 @@ export function SpaceWeatherDetail({ event, compact }: SpaceWeatherDetailProps) 
                 href="https://www.swpc.noaa.gov/"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-muted/50 hover:bg-muted rounded-md text-foreground hover:text-primary transition-colors"
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-muted/50 hover:bg-muted rounded-md text-foreground ${theme.hoverText} transition-colors`}
               >
                 <ExternalLink className="w-3.5 h-3.5" />
                 NOAA SWPC

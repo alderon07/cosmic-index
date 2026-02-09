@@ -21,6 +21,7 @@ import {
   Telescope,
   Star,
   Circle,
+  GitCompareArrows,
 } from "lucide-react";
 import {
   Tooltip,
@@ -32,7 +33,11 @@ import { ObjectVisualizerPanel } from "@/components/visualizers/object-visualize
 import { useCompare } from "@/components/compare/use-compare";
 import { trackEvent } from "@/lib/analytics-events";
 import { SaveButton } from "@/components/save-button";
-import { createCompareItem } from "@/lib/compare-facts";
+import { createCompareItem, MAX_COMPARE_ITEMS } from "@/lib/compare-facts";
+import {
+  DETAIL_ACCORDION_SURFACE_CLASS,
+  DETAIL_CARD_SURFACE_CLASS,
+} from "@/lib/theme";
 import { cn } from "@/lib/utils";
 
 const NasaImageGallery = dynamic(
@@ -89,7 +94,11 @@ export function ObjectDetail({
     : isSmallBody(object)
     ? "border-secondary/55 bg-secondary/15 text-secondary hover:bg-secondary/20"
     : "border-primary/55 bg-primary/15 text-primary hover:bg-primary/20";
-
+  const compareTooltipText = compareSupported
+    ? alreadyInCompare
+      ? "Already in compare"
+      : `Add to compare (max ${MAX_COMPARE_ITEMS})`
+    : "Compare is currently unavailable for this object type.";
   return (
     <div className="space-y-6 min-w-0">
       {/* Hero Section */}
@@ -152,24 +161,26 @@ export function ObjectDetail({
 
             <div className="flex items-center gap-2 sm:justify-end">
               {showCompare && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => addObject(object, "object-detail")}
-                  className={cn({
-                    [compareActiveClass]: compareSupported && alreadyInCompare,
-                    [compareOutlineClass]: compareSupported && !alreadyInCompare,
-                    "border-border/60 text-muted-foreground hover:text-foreground":
-                      !compareSupported,
-                  })}
-                >
-                  {compareSupported
-                    ? alreadyInCompare
-                      ? "In Compare"
-                      : "Add to Compare"
-                    : "Compare Unavailable"}
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon-sm"
+                      onClick={() => addObject(object, "object-detail")}
+                      className={cn({
+                        [compareActiveClass]: compareSupported && alreadyInCompare,
+                        [compareOutlineClass]: compareSupported && !alreadyInCompare,
+                        "border-border/60 text-muted-foreground hover:text-foreground":
+                          !compareSupported,
+                      })}
+                      aria-label={compareTooltipText}
+                    >
+                      <GitCompareArrows className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>{compareTooltipText}</TooltipContent>
+                </Tooltip>
               )}
 
               <SaveButton object={object} variant="button" />
@@ -214,7 +225,7 @@ export function ObjectDetail({
       </div>
 
       {/* Summary */}
-      <Card className="bg-card border-border/50 bezel">
+      <Card tone="neutral" className={DETAIL_CARD_SURFACE_CLASS}>
         <CardHeader>
           <CardTitle className="font-display flex items-center gap-2">
             <Info className="w-5 h-5 text-primary" />
@@ -230,7 +241,7 @@ export function ObjectDetail({
       <ObjectVisualizerPanel object={object} />
 
       {/* Key Facts Grid */}
-      <Card className="bg-card border-border/50 bezel">
+      <Card tone="neutral" className={DETAIL_CARD_SURFACE_CLASS}>
         <CardHeader>
           <CardTitle className="font-display flex items-center gap-2">
             <Telescope className="w-5 h-5 text-secondary" />
@@ -279,7 +290,7 @@ export function ObjectDetail({
           <>
             <AccordionItem
               value="physical"
-              className="bg-card border border-border/50 rounded-lg px-4 bezel"
+              className={DETAIL_ACCORDION_SURFACE_CLASS}
             >
               <AccordionTrigger className="font-display hover:no-underline">
                 Physical Properties
@@ -329,7 +340,7 @@ export function ObjectDetail({
 
             <AccordionItem
               value="orbital"
-              className="bg-card border border-border/50 rounded-lg px-4 bezel"
+              className={DETAIL_ACCORDION_SURFACE_CLASS}
             >
               <AccordionTrigger className="font-display hover:no-underline">
                 Orbital Properties
@@ -364,7 +375,7 @@ export function ObjectDetail({
 
             <AccordionItem
               value="host-star"
-              className="bg-card border border-border/50 rounded-lg px-4 bezel"
+              className={DETAIL_ACCORDION_SURFACE_CLASS}
             >
               <AccordionTrigger className="font-display hover:no-underline">
                 Host Star
@@ -449,7 +460,7 @@ export function ObjectDetail({
 
             <AccordionItem
               value="discovery"
-              className="bg-card border border-border/50 rounded-lg px-4 bezel"
+              className={DETAIL_ACCORDION_SURFACE_CLASS}
             >
               <AccordionTrigger className="font-display hover:no-underline">
                 Discovery
@@ -482,7 +493,7 @@ export function ObjectDetail({
           <>
             <AccordionItem
               value="physical"
-              className="bg-card border border-border/50 rounded-lg px-4 bezel"
+              className={DETAIL_ACCORDION_SURFACE_CLASS}
             >
               <AccordionTrigger className="font-display hover:no-underline">
                 Physical Properties
@@ -513,7 +524,7 @@ export function ObjectDetail({
 
             <AccordionItem
               value="orbital"
-              className="bg-card border border-border/50 rounded-lg px-4 bezel"
+              className={DETAIL_ACCORDION_SURFACE_CLASS}
             >
               <AccordionTrigger className="font-display hover:no-underline">
                 Orbital Classification
@@ -558,7 +569,7 @@ export function ObjectDetail({
           <>
             <AccordionItem
               value="stellar"
-              className="bg-card border border-border/50 rounded-lg px-4 bezel"
+              className={DETAIL_ACCORDION_SURFACE_CLASS}
             >
               <AccordionTrigger className="font-display hover:no-underline">
                 Stellar Properties
@@ -639,7 +650,7 @@ export function ObjectDetail({
 
             <AccordionItem
               value="system"
-              className="bg-card border border-border/50 rounded-lg px-4 bezel"
+              className={DETAIL_ACCORDION_SURFACE_CLASS}
             >
               <AccordionTrigger className="font-display hover:no-underline">
                 System Properties
@@ -679,7 +690,7 @@ export function ObjectDetail({
 
             <AccordionItem
               value="coordinates"
-              className="bg-card border border-border/50 rounded-lg px-4 bezel"
+              className={DETAIL_ACCORDION_SURFACE_CLASS}
             >
               <AccordionTrigger className="font-display hover:no-underline">
                 Coordinates & Brightness
@@ -738,7 +749,7 @@ export function ObjectDetail({
 
       {/* Source Links */}
       {!hideDataSources && (
-        <Card className="bg-card border-border/50 bezel">
+        <Card tone="neutral" className={DETAIL_CARD_SURFACE_CLASS}>
           <CardHeader>
             <CardTitle className="font-display text-base">
               Data Sources

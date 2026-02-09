@@ -62,7 +62,7 @@ export default function HomePage() {
               </h1>
 
               <p className="mt-4 sm:mt-5 max-w-2xl text-sm sm:text-base text-orange-100/80 md:text-lg">
-                A mission-style observatory for exoplanets, stars, small bodies,
+                An observatory for exoplanets, stars, small bodies,
                 and live space data from NASA and JPL.
               </p>
 

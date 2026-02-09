@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ProBadge } from "@/components/pro-badge";
+import { ACCOUNT_CARD_TONE } from "@/lib/theme";
 import { Check, Loader2, ExternalLink, Sparkles, Database, Download, Bell, FolderHeart } from "lucide-react";
 
 /**
@@ -98,7 +99,7 @@ export function BillingContent({ tier, hasStripeCustomer }: BillingContentProps)
       )}
 
       {/* Current Plan Card */}
-      <Card>
+      <Card tone={ACCOUNT_CARD_TONE}>
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
@@ -145,7 +146,7 @@ export function BillingContent({ tier, hasStripeCustomer }: BillingContentProps)
               <Button
                 onClick={handleUpgrade}
                 disabled={isLoading}
-                className="gap-2 bg-uranium-green hover:bg-uranium-green/90 text-background"
+                className="gap-2 bg-primary hover:bg-primary/85 text-primary-foreground"
               >
                 {isLoading ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -160,7 +161,7 @@ export function BillingContent({ tier, hasStripeCustomer }: BillingContentProps)
       </Card>
 
       {/* Pro Features Card */}
-      <Card>
+      <Card tone={ACCOUNT_CARD_TONE}>
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-uranium-green" />

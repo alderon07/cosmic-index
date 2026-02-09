@@ -1,6 +1,14 @@
 // Centralized theme configuration for each object type
 
 export type ObjectTheme = "exoplanets" | "stars" | "small-bodies" | "close-approaches" | "fireballs" | "space-weather";
+export type CardTone = "cosmic" | "neutral";
+
+export const DEFAULT_CARD_TONE: CardTone = "cosmic";
+export const ACCOUNT_CARD_TONE: CardTone = "neutral";
+export const DETAIL_CARD_SURFACE_CLASS =
+  "border-border/45 bg-card/95 shadow-[inset_0_1px_0_rgba(255,210,160,0.05)]";
+export const DETAIL_ACCORDION_SURFACE_CLASS =
+  "rounded-lg border border-border/45 bg-card/92 px-4 shadow-[inset_0_1px_0_rgba(255,210,160,0.05)]";
 
 export interface ThemeConfig {
   // Raw color name (for documentation)
@@ -64,7 +72,8 @@ export const THEMES: Record<ObjectTheme, ThemeConfig> = {
     focusRing: "focus:ring-primary",
     sortOrderBorder: "border-primary/30",
     sortOrderSelected: "bg-primary/20 text-primary",
-    selectItemFocus: "focus:bg-primary/20 focus:text-primary",
+    selectItemFocus:
+      "data-[highlighted]:bg-primary/20 data-[highlighted]:text-primary data-[highlighted]:[&_svg:not([class*='text-'])]:text-primary",
     hoverText: "hover:text-primary",
   },
   stars: {
@@ -89,7 +98,8 @@ export const THEMES: Record<ObjectTheme, ThemeConfig> = {
     focusRing: "focus:ring-uranium-green",
     sortOrderBorder: "border-uranium-green/30",
     sortOrderSelected: "bg-uranium-green/20 text-uranium-green",
-    selectItemFocus: "focus:bg-uranium-green/20 focus:text-uranium-green",
+    selectItemFocus:
+      "data-[highlighted]:bg-uranium-green/20 data-[highlighted]:text-uranium-green data-[highlighted]:[&_svg:not([class*='text-'])]:text-uranium-green",
     hoverText: "hover:text-uranium-green",
   },
   "small-bodies": {
@@ -112,7 +122,8 @@ export const THEMES: Record<ObjectTheme, ThemeConfig> = {
     focusRing: "focus:ring-secondary",
     sortOrderBorder: "border-secondary/30",
     sortOrderSelected: "bg-secondary/20 text-secondary",
-    selectItemFocus: "focus:bg-secondary/20 focus:text-secondary",
+    selectItemFocus:
+      "data-[highlighted]:bg-secondary/20 data-[highlighted]:text-secondary data-[highlighted]:[&_svg:not([class*='text-'])]:text-secondary",
     hoverText: "hover:text-secondary",
   },
   "close-approaches": {
@@ -136,7 +147,8 @@ export const THEMES: Record<ObjectTheme, ThemeConfig> = {
     focusRing: "focus:ring-destructive",
     sortOrderBorder: "border-destructive/30",
     sortOrderSelected: "bg-destructive/20 text-destructive",
-    selectItemFocus: "focus:bg-destructive/20 focus:text-destructive",
+    selectItemFocus:
+      "data-[highlighted]:bg-destructive/20 data-[highlighted]:text-destructive data-[highlighted]:[&_svg:not([class*='text-'])]:text-destructive",
     hoverText: "hover:text-destructive",
   },
   fireballs: {
@@ -160,7 +172,8 @@ export const THEMES: Record<ObjectTheme, ThemeConfig> = {
     focusRing: "focus:ring-radium-teal",
     sortOrderBorder: "border-radium-teal/30",
     sortOrderSelected: "bg-radium-teal/20 text-radium-teal",
-    selectItemFocus: "focus:bg-radium-teal/20 focus:text-radium-teal",
+    selectItemFocus:
+      "data-[highlighted]:bg-radium-teal/20 data-[highlighted]:text-radium-teal data-[highlighted]:[&_svg:not([class*='text-'])]:text-radium-teal",
     hoverText: "hover:text-radium-teal",
   },
   "space-weather": {
@@ -184,7 +197,8 @@ export const THEMES: Record<ObjectTheme, ThemeConfig> = {
     focusRing: "focus:ring-aurora-violet",
     sortOrderBorder: "border-aurora-violet/30",
     sortOrderSelected: "bg-aurora-violet/20 text-aurora-violet",
-    selectItemFocus: "focus:bg-aurora-violet/20 focus:text-aurora-violet",
+    selectItemFocus:
+      "data-[highlighted]:bg-aurora-violet/20 data-[highlighted]:text-aurora-violet data-[highlighted]:[&_svg:not([class*='text-'])]:text-aurora-violet",
     hoverText: "hover:text-aurora-violet",
   },
 };

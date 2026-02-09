@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { ExportButton } from "@/components/export-button";
 import { parseCanonicalId } from "@/lib/canonical-id";
 import { useAppAuth } from "@/components/auth/app-auth-provider";
+import { ACCOUNT_CARD_TONE } from "@/lib/theme";
 
 interface SavedObjectItem {
   id: number;
@@ -128,7 +129,7 @@ export function SavedObjectsPageContent() {
   if (!auth.isSignedIn) {
     return (
       <div className="container mx-auto px-4 py-12 max-w-3xl">
-        <Card>
+        <Card tone={ACCOUNT_CARD_TONE}>
           <CardContent className="py-10 text-center">
             <FolderHeart className="w-10 h-10 mx-auto text-muted-foreground mb-3" />
             <p className="text-muted-foreground">Sign in to view your saved objects.</p>
@@ -168,13 +169,13 @@ export function SavedObjectsPageContent() {
       </div>
 
       {isLoading ? (
-        <Card>
+        <Card tone={ACCOUNT_CARD_TONE}>
           <CardContent className="py-10 text-center text-muted-foreground">
             Loading saved objects...
           </CardContent>
         </Card>
       ) : !hasItems ? (
-        <Card>
+        <Card tone={ACCOUNT_CARD_TONE}>
           <CardContent className="py-10 text-center">
             <Bookmark className="w-10 h-10 mx-auto text-muted-foreground mb-3" />
             <p className="text-muted-foreground">No saved objects yet.</p>
@@ -185,7 +186,7 @@ export function SavedObjectsPageContent() {
           {sortedItems.map((item) => {
             const href = resolveHref(item.canonicalId);
             return (
-              <Card key={item.id} className="border-border/50">
+              <Card tone={ACCOUNT_CARD_TONE} key={item.id} className="border-border/50">
                 <CardHeader className="pb-2">
                   <div className="flex items-start justify-between gap-3">
                     <div>

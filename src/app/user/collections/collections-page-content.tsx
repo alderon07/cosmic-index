@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useAppAuth } from "@/components/auth/app-auth-provider";
+import { ACCOUNT_CARD_TONE } from "@/lib/theme";
 
 interface CollectionItem {
   id: number;
@@ -102,7 +103,7 @@ export function CollectionsPageContent() {
   if (!auth.isSignedIn) {
     return (
       <div className="container mx-auto px-4 py-12 max-w-3xl">
-        <Card>
+        <Card tone={ACCOUNT_CARD_TONE}>
           <CardContent className="py-10 text-center">
             <FolderHeart className="w-10 h-10 mx-auto text-muted-foreground mb-3" />
             <p className="text-muted-foreground">Sign in to manage your collections.</p>
@@ -121,7 +122,7 @@ export function CollectionsPageContent() {
         </p>
       </div>
 
-      <Card>
+      <Card tone={ACCOUNT_CARD_TONE}>
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
             <Plus className="w-4 h-4" />
@@ -157,13 +158,13 @@ export function CollectionsPageContent() {
       </div>
 
       {isLoading ? (
-        <Card>
+        <Card tone={ACCOUNT_CARD_TONE}>
           <CardContent className="py-10 text-center text-muted-foreground">
             Loading collections...
           </CardContent>
         </Card>
       ) : collections.length === 0 ? (
-        <Card>
+        <Card tone={ACCOUNT_CARD_TONE}>
           <CardContent className="py-10 text-center">
             <Layers className="w-10 h-10 mx-auto text-muted-foreground mb-3" />
             <p className="text-muted-foreground">No collections yet.</p>
@@ -172,7 +173,7 @@ export function CollectionsPageContent() {
       ) : (
         <div className="space-y-3">
           {collections.map((collection) => (
-            <Card key={collection.id} className="border-border/50">
+            <Card tone={ACCOUNT_CARD_TONE} key={collection.id} className="border-border/50">
               <CardHeader className="pb-2">
                 <div className="flex items-start justify-between gap-3">
                   <div>
