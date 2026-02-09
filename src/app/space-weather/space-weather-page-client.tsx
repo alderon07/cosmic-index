@@ -32,6 +32,7 @@ import {
   Sun,
   Cloud,
   Magnet,
+  CloudLightning,
   Filter,
   RotateCcw,
   X,
@@ -293,7 +294,7 @@ export function SpaceWeatherPageClient({
           <div
             className={`w-10 h-10 rounded-lg ${theme.iconContainer} flex items-center justify-center`}
           >
-            <Sun className={`w-5 h-5 ${theme.icon}`} />
+            <CloudLightning className={`w-5 h-5 ${theme.icon}`} />
           </div>
           <h1 className="font-display text-3xl md:text-4xl text-foreground">
             Space Weather
@@ -511,7 +512,7 @@ export function SpaceWeatherPageClient({
       {/* Empty State */}
       {!isLoading && data && data.events.length === 0 && (
         <div className="p-12 text-center">
-          <Sun className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+          <CloudLightning className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
           <h2 className="font-display text-xl text-foreground mb-2">
             No space weather events
           </h2>
@@ -540,7 +541,7 @@ export function SpaceWeatherLoadingSkeleton() {
           <div
             className={`w-10 h-10 rounded-lg ${theme.iconContainer} flex items-center justify-center`}
           >
-            <Sun className={`w-5 h-5 ${theme.icon}`} />
+            <CloudLightning className={`w-5 h-5 ${theme.icon}`} />
           </div>
           <h1 className="font-display text-3xl md:text-4xl text-foreground">
             Space Weather
