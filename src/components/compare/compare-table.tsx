@@ -3,6 +3,7 @@
 import {
   CompareDomain,
   CompareItem,
+  MAX_COMPARE_ITEMS,
   getCompareFactLabel,
   getCompareFactSchema,
   isDetailOnlyFactKey,
@@ -64,6 +65,11 @@ function readFactValue(
 export function CompareTable({ items }: CompareTableProps) {
   const rows = buildRows(items);
   const domain: CompareDomain | null = items[0]?.domain ?? null;
+  const metricColumnMinWidthRem = 10;
+  const itemColumnMinWidthRem = 12;
+  const tableMinWidthRem =
+    metricColumnMinWidthRem +
+    itemColumnMinWidthRem * Math.max(items.length, MAX_COMPARE_ITEMS);
   const toneClass =
     domain === "stars"
       ? {
@@ -94,12 +100,12 @@ export function CompareTable({ items }: CompareTableProps) {
 
   return (
     <div className={cn("min-w-0 overflow-x-auto border rounded-lg bezel", toneClass.tableBorder)}>
-      <table className="w-full min-w-[720px] border-collapse">
+      <table className="w-full border-collapse" style={{ minWidth: `${tableMinWidthRem}rem` }}>
         <thead>
           <tr className={cn("bg-card/70", toneClass.headerBg)}>
             <th
               className={cn(
-                "sticky left-0 z-10 text-left text-xs uppercase tracking-wider p-3 border-b border-border/50",
+                "sticky left-0 z-10 min-w-40 text-left text-xs uppercase tracking-wider p-3 border-b border-border/50",
                 toneClass.metricBg,
                 toneClass.metricText
               )}

@@ -66,80 +66,90 @@ export function Pagination({
   const pages = generatePagination(currentPage, totalPages, siblingsCount);
   const themeConfig = THEMES[theme];
   const activeStyles = `${themeConfig.selectedButton} ${themeConfig.glow}`;
+  const navToneStyles =
+    theme === "stars"
+      ? "hover:border-uranium-green/45 hover:text-uranium-green"
+      : theme === "small-bodies"
+      ? "hover:border-secondary/45 hover:text-secondary"
+      : "hover:border-primary/45 hover:text-primary";
 
   return (
     <div className="max-w-full overflow-x-auto">
       <div className="flex justify-center">
-      <nav
-        className="inline-flex min-w-max items-center gap-1"
-        aria-label="Pagination"
-      >
-        {/* Previous Button */}
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => onPageChange(currentPage - 1)}
-          disabled={currentPage <= 1}
-          className="gap-1"
-          aria-label="Go to previous page"
+        <nav
+          className="inline-flex min-w-max items-center gap-1 rounded-xl border border-border/60 bg-card/72 p-1.5 shadow-[inset_0_1px_0_rgba(255,210,160,0.04)] backdrop-blur-sm"
+          aria-label="Pagination"
         >
-          <ChevronLeft className="w-4 h-4" />
-          <span className="hidden sm:inline">Prev</span>
-        </Button>
+          {/* Previous Button */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onPageChange(currentPage - 1)}
+            disabled={currentPage <= 1}
+            className={`h-8 gap-1 border-border/60 bg-card/70 text-foreground/90 sm:h-9 ${navToneStyles}`}
+            aria-label="Go to previous page"
+          >
+            <ChevronLeft className="w-4 h-4" />
+            <span className="hidden sm:inline">Prev</span>
+          </Button>
 
-        {/* Page Numbers */}
-        <div className="flex items-center gap-1">
-          {pages.map((page, index) => {
-            if (page === "ellipsis") {
+          {/* Page Numbers */}
+          <div className="flex items-center gap-1">
+            {pages.map((page, index) => {
+              if (page === "ellipsis") {
+                return (
+                  <span
+                    key={`ellipsis-${index}`}
+                    className="px-2 py-1 text-muted-foreground"
+                  >
+                    <MoreHorizontal className="w-4 h-4" />
+                  </span>
+                );
+              }
+
+              const isActive = page === currentPage;
+
+              // Use default variant for exoplanets, secondary for small-bodies, outline+override for stars
+              const getVariant = () => {
+                if (!isActive) return "outline";
+                if (theme === "exoplanets") return "default";
+                if (theme === "small-bodies") return "secondary";
+                return "outline"; // stars uses outline with override classes
+              };
+
               return (
-                <span
-                  key={`ellipsis-${index}`}
-                  className="px-2 py-1 text-muted-foreground"
+                <Button
+                  key={page}
+                  variant={getVariant()}
+                  size="sm"
+                  onClick={() => onPageChange(page)}
+                  className={`h-8 min-w-8 border-border/60 px-2 font-mono sm:h-9 sm:min-w-9 ${
+                    isActive
+                      ? activeStyles
+                      : `bg-card/70 text-foreground/90 ${navToneStyles}`
+                  }`}
+                  aria-label={`Go to page ${page}`}
+                  aria-current={isActive ? "page" : undefined}
                 >
-                  <MoreHorizontal className="w-4 h-4" />
-                </span>
+                  {page}
+                </Button>
               );
-            }
+            })}
+          </div>
 
-            const isActive = page === currentPage;
-
-            // Use default variant for exoplanets, secondary for small-bodies, outline+override for stars
-            const getVariant = () => {
-              if (!isActive) return "outline";
-              if (theme === "exoplanets") return "default";
-              if (theme === "small-bodies") return "secondary";
-              return "outline"; // stars uses outline with override classes
-            };
-
-            return (
-              <Button
-                key={page}
-                variant={getVariant()}
-                size="sm"
-                onClick={() => onPageChange(page)}
-                className={`h-8 min-w-8 px-2 font-mono sm:h-9 sm:min-w-9 ${isActive ? activeStyles : ""}`}
-                aria-label={`Go to page ${page}`}
-                aria-current={isActive ? "page" : undefined}
-              >
-                {page}
-              </Button>
-            );
-          })}
-        </div>
-
-        {/* Next Button */}
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => onPageChange(currentPage + 1)}
-          disabled={currentPage >= totalPages}
-          className="gap-1"
-          aria-label="Go to next page"
-        >
-          <span className="hidden sm:inline">Next</span>
-          <ChevronRight className="w-4 h-4" />
-        </Button>
-      </nav>
+          {/* Next Button */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onPageChange(currentPage + 1)}
+            disabled={currentPage >= totalPages}
+            className={`h-8 gap-1 border-border/60 bg-card/70 text-foreground/90 sm:h-9 ${navToneStyles}`}
+            aria-label="Go to next page"
+          >
+            <span className="hidden sm:inline">Next</span>
+            <ChevronRight className="w-4 h-4" />
+          </Button>
+        </nav>
       </div>
     </div>
   );
@@ -164,7 +174,7 @@ export function PageSizeSelector({
         id="page-size-selector"
         value={value}
         onChange={(e) => onChange(parseInt(e.target.value))}
-        className="px-2 py-1 bg-input border border-border rounded-md text-foreground font-mono focus:outline-none focus:ring-1 focus:ring-primary"
+        className="rounded-md border border-border/60 bg-card/80 px-2 py-1 font-mono text-foreground shadow-[inset_0_1px_0_rgba(255,210,160,0.05)] transition-[border-color,box-shadow,background-color] hover:border-brass-light/25 hover:bg-panel-bronze/45 focus:outline-none focus:ring-1 focus:ring-brass-light/25 focus:border-brass-light/30"
       >
         {options.map((option) => (
           <option key={option} value={option}>

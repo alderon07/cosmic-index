@@ -757,7 +757,7 @@ export function SmallBodyFilterPanel({
           <AccordionTrigger className="hover:no-underline">
             <div className="flex items-center gap-2">
               <Filter className={`w-4 h-4 ${smallBodyTheme.text}`} />
-              <span className="font-display">More Filters</span>
+              <span className="font-display">Filters</span>
               {(filters.neo || filters.pha || filters.orbitClass) && (
                 <Badge
                   variant="outline"

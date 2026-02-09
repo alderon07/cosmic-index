@@ -10,13 +10,18 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { CompareChip } from "@/components/compare/compare-chip";
 import { CompareTable } from "@/components/compare/compare-table";
 import { useCompare } from "@/components/compare/use-compare";
 import { recordPerformanceSample, isDegradeModeEnabled } from "@/lib/performance-mode";
-import { getCompareDomainLabel } from "@/lib/compare-facts";
+import { getCompareDomainLabel, MAX_COMPARE_ITEMS } from "@/lib/compare-facts";
 import { cn } from "@/lib/utils";
-import { Telescope, X } from "lucide-react";
+import { Telescope, X, PanelBottomOpen } from "lucide-react";
 
 const COMPARE_TRAY_BUDGET_MS = 100;
 
@@ -174,7 +179,7 @@ export function CompareTray() {
                   <div className="min-w-0">
                     <p className={cn("font-display text-sm", trayToneClass.title)}>{domainLabel} Compare</p>
                     <p className="text-xs text-muted-foreground">
-                      {state.items.length} of 3 selected
+                      {state.items.length} selected (max {MAX_COMPARE_ITEMS})
                     </p>
                   </div>
                 </div>
@@ -198,14 +203,20 @@ export function CompareTray() {
                   >
                     Clear
                   </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className={cn("border", trayToneClass.action)}
-                    onClick={openExpanded}
-                  >
-                    Open Compare
-                  </Button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        size="icon-sm"
+                        variant="outline"
+                        className={cn("border", trayToneClass.action)}
+                        onClick={openExpanded}
+                        aria-label="Open compare panel"
+                      >
+                        <PanelBottomOpen className="w-4 h-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Open compare panel</TooltipContent>
+                  </Tooltip>
                 </div>
               </div>
             ) : null}
@@ -225,7 +236,7 @@ export function CompareTray() {
               Compare {domainLabel}
             </DialogTitle>
             <DialogDescription className={trayToneClass.dialogDescription}>
-              Side-by-side instrument view for selected objects.
+              Side-by-side instrument view for selected objects (up to {MAX_COMPARE_ITEMS}).
             </DialogDescription>
           </DialogHeader>
           <div className="min-h-0 overflow-auto space-y-4">

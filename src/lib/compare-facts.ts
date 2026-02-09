@@ -42,7 +42,7 @@ export interface CompareStateV1 {
   items: CompareItem[];
 }
 
-export const MAX_COMPARE_ITEMS = 3;
+export const MAX_COMPARE_ITEMS = 4;
 export const COMPARE_STORAGE_KEY = "cosmic-index:compare:v1";
 
 const EMPTY_COMPARE_STATE: CompareStateV1 = {

@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { OrbitScaleStrip } from "@/components/visualizers/orbit-scale-strip";
 import { MetricGauge } from "@/components/visualizers/metric-gauge";
+import { DETAIL_CARD_SURFACE_CLASS } from "@/lib/theme";
 import { AnyCosmicObject, isExoplanet, isSmallBody, isStar } from "@/lib/types";
 import { isDegradeModeEnabled, recordPerformanceSample } from "@/lib/performance-mode";
 import { trackEvent } from "@/lib/analytics-events";
@@ -60,7 +61,10 @@ export function ObjectVisualizerPanel({ object }: ObjectVisualizerPanelProps) {
     : "bg-secondary";
 
   return (
-    <Card className={`bg-card border-border/50 bezel ${degradeMode ? "" : "scanlines"}`}>
+    <Card
+      tone="neutral"
+      className={`${DETAIL_CARD_SURFACE_CLASS} ${degradeMode ? "" : "scanlines"}`}
+    >
       <CardHeader>
         <CardTitle className="font-display flex items-center gap-2">
           <Gauge className="w-5 h-5 text-primary" />

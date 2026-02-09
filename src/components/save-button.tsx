@@ -93,7 +93,7 @@ export function SaveButton({
     themeColor === "primary"
       ? "hover:text-primary"
       : themeColor === "uranium-green"
-      ? "hover:text-uranium-green"
+      ? "hover:text-primary"
       : themeColor === "radium-teal"
       ? "hover:text-radium-teal"
       : "hover:text-secondary";
@@ -208,9 +208,9 @@ export function SaveButton({
             "gap-1.5",
             isSaved &&
               (themeColor === "primary"
-                ? "bg-primary hover:bg-primary/90"
+                ? "bg-primary hover:bg-primary/85"
                 : themeColor === "uranium-green"
-                ? "bg-uranium-green hover:bg-uranium-green/90 text-background"
+                ? "bg-primary hover:bg-primary/85 text-primary-foreground"
                 : themeColor === "radium-teal"
                 ? "bg-radium-teal hover:bg-radium-teal/90 text-background"
                 : "bg-secondary hover:bg-secondary/90"),

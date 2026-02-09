@@ -28,6 +28,7 @@ import {
   Scale,
   Globe,
   Gauge,
+  GitCompareArrows,
 } from "lucide-react";
 import {
   Tooltip,
@@ -38,7 +39,7 @@ import { TOOLTIP_CONTENT } from "@/components/info-tooltip";
 import { useCompare } from "@/components/compare/use-compare";
 import { trackEvent } from "@/lib/analytics-events";
 import { SaveButton } from "@/components/save-button";
-import { createCompareItem } from "@/lib/compare-facts";
+import { createCompareItem, MAX_COMPARE_ITEMS } from "@/lib/compare-facts";
 import { cn } from "@/lib/utils";
 
 // SessionStorage keys for storing list page URLs
@@ -137,6 +138,11 @@ export function ObjectCard({ object, onModalOpen, variant = "default" }: ObjectC
     : isSmallBody(object)
     ? "border-secondary/55 bg-secondary/15 text-secondary hover:bg-secondary/20"
     : "border-primary/55 bg-primary/15 text-primary hover:bg-primary/20";
+  const compareTooltipText = compareSupported
+    ? alreadyInCompare
+      ? "Already in compare"
+      : `Add to compare (max ${MAX_COMPARE_ITEMS})`
+    : "Compare is currently unavailable for this object type.";
 
   const trackCardViewed = (view: "grid" | "list") => {
     trackEvent("object_card_viewed", {
@@ -415,30 +421,21 @@ export function ObjectCard({ object, onModalOpen, variant = "default" }: ObjectC
               <TooltipTrigger asChild>
                 <Button
                   type="button"
-                  size="sm"
+                  size="icon-xs"
                   variant="outline"
                   onClick={(e) => handleCompareClick(e, "object-card-list")}
-                  className={cn("h-6 px-2 text-[10px] font-mono", {
+                  className={cn("h-6 w-6", {
                     [compareActiveClass]: compareSupported && alreadyInCompare,
                     [compareOutlineClass]: compareSupported && !alreadyInCompare,
                     "border-border/60 text-muted-foreground hover:text-foreground":
                       !compareSupported,
                   })}
+                  aria-label={compareTooltipText}
                 >
-                  {compareSupported
-                    ? alreadyInCompare
-                      ? "In"
-                      : "Cmp"
-                    : "Cmp"}
+                  <GitCompareArrows className="h-3.5 w-3.5" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>
-                {compareSupported
-                  ? alreadyInCompare
-                    ? "Already in compare"
-                    : "Add to compare"
-                  : "Compare is currently unavailable for this object type."}
-              </TooltipContent>
+              <TooltipContent>{compareTooltipText}</TooltipContent>
             </Tooltip>
             {isSmallBody(object) && object.isNeo && (
               <Badge variant="outline" className="text-[10px] border-amber-glow/50 text-amber-glow py-0 px-1.5">
@@ -596,30 +593,21 @@ export function ObjectCard({ object, onModalOpen, variant = "default" }: ObjectC
             <TooltipTrigger asChild>
               <Button
                 type="button"
-                size="sm"
+                size="icon-xs"
                 variant="outline"
                 onClick={(e) => handleCompareClick(e, "object-card-grid")}
-                className={cn("h-6 px-2 text-[10px] font-mono", {
+                className={cn("h-6 w-6", {
                   [compareActiveClass]: compareSupported && alreadyInCompare,
                   [compareOutlineClass]: compareSupported && !alreadyInCompare,
                   "border-border/60 text-muted-foreground hover:text-foreground":
                     !compareSupported,
                 })}
+                aria-label={compareTooltipText}
               >
-                {compareSupported
-                  ? alreadyInCompare
-                    ? "In Compare"
-                    : "Compare"
-                  : "Compare"}
+                <GitCompareArrows className="h-3.5 w-3.5" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent className="max-w-xs">
-              {compareSupported
-                ? alreadyInCompare
-                  ? "Already in compare"
-                  : "Add to compare"
-                : "Compare is currently unavailable for this object type."}
-            </TooltipContent>
+            <TooltipContent className="max-w-xs">{compareTooltipText}</TooltipContent>
           </Tooltip>
           {isSmallBody(object) && object.isNeo && (
             <Tooltip>

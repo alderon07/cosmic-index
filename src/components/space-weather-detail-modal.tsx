@@ -10,6 +10,7 @@ import {
 import { SpaceWeatherDetail } from "@/components/space-weather-detail";
 import { AnySpaceWeatherEvent } from "@/lib/types";
 import { getEventTypeLabel } from "@/lib/nasa-donki";
+import { THEMES } from "@/lib/theme";
 import { SquareArrowOutUpRight } from "lucide-react";
 
 interface SpaceWeatherDetailModalProps {
@@ -27,12 +28,14 @@ export function SpaceWeatherDetailModal({
 
   const href = `/space-weather/${encodeURIComponent(event.id)}`;
   const typeLabel = getEventTypeLabel(event.eventType);
+  const theme = THEMES["space-weather"];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className="max-w-4xl md:max-w-5xl lg:max-w-6xl max-h-[90vh] overflow-y-auto overflow-x-hidden bg-background border-border"
         showCloseButton={true}
+        onOpenAutoFocus={(event) => event.preventDefault()}
       >
         <DialogHeader className="flex flex-row items-center justify-between pr-8">
           <DialogTitle className="sr-only">{typeLabel}</DialogTitle>
@@ -40,7 +43,7 @@ export function SpaceWeatherDetailModal({
             href={href}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary transition-colors"
+            className={`inline-flex items-center gap-1.5 text-sm text-muted-foreground ${theme.hoverText} transition-colors`}
           >
             <SquareArrowOutUpRight className="w-4 h-4" />
             View Full Page

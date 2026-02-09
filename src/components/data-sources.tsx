@@ -1,4 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { DETAIL_CARD_SURFACE_CLASS } from "@/lib/theme";
 import { ExternalLink } from "lucide-react";
 
 interface DataSourcesProps {
@@ -8,7 +9,10 @@ interface DataSourcesProps {
 
 export function DataSources({ links, sourceId }: DataSourcesProps) {
   return (
-    <Card className="bg-card border-border/50 bezel">
+    <Card
+      tone="neutral"
+      className={DETAIL_CARD_SURFACE_CLASS}
+    >
       <CardHeader>
         <CardTitle className="font-display text-base">Data Sources</CardTitle>
       </CardHeader>
