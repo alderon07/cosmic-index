@@ -149,18 +149,18 @@ export default function RootLayout({
         <KeyboardShortcutsProvider>
         <div className="relative min-h-screen vignette">
           {/* Navigation */}
-          <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-sm">
+          <header className="sticky top-0 z-50 border-b border-orange-200/20 bg-[#120d0a]/90 backdrop-blur-md">
             <nav className="container mx-auto px-4 h-16 flex items-center justify-between">
               <Link href="/" className="flex items-center gap-2 group">
-                <div className="w-8 h-8 rounded-full reactor-gradient pulse-glow" />
-                <span className="font-display text-xl tracking-wider text-foreground group-hover:text-primary transition-colors">
+                <div className="h-8 w-8 rounded-full border border-orange-300/35 reactor-gradient pulse-glow" />
+                <span className="font-display text-xl tracking-wider text-orange-100 transition-colors group-hover:text-orange-300">
                   Cosmic Index
                 </span>
               </Link>
               <div className="flex items-center gap-2 sm:gap-6">
                 <Link
                   href="/exoplanets"
-                  className="font-display text-sm tracking-wide text-muted-foreground hover:text-primary transition-colors"
+                  className="font-display text-sm tracking-wide text-orange-100/75 transition-colors hover:text-orange-300"
                   title="Exoplanets"
                 >
                   <Circle className="w-5 h-5 sm:hidden" />
@@ -168,7 +168,7 @@ export default function RootLayout({
                 </Link>
                 <Link
                   href="/stars"
-                  className="font-display text-sm tracking-wide text-muted-foreground hover:text-uranium-green transition-colors"
+                  className="font-display text-sm tracking-wide text-orange-100/75 transition-colors hover:text-amber-200"
                   title="Stars"
                 >
                   <Star className="w-5 h-5 sm:hidden" />
@@ -176,7 +176,7 @@ export default function RootLayout({
                 </Link>
                 <Link
                   href="/small-bodies"
-                  className="font-display text-sm tracking-wide text-muted-foreground hover:text-secondary transition-colors"
+                  className="font-display text-sm tracking-wide text-orange-100/75 transition-colors hover:text-amber-300"
                   title="Small Bodies"
                 >
                   <CircleDot className="w-5 h-5 sm:hidden" />
@@ -184,7 +184,7 @@ export default function RootLayout({
                 </Link>
                 <Link
                   href="/close-approaches"
-                  className="font-display text-sm tracking-wide text-muted-foreground hover:text-destructive transition-colors"
+                  className="font-display text-sm tracking-wide text-orange-100/75 transition-colors hover:text-orange-300"
                   title="Close Approaches"
                 >
                   <Crosshair className="w-5 h-5 sm:hidden" />
@@ -192,7 +192,7 @@ export default function RootLayout({
                 </Link>
                 <Link
                   href="/fireballs"
-                  className="font-display text-sm tracking-wide text-muted-foreground hover:text-radium-teal transition-colors"
+                  className="font-display text-sm tracking-wide text-orange-100/75 transition-colors hover:text-orange-300"
                   title="Fireballs"
                 >
                   <Flame className="w-5 h-5 sm:hidden" />
@@ -200,7 +200,7 @@ export default function RootLayout({
                 </Link>
                 <Link
                   href="/space-weather"
-                  className="font-display text-sm tracking-wide text-muted-foreground hover:text-aurora-violet transition-colors"
+                  className="font-display text-sm tracking-wide text-orange-100/75 transition-colors hover:text-amber-200"
                   title="Space Weather"
                 >
                   <Sun className="w-5 h-5 sm:hidden" />
@@ -214,22 +214,22 @@ export default function RootLayout({
           <main>{children}</main>
 
           {/* Footer */}
-          <footer className="border-t border-border/50 mt-auto">
+          <footer className="mt-auto border-t border-orange-200/20 bg-[#100c09]">
             <div className="container mx-auto px-4 py-8">
               <div className="flex flex-col md:flex-row items-center justify-between gap-4">
                 <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-full reactor-gradient opacity-50" />
-                  <span className="font-display text-sm tracking-wider text-muted-foreground">
+                  <div className="h-6 w-6 rounded-full border border-orange-300/30 reactor-gradient opacity-80" />
+                  <span className="font-display text-sm tracking-wider text-orange-100/80">
                     Cosmic Index
                   </span>
                 </div>
-                <p className="text-xs text-muted-foreground text-center md:text-right">
+                <p className="text-center text-xs text-orange-100/65 md:text-right">
                   Data sourced from{" "}
                   <Link
                     href="https://exoplanetarchive.ipac.caltech.edu/"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-radium-teal hover:underline"
+                    className="text-orange-300 hover:underline"
                   >
                     NASA Exoplanet Archive
                   </Link>{" "}
@@ -238,15 +238,15 @@ export default function RootLayout({
                     href="https://ssd.jpl.nasa.gov/tools/sbdb_lookup.html"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-radium-teal hover:underline"
+                    className="text-orange-300 hover:underline"
                   >
                     JPL Small-Body Database
                   </Link>
                 </p>
                 <div className="flex items-center gap-4">
-                  <span className="hidden sm:flex items-center gap-1.5 text-xs text-muted-foreground/60">
+                  <span className="hidden sm:flex items-center gap-1.5 text-xs text-orange-100/55">
                     <Keyboard className="w-3.5 h-3.5" />
-                    Press <kbd className="px-1 py-0.5 text-[10px] bg-muted rounded border border-border">?</kbd> for shortcuts
+                    Press <kbd className="rounded border border-orange-200/20 bg-[#1a130f] px-1 py-0.5 text-[10px]">?</kbd> for shortcuts
                   </span>
                   <Link
                     href="https://ko-fi.com/sadasspanda"
