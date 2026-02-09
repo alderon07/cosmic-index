@@ -148,12 +148,12 @@ export default function RootLayout({
         />
       </head>
       <body
-        className={`${audiowide.variable} ${inter.variable} ${jetbrainsMono.variable} antialiased min-h-screen bg-background`}
+        className={`${audiowide.variable} ${inter.variable} ${jetbrainsMono.variable} antialiased min-h-screen bg-background flex flex-col`}
       >
         <AppAuthProvider>
         <CompareProvider>
         <KeyboardShortcutsProvider>
-        <div className="relative min-h-screen vignette flex flex-col">
+        <div className="relative vignette flex min-h-screen flex-1 flex-col">
           {/* Navigation */}
           <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-sm">
             <nav className="container mx-auto px-4 h-16 flex items-center justify-between">

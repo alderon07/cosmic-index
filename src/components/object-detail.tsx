@@ -32,6 +32,8 @@ import { ObjectVisualizerPanel } from "@/components/visualizers/object-visualize
 import { useCompare } from "@/components/compare/use-compare";
 import { trackEvent } from "@/lib/analytics-events";
 import { SaveButton } from "@/components/save-button";
+import { createCompareItem } from "@/lib/compare-facts";
+import { cn } from "@/lib/utils";
 
 const NasaImageGallery = dynamic(
   () => import("./nasa-image-gallery").then((m) => m.NasaImageGallery),
@@ -70,89 +72,108 @@ export function ObjectDetail({
       : "Asteroid"
     : "Unknown";
   const compareSupported = isObjectSupported(object);
-  const alreadyInCompare = compareSupported && isInCompare(object.id);
+  const compareId = createCompareItem(object, "detail")?.id;
+  const alreadyInCompare = Boolean(compareId && isInCompare(compareId));
+  const isComet = isSmallBody(object) && object.bodyKind === "comet";
+  const compareOutlineClass = isComet
+    ? "border-radium-teal/30 bg-radium-teal/5 text-radium-teal/85 hover:bg-radium-teal/10 hover:text-radium-teal"
+    : isStar(object)
+    ? "border-uranium-green/30 bg-uranium-green/5 text-uranium-green/85 hover:bg-uranium-green/10 hover:text-uranium-green"
+    : isSmallBody(object)
+    ? "border-secondary/30 bg-secondary/5 text-secondary/85 hover:bg-secondary/10 hover:text-secondary"
+    : "border-primary/30 bg-primary/5 text-primary/85 hover:bg-primary/10 hover:text-primary";
+  const compareActiveClass = isComet
+    ? "border-radium-teal/55 bg-radium-teal/15 text-radium-teal hover:bg-radium-teal/20"
+    : isStar(object)
+    ? "border-uranium-green/55 bg-uranium-green/15 text-uranium-green hover:bg-uranium-green/20"
+    : isSmallBody(object)
+    ? "border-secondary/55 bg-secondary/15 text-secondary hover:bg-secondary/20"
+    : "border-primary/55 bg-primary/15 text-primary hover:bg-primary/20";
 
   return (
     <div className="space-y-6 min-w-0">
       {/* Hero Section */}
       <div className="relative p-6 md:p-8 bg-card border border-border/50 rounded-lg bezel scanlines overflow-hidden">
         <div className="relative z-10">
-          <div className="flex flex-wrap items-start gap-3 mb-4">
-            <Badge
-              variant={
-                isExoplanet(object)
-                  ? "default"
-                  : isStar(object)
-                  ? "outline"
-                  : isSmallBody(object) && object.bodyKind === "comet"
-                  ? "outline"
-                  : "secondary"
-              }
-              className={`font-mono ${
-                isStar(object)
-                  ? "border-uranium-green/50 text-uranium-green bg-uranium-green/10"
-                  : isSmallBody(object) && object.bodyKind === "comet"
-                  ? "border-radium-teal/50 text-radium-teal bg-radium-teal/10"
-                  : ""
-              }`}
-            >
-              {typeLabel}
-            </Badge>
-
-            {isSmallBody(object) && object.isNeo && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Badge
-                    variant="outline"
-                    className="border-amber-glow/50 text-amber-glow cursor-help"
-                  >
-                    <Orbit className="w-3 h-3 mr-1" />
-                    Near-Earth Object
-                  </Badge>
-                </TooltipTrigger>
-                <TooltipContent className="max-w-xs border-secondary/30">
-                  {TOOLTIP_CONTENT.NEO}
-                </TooltipContent>
-              </Tooltip>
-            )}
-
-            {isSmallBody(object) && object.isPha && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Badge variant="destructive" className="cursor-help">
-                    <AlertTriangle className="w-3 h-3 mr-1" />
-                    Potentially Hazardous
-                  </Badge>
-                </TooltipTrigger>
-                <TooltipContent className="max-w-xs border-destructive/30">
-                  {TOOLTIP_CONTENT.PHA}
-                </TooltipContent>
-              </Tooltip>
-            )}
-
-            {showCompare && (
-              <Button
-                type="button"
-                variant={alreadyInCompare ? "default" : "outline"}
-                size="sm"
-                onClick={() => addObject(object, "object-detail")}
-                className={
-                  compareSupported
-                    ? alreadyInCompare
-                      ? "glow-orange"
-                      : "border-primary/40 text-primary hover:bg-primary/10"
-                    : "border-border/60 text-muted-foreground hover:text-foreground"
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="flex flex-wrap items-center gap-3">
+              <Badge
+                variant={
+                  isExoplanet(object)
+                    ? "default"
+                    : isStar(object)
+                    ? "outline"
+                    : isSmallBody(object) && object.bodyKind === "comet"
+                    ? "outline"
+                    : "secondary"
                 }
+                className={`font-mono ${
+                  isStar(object)
+                    ? "border-uranium-green/50 text-uranium-green bg-uranium-green/10"
+                    : isSmallBody(object) && object.bodyKind === "comet"
+                    ? "border-radium-teal/50 text-radium-teal bg-radium-teal/10"
+                    : ""
+                }`}
               >
-                {compareSupported
-                  ? alreadyInCompare
-                    ? "In Compare"
-                    : "Add to Compare"
-                  : "Compare (Exoplanets only)"}
-              </Button>
-            )}
+                {typeLabel}
+              </Badge>
 
-            <SaveButton object={object} variant="button" />
+              {isSmallBody(object) && object.isNeo && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Badge
+                      variant="outline"
+                      className="border-amber-glow/50 text-amber-glow cursor-help"
+                    >
+                      <Orbit className="w-3 h-3 mr-1" />
+                      Near-Earth Object
+                    </Badge>
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs border-secondary/30">
+                    {TOOLTIP_CONTENT.NEO}
+                  </TooltipContent>
+                </Tooltip>
+              )}
+
+              {isSmallBody(object) && object.isPha && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Badge variant="destructive" className="cursor-help">
+                      <AlertTriangle className="w-3 h-3 mr-1" />
+                      Potentially Hazardous
+                    </Badge>
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs border-destructive/30">
+                    {TOOLTIP_CONTENT.PHA}
+                  </TooltipContent>
+                </Tooltip>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2 sm:justify-end">
+              {showCompare && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => addObject(object, "object-detail")}
+                  className={cn({
+                    [compareActiveClass]: compareSupported && alreadyInCompare,
+                    [compareOutlineClass]: compareSupported && !alreadyInCompare,
+                    "border-border/60 text-muted-foreground hover:text-foreground":
+                      !compareSupported,
+                  })}
+                >
+                  {compareSupported
+                    ? alreadyInCompare
+                      ? "In Compare"
+                      : "Add to Compare"
+                    : "Compare Unavailable"}
+                </Button>
+              )}
+
+              <SaveButton object={object} variant="button" />
+            </div>
           </div>
 
           <h1 className="font-display text-2xl sm:text-3xl md:text-4xl lg:text-5xl text-foreground mb-2 nixie break-words">

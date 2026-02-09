@@ -2,9 +2,26 @@ import { Redis } from "@upstash/redis";
 
 // Initialize Redis client - will be null if env vars not set
 let redis: Redis | null = null;
+let hasWarnedBuildDisable = false;
+
+function isBuildPhase(): boolean {
+  return (
+    process.env.NEXT_PHASE === "phase-production-build" ||
+    process.env.npm_lifecycle_event === "build"
+  );
+}
 
 function getRedis(): Redis | null {
   if (redis) return redis;
+
+  // Skip Redis calls during static build to avoid dynamic fetch usage in prerender.
+  if (isBuildPhase()) {
+    if (!hasWarnedBuildDisable) {
+      console.info("Upstash Redis disabled during build phase");
+      hasWarnedBuildDisable = true;
+    }
+    return null;
+  }
 
   const url = process.env.UPSTASH_REDIS_REST_URL;
   const token = process.env.UPSTASH_REDIS_REST_TOKEN;

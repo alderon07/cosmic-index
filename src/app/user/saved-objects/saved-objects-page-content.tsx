@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Bookmark, Trash2, FolderHeart } from "lucide-react";
+import { Bookmark, Trash2, FolderHeart, Loader2, RefreshCw } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -18,11 +18,23 @@ interface SavedObjectItem {
   createdAt: string;
 }
 
+function toExoplanetDetailId(id: string): string {
+  // Current IDs are URI-encoded names (e.g. "Kepler-186%20f").
+  if (/%[0-9a-f]{2}/i.test(id)) return id;
+
+  // Backward compatibility for legacy kebab slugs in old/mock saved data
+  // (e.g. "kepler-186-f" -> "kepler-186%20f").
+  const lastDash = id.lastIndexOf("-");
+  if (lastDash <= 0 || lastDash >= id.length - 1) return id;
+  const withSpaceBeforeSuffix = `${id.slice(0, lastDash)} ${id.slice(lastDash + 1)}`;
+  return encodeURIComponent(withSpaceBeforeSuffix);
+}
+
 function resolveHref(canonicalId: string): string | null {
   const parsed = parseCanonicalId(canonicalId);
   if (!parsed) return null;
 
-  if (parsed.type === "exoplanet") return `/exoplanets/${parsed.id}`;
+  if (parsed.type === "exoplanet") return `/exoplanets/${toExoplanetDetailId(parsed.id)}`;
   if (parsed.type === "star") return `/stars/${parsed.id}`;
   if (parsed.type === "small-body") return `/small-bodies/${parsed.id}`;
   if (parsed.type === "fireball") return "/fireballs";
@@ -137,8 +149,20 @@ export function SavedObjectsPageContent() {
         </div>
         <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
           <ExportButton category="saved-objects" />
-          <Button variant="outline" size="sm" onClick={() => void loadItems()} disabled={isLoading}>
-            Refresh
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5"
+            onClick={() => void loadItems()}
+            disabled={isLoading}
+            aria-busy={isLoading}
+          >
+            {isLoading ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <RefreshCw className="h-3.5 w-3.5" />
+            )}
+            {isLoading ? "Refreshing..." : "Refresh"}
           </Button>
         </div>
       </div>

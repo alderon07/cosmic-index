@@ -1,5 +1,4 @@
 import { Metadata } from "next";
-import { redirect } from "next/navigation";
 import { getUserDb } from "@/lib/user-db";
 import { BillingContent } from "./billing-content";
 import { getAuthUser } from "@/lib/auth";
@@ -13,6 +12,7 @@ export const metadata: Metadata = {
 
 // Authenticated settings page must render per-request.
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 /**
  * Billing Settings Page
@@ -25,7 +25,14 @@ export const dynamic = "force-dynamic";
 export default async function BillingPage() {
   const user = await getAuthUser();
   if (!user) {
-    redirect("/");
+    return (
+      <div className="container mx-auto px-4 py-8 max-w-2xl">
+        <h1 className="font-display text-2xl tracking-wide mb-3">Billing</h1>
+        <p className="text-sm text-muted-foreground">
+          Sign in to manage your subscription.
+        </p>
+      </div>
+    );
   }
 
   // Fetch tier from database (source of truth)

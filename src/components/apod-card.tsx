@@ -5,7 +5,6 @@ import Image from "next/image";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
 import { APODData } from "@/lib/types";
 import { apiFetch } from "@/lib/api-client";
 import { Calendar, ExternalLink, ChevronDown, ChevronUp, Play, ImageIcon } from "lucide-react";
@@ -192,29 +191,34 @@ export function APODCard({ className, initialApod = null, initialError = null }:
 }
 
 export function APODCardSkeleton({ className }: { className?: string }) {
+  const neutralSkeletonClass =
+    "animate-pulse rounded bg-gradient-to-r from-muted/30 via-muted/45 to-muted/30";
+
   return (
     <Card className={`bg-card border-border/50 bezel overflow-hidden ${className}`}>
       <div className="grid md:grid-cols-2 gap-0">
         {/* Image Skeleton */}
-        <Skeleton className="relative aspect-video md:aspect-auto md:min-h-[320px] rounded-none" />
+        <div
+          className={`relative aspect-video md:aspect-auto md:min-h-[320px] rounded-none ${neutralSkeletonClass}`}
+        />
 
         {/* Content Skeleton */}
         <div className="p-6 flex flex-col">
           <div className="hidden md:block mb-4">
-            <Skeleton className="h-5 w-48 mb-3" />
-            <Skeleton className="h-7 w-3/4 mb-2" />
-            <Skeleton className="h-4 w-40" />
+            <div className={`h-5 w-48 mb-3 ${neutralSkeletonClass}`} />
+            <div className={`h-7 w-3/4 mb-2 ${neutralSkeletonClass}`} />
+            <div className={`h-4 w-40 ${neutralSkeletonClass}`} />
           </div>
 
           <div className="flex-1 space-y-2">
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-4 w-3/4" />
+            <div className={`h-4 w-full ${neutralSkeletonClass}`} />
+            <div className={`h-4 w-full ${neutralSkeletonClass}`} />
+            <div className={`h-4 w-3/4 ${neutralSkeletonClass}`} />
           </div>
 
           <div className="mt-4 pt-4 border-t border-border/30 flex items-center justify-between">
-            <Skeleton className="h-3 w-24" />
-            <Skeleton className="h-3 w-32" />
+            <div className={`h-3 w-24 ${neutralSkeletonClass}`} />
+            <div className={`h-3 w-32 ${neutralSkeletonClass}`} />
           </div>
         </div>
       </div>
