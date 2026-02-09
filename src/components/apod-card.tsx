@@ -69,7 +69,7 @@ export function APODCard({ className, initialApod = null, initialError = null }:
 
   return (
     <Card
-      className={`border border-orange-200/25 bg-[#1b130e]/85 text-orange-100 shadow-[inset_0_0_0_1px_rgba(255,180,120,0.14)] scanlines overflow-hidden ${className}`}
+      className={`border border-orange-200/25 bg-[#1b130e]/85 text-orange-100 shadow-[inset_0_0_0_1px_rgba(255,180,120,0.14)] scanlines overflow-hidden min-w-0 max-w-full ${className ?? ""}`}
     >
       <div className="grid md:grid-cols-2 gap-0">
         {/* Image Section */}
@@ -114,7 +114,7 @@ export function APODCard({ className, initialApod = null, initialError = null }:
         </div>
 
         {/* Content Section */}
-        <CardContent className="p-6 flex flex-col">
+        <CardContent className="p-4 sm:p-6 flex flex-col min-w-0">
           {/* Header - Desktop only */}
           <div className="hidden md:block mb-4">
             <div className="flex items-start justify-between gap-4 mb-3">
@@ -170,8 +170,8 @@ export function APODCard({ className, initialApod = null, initialError = null }:
           </div>
 
           {/* Footer */}
-          <div className="mt-4 flex items-center justify-between border-t border-orange-200/20 pt-4">
-            <div className="text-xs text-orange-100/60">
+          <div className="mt-4 flex flex-col gap-2 border-t border-orange-200/20 pt-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="text-xs text-orange-100/60 min-w-0 break-words">
               {apod.copyright && (
                 <span>&copy; {apod.copyright}</span>
               )}
@@ -180,7 +180,7 @@ export function APODCard({ className, initialApod = null, initialError = null }:
               href={`https://apod.nasa.gov/apod/ap${apod.date.replace(/-/g, "").slice(2)}.html`}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1 text-xs text-orange-300 transition-colors hover:text-orange-200"
+              className="flex items-center gap-1 text-xs text-orange-300 transition-colors hover:text-orange-200 shrink-0"
             >
               View on NASA APOD
               <ExternalLink className="w-3 h-3" />
@@ -205,7 +205,7 @@ export function APODCardSkeleton({ className }: { className?: string }) {
         />
 
         {/* Content Skeleton */}
-        <div className="p-6 flex flex-col">
+        <div className="p-4 sm:p-6 flex flex-col">
           <div className="hidden md:block mb-4">
             <div className={`h-5 w-48 mb-3 ${neutralSkeletonClass}`} />
             <div className={`h-7 w-3/4 mb-2 ${neutralSkeletonClass}`} />
