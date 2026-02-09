@@ -3,6 +3,7 @@ import { Audiowide, Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import Link from "next/link";
 import { Circle, Star, CircleDot, Crosshair, Flame, CloudLightning, Keyboard } from "lucide-react";
+import { THEMES } from "@/lib/theme";
 import { Analytics } from "@vercel/analytics/react";
 import { KeyboardShortcutsProvider } from "@/components/keyboard-shortcuts/keyboard-shortcuts-provider";
 import { UserAuthButton } from "@/components/auth/user-auth-button";
@@ -156,17 +157,17 @@ export default function RootLayout({
         <div className="relative vignette flex min-h-screen flex-1 flex-col">
           {/* Navigation */}
           <header className="sticky top-0 z-50 border-b border-orange-200/20 bg-[#120d0a]/90 backdrop-blur-md">
-            <nav className="container mx-auto px-4 h-16 flex items-center justify-between gap-2">
-              <Link href="/" className="group flex shrink-0 items-center gap-2">
-                <div className="h-8 w-8 shrink-0 rounded-full border border-orange-300/35 reactor-gradient pulse-glow" />
-                <span className="hidden font-display text-xl tracking-wider whitespace-nowrap text-orange-100 transition-colors group-hover:text-orange-300 sm:inline">
+            <nav className="container mx-auto max-w-7xl px-4 h-16 flex items-center justify-between">
+              <Link href="/" className="flex items-center gap-2 group">
+                <div className="h-8 w-8 rounded-full border border-orange-300/35 reactor-gradient pulse-glow" />
+                <span className="font-display text-xl tracking-wider text-orange-100 transition-colors group-hover:text-orange-300">
                   Cosmic Index
                 </span>
               </Link>
               <div className="flex min-w-0 items-center gap-1.5 sm:gap-6">
                 <Link
                   href="/exoplanets"
-                  className="font-display text-sm tracking-wide text-orange-100/75 transition-colors hover:text-primary"
+                  className={`font-display text-sm tracking-wide text-orange-100/75 transition-colors ${THEMES.exoplanets.hoverText}`}
                   title="Exoplanets"
                 >
                   <Circle className="w-5 h-5 sm:hidden" />
@@ -174,7 +175,7 @@ export default function RootLayout({
                 </Link>
                 <Link
                   href="/stars"
-                  className="font-display text-sm tracking-wide text-orange-100/75 transition-colors hover:text-uranium-green"
+                  className={`font-display text-sm tracking-wide text-orange-100/75 transition-colors ${THEMES.stars.hoverText}`}
                   title="Stars"
                 >
                   <Star className="w-5 h-5 sm:hidden" />
@@ -182,7 +183,7 @@ export default function RootLayout({
                 </Link>
                 <Link
                   href="/small-bodies"
-                  className="font-display text-sm tracking-wide text-orange-100/75 transition-colors hover:text-secondary"
+                  className={`font-display text-sm tracking-wide text-orange-100/75 transition-colors ${THEMES["small-bodies"].hoverText}`}
                   title="Small Bodies"
                 >
                   <CircleDot className="w-5 h-5 sm:hidden" />
@@ -190,7 +191,7 @@ export default function RootLayout({
                 </Link>
                 <Link
                   href="/close-approaches"
-                  className="font-display text-sm tracking-wide text-orange-100/75 transition-colors hover:text-destructive"
+                  className={`font-display text-sm tracking-wide text-orange-100/75 transition-colors ${THEMES["close-approaches"].hoverText}`}
                   title="Close Approaches"
                 >
                   <Crosshair className="w-5 h-5 sm:hidden" />
@@ -198,7 +199,7 @@ export default function RootLayout({
                 </Link>
                 <Link
                   href="/fireballs"
-                  className="font-display text-sm tracking-wide text-orange-100/75 transition-colors hover:text-radium-teal"
+                  className={`font-display text-sm tracking-wide text-orange-100/75 transition-colors ${THEMES.fireballs.hoverText}`}
                   title="Fireballs"
                 >
                   <Flame className="w-5 h-5 sm:hidden" />
@@ -206,7 +207,7 @@ export default function RootLayout({
                 </Link>
                 <Link
                   href="/space-weather"
-                  className="font-display text-sm tracking-wide text-orange-100/75 transition-colors hover:text-aurora-violet"
+                  className={`font-display text-sm tracking-wide text-orange-100/75 transition-colors ${THEMES["space-weather"].hoverText}`}
                   title="Space Weather"
                 >
                   <CloudLightning className="w-5 h-5 sm:hidden" />
@@ -225,7 +226,7 @@ export default function RootLayout({
 
           {/* Footer */}
           <footer className="mt-auto border-t border-orange-200/20 bg-[#100c09]">
-            <div className="container mx-auto px-4 py-8">
+            <div className="container mx-auto max-w-7xl px-4 py-8">
               <div className="flex flex-col md:flex-row items-center justify-between gap-4">
                 <div className="flex items-center gap-2">
                   <div className="h-6 w-6 rounded-full border border-orange-300/30 reactor-gradient opacity-80" />

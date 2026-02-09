@@ -48,7 +48,7 @@ export default function HomePage() {
           ))}
         </div>
 
-        <div className="relative container mx-auto px-4 py-10 sm:py-16 md:py-24 max-w-[100vw]">
+        <div className="relative container mx-auto max-w-7xl px-4 py-10 sm:py-16 md:py-24">
           <div className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr] lg:items-end min-w-0">
             <div className="animate-reveal-up min-w-0">
               <span className="inline-flex flex-wrap items-center gap-2 rounded-full border border-orange-300/40 bg-orange-500/10 px-3 py-1.5 text-[10px] sm:text-xs uppercase tracking-[0.15em] sm:tracking-[0.2em] text-orange-200 animate-card-breathe motion-reduce:animate-none">
@@ -124,8 +124,8 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="container mx-auto px-4 py-8 md:py-12 animate-reveal-up-late max-w-[100vw] overflow-hidden">
-        <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+      <section className="container mx-auto max-w-7xl px-4 py-8 md:py-12 animate-reveal-up-late overflow-hidden min-w-0">
+        <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between min-w-0">
           <div className="min-w-0">
             <p className="text-xs uppercase tracking-[0.22em] text-primary">
               Daily Telescope Feed
@@ -136,14 +136,16 @@ export default function HomePage() {
             APOD feed in Cosmic Index style
           </p>
         </div>
-        <Suspense fallback={<APODCardSkeleton />}>
-          <APODCard />
-        </Suspense>
+        <div className="min-w-0">
+          <Suspense fallback={<APODCardSkeleton />}>
+            <APODCard />
+          </Suspense>
+        </div>
       </section>
 
-      <section className="container mx-auto px-4 pb-10 pt-4 md:pb-20 max-w-[100vw] overflow-hidden">
-        <div className="grid gap-4 sm:gap-6 md:grid-cols-3">
-          <div className="h-full animate-reveal-up">
+      <section className="container mx-auto max-w-7xl px-4 pb-10 pt-4 md:pb-20 overflow-hidden min-w-0">
+        <div className="grid gap-4 sm:gap-6 md:grid-cols-3 min-w-0">
+          <div className="h-full min-w-0 animate-reveal-up">
             <ReactorCard
               title="Exoplanets"
               description="Scan confirmed planets, filter by discovery method, and compare orbital properties."
@@ -152,7 +154,7 @@ export default function HomePage() {
               cta="Open Exoplanets"
             />
           </div>
-          <div className="h-full animate-reveal-up-delay">
+          <div className="h-full min-w-0 animate-reveal-up-delay">
             <ReactorCard
               title="Stars"
               description="Inspect host stars, stellar classes, and linked planetary systems."
@@ -161,7 +163,7 @@ export default function HomePage() {
               cta="Open Stars"
             />
           </div>
-          <div className="h-full animate-reveal-up-late">
+          <div className="h-full min-w-0 animate-reveal-up-late">
             <ReactorCard
               title="Small Bodies"
               description="Track asteroids and comets with close-approach context and orbit classes."
@@ -172,7 +174,7 @@ export default function HomePage() {
           </div>
         </div>
 
-        <div className="animate-reveal-up-late relative mt-6 sm:mt-8 overflow-hidden rounded-2xl border border-orange-300/30 bg-[#1a120d]/80 p-4 sm:p-6 text-center">
+        <div className="animate-reveal-up-late relative mt-6 sm:mt-8 min-w-0 overflow-hidden rounded-2xl border border-orange-300/30 bg-[#1a120d]/80 p-4 sm:p-6 text-center">
           <div className="pointer-events-none absolute -left-1/2 top-0 h-full w-1/2 bg-gradient-to-r from-transparent via-orange-300/20 to-transparent animate-data-sweep motion-reduce:hidden" />
           <h2 className="font-display text-xl sm:text-2xl text-orange-100 md:text-3xl break-words">
             Ready to Explore?
