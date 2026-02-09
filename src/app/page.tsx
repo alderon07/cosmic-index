@@ -27,11 +27,13 @@ const STAR_POSITIONS = Array.from({ length: 60 }, (_, index) => ({
 export default function HomePage() {
   return (
     <div className="relative overflow-hidden">
-      <section className="relative overflow-hidden border-b border-border/60 bg-[#0f0b08]">
+      <section className="relative isolate overflow-hidden border-b border-border/60 bg-[#0f0b08]">
         <div className="absolute inset-0">
           <div className="absolute inset-0 opacity-35 [background-image:radial-gradient(circle_at_1px_1px,rgba(255,200,135,0.28)_1px,transparent_0)] [background-size:28px_28px]" />
           <div className="absolute -left-24 top-8 h-80 w-80 rounded-full bg-orange-500/20 blur-3xl" />
           <div className="absolute -right-24 bottom-0 h-80 w-80 rounded-full bg-amber-400/15 blur-3xl" />
+          <div className="pointer-events-none absolute -left-1/2 top-0 h-full w-1/2 bg-gradient-to-r from-transparent via-orange-300/18 to-transparent animate-data-sweep motion-reduce:hidden" />
+          <div className="pointer-events-none absolute right-0 top-1/4 h-32 w-32 rounded-full border border-orange-300/25 animate-float-drift motion-reduce:animate-none" />
           {STAR_POSITIONS.map((star, index) => (
             <span
               key={index}
@@ -48,8 +50,8 @@ export default function HomePage() {
 
         <div className="relative container mx-auto px-4 py-16 md:py-24">
           <div className="grid gap-10 lg:grid-cols-[1.2fr_0.8fr] lg:items-end">
-            <div>
-              <span className="inline-flex items-center gap-2 rounded-full border border-orange-300/40 bg-orange-500/10 px-3 py-1 text-xs uppercase tracking-[0.2em] text-orange-200">
+            <div className="animate-reveal-up">
+              <span className="inline-flex items-center gap-2 rounded-full border border-orange-300/40 bg-orange-500/10 px-3 py-1 text-xs uppercase tracking-[0.2em] text-orange-200 animate-card-breathe motion-reduce:animate-none">
                 <Rocket className="h-3.5 w-3.5" />
                 Cosmic Index Command Interface
               </span>
@@ -94,7 +96,9 @@ export default function HomePage() {
               </div>
             </div>
 
-            <Card className="border-orange-200/30 bg-[#1d140f]/90 p-5 text-orange-100 shadow-[inset_0_0_0_1px_rgba(255,180,120,0.15)]">
+            <Card className="relative overflow-hidden border-orange-200/30 bg-[#1d140f]/90 p-5 text-orange-100 shadow-[inset_0_0_0_1px_rgba(255,180,120,0.15)] animate-reveal-up-delay">
+              <div className="pointer-events-none absolute -right-12 -top-12 h-32 w-32 rounded-full border border-orange-300/25 animate-orbit-spin motion-reduce:animate-none" />
+              <div className="pointer-events-none absolute -left-1/2 top-0 h-full w-1/2 bg-gradient-to-r from-transparent via-orange-200/20 to-transparent animate-data-sweep motion-reduce:hidden" />
               <p className="text-xs uppercase tracking-[0.2em] text-orange-200/70">
                 Payload Summary
               </p>
@@ -120,7 +124,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="container mx-auto px-4 py-10 md:py-12">
+      <section className="container mx-auto px-4 py-10 md:py-12 animate-reveal-up-late">
         <div className="mb-4 flex items-center justify-between gap-3">
           <div>
             <p className="text-xs uppercase tracking-[0.22em] text-primary">
@@ -139,30 +143,37 @@ export default function HomePage() {
 
       <section className="container mx-auto px-4 pb-14 pt-4 md:pb-20">
         <div className="grid gap-6 md:grid-cols-3">
-          <ReactorCard
-            title="Exoplanets"
-            description="Scan confirmed planets, filter by discovery method, and compare orbital properties."
-            href="/exoplanets"
-            icon={<Circle className="h-5 w-5" />}
-            cta="Open Exoplanets"
-          />
-          <ReactorCard
-            title="Stars"
-            description="Inspect host stars, stellar classes, and linked planetary systems."
-            href="/stars"
-            icon={<Sun className="h-5 w-5" />}
-            cta="Open Stars"
-          />
-          <ReactorCard
-            title="Small Bodies"
-            description="Track asteroids and comets with close-approach context and orbit classes."
-            href="/small-bodies"
-            icon={<Telescope className="h-5 w-5" />}
-            cta="Open Small Bodies"
-          />
+          <div className="h-full animate-reveal-up">
+            <ReactorCard
+              title="Exoplanets"
+              description="Scan confirmed planets, filter by discovery method, and compare orbital properties."
+              href="/exoplanets"
+              icon={<Circle className="h-5 w-5" />}
+              cta="Open Exoplanets"
+            />
+          </div>
+          <div className="h-full animate-reveal-up-delay">
+            <ReactorCard
+              title="Stars"
+              description="Inspect host stars, stellar classes, and linked planetary systems."
+              href="/stars"
+              icon={<Sun className="h-5 w-5" />}
+              cta="Open Stars"
+            />
+          </div>
+          <div className="h-full animate-reveal-up-late">
+            <ReactorCard
+              title="Small Bodies"
+              description="Track asteroids and comets with close-approach context and orbit classes."
+              href="/small-bodies"
+              icon={<Telescope className="h-5 w-5" />}
+              cta="Open Small Bodies"
+            />
+          </div>
         </div>
 
-        <div className="mt-8 rounded-2xl border border-orange-300/30 bg-[#1a120d]/80 p-6 text-center">
+        <div className="animate-reveal-up-late relative mt-8 overflow-hidden rounded-2xl border border-orange-300/30 bg-[#1a120d]/80 p-6 text-center">
+          <div className="pointer-events-none absolute -left-1/2 top-0 h-full w-1/2 bg-gradient-to-r from-transparent via-orange-300/20 to-transparent animate-data-sweep motion-reduce:hidden" />
           <h2 className="font-display text-2xl text-orange-100 md:text-3xl">
             Ready to Explore?
           </h2>
@@ -234,16 +245,17 @@ function ReactorCard({
   cta: string;
 }) {
   return (
-    <Card className="group border-orange-200/20 bg-[#19120d]/80 text-orange-100 transition hover:border-orange-300/45">
+    <Card className="group relative h-full overflow-hidden border-orange-200/20 bg-[#19120d]/80 text-orange-100 transition duration-300 hover:-translate-y-0.5 hover:border-orange-300/45">
+      <div className="pointer-events-none absolute -left-1/2 top-0 h-full w-1/2 bg-gradient-to-r from-transparent via-orange-300/15 to-transparent animate-data-sweep opacity-0 transition-opacity duration-300 group-hover:opacity-100 motion-reduce:hidden" />
       <CardHeader>
         <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-lg border border-orange-300/30 bg-orange-500/15 text-orange-300">
           {icon}
         </div>
         <CardTitle className="text-2xl">{title}</CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="flex h-full flex-col">
         <p className="text-sm text-orange-100/75">{description}</p>
-        <Link href={href} className="mt-4 inline-block">
+        <Link href={href} className="mt-auto pt-4 inline-block">
           <Button
             variant="ghost"
             className="gap-2 px-0 text-orange-300 hover:bg-transparent hover:text-orange-200"
