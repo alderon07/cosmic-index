@@ -1,8 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { Bookmark } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAppAuth } from "@/components/auth/app-auth-provider";
 import {
@@ -83,10 +82,8 @@ export function SaveEventButton({
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <Button
+        <button
           type="button"
-          size="icon"
-          variant="outline"
           onClick={(event) => {
             event.preventDefault();
             event.stopPropagation();
@@ -94,14 +91,24 @@ export function SaveEventButton({
           }}
           disabled={!isLoaded || isLoading}
           className={cn(
-            "h-7 w-7 border-border/50 bg-background/80",
-            isSaved && "border-primary/50 text-primary",
+            "p-1.5 rounded-full transition-all duration-200",
+            "bg-background/80 backdrop-blur-sm border border-border/50",
+            "hover:bg-background hover:text-primary",
+            isLoading && "opacity-50 cursor-wait",
+            !isSignedIn && "opacity-70",
             className
           )}
           aria-label={label}
         >
-          <Bookmark className={cn("h-3.5 w-3.5", isSaved && "fill-current")} />
-        </Button>
+          <Heart
+            className={cn(
+              "w-4 h-4 transition-all duration-200",
+              isSaved
+                ? "text-primary fill-primary"
+                : "text-muted-foreground"
+            )}
+          />
+        </button>
       </TooltipTrigger>
       <TooltipContent side="bottom">{label}</TooltipContent>
     </Tooltip>
