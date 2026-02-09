@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Audiowide, Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import Link from "next/link";
-import { Circle, Star, CircleDot, Crosshair, Flame, Sun, Keyboard } from "lucide-react";
+import { Circle, Star, CircleDot, Crosshair, Flame, CloudLightning, Keyboard } from "lucide-react";
 import { Analytics } from "@vercel/analytics/react";
 import { KeyboardShortcutsProvider } from "@/components/keyboard-shortcuts/keyboard-shortcuts-provider";
 import { UserAuthButton } from "@/components/auth/user-auth-button";
@@ -209,7 +209,7 @@ export default function RootLayout({
                   className="font-display text-sm tracking-wide text-orange-100/75 transition-colors hover:text-amber-200"
                   title="Space Weather"
                 >
-                  <Sun className="w-5 h-5 sm:hidden" />
+                  <CloudLightning className="w-5 h-5 sm:hidden" />
                   <span className="hidden sm:inline">Weather</span>
                 </Link>
                 {/* Auth separator and button */}
