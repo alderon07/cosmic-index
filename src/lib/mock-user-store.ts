@@ -66,7 +66,7 @@ function seedStore(): MockStore {
     {
       id: 1,
       userId,
-      canonicalId: "exoplanet:kepler-186-f",
+      canonicalId: "exoplanet:Kepler-186%20f",
       displayName: "Kepler-186 f",
       notes: "Potentially rocky world in a habitable zone.",
       eventPayload: null,
@@ -75,7 +75,7 @@ function seedStore(): MockStore {
     {
       id: 2,
       userId,
-      canonicalId: "star:trappist-1",
+      canonicalId: "star:TRAPPIST-1",
       displayName: "TRAPPIST-1",
       notes: null,
       eventPayload: null,

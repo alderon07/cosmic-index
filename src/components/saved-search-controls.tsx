@@ -39,23 +39,32 @@ export function SavedSearchControls({
   const [selectedId, setSelectedId] = useState<string>("none");
   const [isSaving, setIsSaving] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [refreshNotice, setRefreshNotice] = useState<string | null>(null);
 
-  const loadSearches = useCallback(async () => {
-    if (!auth.isSignedIn) return;
+  const loadSearches = useCallback(async (): Promise<boolean> => {
+    if (!auth.isSignedIn) return false;
 
     try {
       const response = await fetch(`/api/user/saved-searches?category=${category}`);
-      if (!response.ok) return;
+      if (!response.ok) return false;
       const data = await response.json();
       setSearches(Array.isArray(data.searches) ? data.searches : []);
+      return true;
     } catch {
       // Ignore load errors; UI stays available for current browse session.
+      return false;
     }
   }, [auth.isSignedIn, category]);
 
   useEffect(() => {
     void loadSearches();
   }, [loadSearches]);
+
+  useEffect(() => {
+    if (!refreshNotice || isRefreshing) return;
+    const timer = window.setTimeout(() => setRefreshNotice(null), 3000);
+    return () => window.clearTimeout(timer);
+  }, [refreshNotice, isRefreshing]);
 
   if (!auth.isSignedIn) {
     return null;
@@ -87,8 +96,10 @@ export function SavedSearchControls({
       }
 
       await loadSearches();
+      setRefreshNotice("Saved and updated");
     } catch (error) {
       console.error("Save search failed", error);
+      setRefreshNotice("Save failed");
     } finally {
       setIsSaving(false);
     }
@@ -97,9 +108,18 @@ export function SavedSearchControls({
   const handleRefresh = async () => {
     if (isRefreshing || isSaving) return;
 
+    setRefreshNotice("Refreshing...");
     setIsRefreshing(true);
     try {
-      await loadSearches();
+      const ok = await loadSearches();
+      setRefreshNotice(
+        ok
+          ? `Updated ${new Date().toLocaleTimeString([], {
+              hour: "numeric",
+              minute: "2-digit",
+            })}`
+          : "Refresh failed"
+      );
     } finally {
       setIsRefreshing(false);
     }
@@ -173,6 +193,11 @@ export function SavedSearchControls({
       >
         <RefreshCw className={cn("h-3.5 w-3.5", isRefreshing && "animate-spin")} />
       </Button>
+      {refreshNotice ? (
+        <span className="text-xs text-muted-foreground" role="status" aria-live="polite">
+          {refreshNotice}
+        </span>
+      ) : null}
     </div>
   );
 }

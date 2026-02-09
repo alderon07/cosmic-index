@@ -21,6 +21,14 @@ export type CompareSource =
   | "compare-tray"
   | "compare-table";
 
+export type CompareDomain = "exoplanets" | "stars" | "small-bodies";
+export type CompareBlockedReason =
+  | "cross-domain"
+  | "unsupported"
+  | "limit"
+  | "storage-error"
+  | "mode-disabled";
+
 interface BaseEventPayload {
   sessionId?: string;
 }
@@ -37,40 +45,79 @@ export interface AnalyticsEventMap {
   };
   compare_add: BaseEventPayload & {
     objectId: string;
-    domain: "exoplanets";
+    domain: CompareDomain;
     source: CompareSource;
     position: number;
     revision: number;
   };
   compare_remove: BaseEventPayload & {
     objectId: string;
-    domain: "exoplanets";
+    domain: CompareDomain;
     source: CompareSource;
     revision: number;
   };
   compare_open: BaseEventPayload & {
-    domain: "exoplanets";
+    domain: CompareDomain;
     itemCount: number;
   };
   compare_expand: BaseEventPayload & {
-    domain: "exoplanets";
+    domain: CompareDomain;
     itemCount: number;
   };
   compare_clear: BaseEventPayload & {
-    domain: "exoplanets";
+    domain: CompareDomain;
     itemCount: number;
   };
+  compare_tray_open: BaseEventPayload & {
+    domain: CompareDomain;
+    source: CompareSource;
+    itemCount: number;
+  };
+  compare_dialog_open: BaseEventPayload & {
+    domain: CompareDomain;
+    source: CompareSource;
+    itemCount: number;
+  };
+  compare_action_result: BaseEventPayload & {
+    action: "add" | "remove" | "clear";
+    result: "ok" | "blocked";
+    reason?: CompareBlockedReason;
+    mode: CompareDomain | "none";
+    source: CompareSource;
+  };
   compare_blocked_domain: BaseEventPayload & {
-    attemptedDomain: "stars" | "small-bodies";
-    activeDomain: "exoplanets" | "none";
+    attemptedDomain: CompareDomain;
+    activeDomain: CompareDomain | "none";
+    blockedReason: CompareBlockedReason;
     source: CompareSource;
   };
   compare_conflict_recovered: BaseEventPayload & {
-    domain: "exoplanets";
+    domain: CompareDomain;
     retries: number;
   };
   compare_restore_failed: BaseEventPayload & {
     reason: "parse-error" | "unknown-version";
+  };
+  compare_storage_parse_failed: BaseEventPayload & {
+    reason:
+      | "parse-error"
+      | "unknown-version"
+      | "mixed-domains"
+      | "unknown-domain"
+      | "invalid-item"
+      | "mode-disabled";
+  };
+  compare_storage_reset_shown: BaseEventPayload & {
+    reason:
+      | "parse-error"
+      | "unknown-version"
+      | "mixed-domains"
+      | "unknown-domain"
+      | "invalid-item"
+      | "mode-disabled";
+  };
+  compare_capability_parse_failed: BaseEventPayload & {
+    rawValue: string;
   };
   visualizer_rendered: BaseEventPayload & {
     objectType: "EXOPLANET" | "STAR" | "SMALL_BODY";

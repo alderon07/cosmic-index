@@ -49,7 +49,7 @@ export function ObjectDetailModal({
           </Link>
         </DialogHeader>
         <div className="min-w-0 w-full">
-          <ObjectDetail object={object} hideDataSources compact />
+          <ObjectDetail object={object} compact />
         </div>
       </DialogContent>
     </Dialog>

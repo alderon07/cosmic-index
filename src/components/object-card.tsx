@@ -38,6 +38,8 @@ import { TOOLTIP_CONTENT } from "@/components/info-tooltip";
 import { useCompare } from "@/components/compare/use-compare";
 import { trackEvent } from "@/lib/analytics-events";
 import { SaveButton } from "@/components/save-button";
+import { createCompareItem } from "@/lib/compare-facts";
+import { cn } from "@/lib/utils";
 
 // SessionStorage keys for storing list page URLs
 const EXOPLANETS_LIST_URL_KEY = "exoplanetsListUrl";
@@ -116,9 +118,25 @@ export function ObjectCard({ object, onModalOpen, variant = "default" }: ObjectC
 
   // Get first 3-4 key facts
   const displayFacts = object.keyFacts.slice(0, 4);
-  const { addObject, isInCompare } = useCompare();
-  const compareSupported = isExoplanet(object);
-  const alreadyInCompare = compareSupported && isInCompare(object.id);
+  const { addObject, isInCompare, isObjectSupported } = useCompare();
+  const compareSupported = isObjectSupported(object);
+  const compareId = createCompareItem(object, "list")?.id;
+  const alreadyInCompare = Boolean(compareId && isInCompare(compareId));
+  const isComet = isSmallBody(object) && object.bodyKind === "comet";
+  const compareOutlineClass = isComet
+    ? "border-radium-teal/30 bg-radium-teal/5 text-radium-teal/85 hover:bg-radium-teal/10 hover:text-radium-teal"
+    : isStar(object)
+    ? "border-uranium-green/30 bg-uranium-green/5 text-uranium-green/85 hover:bg-uranium-green/10 hover:text-uranium-green"
+    : isSmallBody(object)
+    ? "border-secondary/30 bg-secondary/5 text-secondary/85 hover:bg-secondary/10 hover:text-secondary"
+    : "border-primary/30 bg-primary/5 text-primary/85 hover:bg-primary/10 hover:text-primary";
+  const compareActiveClass = isComet
+    ? "border-radium-teal/55 bg-radium-teal/15 text-radium-teal hover:bg-radium-teal/20"
+    : isStar(object)
+    ? "border-uranium-green/55 bg-uranium-green/15 text-uranium-green hover:bg-uranium-green/20"
+    : isSmallBody(object)
+    ? "border-secondary/55 bg-secondary/15 text-secondary hover:bg-secondary/20"
+    : "border-primary/55 bg-primary/15 text-primary hover:bg-primary/20";
 
   const trackCardViewed = (view: "grid" | "list") => {
     trackEvent("object_card_viewed", {
@@ -398,15 +416,14 @@ export function ObjectCard({ object, onModalOpen, variant = "default" }: ObjectC
                 <Button
                   type="button"
                   size="sm"
-                  variant={alreadyInCompare ? "default" : "outline"}
+                  variant="outline"
                   onClick={(e) => handleCompareClick(e, "object-card-list")}
-                  className={`h-6 px-2 text-[10px] font-mono ${
-                    compareSupported
-                      ? alreadyInCompare
-                        ? "glow-orange"
-                        : "border-primary/40 text-primary hover:bg-primary/10"
-                      : "border-border/60 text-muted-foreground hover:text-foreground"
-                  }`}
+                  className={cn("h-6 px-2 text-[10px] font-mono", {
+                    [compareActiveClass]: compareSupported && alreadyInCompare,
+                    [compareOutlineClass]: compareSupported && !alreadyInCompare,
+                    "border-border/60 text-muted-foreground hover:text-foreground":
+                      !compareSupported,
+                  })}
                 >
                   {compareSupported
                     ? alreadyInCompare
@@ -420,7 +437,7 @@ export function ObjectCard({ object, onModalOpen, variant = "default" }: ObjectC
                   ? alreadyInCompare
                     ? "Already in compare"
                     : "Add to compare"
-                  : "Compare is currently limited to exoplanets while we validate the feature."}
+                  : "Compare is currently unavailable for this object type."}
               </TooltipContent>
             </Tooltip>
             {isSmallBody(object) && object.isNeo && (
@@ -580,15 +597,14 @@ export function ObjectCard({ object, onModalOpen, variant = "default" }: ObjectC
               <Button
                 type="button"
                 size="sm"
-                variant={alreadyInCompare ? "default" : "outline"}
+                variant="outline"
                 onClick={(e) => handleCompareClick(e, "object-card-grid")}
-                className={`h-6 px-2 text-[10px] font-mono ${
-                  compareSupported
-                    ? alreadyInCompare
-                      ? "glow-orange"
-                      : "border-primary/40 text-primary hover:bg-primary/10"
-                    : "border-border/60 text-muted-foreground hover:text-foreground"
-                }`}
+                className={cn("h-6 px-2 text-[10px] font-mono", {
+                  [compareActiveClass]: compareSupported && alreadyInCompare,
+                  [compareOutlineClass]: compareSupported && !alreadyInCompare,
+                  "border-border/60 text-muted-foreground hover:text-foreground":
+                    !compareSupported,
+                })}
               >
                 {compareSupported
                   ? alreadyInCompare
@@ -602,7 +618,7 @@ export function ObjectCard({ object, onModalOpen, variant = "default" }: ObjectC
                 ? alreadyInCompare
                   ? "Already in compare"
                   : "Add to compare"
-                : "Compare is currently limited to exoplanets while we validate the feature."}
+                : "Compare is currently unavailable for this object type."}
             </TooltipContent>
           </Tooltip>
           {isSmallBody(object) && object.isNeo && (

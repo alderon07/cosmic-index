@@ -1,185 +1,197 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides implementation-oriented guidance for agents working in this repo.
 
-## Project Overview
+## Project Snapshot
 
-Cosmic Index is a retrofuturistic web encyclopedia for exploring cosmic objects. It aggregates data from NASA's Exoplanet Archive (5,000+ exoplanets, 4,500+ host stars) and JPL's Small-Body Database (1,000,000+ asteroids/comets) into a unified browsing interface.
+Cosmic Index is a Next.js 16 App Router application for browsing and comparing:
+
+- Exoplanets
+- Stars
+- Small bodies (asteroids/comets)
+- Close approaches
+- Fireballs
+- Space weather
+- APOD (home page feature)
+
+It also includes Pro-tier features (saved objects, collections, saved searches, alerts, exports, billing).
 
 ## Commands
 
-The project uses a [justfile](justfile). Run `just` or `just --list` to see all recipes.
+Use `just` recipes when possible:
 
 ```bash
-just dev              # Start dev server with Turbopack (port 3000)
-just build            # Production build
-just lint             # Run ESLint
-just sbdb:diag        # Run JPL SBDB API diagnostic
-just ingest-stars     # Ingest host stars from NASA into Turso
-just ingest-stars-reset   # Reset checkpoint + ingest stars
-just ingest-exoplanets    # Ingest exoplanets into Turso
+just dev
+just build
+just start
+just lint
+just sbdb-diag
+just ingest-stars
+just ingest-stars-reset
+just ingest-exoplanets
 just ingest-exoplanets-reset
-just ingest-all       # Stars then exoplanets (reset + ingest each)
+just ingest-all
 ```
 
-Equivalent without just: `bun run dev`, `bun run ingest:stars`, etc. (see package.json scripts).
+Equivalent Bun scripts are in `package.json` (`bun run <script>`).
 
-## Architecture
-
-### Data Flow
-
-```
-External APIs → API Clients (src/lib/) → API Routes (src/app/api/) → React Components
-                     ↓
-              Redis Cache (Upstash)
-              Turso Database (Stars index)
-```
-
-### Three Data Sources with Different Strategies
-
-**NASA Exoplanet Archive** (`src/lib/nasa-exoplanet.ts`):
-
-- Uses TAP API with ADQL queries
-- Query building with SQL injection prevention via `escapeADQL()`
-- Direct pagination with bounded offsets
-
-**JPL Small-Body Database** (`src/lib/jpl-sbdb.ts`):
-
-- Dual-strategy search with fallback:
-  1. Primary: `sb-cdata` API with regex-based search (comprehensive)
-  2. Fallback: Lookup API with `sstr` parameter (fast)
-- Complex slug resolution for various designation formats (provisional, periodic comets, numbered asteroids)
-
-**Stars Index** (`src/lib/star-index.ts`):
-
-- Turso (hosted SQLite) database for fast browse/search
-- Data sourced from NASA Exoplanet Archive via ingestion script
-- Avoids TAP pagination issues (dedup-after-paging breaks offsets)
-- Planets fetched from TAP API on detail page (cached in Redis)
-
-### Unified Data Model
-
-All cosmic objects implement `CosmicObject` base interface (`src/lib/types.ts`):
-
-- `ExoplanetData` extends with: hostStar, discoveryMethod, orbitalPeriodDays, radiusEarth, massEarth
-- `SmallBodyData` extends with: bodyKind, orbitClass, isNeo, isPha, diameterKm
-- `StarData` extends with: hostname, spectralClass, starTempK, planetCount, distanceParsecs
-
-### Caching & Rate Limiting
-
-- Redis caching via Upstash with TTL (12h browse, 24h-7d detail)
-- Both cache and rate limiter gracefully degrade when Redis unavailable (in-memory fallback)
-
-**Rate Limiting** (`src/lib/rate-limit.ts`):
-
-- Atomic sliding window using a Lua script executed via `@upstash/redis` `createScript()` (EVALSHA)
-- Per-type limits: BROWSE (100/min), DETAIL (200/min), SITEMAP (10/hour)
-- Global per-client cap: 300 req/min across all endpoint types (checked in `api-middleware.ts`)
-- Burst smoothing micro-windows: e.g., BROWSE max 20 per 10s, DETAIL max 40 per 10s
-- Denied requests do NOT consume rate limit slots (the Lua script only ZADDs on allow)
-- Redis keys namespaced: `ratelimit:cosmic:${NODE_ENV}:${type}:<clientId>`
-
-**Client Identification** (three-tier with confidence-based scaling):
-
-1. **IP** (`confidence: "ip"`, full limits): Extracted from provider headers (CF-Connecting-IP, Fly-Client-IP — gated by `TRUST_CLOUDFLARE_HEADERS` / `TRUST_FLY_HEADERS` env vars), then `x-forwarded-for` (first hop), then `x-real-ip`. All validated with `net.isIP()`.
-2. **Fingerprint** (`confidence: "fingerprint"`, half limits): DJB2 hash of `User-Agent + Sec-CH-UA + Accept-Language`. Used when no valid IP is found but browser headers exist.
-3. **Unknown** (`confidence: "unknown"`, 1/10th limits): No identifying information at all. Replaces the old shared `"anonymous"` bucket.
-
-### Input Validation
-
-- All query parameters validated with Zod schemas
-- Unicode NFKC normalization on user input
-- ADQL string escaping for exoplanet queries
-- Regex escaping and wildcard stripping for small body queries
-
-## Key Patterns
-
-### Slug System for URL-Safe IDs
-
-Objects use slugs derived from names. Small body slug resolution (`parseSlugToSearchTerm`) handles:
-
-- Provisional designations: `2025-y3-panstarrs` → `2025 Y3`
-- Periodic comets: `1p-halley` → `1P`
-- Modern comets: `c-2021-a1-leonard` → `C/2021 A1`
-- Numbered asteroids: `433-eros` → `433`
-
-### API Response Structure
-
-All list endpoints return `PaginatedResponse<T>` with: objects, total, page, limit, hasMore
-
-### Environment Variables
-
-```
-UPSTASH_REDIS_REST_URL       # Optional: Redis cache + rate limiting
-UPSTASH_REDIS_REST_TOKEN     # Optional: Redis cache + rate limiting
-TURSO_DATABASE_URL           # Required for Stars: Turso database URL
-TURSO_AUTH_TOKEN             # Required for Stars: Turso auth token
-DEBUG_API                    # Optional: Enable SBDB debug logging
-TRUST_CLOUDFLARE_HEADERS     # Optional: "true" to trust CF-Connecting-IP for rate limiting
-TRUST_FLY_HEADERS            # Optional: "true" to trust Fly-Client-IP for rate limiting
-```
-
-## Turso Database Setup (Stars Feature)
-
-The Stars feature uses Turso (hosted SQLite) for fast browse/search. Setup steps:
-
-### 1. Install Turso CLI
+Tests:
 
 ```bash
-curl -sSfL https://get.tur.so/install.sh | bash
-export PATH="$HOME/.turso:$PATH"  # Add to shell profile
+bun test
+bun test src/lib/__tests__/compare-facts.test.ts
 ```
 
-### 2. Authenticate
+## Architecture (Current)
 
-```bash
-turso auth login  # Opens browser for authentication
-```
+### Routing and API Surface
 
-### 3. Create Database
+- App Router pages live under `src/app`.
+- Versioned API routes are under `src/app/api/v1/*`.
+- User/Stripe routes are under `src/app/api/user/*`, `src/app/api/stripe/*`, `src/app/api/webhooks/*`.
+- `next.config.ts` rewrites unversioned `/api/*` endpoints to `/api/v1/*` for backward compatibility.
 
-```bash
-turso db create cosmic-index
-turso db show cosmic-index --url      # Get database URL
-turso db tokens create cosmic-index   # Get auth token
-```
+### Middleware / Proxy
 
-### 4. Add Credentials to .env.local
+- `src/proxy.ts` handles route protection behavior.
+- Protected page prefixes: `/settings*`, `/user/*`.
+- In mock mode, proxy allows requests through without redirects.
 
-```
-TURSO_DATABASE_URL=libsql://cosmic-index-xxx.turso.io
-TURSO_AUTH_TOKEN=eyJ...
-```
+### Data Sources and Indexes
 
-### 5. Run Schema
+- Exoplanets browse/search: `src/lib/exoplanet-index.ts` (Turso-backed index).
+- Exoplanet detail: `src/lib/nasa-exoplanet.ts` (NASA TAP/API fetch path).
+- Stars browse/detail: `src/lib/star-index.ts` (Turso-backed).
+- Small bodies browse/detail: `src/lib/jpl-sbdb.ts` (JPL APIs, slug/designation resolution).
+- Event feeds:
+  - Close approaches: `src/lib/cneos-close-approach.ts`
+  - Fireballs: `src/lib/cneos-fireball.ts`
+  - Space weather: `src/lib/nasa-donki.ts`
 
-```bash
-turso db shell cosmic-index < db/schema.sql
-```
+### Storage Roles
 
-### 6. Run Ingestion
+- Turso (`TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`):
+  - Star/exoplanet index tables
+  - User/Pro feature tables
+- Upstash Redis (`UPSTASH_REDIS_*`):
+  - Cache (`src/lib/cache.ts`)
+  - Rate limiting (`src/lib/rate-limit.ts`)
 
-```bash
-bun run ingest:stars           # Ingests ~4,500 host stars from NASA
-bun run ingest:stars --reset   # Reset checkpoint for fresh start
-```
+## Runtime Modes and Auth
 
-The ingestion script (`scripts/ingest-stars.ts`):
+Primary files:
 
-- Fetches host star data from NASA Exoplanet Archive TAP API
-- Uses keyset pagination with checkpointing for resumability
-- Derives spectral class (O/B/A/F/G/K/M) from spectral type
-- Batch upserts to Turso (2000 rows per batch)
+- `src/lib/runtime-mode.ts`
+- `src/lib/auth.ts`
+- `src/components/auth/app-auth-provider.tsx`
 
-### Verify
+Supported auth modes:
 
-```bash
-turso db shell cosmic-index "SELECT COUNT(*) FROM stars"
-```
+- `clerk`: when Clerk keys are configured
+- `mock`: default when Clerk is not configured (unless explicitly disabled)
+- `none`: unauthenticated fallback
 
-## UI Components
+Important behavior:
 
-- Uses shadcn/ui components in `src/components/ui/`
-- Retrofuturistic theme with scanlines, bezels, glow effects
-- Client components marked with `"use client"` directive
-- Debounced search (300ms) in search-bar.tsx
+- `isMockAuthEnabled()` defaults to `true` if Clerk is not configured.
+- Server authorization decisions use DB-backed tier state, not JWT tier claims.
+- Mock store is process-memory seeded in `src/lib/mock-user-store.ts`.
+
+## Compare System (Current)
+
+Primary files:
+
+- `src/components/compare/compare-provider.tsx`
+- `src/lib/compare-facts.ts`
+- `src/lib/compare-storage.ts`
+- `src/components/compare/compare-tray.tsx`
+- `src/components/compare/compare-table.tsx`
+
+Current semantics:
+
+- Multi-domain compare supports `exoplanets`, `stars`, `small-bodies`.
+- One active domain per tray (cross-domain add is blocked with recovery CTA).
+- Max compare items: 3.
+- Compare IDs are namespaced (`domain:id`).
+- State is in session storage (`cosmic-index:compare:v1`) with validation/repair/reset behavior.
+- Capabilities can be restricted with `COMPARE_DOMAINS`.
+  - Malformed value fails closed to `["exoplanets"]`.
+
+## Saved Objects and Canonical IDs
+
+Primary files:
+
+- `src/lib/canonical-id.ts`
+- `src/app/user/saved-objects/saved-objects-page-content.tsx`
+- `src/lib/mock-user-store.ts`
+
+Notes:
+
+- Saved/catalog IDs use canonical prefixes: `exoplanet:...`, `star:...`, `small-body:...`.
+- Event-like saves use hashed canonical IDs (`fireball`, `close-approach`, `flr`, `cme`, `gst`).
+- Exoplanet detail IDs are URI-encoded names; saved-object link code includes compatibility for legacy slug-style IDs.
+
+## Caching and Rate Limiting
+
+### Cache
+
+- `src/lib/cache.ts` wraps Upstash with graceful fallback.
+- During build phase (`NEXT_PHASE=phase-production-build` or lifecycle `build`), Redis cache calls are disabled to avoid static prerender dynamic-fetch errors.
+
+### Rate Limiting
+
+- `src/lib/rate-limit.ts`:
+  - Redis Lua sliding window + burst limits
+  - In-memory fallback when Redis unavailable
+  - Confidence-scaled client identity (`ip`, `fingerprint`, `unknown`)
+- `src/lib/api-middleware.ts` enforces per-type and global caps.
+
+## Environment Variables
+
+Core:
+
+- `TURSO_DATABASE_URL`
+- `TURSO_AUTH_TOKEN`
+- `UPSTASH_REDIS_REST_URL` (optional but recommended)
+- `UPSTASH_REDIS_REST_TOKEN` (optional but recommended)
+- `NEXT_PUBLIC_APP_URL` (Stripe redirect base, canonical URL use)
+
+Auth/runtime:
+
+- `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`
+- `CLERK_SECRET_KEY`
+- `COSMIC_USE_MOCK_AUTH`
+- `NEXT_PUBLIC_USE_MOCK_AUTH`
+- `COSMIC_MOCK_USER_ID`
+- `COSMIC_MOCK_USER_EMAIL`
+- `COSMIC_MOCK_USER_TIER`
+
+Billing/Stripe:
+
+- `STRIPE_SECRET_KEY`
+- `STRIPE_WEBHOOK_SECRET`
+- `STRIPE_PRO_PRICE_ID`
+- `COSMIC_USE_MOCK_STRIPE`
+
+Data/API:
+
+- `NASA_API_KEY`
+- `COMPARE_DOMAINS`
+- `TRUST_CLOUDFLARE_HEADERS`
+- `TRUST_FLY_HEADERS`
+- `DEBUG_API`
+
+## Common Gotchas
+
+- `src/proxy.ts` is used instead of a legacy `middleware.ts` naming pattern.
+- Mock saved data is seeded once per process; restarting dev server resets seed data.
+- Exoplanet browse requires Turso index; detail pages may still work via NASA fetch path.
+- If compare state seems stale/weird, clear session storage key `cosmic-index:compare:v1`.
+
+## High-Value Files
+
+- `src/app/layout.tsx` (global providers, compare tray, shell/footer)
+- `src/lib/theme.ts` (object/domain theme classes)
+- `src/lib/types.ts` (core shared types + slug helpers)
+- `src/lib/api-middleware.ts` (validation + rate-limit integration)
+- `src/components/object-card.tsx` and `src/components/object-detail.tsx` (core browse/detail UX)
