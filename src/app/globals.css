@@ -261,6 +261,44 @@
     }
   }
 
+  .animate-observatory-scan {
+    animation: observatory-scan 5.8s cubic-bezier(0.45, 0.05, 0.55, 0.95)
+      infinite;
+  }
+
+  @keyframes observatory-scan {
+    0% {
+      transform: translateX(-120%);
+      opacity: 0;
+    }
+    12% {
+      opacity: 0.9;
+    }
+    70% {
+      opacity: 0.55;
+    }
+    100% {
+      transform: translateX(330%);
+      opacity: 0;
+    }
+  }
+
+  .animate-observatory-ring {
+    animation: observatory-ring 3.8s ease-in-out infinite;
+  }
+
+  @keyframes observatory-ring {
+    0%,
+    100% {
+      transform: translate(-50%, -50%) scale(0.94);
+      opacity: 0.2;
+    }
+    50% {
+      transform: translate(-50%, -50%) scale(1.04);
+      opacity: 0.5;
+    }
+  }
+
   /* Font utilities */
   .font-display {
     font-family: var(--font-display);
