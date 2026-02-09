@@ -68,10 +68,12 @@ export function APODCard({ className, initialApod = null, initialError = null }:
   const isVideo = apod.mediaType === "video";
 
   return (
-    <Card className={`bg-card border-border/50 bezel scanlines overflow-hidden ${className}`}>
+    <Card
+      className={`border border-orange-200/25 bg-[#1b130e]/85 text-orange-100 shadow-[inset_0_0_0_1px_rgba(255,180,120,0.14)] scanlines overflow-hidden ${className}`}
+    >
       <div className="grid md:grid-cols-2 gap-0">
         {/* Image Section */}
-        <div className="relative aspect-video md:aspect-auto md:min-h-[320px] bg-void-black">
+        <div className="relative aspect-video md:aspect-auto md:min-h-[320px] bg-[#0d0907]">
           {imageSrc ? (
             <>
               <Image
@@ -85,13 +87,13 @@ export function APODCard({ className, initialApod = null, initialError = null }:
               {/* Video overlay indicator */}
               {isVideo && (
                 <div className="absolute inset-0 flex items-center justify-center bg-void-black/40">
-                  <div className="w-16 h-16 rounded-full bg-radium-teal/90 flex items-center justify-center">
-                    <Play className="w-8 h-8 text-void-black ml-1" />
+                  <div className="w-16 h-16 rounded-full border border-orange-200/35 bg-orange-400/85 flex items-center justify-center">
+                    <Play className="w-8 h-8 text-black ml-1" />
                   </div>
                 </div>
               )}
               {/* Gradient overlay for text readability on mobile */}
-              <div className="absolute inset-0 bg-gradient-to-t from-void-black/80 via-transparent to-transparent md:hidden" />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#0f0b08]/85 via-transparent to-transparent md:hidden" />
             </>
           ) : (
             <div className="absolute inset-0 flex items-center justify-center bg-void-black/50">
@@ -101,11 +103,11 @@ export function APODCard({ className, initialApod = null, initialError = null }:
 
           {/* Mobile title overlay */}
           <div className="absolute bottom-0 left-0 right-0 p-4 md:hidden">
-            <Badge variant="outline" className="border-radium-teal/50 text-radium-teal bg-radium-teal/10 mb-2">
+            <Badge variant="outline" className="mb-2 border-orange-300/45 bg-orange-500/15 text-orange-100">
               <Calendar className="w-3 h-3 mr-1" />
               {displayDate}
             </Badge>
-            <h3 className="font-display text-lg text-foreground line-clamp-2">
+            <h3 className="font-display text-lg text-orange-50 line-clamp-2">
               {apod.title}
             </h3>
           </div>
@@ -116,21 +118,21 @@ export function APODCard({ className, initialApod = null, initialError = null }:
           {/* Header - Desktop only */}
           <div className="hidden md:block mb-4">
             <div className="flex items-start justify-between gap-4 mb-3">
-              <Badge variant="outline" className="border-radium-teal/50 text-radium-teal bg-radium-teal/10 shrink-0">
+              <Badge variant="outline" className="shrink-0 border-orange-300/45 bg-orange-500/15 text-orange-100">
                 <Calendar className="w-3 h-3 mr-1" />
                 Astronomy Picture of the Day
               </Badge>
               {isVideo && (
-                <Badge variant="outline" className="border-radium-teal/30 text-radium-teal/70">
+                <Badge variant="outline" className="border-amber-300/35 text-amber-100/80">
                   <Play className="w-3 h-3 mr-1" />
                   Video
                 </Badge>
               )}
             </div>
-            <h3 className="font-display text-xl text-radium-teal mb-1">
+            <h3 className="mb-1 font-display text-xl text-orange-200">
               {apod.title}
             </h3>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-orange-100/70">
               {displayDate}
             </p>
           </div>
@@ -138,19 +140,19 @@ export function APODCard({ className, initialApod = null, initialError = null }:
           {/* Explanation - Full text on desktop, truncated on mobile */}
           <div className="flex-1 overflow-y-auto">
             {/* Desktop: full text */}
-            <p className="hidden md:block text-sm text-muted-foreground leading-relaxed">
+            <p className="hidden md:block text-sm text-orange-100/80 leading-relaxed">
               {apod.explanation}
             </p>
             {/* Mobile: truncated with expand/collapse */}
             <div className="md:hidden">
-              <p className="text-sm text-muted-foreground leading-relaxed">
+              <p className="text-sm text-orange-100/80 leading-relaxed">
                 {displayExplanation}
               </p>
               {needsTruncation && (
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="mt-2 text-radium-teal hover:text-radium-teal hover:bg-radium-teal/10 p-0 h-auto"
+                  className="mt-2 h-auto p-0 text-orange-300 hover:bg-orange-400/10 hover:text-orange-200"
                   onClick={() => setExpanded(!expanded)}
                 >
                   {expanded ? (
@@ -168,8 +170,8 @@ export function APODCard({ className, initialApod = null, initialError = null }:
           </div>
 
           {/* Footer */}
-          <div className="mt-4 pt-4 border-t border-border/30 flex items-center justify-between">
-            <div className="text-xs text-muted-foreground">
+          <div className="mt-4 flex items-center justify-between border-t border-orange-200/20 pt-4">
+            <div className="text-xs text-orange-100/60">
               {apod.copyright && (
                 <span>&copy; {apod.copyright}</span>
               )}
@@ -178,7 +180,7 @@ export function APODCard({ className, initialApod = null, initialError = null }:
               href={`https://apod.nasa.gov/apod/ap${apod.date.replace(/-/g, "").slice(2)}.html`}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-xs text-radium-teal hover:text-radium-teal/80 flex items-center gap-1 transition-colors"
+              className="flex items-center gap-1 text-xs text-orange-300 transition-colors hover:text-orange-200"
             >
               View on NASA APOD
               <ExternalLink className="w-3 h-3" />
@@ -195,7 +197,7 @@ export function APODCardSkeleton({ className }: { className?: string }) {
     "animate-pulse rounded bg-gradient-to-r from-muted/30 via-muted/45 to-muted/30";
 
   return (
-    <Card className={`bg-card border-border/50 bezel overflow-hidden ${className}`}>
+    <Card className={`border border-orange-200/25 bg-[#1b130e]/85 overflow-hidden ${className}`}>
       <div className="grid md:grid-cols-2 gap-0">
         {/* Image Skeleton */}
         <div
@@ -216,7 +218,7 @@ export function APODCardSkeleton({ className }: { className?: string }) {
             <div className={`h-4 w-3/4 ${neutralSkeletonClass}`} />
           </div>
 
-          <div className="mt-4 pt-4 border-t border-border/30 flex items-center justify-between">
+          <div className="mt-4 pt-4 border-t border-orange-200/20 flex items-center justify-between">
             <div className={`h-3 w-24 ${neutralSkeletonClass}`} />
             <div className={`h-3 w-32 ${neutralSkeletonClass}`} />
           </div>
