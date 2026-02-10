@@ -1,6 +1,7 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { FolderHeart, Plus, Trash2, Layers } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useAppAuth } from "@/components/auth/app-auth-provider";
 import { ACCOUNT_CARD_TONE } from "@/lib/theme";
+import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
 
 interface CollectionItem {
   id: number;
@@ -27,6 +29,7 @@ export function CollectionsPageContent() {
   const [description, setDescription] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
+  const nameInputRef = useRef<HTMLInputElement | null>(null);
 
   const loadCollections = useCallback(async () => {
     setIsLoading(true);
@@ -50,6 +53,27 @@ export function CollectionsPageContent() {
     void loadCollections();
   }, [loadCollections]);
 
+  const refreshCollections = useCallback(() => {
+    if (isLoading) return;
+    void loadCollections();
+  }, [isLoading, loadCollections]);
+
+  const focusCollectionNameInput = useCallback(() => {
+    nameInputRef.current?.focus();
+  }, []);
+
+  const pageShortcuts = useMemo(
+    () => [
+      { key: "r", handler: refreshCollections, description: "Refresh collections" },
+      { key: "n", handler: focusCollectionNameInput, description: "Focus new collection name" },
+    ],
+    [refreshCollections, focusCollectionNameInput]
+  );
+
+  useKeyboardShortcuts({
+    shortcuts: pageShortcuts,
+  });
+
   const handleCreate = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
@@ -68,7 +92,8 @@ export function CollectionsPageContent() {
       });
 
       if (!response.ok) {
-        throw new Error("Failed to create collection");
+        const body = (await response.json().catch(() => null)) as { message?: string } | null;
+        throw new Error(body?.message || "Failed to create collection");
       }
 
       const created = await response.json();
@@ -91,7 +116,8 @@ export function CollectionsPageContent() {
         method: "DELETE",
       });
       if (!response.ok) {
-        throw new Error("Failed to delete collection");
+        const body = (await response.json().catch(() => null)) as { message?: string } | null;
+        throw new Error(body?.message || "Failed to delete collection");
       }
 
       setCollections((previous) => previous.filter((collection) => collection.id !== id));
@@ -132,6 +158,7 @@ export function CollectionsPageContent() {
         <CardContent>
           <form className="space-y-3" onSubmit={handleCreate}>
             <Input
+              ref={nameInputRef}
               value={name}
               onChange={(event) => setName(event.target.value)}
               placeholder="Collection name"
@@ -152,7 +179,7 @@ export function CollectionsPageContent() {
 
       <div className="flex items-center justify-between gap-2">
         <h2 className="font-display text-xl">Your Collections</h2>
-        <Button variant="outline" size="sm" onClick={() => void loadCollections()} disabled={isLoading}>
+        <Button variant="outline" size="sm" onClick={refreshCollections} disabled={isLoading}>
           Refresh
         </Button>
       </div>
@@ -177,7 +204,15 @@ export function CollectionsPageContent() {
               <CardHeader className="pb-2">
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <CardTitle className="text-lg">{collection.name}</CardTitle>
+                    <CardTitle className="text-lg">
+                      <Link
+                        href={`/user/collections/${collection.id}`}
+                        prefetch={false}
+                        className="hover:text-primary"
+                      >
+                        {collection.name}
+                      </Link>
+                    </CardTitle>
                     <div className="mt-1 flex items-center gap-2">
                       <Badge variant="outline">{collection.itemCount ?? 0} items</Badge>
                       {collection.isPublic ? <Badge variant="secondary">Public</Badge> : null}
@@ -200,6 +235,13 @@ export function CollectionsPageContent() {
                 {collection.description ? (
                   <p className="text-sm text-muted-foreground mb-2">{collection.description}</p>
                 ) : null}
+                <Link
+                  href={`/user/collections/${collection.id}`}
+                  prefetch={false}
+                  className="text-sm text-primary hover:underline"
+                >
+                  Open collection
+                </Link>
                 <p className="text-xs text-muted-foreground">
                   Updated {new Date(collection.updatedAt).toLocaleString()}
                 </p>

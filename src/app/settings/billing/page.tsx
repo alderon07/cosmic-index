@@ -2,7 +2,11 @@ import { Metadata } from "next";
 import { getUserDb } from "@/lib/user-db";
 import { BillingContent } from "./billing-content";
 import { getAuthUser } from "@/lib/auth";
-import { isMockUserStoreEnabled } from "@/lib/runtime-mode";
+import {
+  getProBillingEnabled,
+  getWaitlistEnabled,
+  isMockUserStoreEnabled,
+} from "@/lib/runtime-mode";
 import { getMockUserRecord } from "@/lib/mock-user-store";
 
 export const metadata: Metadata = {
@@ -65,6 +69,8 @@ export default async function BillingPage() {
       <BillingContent
         tier={tier}
         hasStripeCustomer={hasStripeCustomer}
+        proBillingEnabled={getProBillingEnabled()}
+        waitlistEnabled={getWaitlistEnabled()}
       />
     </div>
   );

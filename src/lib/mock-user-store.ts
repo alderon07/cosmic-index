@@ -351,8 +351,49 @@ export function listCollections(userId: string): Collection[] {
 
   return store.collections
     .filter((collection) => collection.userId === userId)
-    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+    .sort((a, b) => {
+      const updatedOrder = b.updatedAt.localeCompare(a.updatedAt);
+      if (updatedOrder !== 0) return updatedOrder;
+      return b.id - a.id;
+    })
     .map((collection) => ({ ...collection }));
+}
+
+export function listCollectionsForSavedObject(userId: string, savedObjectId: number): Array<{
+  id: number;
+  name: string;
+  itemCount: number;
+  isMember: boolean;
+  updatedAt: string;
+}> | null {
+  const store = getStore();
+  const object = store.savedObjects.find(
+    (item) => item.id === savedObjectId && item.userId === userId
+  );
+
+  if (!object) return null;
+
+  recalcCollectionCounts(store, userId);
+  const memberCollectionIds = new Set(
+    store.collectionItems
+      .filter((item) => item.savedObjectId === savedObjectId)
+      .map((item) => item.collectionId)
+  );
+
+  return store.collections
+    .filter((collection) => collection.userId === userId)
+    .sort((a, b) => {
+      const updatedOrder = b.updatedAt.localeCompare(a.updatedAt);
+      if (updatedOrder !== 0) return updatedOrder;
+      return b.id - a.id;
+    })
+    .map((collection) => ({
+      id: collection.id,
+      name: collection.name,
+      itemCount: collection.itemCount ?? 0,
+      isMember: memberCollectionIds.has(collection.id),
+      updatedAt: collection.updatedAt,
+    }));
 }
 
 export function createCollection(input: {

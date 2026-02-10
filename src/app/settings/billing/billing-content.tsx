@@ -5,8 +5,10 @@ import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ProBadge } from "@/components/pro-badge";
+import { WaitlistCta } from "@/components/waitlist/waitlist-cta";
 import { ACCOUNT_CARD_TONE } from "@/lib/theme";
 import { Check, Loader2, ExternalLink, Sparkles, Database, Download, Bell, FolderHeart } from "lucide-react";
+import { TIER_LIMITS } from "@/lib/tier-limits";
 
 /**
  * Billing Content (Client Component)
@@ -21,6 +23,8 @@ import { Check, Loader2, ExternalLink, Sparkles, Database, Download, Bell, Folde
 interface BillingContentProps {
   tier: "free" | "pro";
   hasStripeCustomer: boolean;
+  proBillingEnabled: boolean;
+  waitlistEnabled: boolean;
 }
 
 const PRO_FEATURES = [
@@ -30,7 +34,23 @@ const PRO_FEATURES = [
   { icon: Bell, label: "Custom alerts for cosmic events" },
 ];
 
-export function BillingContent({ tier, hasStripeCustomer }: BillingContentProps) {
+const freeLimits = TIER_LIMITS.free;
+const FREE_PLAN_LIMITS = [
+  { label: "Saved objects", value: freeLimits.MAX_SAVED_OBJECTS.toLocaleString() },
+  { label: "Saves per rolling 24h", value: freeLimits.SAVES_PER_DAY.toLocaleString() },
+  { label: "Saved searches", value: freeLimits.MAX_SAVED_SEARCHES.toLocaleString() },
+  { label: "Export requests / hour", value: freeLimits.EXPORT_REQUESTS_PER_HOUR.toLocaleString() },
+  { label: "Export rows / hour", value: freeLimits.EXPORT_ROWS_PER_HOUR.toLocaleString() },
+  { label: "Max rows per export", value: freeLimits.MAX_EXPORT_ROWS.toLocaleString() },
+  { label: "CSV export max rows", value: freeLimits.CSV_MAX_ROWS.toLocaleString() },
+];
+
+export function BillingContent({
+  tier,
+  hasStripeCustomer,
+  proBillingEnabled,
+  waitlistEnabled,
+}: BillingContentProps) {
   const [isLoading, setIsLoading] = useState(false);
   const searchParams = useSearchParams();
 
@@ -125,7 +145,11 @@ export function BillingContent({ tier, hasStripeCustomer }: BillingContentProps)
               <p className="text-sm text-muted-foreground">
                 Thank you for supporting Cosmic Index!
               </p>
-              {hasStripeCustomer && (
+              {!proBillingEnabled ? (
+                <p className="text-sm text-muted-foreground">
+                  Billing controls are temporarily unavailable.
+                </p>
+              ) : hasStripeCustomer ? (
                 <Button
                   onClick={handleManageSubscription}
                   disabled={isLoading}
@@ -139,22 +163,33 @@ export function BillingContent({ tier, hasStripeCustomer }: BillingContentProps)
                   )}
                   Manage Subscription
                 </Button>
-              )}
+              ) : null}
             </div>
           ) : (
             <div className="space-y-4">
-              <Button
-                onClick={handleUpgrade}
-                disabled={isLoading}
-                className="gap-2 bg-primary hover:bg-primary/85 text-primary-foreground"
-              >
-                {isLoading ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Sparkles className="w-4 h-4" />
-                )}
-                Upgrade to Pro
-              </Button>
+              {proBillingEnabled ? (
+                <Button
+                  onClick={handleUpgrade}
+                  disabled={isLoading}
+                  className="gap-2 bg-primary hover:bg-primary/85 text-primary-foreground"
+                >
+                  {isLoading ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Sparkles className="w-4 h-4" />
+                  )}
+                  Upgrade to Pro
+                </Button>
+              ) : (
+                <div className="space-y-2">
+                  <p className="text-sm text-muted-foreground">
+                    Pro billing is coming soon.
+                  </p>
+                  {waitlistEnabled ? (
+                    <WaitlistCta source="billing" compact />
+                  ) : null}
+                </div>
+              )}
             </div>
           )}
         </CardContent>
@@ -188,6 +223,26 @@ export function BillingContent({ tier, hasStripeCustomer }: BillingContentProps)
                 <span className={tier === "pro" ? "" : "text-muted-foreground"}>
                   {feature.label}
                 </span>
+              </li>
+            ))}
+          </ul>
+        </CardContent>
+      </Card>
+
+      {/* Free Tier Limits Card */}
+      <Card tone={ACCOUNT_CARD_TONE}>
+        <CardHeader>
+          <CardTitle className="text-lg">Free Plan Limits</CardTitle>
+          <CardDescription>
+            Current usage caps for the free tier
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ul className="space-y-2">
+            {FREE_PLAN_LIMITS.map((limit) => (
+              <li key={limit.label} className="flex items-center justify-between gap-3 text-sm">
+                <span className="text-muted-foreground">{limit.label}</span>
+                <span className="font-medium text-foreground">{limit.value}</span>
               </li>
             ))}
           </ul>

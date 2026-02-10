@@ -3,13 +3,29 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Bookmark, Trash2, FolderHeart, Loader2, RefreshCw } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { ExportButton } from "@/components/export-button";
-import { parseCanonicalId } from "@/lib/canonical-id";
 import { useAppAuth } from "@/components/auth/app-auth-provider";
 import { ACCOUNT_CARD_TONE } from "@/lib/theme";
+import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
+import { AddToCollectionDialog } from "@/components/collections/add-to-collection-dialog";
+import {
+  EMPTY_SAVED_OBJECT_TYPE_COUNTS,
+  formatSavedObjectTypeBadge,
+  getSavedObjectType,
+  resolveSavedObjectHref,
+  SAVED_OBJECT_TYPE_LABELS,
+  SAVED_OBJECT_TYPE_ORDER,
+  type SavedObjectUiType,
+} from "@/lib/saved-object-ui";
 
 interface SavedObjectItem {
   id: number;
@@ -19,61 +35,19 @@ interface SavedObjectItem {
   createdAt: string;
 }
 
-function toExoplanetDetailId(id: string): string {
-  // Current IDs are URI-encoded names (e.g. "Kepler-186%20f").
-  if (/%[0-9a-f]{2}/i.test(id)) return id;
-
-  // Backward compatibility for legacy kebab slugs in old/mock saved data
-  // (e.g. "kepler-186-f" -> "kepler-186%20f").
-  const lastDash = id.lastIndexOf("-");
-  if (lastDash <= 0 || lastDash >= id.length - 1) return id;
-  const withSpaceBeforeSuffix = `${id.slice(0, lastDash)} ${id.slice(lastDash + 1)}`;
-  return encodeURIComponent(withSpaceBeforeSuffix);
-}
-
-function resolveHref(canonicalId: string): string | null {
-  const parsed = parseCanonicalId(canonicalId);
-  if (!parsed) return null;
-
-  if (parsed.type === "exoplanet") return `/exoplanets/${toExoplanetDetailId(parsed.id)}`;
-  if (parsed.type === "star") return `/stars/${parsed.id}`;
-  if (parsed.type === "small-body") return `/small-bodies/${parsed.id}`;
-  if (parsed.type === "fireball") return "/fireballs";
-  if (parsed.type === "flr" || parsed.type === "cme" || parsed.type === "gst") {
-    return "/space-weather";
-  }
-
-  return null;
-}
-
-function formatObjectType(canonicalId: string): string {
-  const parsed = parseCanonicalId(canonicalId);
-  if (!parsed) return "Unknown";
-
-  switch (parsed.type) {
-    case "exoplanet":
-      return "Exoplanet";
-    case "star":
-      return "Star";
-    case "small-body":
-      return "Small Body";
-    case "fireball":
-      return "Fireball";
-    case "flr":
-      return "Solar Flare";
-    case "cme":
-      return "CME";
-    case "gst":
-      return "Geomagnetic Storm";
-    default:
-      return "Event";
-  }
-}
+type SavedObjectType = SavedObjectUiType;
+type SavedObjectFilter = "all" | SavedObjectType;
+type SavedObjectFilterOption = {
+  value: SavedObjectFilter;
+  label: string;
+  count: number;
+};
 
 export function SavedObjectsPageContent() {
   const auth = useAppAuth();
   const [items, setItems] = useState<SavedObjectItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedType, setSelectedType] = useState<SavedObjectFilter>("all");
 
   const loadItems = useCallback(async () => {
     setIsLoading(true);
@@ -103,6 +77,84 @@ export function SavedObjectsPageContent() {
     () => [...items].sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
     [items]
   );
+
+  const typeCounts = useMemo(() => {
+    const counts = { ...EMPTY_SAVED_OBJECT_TYPE_COUNTS };
+    for (const item of sortedItems) {
+      const type = getSavedObjectType(item.canonicalId);
+      counts[type] += 1;
+    }
+    return counts;
+  }, [sortedItems]);
+
+  const filteredItems = useMemo(() => {
+    if (selectedType === "all") return sortedItems;
+    return sortedItems.filter(
+      (item) => getSavedObjectType(item.canonicalId) === selectedType
+    );
+  }, [selectedType, sortedItems]);
+
+  const groupedItems = useMemo(() => {
+    const grouped = new Map<SavedObjectType, SavedObjectItem[]>(
+      SAVED_OBJECT_TYPE_ORDER.map((type) => [type, []])
+    );
+
+    for (const item of filteredItems) {
+      const type = getSavedObjectType(item.canonicalId);
+      grouped.get(type)?.push(item);
+    }
+
+    return SAVED_OBJECT_TYPE_ORDER.map((type) => ({
+      type,
+      label: SAVED_OBJECT_TYPE_LABELS[type],
+      items: grouped.get(type) ?? [],
+    })).filter((group) => group.items.length > 0);
+  }, [filteredItems]);
+
+  const filterOptions = useMemo<SavedObjectFilterOption[]>(() => {
+    return [
+      { value: "all" as const, label: "All", count: sortedItems.length },
+      ...SAVED_OBJECT_TYPE_ORDER.filter((type) => typeCounts[type] > 0).map((type) => ({
+        value: type,
+        label: SAVED_OBJECT_TYPE_LABELS[type],
+        count: typeCounts[type],
+      })),
+    ];
+  }, [sortedItems.length, typeCounts]);
+
+  useEffect(() => {
+    if (selectedType === "all") return;
+    if (typeCounts[selectedType] > 0) return;
+    setSelectedType("all");
+  }, [selectedType, typeCounts]);
+
+  const cycleFilter = useCallback(() => {
+    setSelectedType((previous) => {
+      if (filterOptions.length === 0) return "all";
+      const currentIndex = filterOptions.findIndex((option) => option.value === previous);
+      if (currentIndex === -1 || currentIndex === filterOptions.length - 1) {
+        return filterOptions[0].value;
+      }
+      return filterOptions[currentIndex + 1].value;
+    });
+  }, [filterOptions]);
+
+  const refreshItems = useCallback(() => {
+    if (isLoading) return;
+    void loadItems();
+  }, [isLoading, loadItems]);
+
+  const pageShortcuts = useMemo(
+    () => [
+      { key: "f", handler: cycleFilter, description: "Next type filter" },
+      { key: "r", handler: refreshItems, description: "Refresh saved objects" },
+    ],
+    [cycleFilter, refreshItems]
+  );
+
+  useKeyboardShortcuts({
+    shortcuts: pageShortcuts,
+  });
 
   const handleDelete = useCallback(
     async (id: number) => {
@@ -154,7 +206,7 @@ export function SavedObjectsPageContent() {
             variant="outline"
             size="sm"
             className="gap-1.5"
-            onClick={() => void loadItems()}
+            onClick={refreshItems}
             disabled={isLoading}
             aria-busy={isLoading}
           >
@@ -182,52 +234,123 @@ export function SavedObjectsPageContent() {
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-3">
-          {sortedItems.map((item) => {
-            const href = resolveHref(item.canonicalId);
-            return (
-              <Card tone={ACCOUNT_CARD_TONE} key={item.id} className="border-border/50">
-                <CardHeader className="pb-2">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <CardTitle className="text-lg">{item.displayName}</CardTitle>
-                      <div className="mt-1 flex items-center gap-2">
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground/90">
+              Filter
+            </span>
+            {filterOptions.map((option) => {
+              const isActive = selectedType === option.value;
+              return (
+                <Button
+                  key={option.value}
+                  type="button"
+                  size="sm"
+                  variant={isActive ? "default" : "outline"}
+                  className="h-8 gap-2"
+                  onClick={() => setSelectedType(option.value)}
+                >
+                  {option.label}
+                  <Badge variant={isActive ? "secondary" : "outline"} className="text-[10px]">
+                    {option.count}
+                  </Badge>
+                </Button>
+              );
+            })}
+          </div>
+
+          {groupedItems.length > 0 ? (
+            <div className="max-h-[60dvh] overflow-y-auto pr-1 overscroll-contain md:max-h-[62dvh]">
+              <Accordion
+                key={selectedType}
+                type="multiple"
+                defaultValue={groupedItems.map((group) => group.type)}
+                className="space-y-3"
+              >
+                {groupedItems.map((group) => (
+                  <AccordionItem
+                    key={group.type}
+                    value={group.type}
+                    className="overflow-hidden rounded-xl border border-border/60 bg-card/92 px-5"
+                  >
+                    <AccordionTrigger className="py-4 hover:no-underline">
+                      <div className="flex items-center gap-2">
+                        <span className="text-base font-semibold">{group.label}</span>
                         <Badge variant="outline" className="text-[10px] uppercase tracking-wider">
-                          {formatObjectType(item.canonicalId)}
+                          {group.items.length} {group.items.length === 1 ? "item" : "items"}
                         </Badge>
-                        <span className="text-xs text-muted-foreground">
-                          Saved {new Date(item.createdAt).toLocaleString()}
-                        </span>
                       </div>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                      onClick={() => {
-                        void handleDelete(item.id);
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent className="pt-0">
-                  {item.notes ? (
-                    <p className="text-sm text-muted-foreground mb-3">{item.notes}</p>
-                  ) : null}
-                  {href ? (
-                    <Link href={href} className="text-sm text-primary hover:underline">
-                      Open details
-                    </Link>
-                  ) : (
-                    <span className="text-xs text-muted-foreground">No direct detail page available</span>
-                  )}
-                </CardContent>
-              </Card>
-            );
-          })}
+                    </AccordionTrigger>
+                    <AccordionContent className="pb-5 data-[state=closed]:animate-none data-[state=open]:animate-none">
+                      <div className="grid gap-3 md:grid-cols-2">
+                        {group.items.map((item) => {
+                          const itemType = getSavedObjectType(item.canonicalId);
+                          const href = resolveSavedObjectHref(item.canonicalId);
+                          return (
+                            <div
+                              key={item.id}
+                              className="rounded-xl border border-border/50 bg-card/70 p-4 shadow-sm"
+                            >
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="min-w-0">
+                                  <p className="text-base font-semibold text-foreground">{item.displayName}</p>
+                                  <div className="mt-1 flex flex-wrap items-center gap-2">
+                                    <Badge variant="outline" className="text-[10px] uppercase tracking-wider">
+                                      {formatSavedObjectTypeBadge(itemType)}
+                                    </Badge>
+                                    <span className="text-xs text-muted-foreground">
+                                      Saved {new Date(item.createdAt).toLocaleString()}
+                                    </span>
+                                  </div>
+                                </div>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
+                                  onClick={() => {
+                                    void handleDelete(item.id);
+                                  }}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+
+                              {item.notes ? (
+                                <p className="mt-3 text-sm text-muted-foreground">{item.notes}</p>
+                              ) : null}
+
+                              <div className="mt-3 flex flex-wrap items-center gap-3">
+                                {href ? (
+                                  <Link href={href} className="text-sm text-primary hover:underline">
+                                    Open details
+                                  </Link>
+                                ) : (
+                                  <span className="text-xs text-muted-foreground">
+                                    No direct detail page available
+                                  </span>
+                                )}
+                                <AddToCollectionDialog
+                                  savedObjectId={item.id}
+                                  savedObjectName={item.displayName}
+                                />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                ))}
+              </Accordion>
+            </div>
+          ) : (
+            <Card tone={ACCOUNT_CARD_TONE}>
+              <CardContent className="py-8 text-center text-muted-foreground">
+                No saved objects match this filter.
+              </CardContent>
+            </Card>
+          )}
         </div>
       )}
     </div>

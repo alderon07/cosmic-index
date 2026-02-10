@@ -1,7 +1,6 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,7 +30,6 @@ import {
 import { InfoTooltip, TOOLTIP_CONTENT } from "@/components/info-tooltip";
 import { ObjectVisualizerPanel } from "@/components/visualizers/object-visualizer-panel";
 import { useCompare } from "@/components/compare/use-compare";
-import { trackEvent } from "@/lib/analytics-events";
 import { SaveButton } from "@/components/save-button";
 import { createCompareItem, MAX_COMPARE_ITEMS } from "@/lib/compare-facts";
 import {
@@ -59,13 +57,6 @@ export function ObjectDetail({
   showCompare = true,
 }: ObjectDetailProps) {
   const { addObject, isInCompare, isObjectSupported } = useCompare();
-
-  useEffect(() => {
-    trackEvent("object_detail_viewed", {
-      objectId: object.id,
-      objectType: object.type,
-    });
-  }, [object.id, object.type]);
 
   const typeLabel = isExoplanet(object)
     ? "Exoplanet"

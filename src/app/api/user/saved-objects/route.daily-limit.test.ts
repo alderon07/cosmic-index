@@ -9,6 +9,13 @@ mock.module("@/lib/auth", () => ({
 
 mock.module("@/lib/runtime-mode", () => ({
   isMockUserStoreEnabled: () => true,
+  getConfiguredLimitMode: () => "enforce",
+  getForceEnforce: () => false,
+  getWaitlistEnabled: () => false,
+  getWaitlistEnforceThreshold: () => 125,
+  getProSurfacesEnabled: () => false,
+  getProBillingEnabled: () => false,
+  getProRolloutAdminIds: () => [],
 }));
 
 mock.module("@/lib/user-db", () => ({
@@ -39,6 +46,7 @@ mock.module("@/lib/mock-user-store", () => ({
   createSavedSearch: () => null,
   countSavedSearches: () => 0,
   hasSavedSearchByHash: () => false,
+  listCollectionsForSavedObject: () => null,
 }));
 
 const { POST } = await import("@/app/api/user/saved-objects/route");

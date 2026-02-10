@@ -2,7 +2,11 @@ import { NextResponse } from "next/server";
 import { requireAuth, authErrorResponse } from "@/lib/auth";
 import { requireStripe, STRIPE_PRICES, APP_URL } from "@/lib/stripe";
 import { getUserDb } from "@/lib/user-db";
-import { isMockStripeEnabled, isMockUserStoreEnabled } from "@/lib/runtime-mode";
+import {
+  getProBillingEnabled,
+  isMockStripeEnabled,
+  isMockUserStoreEnabled,
+} from "@/lib/runtime-mode";
 import { setMockUserTier, setMockStripeCustomer } from "@/lib/mock-user-store";
 
 /**
@@ -19,6 +23,12 @@ import { setMockUserTier, setMockStripeCustomer } from "@/lib/mock-user-store";
 export async function POST() {
   try {
     const user = await requireAuth();
+    if (!getProBillingEnabled()) {
+      return NextResponse.json(
+        { error: "feature_disabled", feature: "billing" },
+        { status: 403 }
+      );
+    }
 
     if (isMockStripeEnabled()) {
       if (isMockUserStoreEnabled()) {
