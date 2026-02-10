@@ -25,6 +25,30 @@ mock.module("@/lib/runtime-mode", () => ({
 
 mock.module("@/lib/mock-user-store", () => ({
   listSavedObjects: () => ({ objects: [] }),
+  getCollectionWithItems: () => ({
+    collection: {
+      id: 1,
+      name: "Weekly Watchlist",
+      description: null,
+      color: "#f97316",
+      icon: "folder",
+      isPublic: false,
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+      itemCount: 1,
+    },
+    items: [
+      {
+        id: 11,
+        canonicalId: "star:TRAPPIST-1",
+        displayName: "TRAPPIST-1",
+        notes: "Primary target",
+        eventPayload: null,
+        createdAt: "2026-01-01T00:00:00.000Z",
+        position: 0,
+      },
+    ],
+  }),
   saveObject: () => null,
   countSavedObjects: () => 0,
   countSavedObjectsSince: () => 0,
@@ -135,5 +159,25 @@ describe("/api/user/export", () => {
     expect(res.status).toBe(400);
     const body = await res.json();
     expect(body.error).toBe("invalid_cursor_format");
+  });
+
+  it("exports saved objects scoped to a collection when collectionId is provided", async () => {
+    const req = new Request("http://localhost/api/user/export", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        format: "csv",
+        category: "saved-objects",
+        queryParams: { collectionId: 1, limit: 10 },
+      }),
+    });
+
+    const res = await POST(req as unknown as NextRequest);
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Content-Type")).toContain("text/csv");
+    const text = await res.text();
+    expect(text).toContain("Object ID");
+    expect(text).toContain("TRAPPIST-1");
+    expect(text).toContain("Primary target");
   });
 });

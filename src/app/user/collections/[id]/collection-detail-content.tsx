@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { FolderHeart, Loader2, RefreshCw, Trash2 } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, FolderHeart, Loader2, RefreshCw, Trash2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +16,7 @@ import {
   resolveSavedObjectHref,
 } from "@/lib/saved-object-ui";
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
+import { ExportButton } from "@/components/export-button";
 
 interface CollectionMetadata {
   id: number;
@@ -47,6 +48,17 @@ interface CollectionDetailResponse {
 }
 
 const DEFAULT_LIMIT = 24;
+const TYPE_ACCENTS: Record<string, string> = {
+  exoplanet: "hsl(179 70% 55%)",
+  star: "hsl(40 100% 58%)",
+  "small-body": "hsl(17 100% 60%)",
+  "close-approach": "hsl(0 100% 63%)",
+  fireball: "hsl(17 100% 60%)",
+  flr: "hsl(35 100% 62%)",
+  cme: "hsl(270 70% 65%)",
+  gst: "hsl(82 100% 67%)",
+  unknown: "hsl(35 10% 65%)",
+};
 
 export function CollectionDetailContent() {
   const auth = useAppAuth();
@@ -206,10 +218,14 @@ export function CollectionDetailContent() {
 
   if (!auth.isSignedIn) {
     return (
-      <div className="container mx-auto px-4 py-12 max-w-3xl">
-        <Card tone={ACCOUNT_CARD_TONE}>
-          <CardContent className="py-10 text-center">
-            <FolderHeart className="w-10 h-10 mx-auto text-muted-foreground mb-3" />
+      <div className="container mx-auto max-w-3xl px-4 py-12">
+        <Card
+          tone={ACCOUNT_CARD_TONE}
+          className="relative overflow-hidden border-orange-300/20 bg-[#1a120d]/80"
+        >
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,185,120,0.13),transparent_52%)]" />
+          <CardContent className="relative py-10 text-center">
+            <FolderHeart className="mx-auto mb-3 h-10 w-10 text-muted-foreground" />
             <p className="text-muted-foreground">Sign in to view your collection.</p>
           </CardContent>
         </Card>
@@ -219,11 +235,15 @@ export function CollectionDetailContent() {
 
   if (isNotFound) {
     return (
-      <div className="container mx-auto px-4 py-8 max-w-4xl">
-        <Card tone={ACCOUNT_CARD_TONE}>
+      <div className="container mx-auto max-w-4xl px-4 py-8">
+        <Card tone={ACCOUNT_CARD_TONE} className="border-orange-300/20 bg-[#17100d]/80">
           <CardContent className="py-10 text-center">
             <p className="text-muted-foreground">Resource not found.</p>
-            <Link href="/user/collections" className="mt-3 inline-block text-sm text-primary hover:underline">
+            <Link
+              href="/user/collections"
+              className="mt-3 inline-flex items-center gap-1.5 text-sm text-primary hover:underline"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
               Back to collections
             </Link>
           </CardContent>
@@ -233,50 +253,63 @@ export function CollectionDetailContent() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-4xl space-y-5">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <Link href="/user/collections" className="text-xs text-muted-foreground hover:text-primary">
+    <div className="container mx-auto max-w-6xl space-y-5 px-4 py-8">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div className="min-w-0">
+          <Link
+            href="/user/collections"
+            className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" />
             Back to collections
           </Link>
-          <h1 className="mt-1 font-display text-3xl text-foreground">
+          <h1 className="mt-2 truncate font-display text-3xl text-foreground sm:text-4xl">
             {data?.collection.name || "Collection"}
           </h1>
           {data?.collection.description ? (
-            <p className="mt-1 text-sm text-muted-foreground">{data.collection.description}</p>
+            <p className="mt-1 max-w-3xl text-sm text-muted-foreground">{data.collection.description}</p>
           ) : null}
           {data ? (
-            <p className="mt-2 text-xs text-muted-foreground">
+            <p className="mt-2 text-xs uppercase tracking-[0.16em] text-muted-foreground/90">
               {data.itemCount} {data.itemCount === 1 ? "item" : "items"} • Updated{" "}
               {new Date(data.collection.updatedAt).toLocaleString()}
             </p>
           ) : null}
         </div>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={refreshCollection}
-          disabled={isLoading || isRefreshing}
-          className="gap-1.5"
-        >
-          {isRefreshing ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          ) : (
-            <RefreshCw className="h-3.5 w-3.5" />
-          )}
-          Refresh
-        </Button>
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center sm:justify-end">
+          {Number.isFinite(collectionId) ? (
+            <ExportButton
+              category="saved-objects"
+              queryParams={{ collectionId }}
+              fileLabel={data?.collection.name || `collection-${collectionId}`}
+            />
+          ) : null}
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={refreshCollection}
+            disabled={isLoading || isRefreshing}
+            className="gap-1.5 border-orange-300/30 bg-black/25 text-orange-100 hover:bg-orange-500/15"
+          >
+            {isRefreshing ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <RefreshCw className="h-3.5 w-3.5" />
+            )}
+            Refresh
+          </Button>
+        </div>
       </div>
 
       {errorMessage ? (
-        <Card tone={ACCOUNT_CARD_TONE}>
+        <Card tone={ACCOUNT_CARD_TONE} className="border-destructive/40">
           <CardContent className="py-4 text-sm text-destructive">{errorMessage}</CardContent>
         </Card>
       ) : null}
 
       {isLoading ? (
-        <Card tone={ACCOUNT_CARD_TONE}>
+        <Card tone={ACCOUNT_CARD_TONE} className="border-orange-300/20 bg-[#17100d]/80">
           <CardContent className="py-5 space-y-3">
             <Skeleton className="h-24 w-full rounded-lg" />
             <Skeleton className="h-24 w-full rounded-lg" />
@@ -284,21 +317,38 @@ export function CollectionDetailContent() {
           </CardContent>
         </Card>
       ) : data && data.items.length > 0 ? (
-        <>
-          <div className="grid gap-3 md:grid-cols-2">
+        <div className="flex min-h-[52dvh] flex-col">
+          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
             {data.items.map((item) => {
               const href = resolveSavedObjectHref(item.canonicalId);
               const type = getSavedObjectType(item.canonicalId);
+              const accent = TYPE_ACCENTS[type];
               const isRemoving = pendingRemoveId === item.id;
 
               return (
-                <Card key={item.id} tone={ACCOUNT_CARD_TONE} className="border-border/50">
-                  <CardHeader className="pb-2">
+                <Card
+                  key={item.id}
+                  tone={ACCOUNT_CARD_TONE}
+                  className="group relative overflow-hidden border-border/50 bg-card/95 transition duration-300 hover:-translate-y-0.5 hover:border-orange-300/45"
+                >
+                  <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-orange-300/80 to-transparent" />
+                  <div className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100 bg-[radial-gradient(circle_at_top_right,rgba(255,184,116,0.12),transparent_58%)]" />
+                  <CardHeader className="relative pb-2">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <CardTitle className="text-lg">{item.displayName}</CardTitle>
+                        <CardTitle className="line-clamp-2 text-xl leading-tight">
+                          {item.displayName}
+                        </CardTitle>
                         <div className="mt-1 flex flex-wrap items-center gap-2">
-                          <Badge variant="outline" className="text-[10px] uppercase tracking-wider">
+                          <Badge
+                            variant="outline"
+                            className="border-orange-300/30 bg-black/20 text-[10px] uppercase tracking-wider text-orange-100"
+                          >
+                            <span
+                              className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full align-middle"
+                              style={{ backgroundColor: accent }}
+                              aria-hidden
+                            />
                             {formatSavedObjectTypeBadge(type)}
                           </Badge>
                           <span className="text-xs text-muted-foreground">
@@ -315,6 +365,7 @@ export function CollectionDetailContent() {
                           void handleRemoveItem(item.id);
                         }}
                         disabled={isRemoving}
+                        aria-label={`Remove ${item.displayName} from collection`}
                       >
                         {isRemoving ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
@@ -324,11 +375,17 @@ export function CollectionDetailContent() {
                       </Button>
                     </div>
                   </CardHeader>
-                  <CardContent className="pt-0">
-                    {item.notes ? <p className="mb-3 text-sm text-muted-foreground">{item.notes}</p> : null}
+                  <CardContent className="relative pt-0">
+                    {item.notes ? (
+                      <p className="mb-3 text-sm leading-relaxed text-muted-foreground">{item.notes}</p>
+                    ) : null}
                     {href ? (
-                      <Link href={href} className="text-sm text-primary hover:underline">
+                      <Link
+                        href={href}
+                        className="inline-flex items-center gap-1.5 text-sm text-primary transition-colors hover:text-primary/85"
+                      >
                         Open details
+                        <ArrowUpRight className="h-3.5 w-3.5" />
                       </Link>
                     ) : (
                       <span className="text-xs text-muted-foreground">No direct detail page available</span>
@@ -339,13 +396,14 @@ export function CollectionDetailContent() {
             })}
           </div>
 
-          <div className="flex items-center justify-end gap-2">
+          <div className="mt-auto flex items-center justify-end gap-2 pt-4">
             <Button
               type="button"
               variant="outline"
               size="sm"
               disabled={page <= 1}
               onClick={() => setPage(page - 1)}
+              className="border-orange-300/30 bg-black/25 text-orange-100 hover:bg-orange-500/15"
             >
               Previous
             </Button>
@@ -356,13 +414,14 @@ export function CollectionDetailContent() {
               size="sm"
               disabled={!data.hasMore}
               onClick={() => setPage(page + 1)}
+              className="border-orange-300/30 bg-black/25 text-orange-100 hover:bg-orange-500/15"
             >
               Next
             </Button>
           </div>
-        </>
+        </div>
       ) : (
-        <Card tone={ACCOUNT_CARD_TONE}>
+        <Card tone={ACCOUNT_CARD_TONE} className="border-orange-300/20 bg-[#17100d]/80">
           <CardContent className="py-10 text-center">
             <p className="text-muted-foreground">No items in this collection yet.</p>
           </CardContent>

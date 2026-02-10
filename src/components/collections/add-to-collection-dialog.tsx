@@ -236,9 +236,15 @@ export function AddToCollectionDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button type="button" variant="outline" size="sm" className="gap-1.5">
-          <FolderPlus className="h-3.5 w-3.5" />
-          Collections
+        <Button
+          type="button"
+          variant="outline"
+          size="icon-sm"
+          className="border-orange-300/30 bg-black/25 text-orange-100 hover:bg-orange-500/15"
+          aria-label={`Manage collections for ${savedObjectName}`}
+          title="Manage collections"
+        >
+          <FolderPlus className="h-4 w-4" />
         </Button>
       </DialogTrigger>
       <DialogContent className="max-h-[80dvh] sm:max-w-xl">

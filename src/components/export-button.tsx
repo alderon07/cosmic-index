@@ -20,11 +20,15 @@ type ExportFormat = "csv" | "ndjson";
 interface ExportButtonProps {
   category: ExportCategory;
   theme?: ThemeConfig;
+  queryParams?: Record<string, unknown>;
+  fileLabel?: string;
 }
 
 export function ExportButton({
   category,
   theme = THEMES.exoplanets,
+  queryParams,
+  fileLabel,
 }: ExportButtonProps) {
   const auth = useAppAuth();
   const [format, setFormat] = useState<ExportFormat>("csv");
@@ -45,6 +49,7 @@ export function ExportButton({
         body: JSON.stringify({
           format,
           category,
+          queryParams,
         }),
       });
 
@@ -56,8 +61,9 @@ export function ExportButton({
       const href = URL.createObjectURL(blob);
       const link = document.createElement("a");
       const date = new Date().toISOString().slice(0, 10);
+      const safeLabel = (fileLabel ?? category).toLowerCase().replace(/[^a-z0-9-_]+/g, "-");
       link.href = href;
-      link.download = `cosmic-index-${category}-${date}.${format}`;
+      link.download = `cosmic-index-${safeLabel}-${date}.${format}`;
       document.body.appendChild(link);
       link.click();
       link.remove();
