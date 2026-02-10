@@ -37,6 +37,7 @@ function getLimitHitColumn(feature: LimitHitFeature): string {
 export async function getActiveWaitlistCount(db: Client): Promise<number> {
   const result = await db.execute({
     sql: "SELECT COUNT(*) AS total FROM pro_waitlist WHERE status = 'active'",
+    args: [],
   });
   return Number(result.rows[0]?.total ?? 0);
 }

@@ -96,7 +96,7 @@ export async function resolveLimitMode(params?: {
       waitlistEnabled,
       threshold,
       waitlistCount: params?.waitlistCountOverride ?? null,
-      reached: configuredMode === "enforce",
+      reached: false,
     };
   }
 
