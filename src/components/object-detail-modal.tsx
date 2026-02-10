@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { ObjectDetail } from "@/components/object-detail";
 import { AnyCosmicObject, isExoplanet, isStar } from "@/lib/types";
+import { getDetailAccentConfig } from "@/lib/theme";
 import { SquareArrowOutUpRight } from "lucide-react";
 
 interface ObjectDetailModalProps {
@@ -24,6 +25,7 @@ export function ObjectDetailModal({
 }: ObjectDetailModalProps) {
   if (!object) return null;
 
+  const accent = getDetailAccentConfig(object);
   const href = isExoplanet(object)
     ? `/exoplanets/${object.id}`
     : isStar(object)
@@ -43,7 +45,7 @@ export function ObjectDetailModal({
             href={href}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary transition-colors"
+            className={`inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors ${accent.linkHover}`}
           >
             <SquareArrowOutUpRight className="w-4 h-4" />
             View Full Page

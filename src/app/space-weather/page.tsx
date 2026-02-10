@@ -229,7 +229,7 @@ function SpaceWeatherPageContent() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto max-w-7xl px-4 py-8">
       {/* Page Header */}
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-2">
@@ -467,7 +467,7 @@ function SpaceWeatherPageContent() {
 
 function LoadingSkeleton() {
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto max-w-7xl px-4 py-8">
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-2">
           <div

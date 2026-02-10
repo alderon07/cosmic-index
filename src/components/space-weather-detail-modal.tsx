@@ -10,7 +10,7 @@ import {
 import { SpaceWeatherDetail } from "@/components/space-weather-detail";
 import { AnySpaceWeatherEvent } from "@/lib/types";
 import { getEventTypeLabel } from "@/lib/nasa-donki";
-import { THEMES } from "@/lib/theme";
+import { getSpaceWeatherDetailAccent } from "@/lib/theme";
 import { SquareArrowOutUpRight } from "lucide-react";
 
 interface SpaceWeatherDetailModalProps {
@@ -28,7 +28,7 @@ export function SpaceWeatherDetailModal({
 
   const href = `/space-weather/${encodeURIComponent(event.id)}`;
   const typeLabel = getEventTypeLabel(event.eventType);
-  const theme = THEMES["space-weather"];
+  const accent = getSpaceWeatherDetailAccent(event.eventType);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -43,7 +43,7 @@ export function SpaceWeatherDetailModal({
             href={href}
             target="_blank"
             rel="noopener noreferrer"
-            className={`inline-flex items-center gap-1.5 text-sm text-muted-foreground ${theme.hoverText} transition-colors`}
+            className={`inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors ${accent.actionHover}`}
           >
             <SquareArrowOutUpRight className="w-4 h-4" />
             View Full Page

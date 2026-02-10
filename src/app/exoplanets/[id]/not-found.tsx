@@ -3,7 +3,7 @@ import Link from "next/link";
 
 export default function ExoplanetNotFound() {
   return (
-    <div className="container mx-auto px-4 py-16">
+    <div className="container mx-auto max-w-7xl px-4 py-16">
       <div className="max-w-md mx-auto text-center">
         <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-6">
           <Circle className="w-8 h-8 text-primary" />

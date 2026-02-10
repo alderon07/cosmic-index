@@ -10,6 +10,14 @@ import { isDegradeModeEnabled, recordPerformanceSample } from "@/lib/performance
 import { Activity } from "lucide-react";
 
 const TIMELINE_BUDGET_MS = 200;
+const TIMELINE_BAR_BG_CLASSES: Record<ObjectTheme, string> = {
+  exoplanets: "bg-primary",
+  stars: "bg-uranium-green",
+  "small-bodies": "bg-secondary",
+  "close-approaches": "bg-destructive",
+  fireballs: "bg-radium-teal",
+  "space-weather": "bg-primary",
+};
 
 interface EventTimelineProps {
   title: string;
@@ -30,6 +38,7 @@ export function EventTimeline({
 }: EventTimelineProps) {
   void pageType;
   const themeConfig = THEMES[theme];
+  const timelineBarBg = TIMELINE_BAR_BG_CLASSES[theme];
   const maxCount = Math.max(1, ...buckets.map((bucket) => bucket.count));
   const totalCount = buckets.reduce((sum, bucket) => sum + bucket.count, 0);
   const degradeMode = isDegradeModeEnabled("event-timeline");
@@ -79,7 +88,7 @@ export function EventTimeline({
                         aria-disabled={disabled}
                       >
                         <span
-                          className={`absolute bottom-0 left-0 right-0 rounded-sm ${themeConfig.bg}`}
+                          className={`absolute bottom-0 left-0 right-0 rounded-sm ${timelineBarBg}`}
                           style={{ height: barHeight }}
                         />
                       </button>

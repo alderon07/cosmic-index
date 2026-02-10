@@ -35,6 +35,7 @@ import { createCompareItem, MAX_COMPARE_ITEMS } from "@/lib/compare-facts";
 import {
   DETAIL_ACCORDION_SURFACE_CLASS,
   DETAIL_CARD_SURFACE_CLASS,
+  getDetailAccentConfig,
 } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 
@@ -70,21 +71,7 @@ export function ObjectDetail({
   const compareSupported = isObjectSupported(object);
   const compareId = createCompareItem(object, "detail")?.id;
   const alreadyInCompare = Boolean(compareId && isInCompare(compareId));
-  const isComet = isSmallBody(object) && object.bodyKind === "comet";
-  const compareOutlineClass = isComet
-    ? "border-radium-teal/30 bg-radium-teal/5 text-radium-teal/85 hover:bg-radium-teal/10 hover:text-radium-teal"
-    : isStar(object)
-    ? "border-uranium-green/30 bg-uranium-green/5 text-uranium-green/85 hover:bg-uranium-green/10 hover:text-uranium-green"
-    : isSmallBody(object)
-    ? "border-secondary/30 bg-secondary/5 text-secondary/85 hover:bg-secondary/10 hover:text-secondary"
-    : "border-primary/30 bg-primary/5 text-primary/85 hover:bg-primary/10 hover:text-primary";
-  const compareActiveClass = isComet
-    ? "border-radium-teal/55 bg-radium-teal/15 text-radium-teal hover:bg-radium-teal/20"
-    : isStar(object)
-    ? "border-uranium-green/55 bg-uranium-green/15 text-uranium-green hover:bg-uranium-green/20"
-    : isSmallBody(object)
-    ? "border-secondary/55 bg-secondary/15 text-secondary hover:bg-secondary/20"
-    : "border-primary/55 bg-primary/15 text-primary hover:bg-primary/20";
+  const accent = getDetailAccentConfig(object);
   const compareTooltipText = compareSupported
     ? alreadyInCompare
       ? "Already in compare"
@@ -98,22 +85,8 @@ export function ObjectDetail({
           <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="flex flex-wrap items-center gap-3">
               <Badge
-                variant={
-                  isExoplanet(object)
-                    ? "default"
-                    : isStar(object)
-                    ? "outline"
-                    : isSmallBody(object) && object.bodyKind === "comet"
-                    ? "outline"
-                    : "secondary"
-                }
-                className={`font-mono ${
-                  isStar(object)
-                    ? "border-uranium-green/50 text-uranium-green bg-uranium-green/10"
-                    : isSmallBody(object) && object.bodyKind === "comet"
-                    ? "border-radium-teal/50 text-radium-teal bg-radium-teal/10"
-                    : ""
-                }`}
+                variant="outline"
+                className={cn("font-mono", accent.heroBadge)}
               >
                 {typeLabel}
               </Badge>
@@ -160,8 +133,8 @@ export function ObjectDetail({
                       size="icon-sm"
                       onClick={() => addObject(object, "object-detail")}
                       className={cn({
-                        [compareActiveClass]: compareSupported && alreadyInCompare,
-                        [compareOutlineClass]: compareSupported && !alreadyInCompare,
+                        [accent.compareActive]: compareSupported && alreadyInCompare,
+                        [accent.compareOutline]: compareSupported && !alreadyInCompare,
                         "border-border/60 text-muted-foreground hover:text-foreground":
                           !compareSupported,
                       })}
@@ -184,7 +157,7 @@ export function ObjectDetail({
 
           {isExoplanet(object) && object.hostStar && (
             <p className="text-lg text-muted-foreground flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-secondary" />
+              <Sparkles className={cn("w-5 h-5", accent.heroIconAccent)} />
               Orbiting {object.hostStar}
             </p>
           )}
@@ -197,7 +170,7 @@ export function ObjectDetail({
 
           {isStar(object) && (
             <p className="text-lg text-muted-foreground flex items-center gap-2">
-              <Star className="w-5 h-5 text-uranium-green" />
+              <Star className={cn("w-5 h-5", accent.heroIconAccent)} />
               {object.spectralClass && object.spectralClass !== "Unknown"
                 ? `${object.spectralClass}-type star`
                 : "Host star"}
@@ -212,14 +185,19 @@ export function ObjectDetail({
         </div>
 
         {/* Decorative glow */}
-        <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl" />
+        <div
+          className={cn(
+            "absolute top-0 right-0 w-64 h-64 rounded-full blur-3xl",
+            accent.heroGlow
+          )}
+        />
       </div>
 
       {/* Summary */}
       <Card tone="neutral" className={DETAIL_CARD_SURFACE_CLASS}>
         <CardHeader>
           <CardTitle className="font-display flex items-center gap-2">
-            <Info className="w-5 h-5 text-primary" />
+            <Info className={cn("w-5 h-5", accent.heroIconAccent)} />
             Overview
           </CardTitle>
         </CardHeader>
@@ -235,7 +213,7 @@ export function ObjectDetail({
       <Card tone="neutral" className={DETAIL_CARD_SURFACE_CLASS}>
         <CardHeader>
           <CardTitle className="font-display flex items-center gap-2">
-            <Telescope className="w-5 h-5 text-secondary" />
+            <Telescope className={cn("w-5 h-5", accent.heroIconAccent)} />
             Key Measurements
           </CardTitle>
         </CardHeader>
@@ -419,7 +397,7 @@ export function ObjectDetail({
                   </div>
                   <div className="min-w-0">
                     <p className="text-xs text-muted-foreground flex items-center gap-1">
-                      <Circle className="w-3 h-3 text-primary shrink-0" />
+                      <Circle className={cn("w-3 h-3 shrink-0", accent.heroIconAccent)} />
                       <span className="truncate">Planets in System</span>
                     </p>
                     <p className="font-mono text-sm sm:text-lg">
@@ -428,7 +406,7 @@ export function ObjectDetail({
                   </div>
                   <div className="min-w-0">
                     <p className="text-xs text-muted-foreground flex items-center gap-1">
-                      <Star className="w-3 h-3 text-uranium-green shrink-0" />
+                      <Star className={cn("w-3 h-3 shrink-0", accent.heroIconAccent)} />
                       <span className="truncate">Stars in System</span>
                     </p>
                     <p className="font-mono text-sm sm:text-lg">
@@ -650,7 +628,7 @@ export function ObjectDetail({
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
                   <div className="min-w-0">
                     <p className="text-xs text-muted-foreground flex items-center gap-1">
-                      <Circle className="w-3 h-3 text-primary shrink-0" />
+                      <Circle className={cn("w-3 h-3 shrink-0", accent.heroIconAccent)} />
                       <span className="truncate">Known Planets</span>
                     </p>
                     <p className="font-mono text-sm sm:text-lg">
@@ -659,7 +637,7 @@ export function ObjectDetail({
                   </div>
                   <div className="min-w-0">
                     <p className="text-xs text-muted-foreground flex items-center gap-1">
-                      <Star className="w-3 h-3 text-uranium-green shrink-0" />
+                      <Star className={cn("w-3 h-3 shrink-0", accent.heroIconAccent)} />
                       <span className="truncate">Stars in System</span>
                     </p>
                     <p className="font-mono text-sm sm:text-lg">
@@ -668,7 +646,7 @@ export function ObjectDetail({
                   </div>
                   <div className="min-w-0">
                     <p className="text-xs text-muted-foreground flex items-center gap-1">
-                      <Circle className="w-3 h-3 text-primary shrink-0" />
+                      <Circle className={cn("w-3 h-3 shrink-0", accent.heroIconAccent)} />
                       <span className="truncate">Planets (NASA)</span>
                     </p>
                     <p className="font-mono text-sm sm:text-lg">
@@ -754,7 +732,10 @@ export function ObjectDetail({
                   href={link.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-muted/50 hover:bg-muted rounded-md text-foreground hover:text-primary transition-colors"
+                  className={cn(
+                    "inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-muted/50 hover:bg-muted rounded-md text-foreground transition-colors",
+                    accent.linkHover
+                  )}
                 >
                   <ExternalLink className="w-3.5 h-3.5" />
                   {link.label}
