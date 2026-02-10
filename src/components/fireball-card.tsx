@@ -60,7 +60,7 @@ export function FireballCard({
   // Format date for display
   const dateDisplay = fireball.date;
 
-  const cardClassName = `h-full bg-card border-border/50 transition-all duration-300 hover:border-radium-teal/50 hover:${theme.glow} bezel scanlines overflow-hidden`;
+  const cardClassName = `h-full ${theme.cardSurface} transition-all duration-300 hover:border-radium-teal/50 hover:${theme.glow} bezel overflow-hidden`;
 
   if (variant === "compact") {
     const locationShort = fireball.hasLocation
@@ -74,7 +74,7 @@ export function FireballCard({
       : "—";
 
     return (
-      <Card className="py-0 bg-card border-border/50 transition-all duration-300 hover:border-radium-teal/50 hover:glow-teal bezel overflow-hidden min-h-[44px]">
+      <Card className={`py-0 ${theme.cardSurface} transition-all duration-300 hover:border-radium-teal/50 hover:glow-teal bezel overflow-hidden min-h-[44px]`}>
         <CardContent className="py-3 px-4 min-h-[44px] flex flex-col md:grid md:grid-cols-[1fr_auto_1fr] md:items-center gap-y-2.5 md:gap-y-0 md:gap-x-6">
           {/* Block 1: Date (left on md+) */}
           <div className="min-w-0 overflow-hidden flex items-center gap-2 shrink-0">
@@ -174,10 +174,10 @@ export function FireballCard({
 
       <CardContent className="pt-0 flex flex-col flex-1 min-h-0">
         {/* Key metrics */}
-        <div className="grid grid-cols-2 gap-x-4 gap-y-3 pb-4">
+        <div className="grid grid-cols-2 gap-x-3 gap-y-2.5 pb-4">
           {/* Energy */}
-          <div>
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <div className={theme.metricSurface}>
+            <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-[0.08em] text-muted-foreground/85">
               <Zap className="w-3.5 h-3.5" />
               <span>Energy</span>
             </div>
@@ -192,8 +192,8 @@ export function FireballCard({
           </div>
 
           {/* Location */}
-          <div>
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <div className={theme.metricSurface}>
+            <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-[0.08em] text-muted-foreground/85">
               <MapPin className="w-3.5 h-3.5" />
               <span>Location</span>
             </div>
@@ -223,8 +223,8 @@ export function FireballCard({
           </div>
 
           {/* Altitude */}
-          <div>
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <div className={theme.metricSurface}>
+            <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-[0.08em] text-muted-foreground/85">
               <Mountain className="w-3.5 h-3.5" />
               <span>Altitude</span>
             </div>
@@ -238,8 +238,8 @@ export function FireballCard({
           </div>
 
           {/* Velocity */}
-          <div>
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <div className={theme.metricSurface}>
+            <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-[0.08em] text-muted-foreground/85">
               <Gauge className="w-3.5 h-3.5" />
               <span>Velocity</span>
             </div>
@@ -254,7 +254,7 @@ export function FireballCard({
         </div>
 
         {/* Size category */}
-        <div className="mt-auto pt-3 border-t border-border/30">
+        <div className={`mt-auto ${theme.footerSurface}`}>
           <div className="flex items-center justify-end gap-1.5">
           <SaveEventButton canonicalId={canonicalId} displayName={displayName} eventPayload={fireball} />
           {!fireball.isComplete && (

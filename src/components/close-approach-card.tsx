@@ -66,7 +66,7 @@ export function CloseApproachCard({ approach, showHighlightBadge, variant = "def
   // Compact (list) variant - mobile: two lines; md+: single line [title | data | badge], data in 4-col grid
   if (variant === "compact") {
     return (
-      <Card className="py-0 bg-card border-border/50 transition-all duration-300 hover:border-destructive/50 hover:glow-red bezel overflow-hidden min-h-[44px]">
+      <Card className={`py-0 ${theme.cardSurface} transition-all duration-300 hover:border-destructive/50 hover:glow-red bezel overflow-hidden min-h-[44px]`}>
         <CardContent className="p-3 min-h-[44px] flex flex-col md:grid md:grid-cols-[1fr_2fr_1fr] md:items-center gap-y-2.5 md:gap-y-0 md:gap-x-6">
           {/* Block 1: Designation (left on md+) */}
           <div className="flex flex-row gap-4 min-w-0 overflow-hidden">
@@ -160,7 +160,7 @@ export function CloseApproachCard({ approach, showHighlightBadge, variant = "def
 
   // Default (grid) variant
   return (
-    <Card className={`h-full bg-card border-border/50 transition-all duration-300 hover:border-destructive/50 hover:glow-red bezel scanlines overflow-hidden`}>
+    <Card className={`h-full ${theme.cardSurface} transition-all duration-300 hover:border-destructive/50 hover:glow-red bezel overflow-hidden`}>
       <CardHeader>
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
@@ -203,10 +203,10 @@ export function CloseApproachCard({ approach, showHighlightBadge, variant = "def
 
       <CardContent className="pt-0 flex flex-col flex-1 min-h-0">
         {/* Key metrics */}
-        <div className="grid grid-cols-2 gap-x-4 gap-y-4 pb-4">
+        <div className="grid grid-cols-2 gap-x-3 gap-y-2.5 pb-4">
           {/* Approach date */}
-          <div className="col-span-2">
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <div className={`col-span-2 ${theme.metricSurface}`}>
+            <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-[0.08em] text-muted-foreground/85">
               <Calendar className="w-3.5 h-3.5" />
               <span>Close Approach</span>
               <InfoTooltip content="TDB (Barycentric Dynamical Time) is the astronomical time standard. It's essentially equivalent to UTC, differing by less than a minute.">
@@ -226,8 +226,8 @@ export function CloseApproachCard({ approach, showHighlightBadge, variant = "def
           </div>
 
           {/* Miss distance */}
-          <div>
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <div className={theme.metricSurface}>
+            <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-[0.08em] text-muted-foreground/85">
               <Ruler className="w-3.5 h-3.5" />
               <span>Miss Distance</span>
             </div>
@@ -250,8 +250,8 @@ export function CloseApproachCard({ approach, showHighlightBadge, variant = "def
           </div>
 
           {/* Velocity */}
-          <div>
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <div className={theme.metricSurface}>
+            <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-[0.08em] text-muted-foreground/85">
               <Gauge className="w-3.5 h-3.5" />
               <span>Velocity</span>
             </div>
@@ -264,7 +264,7 @@ export function CloseApproachCard({ approach, showHighlightBadge, variant = "def
         </div>
 
         {/* Size estimate */}
-        <div className="mt-auto pt-3 border-t border-border/30">
+        <div className={`mt-auto ${theme.footerSurface}`}>
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs text-muted-foreground">

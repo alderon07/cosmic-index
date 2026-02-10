@@ -54,6 +54,20 @@ interface ObjectCardProps {
   variant?: ObjectCardVariant;
 }
 
+function getFactIcon(label: string) {
+  const normalized = label.toLowerCase();
+  if (normalized.includes("distance")) return Ruler;
+  if (normalized.includes("period")) return Timer;
+  if (normalized.includes("radius") || normalized.includes("diameter")) return Circle;
+  if (normalized.includes("mass")) return Scale;
+  if (normalized.includes("temperature")) return Thermometer;
+  if (normalized.includes("year") || normalized.includes("date")) return Calendar;
+  if (normalized.includes("orbit")) return Orbit;
+  if (normalized.includes("star")) return Star;
+  if (normalized.includes("planet")) return Globe;
+  return Gauge;
+}
+
 export function ObjectCard({ object, onModalOpen, variant = "default" }: ObjectCardProps) {
   const href = isExoplanet(object)
     ? `/exoplanets/${object.id}`
@@ -371,8 +385,8 @@ export function ObjectCard({ object, onModalOpen, variant = "default" }: ObjectC
       );
     };
 
-    const compactContent = (
-      <Card className={`w-full py-0 bg-card border-border/50 transition-all duration-300 ${hoverStyles} bezel overflow-hidden min-h-[44px]`}>
+  const compactContent = (
+      <Card className={`w-full py-0 bg-card/95 border-border/50 [background-image:radial-gradient(circle_at_top_right,rgba(255,185,120,0.08),transparent_58%)] transition-all duration-300 ${hoverStyles} bezel overflow-hidden min-h-[44px]`}>
         <CardContent className="w-full py-3 px-4 min-h-[44px] flex flex-col md:grid md:grid-cols-[1fr_2fr_1fr] md:items-center justify-center gap-y-2.5 md:gap-y-0 md:gap-x-6">
           {/* Block 1: Name and subtitle (left on md+; on mobile, subtitle next to title) */}
           <div className="min-w-0 overflow-hidden flex flex-row flex-wrap items-baseline gap-x-2">
@@ -466,13 +480,11 @@ export function ObjectCard({ object, onModalOpen, variant = "default" }: ObjectC
           role="button"
           tabIndex={0}
           onClick={() => {
-            trackCardViewed("list");
             onModalOpen(object);
           }}
           onKeyDown={(e) => {
             if (e.key === "Enter" || e.key === " ") {
               e.preventDefault();
-              trackCardViewed("list");
               onModalOpen(object);
             }
           }}
@@ -493,7 +505,6 @@ export function ObjectCard({ object, onModalOpen, variant = "default" }: ObjectC
   // Handle card click - opens modal if onModalOpen provided
   const handleCardClick = () => {
     if (onModalOpen) {
-      trackCardViewed("grid");
       onModalOpen(object);
     }
   };
@@ -502,7 +513,6 @@ export function ObjectCard({ object, onModalOpen, variant = "default" }: ObjectC
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (onModalOpen && (e.key === "Enter" || e.key === " ")) {
       e.preventDefault();
-      trackCardViewed("grid");
       onModalOpen(object);
     }
   };
@@ -547,10 +557,14 @@ export function ObjectCard({ object, onModalOpen, variant = "default" }: ObjectC
       <CardContent className="pt-0 flex flex-col flex-1 min-h-0">
         {/* Key Facts Grid */}
         <div className="flex-1">
-          <div className="pb-4 grid grid-cols-2 gap-x-4 gap-y-2">
+          <div className="pb-4 grid grid-cols-2 gap-x-3 gap-y-2.5">
             {displayFacts.map((fact, index) => (
-              <div key={index} className="min-w-0">
-                <p className="text-xs text-muted-foreground truncate">
+              <div key={index} className="min-w-0 rounded-md border border-border/40 bg-black/15 px-2.5 py-2">
+                <p className="truncate text-[11px] uppercase tracking-[0.08em] text-muted-foreground/85 flex items-center gap-1.5">
+                  {(() => {
+                    const FactIcon = getFactIcon(fact.label);
+                    return <FactIcon className="h-3.5 w-3.5 shrink-0" />;
+                  })()}
                   {fact.label}
                 </p>
                 <p className="text-sm font-mono text-foreground truncate">
@@ -643,7 +657,7 @@ export function ObjectCard({ object, onModalOpen, variant = "default" }: ObjectC
         onKeyDown={handleKeyDown}
         className="block group cursor-pointer"
       >
-        <Card className={`h-full bg-card border-border/50 transition-all duration-300 ${hoverStyles} bezel scanlines overflow-hidden relative`}>
+        <Card className={`h-full bg-card/95 border-border/50 [background-image:radial-gradient(circle_at_top_right,rgba(255,185,120,0.08),transparent_58%)] transition-all duration-300 ${hoverStyles} bezel overflow-hidden relative`}>
           {cardContent}
         </Card>
       </div>
@@ -653,7 +667,7 @@ export function ObjectCard({ object, onModalOpen, variant = "default" }: ObjectC
   // Default mode: entire card is a link
   return (
     <Link href={href} onClick={storeListUrl} className="block group">
-      <Card className={`h-full bg-card border-border/50 transition-all duration-300 ${hoverStyles} bezel scanlines overflow-hidden relative`}>
+      <Card className={`h-full bg-card/95 border-border/50 [background-image:radial-gradient(circle_at_top_right,rgba(255,185,120,0.08),transparent_58%)] transition-all duration-300 ${hoverStyles} bezel overflow-hidden relative`}>
         {cardContent}
       </Card>
     </Link>
