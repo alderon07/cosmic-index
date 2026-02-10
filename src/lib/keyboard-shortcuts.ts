@@ -14,6 +14,8 @@ export const NAVIGATION_ROUTES = {
   c: { path: "/close-approaches", label: "Close Approaches" },
   f: { path: "/fireballs", label: "Fireballs" },
   w: { path: "/space-weather", label: "Space Weather" },
+  o: { path: "/user/saved-objects", label: "Saved Objects" },
+  l: { path: "/user/collections", label: "Collections" },
 } as const;
 
 export type NavigationKey = keyof typeof NAVIGATION_ROUTES;
@@ -33,6 +35,8 @@ export const GLOBAL_SHORTCUTS: GlobalShortcut[] = [
   { key: "g c", description: "Go to Close Approaches", sequence: ["g", "c"] },
   { key: "g f", description: "Go to Fireballs", sequence: ["g", "f"] },
   { key: "g w", description: "Go to Space Weather", sequence: ["g", "w"] },
+  { key: "g o", description: "Go to Saved Objects", sequence: ["g", "o"] },
+  { key: "g l", description: "Go to Collections", sequence: ["g", "l"] },
   { key: "?", description: "Open keyboard shortcuts help" },
   { key: "Escape", description: "Close dialog / Blur input" },
 ];
@@ -59,6 +63,8 @@ export const PAGE_SHORTCUTS: PageShortcut[] = [
   { key: "v", description: "Toggle view (grid/list)" },
   { key: "j", description: "Next page", pages: ["exoplanets", "stars", "small-bodies"] },
   { key: "k", description: "Previous page", pages: ["exoplanets", "stars", "small-bodies"] },
+  { key: "r", description: "Refresh saved list", pages: ["saved-objects", "collections"] },
+  { key: "n", description: "Focus new collection name", pages: ["collections"] },
 ];
 
 /**

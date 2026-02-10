@@ -11,6 +11,18 @@ import {
 
 export type CompareDomain = "exoplanets" | "stars" | "small-bodies";
 export type CompareSnapshotLevel = "list" | "detail";
+export type CompareSource =
+  | "object-card-grid"
+  | "object-card-list"
+  | "object-detail"
+  | "compare-tray"
+  | "compare-table";
+export type CompareBlockedReason =
+  | "cross-domain"
+  | "unsupported"
+  | "limit"
+  | "storage-error"
+  | "mode-disabled";
 
 export interface CompareFact {
   key: string;

@@ -25,6 +25,8 @@ import {
   type ExportCursor,
 } from "@/lib/export-utils";
 import { getTierLimits } from "@/lib/tier-limits";
+import { resolveLimitMode, toLimitPolicyMetadata } from "@/lib/feature-policy";
+import { recordLimitHitWithDedup } from "@/lib/waitlist";
 
 /**
  * POST /api/user/export
@@ -169,6 +171,22 @@ function getExportRateHeaders(params: {
   };
 }
 
+function getLimitPolicyHeaders(params: {
+  configuredMode: "shadow" | "warn" | "enforce";
+  effectiveMode: "shadow" | "warn" | "enforce";
+  wouldBlock: boolean;
+  waitlistEnabled: boolean;
+  upgradePreviewAvailable: boolean;
+}): Record<string, string> {
+  return {
+    "X-Limit-Policy-Configured-Mode": params.configuredMode,
+    "X-Limit-Policy-Effective-Mode": params.effectiveMode,
+    "X-Limit-Policy-Would-Block": params.wouldBlock ? "1" : "0",
+    "X-Limit-Policy-Waitlist-Enabled": params.waitlistEnabled ? "1" : "0",
+    "X-Limit-Policy-Upgrade-Preview": params.upgradePreviewAvailable ? "1" : "0",
+  };
+}
+
 function getMockUsage(userId: string, now: number) {
   const usage = mockExportUsage.get(userId) ?? { requestTimestamps: [], rowEvents: [] };
   usage.requestTimestamps = usage.requestTimestamps.filter((ts) => ts > now - WINDOW_MS);
@@ -261,19 +279,33 @@ export async function POST(request: NextRequest) {
   try {
     const user = await requireAuth();
     const tierLimits = getTierLimits(user.tier);
+    const useMockStore = isMockUserStoreEnabled();
+    const userDb = useMockStore ? null : getUserDb();
+    const limitMode = await resolveLimitMode({ db: userDb });
+    const withLimitPolicy = (wouldBlock: boolean) =>
+      toLimitPolicyMetadata(limitMode, wouldBlock);
 
     const body = await request.json();
     const parseResult = ExportSchema.safeParse(body);
 
     if (!parseResult.success) {
       return Response.json(
-        { error: "Invalid request", details: parseResult.error.flatten() },
-        { status: 400, headers: baseHeaders }
+        {
+          error: "Invalid request",
+          details: parseResult.error.flatten(),
+          limitPolicy: withLimitPolicy(false),
+        },
+        {
+          status: 400,
+          headers: {
+            ...baseHeaders,
+            ...getLimitPolicyHeaders(withLimitPolicy(false)),
+          },
+        }
       );
     }
 
     const { format, category, queryParams = {}, cursor } = parseResult.data;
-    const useMockStore = isMockUserStoreEnabled();
 
     if (format === "csv") {
       const hasLimit = Object.prototype.hasOwnProperty.call(queryParams, "limit");
@@ -295,8 +327,15 @@ export async function POST(request: NextRequest) {
           {
             error: "csv_row_limit_exceeded",
             message: `CSV exports support 1-${tierLimits.CSV_MAX_ROWS} rows. Use format=ndjson for larger exports.`,
+            limitPolicy: withLimitPolicy(false),
           },
-          { status: 400, headers: baseHeaders }
+          {
+            status: 400,
+            headers: {
+              ...baseHeaders,
+              ...getLimitPolicyHeaders(withLimitPolicy(false)),
+            },
+          }
         );
       }
     }
@@ -312,8 +351,15 @@ export async function POST(request: NextRequest) {
             error: "invalid_filters",
             message: "Invalid filters",
             details: result.error.flatten(),
+            limitPolicy: withLimitPolicy(false),
           },
-          { status: 400, headers: baseHeaders }
+          {
+            status: 400,
+            headers: {
+              ...baseHeaders,
+              ...getLimitPolicyHeaders(withLimitPolicy(false)),
+            },
+          }
         );
       }
       filters = pickExportableFilters("exoplanets", queryParams, result.data as Record<string, unknown>);
@@ -326,8 +372,15 @@ export async function POST(request: NextRequest) {
             error: "invalid_filters",
             message: "Invalid filters",
             details: result.error.flatten(),
+            limitPolicy: withLimitPolicy(false),
           },
-          { status: 400, headers: baseHeaders }
+          {
+            status: 400,
+            headers: {
+              ...baseHeaders,
+              ...getLimitPolicyHeaders(withLimitPolicy(false)),
+            },
+          }
         );
       }
       filters = pickExportableFilters("stars", queryParams, result.data as Record<string, unknown>);
@@ -340,8 +393,15 @@ export async function POST(request: NextRequest) {
             error: "invalid_filters",
             message: "Invalid filters",
             details: result.error.flatten(),
+            limitPolicy: withLimitPolicy(false),
           },
-          { status: 400, headers: baseHeaders }
+          {
+            status: 400,
+            headers: {
+              ...baseHeaders,
+              ...getLimitPolicyHeaders(withLimitPolicy(false)),
+            },
+          }
         );
       }
       filters = pickExportableFilters("small-bodies", queryParams, result.data as Record<string, unknown>);
@@ -361,8 +421,18 @@ export async function POST(request: NextRequest) {
 
     if ((category === "saved-objects" || category === "small-bodies") && cursor) {
       return Response.json(
-        { error: "resume_not_supported", message: `Resume not supported for ${category}.` },
-        { status: 400, headers: baseHeaders }
+        {
+          error: "resume_not_supported",
+          message: `Resume not supported for ${category}.`,
+          limitPolicy: withLimitPolicy(false),
+        },
+        {
+          status: 400,
+          headers: {
+            ...baseHeaders,
+            ...getLimitPolicyHeaders(withLimitPolicy(false)),
+          },
+        }
       );
     }
 
@@ -373,26 +443,66 @@ export async function POST(request: NextRequest) {
       resumeCursor = decodeExportCursor(cursor);
       if (!resumeCursor) {
         return Response.json(
-          { error: "invalid_cursor_format", message: "Invalid cursor format." },
-          { status: 400, headers: baseHeaders }
+          {
+            error: "invalid_cursor_format",
+            message: "Invalid cursor format.",
+            limitPolicy: withLimitPolicy(false),
+          },
+          {
+            status: 400,
+            headers: {
+              ...baseHeaders,
+              ...getLimitPolicyHeaders(withLimitPolicy(false)),
+            },
+          }
         );
       }
       if (resumeCursor.expiresAt <= Date.now()) {
         return Response.json(
-          { error: "cursor_expired", message: "Cursor expired, start a new export." },
-          { status: 400, headers: baseHeaders }
+          {
+            error: "cursor_expired",
+            message: "Cursor expired, start a new export.",
+            limitPolicy: withLimitPolicy(false),
+          },
+          {
+            status: 400,
+            headers: {
+              ...baseHeaders,
+              ...getLimitPolicyHeaders(withLimitPolicy(false)),
+            },
+          }
         );
       }
       if (resumeCursor.category !== category) {
         return Response.json(
-          { error: "cursor_category_mismatch", message: "Cursor category mismatch." },
-          { status: 400, headers: baseHeaders }
+          {
+            error: "cursor_category_mismatch",
+            message: "Cursor category mismatch.",
+            limitPolicy: withLimitPolicy(false),
+          },
+          {
+            status: 400,
+            headers: {
+              ...baseHeaders,
+              ...getLimitPolicyHeaders(withLimitPolicy(false)),
+            },
+          }
         );
       }
       if (resumeCursor.filterHash !== filterHash) {
         return Response.json(
-          { error: "cursor_filter_mismatch", message: "Cursor filters do not match request." },
-          { status: 400, headers: baseHeaders }
+          {
+            error: "cursor_filter_mismatch",
+            message: "Cursor filters do not match request.",
+            limitPolicy: withLimitPolicy(false),
+          },
+          {
+            status: 400,
+            headers: {
+              ...baseHeaders,
+              ...getLimitPolicyHeaders(withLimitPolicy(false)),
+            },
+          }
         );
       }
     }
@@ -403,7 +513,8 @@ export async function POST(request: NextRequest) {
       : requestedMaxRows;
     const estimatedRows = maxRows;
 
-    let rateLimitHeaders: Record<string, string>;
+    let rateLimitHeaders: Record<string, string> = {};
+    let wouldBlock = false;
     try {
       const limitResult = await enforceExportLimits({
         userId: user.userId,
@@ -422,45 +533,72 @@ export async function POST(request: NextRequest) {
       const message = error instanceof Error ? error.message : "UNKNOWN";
       if (message === "LIMIT_BACKEND_UNAVAILABLE") {
         return Response.json(
-          { error: "service_unavailable", message: "Rate limiting unavailable.", retryAfter: 60 },
+          {
+            error: "service_unavailable",
+            message: "Rate limiting unavailable.",
+            retryAfter: 60,
+            limitPolicy: withLimitPolicy(false),
+          },
           {
             status: 503,
             headers: {
               ...baseHeaders,
               "Retry-After": "60",
+              ...getLimitPolicyHeaders(withLimitPolicy(false)),
+            },
+          }
+        );
+      }
+      wouldBlock = true;
+      void recordLimitHitWithDedup({
+        db: userDb,
+        userId: user.userId,
+        feature: "exports",
+      });
+
+      if (limitMode.effectiveMode === "enforce") {
+        return Response.json(
+          {
+            error: "rate_limit_exceeded",
+            retryAfter: WINDOW_SECONDS,
+            limitPolicy: withLimitPolicy(true),
+          },
+          {
+            status: 429,
+            headers: {
+              ...baseHeaders,
+              "Retry-After": WINDOW_SECONDS.toString(),
+              ...getExportRateHeaders({
+                requestLimit: tierLimits.EXPORT_REQUESTS_PER_HOUR,
+                requestRemaining: 0,
+                rowLimit: tierLimits.EXPORT_ROWS_PER_HOUR,
+                rowRemaining: 0,
+              }),
+              ...getLimitPolicyHeaders(withLimitPolicy(true)),
             },
           }
         );
       }
 
-      return Response.json(
-        { error: "rate_limit_exceeded", retryAfter: WINDOW_SECONDS },
-        {
-          status: 429,
-          headers: {
-            ...baseHeaders,
-            "Retry-After": WINDOW_SECONDS.toString(),
-            ...getExportRateHeaders({
-              requestLimit: tierLimits.EXPORT_REQUESTS_PER_HOUR,
-              requestRemaining: 0,
-              rowLimit: tierLimits.EXPORT_ROWS_PER_HOUR,
-              rowRemaining: 0,
-            }),
-          },
-        }
-      );
+      rateLimitHeaders = getExportRateHeaders({
+        requestLimit: tierLimits.EXPORT_REQUESTS_PER_HOUR,
+        requestRemaining: 0,
+        rowLimit: tierLimits.EXPORT_ROWS_PER_HOUR,
+        rowRemaining: 0,
+      });
     }
 
     const filename = generateExportFilename(category, format);
     const headers = {
       ...baseHeaders,
       ...rateLimitHeaders,
+      ...getLimitPolicyHeaders(withLimitPolicy(wouldBlock)),
       "Content-Type": format === "csv" ? "text/csv" : "application/x-ndjson",
       "Content-Disposition": `attachment; filename="${filename}"`,
       "Cache-Control": "no-store",
     };
 
-    const db = getUserDb();
+    const db = userDb;
     const startedAt = Date.now();
     let exportId: number | null = null;
 

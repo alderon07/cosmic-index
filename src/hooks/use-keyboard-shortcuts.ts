@@ -21,6 +21,13 @@ function dispatchKeyboardEvent(event: KeyboardEvent) {
   }
 }
 
+function isAnyDialogOpen(): boolean {
+  if (typeof document === "undefined") return false;
+  return Boolean(
+    document.querySelector('[data-slot="dialog-content"][data-state="open"]')
+  );
+}
+
 function ensureGlobalKeyboardListener() {
   if (isGlobalListenerAttached || typeof document === "undefined") {
     return;
@@ -123,6 +130,12 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions = {}) 
       // Escape always works - blur inputs or close dialogs
       if (key === "Escape") {
         blurActiveElement();
+        clearGPrefix();
+        return;
+      }
+
+      // Keep modal interactions isolated from global/page shortcuts.
+      if (isAnyDialogOpen()) {
         clearGPrefix();
         return;
       }

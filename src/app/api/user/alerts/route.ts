@@ -2,8 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { requirePro, authErrorResponse } from "@/lib/auth";
 import { requireUserDb } from "@/lib/user-db";
 import { CreateAlertSchema, Alert } from "@/lib/types";
-import { isMockUserStoreEnabled } from "@/lib/runtime-mode";
+import { getProSurfacesEnabled, isMockUserStoreEnabled } from "@/lib/runtime-mode";
 import { createAlert, listAlerts } from "@/lib/mock-user-store";
+
+function getFeatureDisabledResponse() {
+  return NextResponse.json(
+    { error: "feature_disabled", feature: "pro_surfaces" },
+    { status: 403 }
+  );
+}
 
 /**
  * GET /api/user/alerts
@@ -11,6 +18,10 @@ import { createAlert, listAlerts } from "@/lib/mock-user-store";
  * List all alerts for the authenticated Pro user.
  */
 export async function GET() {
+  if (!getProSurfacesEnabled()) {
+    return getFeatureDisabledResponse();
+  }
+
   try {
     const user = await requirePro();
 
@@ -52,6 +63,10 @@ export async function GET() {
  * Create a new alert. Pro feature only.
  */
 export async function POST(request: NextRequest) {
+  if (!getProSurfacesEnabled()) {
+    return getFeatureDisabledResponse();
+  }
+
   try {
     const user = await requirePro();
 

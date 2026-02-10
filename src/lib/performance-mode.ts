@@ -1,7 +1,5 @@
 "use client";
 
-import { trackEvent } from "@/lib/analytics-events";
-
 type PerfComponent = "compare-tray" | "object-visualizer" | "event-timeline";
 
 interface PerfComponentState {
@@ -68,7 +66,7 @@ export function recordPerformanceSample(params: {
   durationMs: number;
   budgetMs: number;
 }): boolean {
-  const { component, metric, durationMs, budgetMs } = params;
+  const { component, durationMs, budgetMs } = params;
   const state = readState();
   const componentState: PerfComponentState = state.components[component] ?? {
     samples: [],
@@ -91,12 +89,6 @@ export function recordPerformanceSample(params: {
     const allOverBudget = windows.every((windowSamples) => p95(windowSamples) > budgetMs);
     if (allOverBudget) {
       nextComponentState.degradeEnabled = true;
-      trackEvent("perf_degrade_mode_enabled", {
-        component,
-        metric,
-        p95Ms: p95(windows[0]),
-        budgetMs,
-      });
     }
   }
 

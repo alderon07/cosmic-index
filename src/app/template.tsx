@@ -11,8 +11,8 @@ export default function AppTemplate({
   children: React.ReactNode;
 }) {
   return (
-    <div className="relative flex-1 overflow-x-hidden">
-      <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+    <div className="relative z-0 flex-1 overflow-x-hidden">
+      <div aria-hidden className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
         <div className="absolute inset-0 opacity-20 [background-image:radial-gradient(circle_at_1px_1px,rgba(255,200,135,0.2)_1px,transparent_0)] [background-size:30px_30px]" />
         <div className="absolute -left-24 top-10 h-72 w-72 rounded-full bg-orange-500/10 blur-3xl" />
         <div className="absolute -right-24 bottom-8 h-72 w-72 rounded-full bg-amber-400/10 blur-3xl" />

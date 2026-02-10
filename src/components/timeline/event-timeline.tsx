@@ -6,7 +6,6 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { TimelineLegend } from "@/components/timeline/timeline-legend";
 import { TimelineBucket } from "@/lib/timeline-buckets";
 import { ObjectTheme, THEMES } from "@/lib/theme";
-import { trackEvent } from "@/lib/analytics-events";
 import { isDegradeModeEnabled, recordPerformanceSample } from "@/lib/performance-mode";
 import { Activity } from "lucide-react";
 
@@ -29,6 +28,7 @@ export function EventTimeline({
   actionable = false,
   onBucketClick,
 }: EventTimelineProps) {
+  void pageType;
   const themeConfig = THEMES[theme];
   const maxCount = Math.max(1, ...buckets.map((bucket) => bucket.count));
   const totalCount = buckets.reduce((sum, bucket) => sum + bucket.count, 0);
@@ -68,22 +68,7 @@ export function EventTimeline({
                     <TooltipTrigger asChild>
                       <button
                         type="button"
-                        onMouseEnter={() => {
-                          trackEvent("timeline_bucket_hover", {
-                            pageType,
-                            bucketStart: bucket.startIso,
-                            bucketEnd: bucket.endIso,
-                            count: bucket.count,
-                          });
-                        }}
                         onClick={() => {
-                          trackEvent("timeline_bucket_click", {
-                            pageType,
-                            bucketStart: bucket.startIso,
-                            bucketEnd: bucket.endIso,
-                            count: bucket.count,
-                            actionable: actionable && bucket.count > 0,
-                          });
                           if (disabled || !onBucketClick) return;
                           onBucketClick(bucket);
                         }}

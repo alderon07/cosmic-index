@@ -209,6 +209,10 @@ The easiest way to deploy is using [Vercel](https://vercel.com):
 
 The project is optimized for Vercel's platform and works out of the box.
 
+## 📘 Rollout Docs
+
+- Pro rollout runbook (feature flags, waitlist gating, internal status): `docs/pro-rollout-runbook.md`
+
 ## 🙏 Acknowledgments
 
 - [NASA Exoplanet Archive](https://exoplanetarchive.ipac.caltech.edu/) for exoplanet data

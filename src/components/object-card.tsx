@@ -37,7 +37,6 @@ import {
 } from "@/components/ui/tooltip";
 import { TOOLTIP_CONTENT } from "@/components/info-tooltip";
 import { useCompare } from "@/components/compare/use-compare";
-import { trackEvent } from "@/lib/analytics-events";
 import { SaveButton } from "@/components/save-button";
 import { createCompareItem, MAX_COMPARE_ITEMS } from "@/lib/compare-facts";
 import { cn } from "@/lib/utils";
@@ -144,18 +143,9 @@ export function ObjectCard({ object, onModalOpen, variant = "default" }: ObjectC
       : `Add to compare (max ${MAX_COMPARE_ITEMS})`
     : "Compare is currently unavailable for this object type.";
 
-  const trackCardViewed = (view: "grid" | "list") => {
-    trackEvent("object_card_viewed", {
-      objectId: object.id,
-      objectType: object.type,
-      view,
-    });
-  };
-
   // Store current list page URL when clicking to navigate to detail page
   const storeListUrl = () => {
     if (typeof window !== "undefined") {
-      trackCardViewed(variant === "compact" ? "list" : "grid");
       const currentUrl = window.location.pathname + window.location.search;
       const storageKey = isExoplanet(object)
         ? EXOPLANETS_LIST_URL_KEY

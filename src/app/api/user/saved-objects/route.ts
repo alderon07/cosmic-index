@@ -12,6 +12,8 @@ import {
   saveObject,
 } from "@/lib/mock-user-store";
 import { getTierLimits, getUpgradePayload } from "@/lib/tier-limits";
+import { resolveLimitMode, toLimitPolicyMetadata } from "@/lib/feature-policy";
+import { recordLimitHitWithDedup } from "@/lib/waitlist";
 
 const ROLLING_DAY_SECONDS = 24 * 60 * 60;
 const ROLLING_DAY_MS = ROLLING_DAY_SECONDS * 1000;
@@ -36,8 +38,11 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
     const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "24", 10)));
+    const useMockStore = isMockUserStoreEnabled();
+    const db = useMockStore ? null : requireUserDb();
+    const limitMode = await resolveLimitMode({ db });
 
-    if (isMockUserStoreEnabled()) {
+    if (useMockStore) {
       const result = listSavedObjects(user.userId, page, limit);
       const total = countSavedObjects(user.userId);
       const sinceIso = new Date(Date.now() - ROLLING_DAY_MS).toISOString();
@@ -61,19 +66,20 @@ export async function GET(request: NextRequest) {
             remaining: Math.max(0, limits.SAVES_PER_DAY - dailyUsed),
           },
         },
+        limitPolicy: toLimitPolicyMetadata(limitMode, false),
       });
     }
 
-    const db = requireUserDb();
+    const ensuredDb = db ?? requireUserDb();
     const offset = (page - 1) * limit;
 
-    const countResult = await db.execute({
+    const countResult = await ensuredDb.execute({
       sql: "SELECT COUNT(*) as total FROM saved_objects WHERE user_id = ?",
       args: [user.userId],
     });
     const total = Number(countResult.rows[0]?.total ?? 0);
 
-    const dailyResult = await db.execute({
+    const dailyResult = await ensuredDb.execute({
       sql: `
         SELECT COUNT(*) as total
         FROM saved_objects
@@ -83,7 +89,7 @@ export async function GET(request: NextRequest) {
     });
     const dailyUsed = Number(dailyResult.rows[0]?.total ?? 0);
 
-    const result = await db.execute({
+    const result = await ensuredDb.execute({
       sql: `
         SELECT id, canonical_id, display_name, notes, event_payload, created_at
         FROM saved_objects
@@ -121,6 +127,7 @@ export async function GET(request: NextRequest) {
           remaining: Math.max(0, limits.SAVES_PER_DAY - dailyUsed),
         },
       },
+      limitPolicy: toLimitPolicyMetadata(limitMode, false),
     });
   } catch (error) {
     return authErrorResponse(error);
@@ -137,6 +144,9 @@ export async function POST(request: NextRequest) {
   try {
     const user = await requireAuth();
     const limits = getTierLimits(user.tier);
+    const useMockStore = isMockUserStoreEnabled();
+    const db = useMockStore ? null : requireUserDb();
+    const limitMode = await resolveLimitMode({ db });
 
     const body = await request.json();
     const parseResult = SaveObjectInputSchema.safeParse(body);
@@ -155,7 +165,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid canonical ID format" }, { status: 400 });
     }
 
-    if (isMockUserStoreEnabled()) {
+    let wouldBlock = false;
+
+    if (useMockStore) {
       const existing = getSavedObjectByCanonicalId(user.userId, canonicalId);
       let dailyUsed = countSavedObjectsSince(
         user.userId,
@@ -165,34 +177,46 @@ export async function POST(request: NextRequest) {
       if (!existing) {
         const total = countSavedObjects(user.userId);
         if (total >= limits.MAX_SAVED_OBJECTS) {
-          return NextResponse.json(
-            {
-              error: "saved_objects_limit_reached",
-              message: `You've reached your limit of ${limits.MAX_SAVED_OBJECTS} saved objects.`,
-              current: total,
-              limit: limits.MAX_SAVED_OBJECTS,
-              upgrade: getUpgradePayload("saved_objects"),
-            },
-            { status: 403 }
-          );
+          wouldBlock = true;
+          void recordLimitHitWithDedup({ db, userId: user.userId, feature: "saved_objects" });
+
+          if (limitMode.effectiveMode === "enforce") {
+            return NextResponse.json(
+              {
+                error: "saved_objects_limit_reached",
+                message: `You've reached your limit of ${limits.MAX_SAVED_OBJECTS} saved objects.`,
+                current: total,
+                limit: limits.MAX_SAVED_OBJECTS,
+                upgrade: getUpgradePayload("saved_objects"),
+                limitPolicy: toLimitPolicyMetadata(limitMode, true),
+              },
+              { status: 403 }
+            );
+          }
         }
 
         if (dailyUsed >= limits.SAVES_PER_DAY) {
-          return NextResponse.json(
-            {
-              error: "daily_save_limit_reached",
-              message: `You've reached your rolling 24-hour limit of ${limits.SAVES_PER_DAY} saves.`,
-              current: dailyUsed,
-              limit: limits.SAVES_PER_DAY,
-            },
-            {
-              status: 429,
-              headers: {
-                "Retry-After": "3600",
-                ...getSaveLimitHeaders(limits.SAVES_PER_DAY, dailyUsed),
+          wouldBlock = true;
+          void recordLimitHitWithDedup({ db, userId: user.userId, feature: "saved_objects" });
+
+          if (limitMode.effectiveMode === "enforce") {
+            return NextResponse.json(
+              {
+                error: "daily_save_limit_reached",
+                message: `You've reached your rolling 24-hour limit of ${limits.SAVES_PER_DAY} saves.`,
+                current: dailyUsed,
+                limit: limits.SAVES_PER_DAY,
+                limitPolicy: toLimitPolicyMetadata(limitMode, true),
               },
-            }
-          );
+              {
+                status: 429,
+                headers: {
+                  "Retry-After": "3600",
+                  ...getSaveLimitHeaders(limits.SAVES_PER_DAY, dailyUsed),
+                },
+              }
+            );
+          }
         }
       }
 
@@ -208,15 +232,21 @@ export async function POST(request: NextRequest) {
         dailyUsed += 1;
       }
 
-      return NextResponse.json(savedObject, {
-        status: 201,
-        headers: getSaveLimitHeaders(limits.SAVES_PER_DAY, dailyUsed),
-      });
+      return NextResponse.json(
+        {
+          ...savedObject,
+          limitPolicy: toLimitPolicyMetadata(limitMode, wouldBlock),
+        },
+        {
+          status: 201,
+          headers: getSaveLimitHeaders(limits.SAVES_PER_DAY, dailyUsed),
+        }
+      );
     }
 
-    const db = requireUserDb();
+    const ensuredDb = db ?? requireUserDb();
 
-    const existingResult = await db.execute({
+    const existingResult = await ensuredDb.execute({
       sql: `
         SELECT id
         FROM saved_objects
@@ -227,7 +257,7 @@ export async function POST(request: NextRequest) {
     });
     const exists = existingResult.rows.length > 0;
 
-    const dailyResult = await db.execute({
+    const dailyResult = await ensuredDb.execute({
       sql: `
         SELECT COUNT(*) as total
         FROM saved_objects
@@ -238,58 +268,70 @@ export async function POST(request: NextRequest) {
     const dailyUsed = Number(dailyResult.rows[0]?.total ?? 0);
 
     if (!exists) {
-      const countResult = await db.execute({
+      const countResult = await ensuredDb.execute({
         sql: "SELECT COUNT(*) as total FROM saved_objects WHERE user_id = ?",
         args: [user.userId],
       });
       const total = Number(countResult.rows[0]?.total ?? 0);
 
       if (total >= limits.MAX_SAVED_OBJECTS) {
-        return NextResponse.json(
-          {
-            error: "saved_objects_limit_reached",
-            message: `You've reached your limit of ${limits.MAX_SAVED_OBJECTS} saved objects.`,
-            current: total,
-            limit: limits.MAX_SAVED_OBJECTS,
-            upgrade: getUpgradePayload("saved_objects"),
-          },
-          { status: 403 }
-        );
+        wouldBlock = true;
+        void recordLimitHitWithDedup({ db, userId: user.userId, feature: "saved_objects" });
+
+        if (limitMode.effectiveMode === "enforce") {
+          return NextResponse.json(
+            {
+              error: "saved_objects_limit_reached",
+              message: `You've reached your limit of ${limits.MAX_SAVED_OBJECTS} saved objects.`,
+              current: total,
+              limit: limits.MAX_SAVED_OBJECTS,
+              upgrade: getUpgradePayload("saved_objects"),
+              limitPolicy: toLimitPolicyMetadata(limitMode, true),
+            },
+            { status: 403 }
+          );
+        }
       }
 
       if (dailyUsed >= limits.SAVES_PER_DAY) {
-        const retryResult = await db.execute({
-          sql: `
-            SELECT MIN(strftime('%s', created_at)) as earliest_epoch
-            FROM saved_objects
-            WHERE user_id = ? AND created_at >= datetime('now', '-1 day')
-          `,
-          args: [user.userId],
-        });
+        wouldBlock = true;
+        void recordLimitHitWithDedup({ db, userId: user.userId, feature: "saved_objects" });
 
-        const earliestEpoch = Number(retryResult.rows[0]?.earliest_epoch ?? 0);
-        const nowEpoch = Math.floor(Date.now() / 1000);
-        const retryAfter = earliestEpoch > 0 ? Math.max(1, earliestEpoch + ROLLING_DAY_SECONDS - nowEpoch) : 3600;
+        if (limitMode.effectiveMode === "enforce") {
+          const retryResult = await ensuredDb.execute({
+            sql: `
+              SELECT MIN(strftime('%s', created_at)) as earliest_epoch
+              FROM saved_objects
+              WHERE user_id = ? AND created_at >= datetime('now', '-1 day')
+            `,
+            args: [user.userId],
+          });
 
-        return NextResponse.json(
-          {
-            error: "daily_save_limit_reached",
-            message: `You've reached your rolling 24-hour limit of ${limits.SAVES_PER_DAY} saves.`,
-            current: dailyUsed,
-            limit: limits.SAVES_PER_DAY,
-          },
-          {
-            status: 429,
-            headers: {
-              "Retry-After": retryAfter.toString(),
-              ...getSaveLimitHeaders(limits.SAVES_PER_DAY, dailyUsed),
+          const earliestEpoch = Number(retryResult.rows[0]?.earliest_epoch ?? 0);
+          const nowEpoch = Math.floor(Date.now() / 1000);
+          const retryAfter = earliestEpoch > 0 ? Math.max(1, earliestEpoch + ROLLING_DAY_SECONDS - nowEpoch) : 3600;
+
+          return NextResponse.json(
+            {
+              error: "daily_save_limit_reached",
+              message: `You've reached your rolling 24-hour limit of ${limits.SAVES_PER_DAY} saves.`,
+              current: dailyUsed,
+              limit: limits.SAVES_PER_DAY,
+              limitPolicy: toLimitPolicyMetadata(limitMode, true),
             },
-          }
-        );
+            {
+              status: 429,
+              headers: {
+                "Retry-After": retryAfter.toString(),
+                ...getSaveLimitHeaders(limits.SAVES_PER_DAY, dailyUsed),
+              },
+            }
+          );
+        }
       }
     }
 
-    await db.execute({
+    await ensuredDb.execute({
       sql: `
         INSERT INTO saved_objects (user_id, canonical_id, display_name, notes, event_payload)
         VALUES (?, ?, ?, ?, ?)
@@ -306,7 +348,7 @@ export async function POST(request: NextRequest) {
       ],
     });
 
-    const result = await db.execute({
+    const result = await ensuredDb.execute({
       sql: `
         SELECT id, canonical_id, display_name, notes, event_payload, created_at
         FROM saved_objects
@@ -330,10 +372,16 @@ export async function POST(request: NextRequest) {
     };
 
     const usedForHeaders = exists ? dailyUsed : dailyUsed + 1;
-    return NextResponse.json(savedObject, {
-      status: 201,
-      headers: getSaveLimitHeaders(limits.SAVES_PER_DAY, usedForHeaders),
-    });
+    return NextResponse.json(
+      {
+        ...savedObject,
+        limitPolicy: toLimitPolicyMetadata(limitMode, wouldBlock),
+      },
+      {
+        status: 201,
+        headers: getSaveLimitHeaders(limits.SAVES_PER_DAY, usedForHeaders),
+      }
+    );
   } catch (error) {
     return authErrorResponse(error);
   }

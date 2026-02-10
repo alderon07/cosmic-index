@@ -30,7 +30,10 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     const collectionId = parseInt(id, 10);
     if (isNaN(collectionId)) {
-      return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
+      return NextResponse.json(
+        { error: "invalid_id", message: "Invalid ID." },
+        { status: 400 }
+      );
     }
 
     const body = await request.json();
@@ -55,19 +58,19 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
       if (result === "COLLECTION_NOT_FOUND") {
         return NextResponse.json(
-          { error: "Collection not found" },
+          { error: "resource_not_found", message: "Resource not found." },
           { status: 404 }
         );
       }
       if (result === "OBJECT_NOT_FOUND") {
         return NextResponse.json(
-          { error: "Saved object not found" },
+          { error: "resource_not_found", message: "Resource not found." },
           { status: 404 }
         );
       }
       if (result === "DUPLICATE") {
         return NextResponse.json(
-          { error: "Item already in collection" },
+          { error: "item_already_in_collection", message: "Item already in collection." },
           { status: 409 }
         );
       }
@@ -85,7 +88,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     if (collectionCheck.rows.length === 0) {
       return NextResponse.json(
-        { error: "Collection not found" },
+        { error: "resource_not_found", message: "Resource not found." },
         { status: 404 }
       );
     }
@@ -98,7 +101,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     if (objectCheck.rows.length === 0) {
       return NextResponse.json(
-        { error: "Saved object not found" },
+        { error: "resource_not_found", message: "Resource not found." },
         { status: 404 }
       );
     }
@@ -133,7 +136,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     } catch (error) {
       if (String(error).includes("UNIQUE constraint")) {
         return NextResponse.json(
-          { error: "Item already in collection" },
+          { error: "item_already_in_collection", message: "Item already in collection." },
           { status: 409 }
         );
       }
@@ -156,7 +159,10 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
 
     const collectionId = parseInt(id, 10);
     if (isNaN(collectionId)) {
-      return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
+      return NextResponse.json(
+        { error: "invalid_id", message: "Invalid ID." },
+        { status: 400 }
+      );
     }
 
     const body = await request.json();
@@ -179,7 +185,10 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       });
 
       if (!removed) {
-        return NextResponse.json({ error: "Item not in collection" }, { status: 404 });
+        return NextResponse.json(
+          { error: "item_not_in_collection", message: "Resource not found." },
+          { status: 404 }
+        );
       }
 
       return NextResponse.json({ success: true });
@@ -199,7 +208,10 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     });
 
     if (result.rows.length === 0) {
-      return NextResponse.json({ error: "Item not in collection" }, { status: 404 });
+      return NextResponse.json(
+        { error: "item_not_in_collection", message: "Resource not found." },
+        { status: 404 }
+      );
     }
 
     // Update collection's updated_at

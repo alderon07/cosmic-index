@@ -9,8 +9,10 @@ import {
   useState,
 } from "react";
 import {
+  CompareBlockedReason,
   CompareDomain,
   CompareItem,
+  CompareSource,
   CompareSnapshotLevel,
   CompareStateV1,
   MAX_COMPARE_ITEMS,
@@ -28,7 +30,6 @@ import {
   writeCompareStorageWithRevision,
 } from "@/lib/compare-storage";
 import { AnyCosmicObject } from "@/lib/types";
-import { CompareBlockedReason, CompareSource, trackEvent } from "@/lib/analytics-events";
 
 interface CompareContextValue {
   state: CompareStateV1;
@@ -95,14 +96,6 @@ export function CompareProvider({ children }: CompareProviderProps) {
   const enabledDomainSet = useMemo(() => new Set(capabilities.enabledDomains), [capabilities.enabledDomains]);
 
   useEffect(() => {
-    if (capabilities.parseFailed) {
-      trackEvent("compare_capability_parse_failed", {
-        rawValue: process.env.COMPARE_DOMAINS ?? "",
-      });
-    }
-  }, [capabilities.parseFailed]);
-
-  useEffect(() => {
     const result = readCompareStorage({ allowedDomains: capabilities.enabledDomains });
     if (result.ok) {
       if (result.repaired) {
@@ -116,14 +109,11 @@ export function CompareProvider({ children }: CompareProviderProps) {
     clearCompareStorage();
     setState(emptyCompareState());
 
-    trackEvent("compare_storage_parse_failed", { reason: result.reason });
-
     if (typeof window !== "undefined") {
       const lastReason = window.sessionStorage.getItem(RESET_REASON_KEY);
       if (lastReason !== result.reason) {
         setStatusMessage(getResetStatusMessage(result.reason));
         window.sessionStorage.setItem(RESET_REASON_KEY, result.reason);
-        trackEvent("compare_storage_reset_shown", { reason: result.reason });
       }
     }
   }, [capabilities.enabledDomains]);
@@ -161,12 +151,6 @@ export function CompareProvider({ children }: CompareProviderProps) {
           );
           if (writeResult.ok) {
             finalState = writeResult.state;
-            if (retries > 0) {
-              trackEvent("compare_conflict_recovered", {
-                domain: writeResult.state.domain ?? "exoplanets",
-                retries,
-              });
-            }
             return writeResult.state;
           }
 
@@ -187,32 +171,12 @@ export function CompareProvider({ children }: CompareProviderProps) {
       const attemptedDomain = compareDomainFromObject(object);
       if (!attemptedDomain) {
         setStatusMessage("This object cannot be compared.");
-        trackEvent("compare_action_result", {
-          action: "add",
-          result: "blocked",
-          reason: "unsupported",
-          mode: state.domain ?? "none",
-          source,
-        });
         return;
       }
 
       if (!enabledDomainSet.has(attemptedDomain)) {
         setPendingAdd(null);
         setStatusMessage(`${getCompareDomainLabel(attemptedDomain)} compare is currently disabled.`);
-        trackEvent("compare_blocked_domain", {
-          attemptedDomain,
-          activeDomain: state.domain ?? "none",
-          blockedReason: "mode-disabled",
-          source,
-        });
-        trackEvent("compare_action_result", {
-          action: "add",
-          result: "blocked",
-          reason: "mode-disabled",
-          mode: state.domain ?? "none",
-          source,
-        });
         return;
       }
 
@@ -220,25 +184,10 @@ export function CompareProvider({ children }: CompareProviderProps) {
       if (!item) {
         setPendingAdd(null);
         setStatusMessage("This object is missing required fields for compare.");
-        trackEvent("compare_blocked_domain", {
-          attemptedDomain,
-          activeDomain: state.domain ?? "none",
-          blockedReason: "unsupported",
-          source,
-        });
-        trackEvent("compare_action_result", {
-          action: "add",
-          result: "blocked",
-          reason: "unsupported",
-          mode: state.domain ?? "none",
-          source,
-        });
         return;
       }
 
-      let addRevision = state.revision;
       let addPosition = -1;
-      let openedTray = false;
       let activeDomain: CompareDomain | "none" = state.domain ?? "none";
       let blockedReason: CompareBlockedReason | null = null;
 
@@ -268,37 +217,13 @@ export function CompareProvider({ children }: CompareProviderProps) {
 
         const nextItems = [...base.items, item];
         const nextState = nextRevisionState(base, nextItems);
-        addRevision = nextState.revision;
         addPosition = nextItems.length;
-        openedTray = base.items.length === 0;
         return nextState;
       });
 
       if (addPosition !== -1) {
         setPendingAdd(null);
         setStatusMessage(null);
-
-        trackEvent("compare_add", {
-          objectId: item.id,
-          domain: item.domain,
-          source,
-          position: addPosition,
-          revision: addRevision,
-        });
-        trackEvent("compare_action_result", {
-          action: "add",
-          result: "ok",
-          mode: item.domain,
-          source,
-        });
-
-        if (openedTray) {
-          trackEvent("compare_tray_open", {
-            domain: item.domain,
-            source,
-            itemCount: 1,
-          });
-        }
         return;
       }
 
@@ -307,45 +232,14 @@ export function CompareProvider({ children }: CompareProviderProps) {
         setStatusMessage(
           `Compare currently contains ${getCompareDomainLabel(activeDomain === "none" ? null : activeDomain)}. Clear compare to add ${getCompareDomainLabel(item.domain)}.`
         );
-
-        trackEvent("compare_blocked_domain", {
-          attemptedDomain: item.domain,
-          activeDomain,
-          blockedReason,
-          source,
-        });
-        trackEvent("compare_action_result", {
-          action: "add",
-          result: "blocked",
-          reason: blockedReason,
-          mode: activeDomain,
-          source,
-        });
-      } else if (blockedReason === "limit") {
-        trackEvent("compare_action_result", {
-          action: "add",
-          result: "blocked",
-          reason: "limit",
-          mode: activeDomain,
-          source,
-        });
-      } else if (blockedReason === "unsupported") {
-        trackEvent("compare_action_result", {
-          action: "add",
-          result: "blocked",
-          reason: "unsupported",
-          mode: activeDomain,
-          source,
-        });
       }
     },
-    [commitWithConflictRecovery, enabledDomainSet, state.domain, state.revision]
+    [commitWithConflictRecovery, enabledDomainSet, state.domain]
   );
 
   const removeObject = useCallback(
     (id: string, source: CompareSource) => {
-      let removeRevision = state.revision;
-      let removedDomain: CompareDomain | null = state.domain;
+      void source;
       let removed = false;
       commitWithConflictRecovery((base) => {
         const nextItems = base.items.filter((item) => item.id !== id);
@@ -353,59 +247,35 @@ export function CompareProvider({ children }: CompareProviderProps) {
           return null;
         }
         removed = true;
-        removedDomain = base.domain;
-        const nextState = nextRevisionState(base, nextItems);
-        removeRevision = nextState.revision;
-        return nextState;
+        return nextRevisionState(base, nextItems);
       });
 
       if (removed) {
         setStatusMessage(null);
         setPendingAdd(null);
-        trackEvent("compare_remove", {
-          objectId: id,
-          domain: removedDomain ?? "exoplanets",
-          source,
-          revision: removeRevision,
-        });
-        trackEvent("compare_action_result", {
-          action: "remove",
-          result: "ok",
-          mode: removedDomain ?? "none",
-          source,
-        });
       }
     },
-    [commitWithConflictRecovery, state.domain, state.revision]
+    [commitWithConflictRecovery]
   );
 
   const clear = useCallback(
     (source: CompareSource = "compare-tray") => {
-      const count = state.items.length;
-      const activeDomain = state.domain;
+      void source;
+      let didClear = false;
       commitWithConflictRecovery((base) => {
         if (base.items.length === 0) {
           return null;
         }
+        didClear = true;
         return nextRevisionState(base, []);
       });
 
-      if (count > 0) {
+      if (didClear) {
         setStatusMessage(null);
         setPendingAdd(null);
-        trackEvent("compare_clear", {
-          domain: activeDomain ?? "exoplanets",
-          itemCount: count,
-        });
-        trackEvent("compare_action_result", {
-          action: "clear",
-          result: "ok",
-          mode: activeDomain ?? "none",
-          source,
-        });
       }
     },
-    [commitWithConflictRecovery, state.domain, state.items.length]
+    [commitWithConflictRecovery]
   );
 
   const clearAndRetryPendingAdd = useCallback(() => {
@@ -418,46 +288,13 @@ export function CompareProvider({ children }: CompareProviderProps) {
       return;
     }
 
-    const previousCount = state.items.length;
-    const previousDomain = state.domain;
-    let addRevision = state.revision;
-
     commitWithConflictRecovery((base) => {
-      const nextState = nextRevisionState(base, [replacement]);
-      addRevision = nextState.revision;
-      return nextState;
-    });
-
-    if (previousCount > 0) {
-      trackEvent("compare_clear", {
-        domain: previousDomain ?? replacement.domain,
-        itemCount: previousCount,
-      });
-      trackEvent("compare_action_result", {
-        action: "clear",
-        result: "ok",
-        mode: previousDomain ?? "none",
-        source: "compare-tray",
-      });
-    }
-
-    trackEvent("compare_add", {
-      objectId: replacement.id,
-      domain: replacement.domain,
-      source: pendingAdd.source,
-      position: 1,
-      revision: addRevision,
-    });
-    trackEvent("compare_action_result", {
-      action: "add",
-      result: "ok",
-      mode: replacement.domain,
-      source: pendingAdd.source,
+      return nextRevisionState(base, [replacement]);
     });
 
     setPendingAdd(null);
     setStatusMessage(null);
-  }, [commitWithConflictRecovery, enabledDomainSet, pendingAdd, state.domain, state.items.length, state.revision]);
+  }, [commitWithConflictRecovery, enabledDomainSet, pendingAdd]);
 
   const cancelPendingAdd = useCallback(() => {
     setPendingAdd(null);
@@ -468,19 +305,6 @@ export function CompareProvider({ children }: CompareProviderProps) {
     if (state.items.length === 0 || !state.domain) return;
 
     setIsExpanded(true);
-    trackEvent("compare_dialog_open", {
-      domain: state.domain,
-      source: "compare-tray",
-      itemCount: state.items.length,
-    });
-    trackEvent("compare_open", {
-      domain: state.domain,
-      itemCount: state.items.length,
-    });
-    trackEvent("compare_expand", {
-      domain: state.domain,
-      itemCount: state.items.length,
-    });
   }, [state.domain, state.items.length]);
 
   const closeExpanded = useCallback(() => {

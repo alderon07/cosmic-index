@@ -7,7 +7,6 @@ import { MetricGauge } from "@/components/visualizers/metric-gauge";
 import { DETAIL_CARD_SURFACE_CLASS } from "@/lib/theme";
 import { AnyCosmicObject, isExoplanet, isSmallBody, isStar } from "@/lib/types";
 import { isDegradeModeEnabled, recordPerformanceSample } from "@/lib/performance-mode";
-import { trackEvent } from "@/lib/analytics-events";
 import { Gauge } from "lucide-react";
 
 const VISUALIZER_BUDGET_MS = 80;
@@ -44,10 +43,6 @@ export function ObjectVisualizerPanel({ object }: ObjectVisualizerPanelProps) {
         metric: "render",
         durationMs: duration,
         budgetMs: VISUALIZER_BUDGET_MS,
-      });
-      trackEvent("visualizer_rendered", {
-        objectType: object.type,
-        metricCount: object.keyFacts.length,
       });
     });
   }, [object.id, object.keyFacts.length, object.type]);

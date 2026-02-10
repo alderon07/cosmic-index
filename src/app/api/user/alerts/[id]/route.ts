@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requirePro, authErrorResponse } from "@/lib/auth";
 import { requireUserDb } from "@/lib/user-db";
 import { UpdateAlertSchema, Alert } from "@/lib/types";
-import { isMockUserStoreEnabled } from "@/lib/runtime-mode";
+import { getProSurfacesEnabled, isMockUserStoreEnabled } from "@/lib/runtime-mode";
 import {
   deleteAlert,
   getAlertById,
@@ -13,12 +13,23 @@ interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
+function getFeatureDisabledResponse() {
+  return NextResponse.json(
+    { error: "feature_disabled", feature: "pro_surfaces" },
+    { status: 403 }
+  );
+}
+
 /**
  * GET /api/user/alerts/[id]
  *
  * Get a single alert by ID.
  */
 export async function GET(request: NextRequest, { params }: RouteParams) {
+  if (!getProSurfacesEnabled()) {
+    return getFeatureDisabledResponse();
+  }
+
   try {
     const user = await requirePro();
     const { id } = await params;
@@ -74,6 +85,10 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
  * Update an alert's config, enabled status, or email settings.
  */
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
+  if (!getProSurfacesEnabled()) {
+    return getFeatureDisabledResponse();
+  }
+
   try {
     const user = await requirePro();
     const { id } = await params;
@@ -161,6 +176,10 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
  * Delete an alert. Also removes its triggers via CASCADE.
  */
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
+  if (!getProSurfacesEnabled()) {
+    return getFeatureDisabledResponse();
+  }
+
   try {
     const user = await requirePro();
     const { id } = await params;

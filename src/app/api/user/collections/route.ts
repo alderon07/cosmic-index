@@ -37,7 +37,7 @@ export async function GET() {
         LEFT JOIN collection_items ci ON ci.collection_id = c.id
         WHERE c.user_id = ?
         GROUP BY c.id
-        ORDER BY c.updated_at DESC
+        ORDER BY c.updated_at DESC, c.id DESC
       `,
       args: [user.userId],
     });
@@ -93,7 +93,10 @@ export async function POST(request: NextRequest) {
 
       if (collection === "DUPLICATE") {
         return NextResponse.json(
-          { error: "A collection with this name already exists" },
+          {
+            error: "duplicate_collection_name",
+            message: "A collection with this name already exists",
+          },
           { status: 409 }
         );
       }
@@ -104,6 +107,21 @@ export async function POST(request: NextRequest) {
     const db = requireUserDb();
 
     try {
+      const duplicateResult = await db.execute({
+        sql: "SELECT id FROM collections WHERE user_id = ? AND lower(name) = lower(?) LIMIT 1",
+        args: [user.userId, name],
+      });
+
+      if (duplicateResult.rows.length > 0) {
+        return NextResponse.json(
+          {
+            error: "duplicate_collection_name",
+            message: "A collection with this name already exists",
+          },
+          { status: 409 }
+        );
+      }
+
       const result = await db.execute({
         sql: `
           INSERT INTO collections (user_id, name, description, color, icon)
@@ -144,7 +162,10 @@ export async function POST(request: NextRequest) {
       // Handle unique constraint violation
       if (String(error).includes("UNIQUE constraint")) {
         return NextResponse.json(
-          { error: "A collection with this name already exists" },
+          {
+            error: "duplicate_collection_name",
+            message: "A collection with this name already exists",
+          },
           { status: 409 }
         );
       }
