@@ -49,6 +49,12 @@ export interface ThemeConfig {
   selectItemFocus: string;
   // Link/button hover text (e.g. hover:text-primary)
   hoverText: string;
+  // Card surface treatment for list/grid cards in this domain
+  cardSurface: string;
+  // Shared metric tile treatment for card internals
+  metricSurface: string;
+  // Footer row treatment for card internals
+  footerSurface: string;
 }
 
 export const THEMES: Record<ObjectTheme, ThemeConfig> = {
@@ -75,6 +81,10 @@ export const THEMES: Record<ObjectTheme, ThemeConfig> = {
     selectItemFocus:
       "data-[highlighted]:bg-primary/20 data-[highlighted]:text-primary data-[highlighted]:[&_svg:not([class*='text-'])]:text-primary",
     hoverText: "hover:text-primary",
+    cardSurface:
+      "bg-card/95 border-border/50 [background-image:radial-gradient(circle_at_top_right,rgba(255,185,120,0.08),transparent_58%)]",
+    metricSurface: "rounded-md border border-border/40 bg-black/15 px-2.5 py-2",
+    footerSurface: "border-t border-border/30 pt-3",
   },
   stars: {
     colorName: "uranium-green",
@@ -101,6 +111,10 @@ export const THEMES: Record<ObjectTheme, ThemeConfig> = {
     selectItemFocus:
       "data-[highlighted]:bg-uranium-green/20 data-[highlighted]:text-uranium-green data-[highlighted]:[&_svg:not([class*='text-'])]:text-uranium-green",
     hoverText: "hover:text-uranium-green",
+    cardSurface:
+      "bg-card/95 border-border/50 [background-image:radial-gradient(circle_at_top_right,rgba(181,255,87,0.1),transparent_58%)]",
+    metricSurface: "rounded-md border border-border/40 bg-black/15 px-2.5 py-2",
+    footerSurface: "border-t border-border/30 pt-3",
   },
   "small-bodies": {
     colorName: "secondary",
@@ -125,6 +139,10 @@ export const THEMES: Record<ObjectTheme, ThemeConfig> = {
     selectItemFocus:
       "data-[highlighted]:bg-secondary/20 data-[highlighted]:text-secondary data-[highlighted]:[&_svg:not([class*='text-'])]:text-secondary",
     hoverText: "hover:text-secondary",
+    cardSurface:
+      "bg-card/95 border-border/50 [background-image:radial-gradient(circle_at_top_right,rgba(255,182,39,0.1),transparent_58%)]",
+    metricSurface: "rounded-md border border-border/40 bg-black/15 px-2.5 py-2",
+    footerSurface: "border-t border-border/30 pt-3",
   },
   "close-approaches": {
     colorName: "destructive",
@@ -150,6 +168,10 @@ export const THEMES: Record<ObjectTheme, ThemeConfig> = {
     selectItemFocus:
       "data-[highlighted]:bg-destructive/20 data-[highlighted]:text-destructive data-[highlighted]:[&_svg:not([class*='text-'])]:text-destructive",
     hoverText: "hover:text-destructive",
+    cardSurface:
+      "bg-card/95 border-border/50 [background-image:radial-gradient(circle_at_top_right,rgba(255,80,80,0.08),transparent_58%)]",
+    metricSurface: "rounded-md border border-border/40 bg-black/15 px-2.5 py-2",
+    footerSurface: "border-t border-border/30 pt-3",
   },
   fireballs: {
     colorName: "radium-teal",
@@ -175,6 +197,10 @@ export const THEMES: Record<ObjectTheme, ThemeConfig> = {
     selectItemFocus:
       "data-[highlighted]:bg-radium-teal/20 data-[highlighted]:text-radium-teal data-[highlighted]:[&_svg:not([class*='text-'])]:text-radium-teal",
     hoverText: "hover:text-radium-teal",
+    cardSurface:
+      "bg-card/95 border-border/50 [background-image:radial-gradient(circle_at_top_right,rgba(61,219,217,0.09),transparent_58%)]",
+    metricSurface: "rounded-md border border-border/40 bg-black/15 px-2.5 py-2",
+    footerSurface: "border-t border-border/30 pt-3",
   },
   "space-weather": {
     colorName: "aurora-violet",
@@ -200,6 +226,10 @@ export const THEMES: Record<ObjectTheme, ThemeConfig> = {
     selectItemFocus:
       "data-[highlighted]:bg-aurora-violet/20 data-[highlighted]:text-aurora-violet data-[highlighted]:[&_svg:not([class*='text-'])]:text-aurora-violet",
     hoverText: "hover:text-aurora-violet",
+    cardSurface:
+      "bg-card/95 border-border/50 [background-image:radial-gradient(circle_at_top_right,rgba(178,102,255,0.1),transparent_58%)]",
+    metricSurface: "rounded-md border border-border/40 bg-black/15 px-2.5 py-2",
+    footerSurface: "border-t border-border/30 pt-3",
   },
 };
 

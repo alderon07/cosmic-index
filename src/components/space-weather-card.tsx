@@ -228,7 +228,7 @@ export function SpaceWeatherCard({ event, variant = "default", onModalOpen }: Sp
   if (variant === "compact") {
     const compactContent = (
       <Card
-        className={`py-0 bg-card border-border/50 transition-all duration-300 hover:border-aurora-violet/50 hover:glow-violet bezel overflow-hidden min-h-[44px] ${onModalOpen ? "cursor-pointer" : ""}`}
+        className={`py-0 ${theme.cardSurface} transition-all duration-300 hover:border-aurora-violet/50 hover:glow-violet bezel overflow-hidden min-h-[44px] ${onModalOpen ? "cursor-pointer" : ""}`}
         onClick={onModalOpen ? handleCardClick : undefined}
         role={onModalOpen ? "button" : undefined}
         tabIndex={onModalOpen ? 0 : undefined}
@@ -382,10 +382,10 @@ export function SpaceWeatherCard({ event, variant = "default", onModalOpen }: Sp
 
       <CardContent className="pt-0 flex flex-col flex-1 min-h-0">
         {/* Key metrics */}
-        <div className="grid grid-cols-2 gap-x-4 gap-y-3 pb-4">
+        <div className="grid grid-cols-2 gap-x-3 gap-y-2.5 pb-4">
           {/* Date */}
-          <div>
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <div className={theme.metricSurface}>
+            <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-[0.08em] text-muted-foreground/85">
               <Calendar className="w-3.5 h-3.5" />
               <span>Date</span>
             </div>
@@ -393,8 +393,8 @@ export function SpaceWeatherCard({ event, variant = "default", onModalOpen }: Sp
           </div>
 
           {/* Time */}
-          <div>
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <div className={theme.metricSurface}>
+            <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-[0.08em] text-muted-foreground/85">
               <Clock className="w-3.5 h-3.5" />
               <span>Time (UTC)</span>
             </div>
@@ -404,8 +404,8 @@ export function SpaceWeatherCard({ event, variant = "default", onModalOpen }: Sp
           </div>
 
           {/* Primary Metric */}
-          <div>
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <div className={theme.metricSurface}>
+            <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-[0.08em] text-muted-foreground/85">
               <Gauge className="w-3.5 h-3.5" />
               <span>{getPrimaryMetricLabel(event.eventType)}</span>
             </div>
@@ -415,8 +415,8 @@ export function SpaceWeatherCard({ event, variant = "default", onModalOpen }: Sp
           </div>
 
           {/* Source Location / Secondary Metric */}
-          <div>
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <div className={theme.metricSurface}>
+            <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-[0.08em] text-muted-foreground/85">
               {event.eventType === "GST" ? (
                 <Gauge className="w-3.5 h-3.5" />
               ) : (
@@ -431,7 +431,7 @@ export function SpaceWeatherCard({ event, variant = "default", onModalOpen }: Sp
         </div>
 
         {/* Footer with linked events indicator */}
-        <div className="mt-auto pt-3 border-t border-border/30">
+        <div className={`mt-auto ${theme.footerSurface}`}>
           <div className="flex items-center justify-between">
             {linkedCount > 0 ? (
               <Tooltip>
@@ -476,7 +476,7 @@ export function SpaceWeatherCard({ event, variant = "default", onModalOpen }: Sp
         }}
         className="block h-full group cursor-pointer"
       >
-        <Card className="h-full bg-card border-border/50 transition-all duration-300 hover:border-aurora-violet/50 hover:glow-violet bezel scanlines overflow-hidden relative">
+        <Card className={`h-full ${theme.cardSurface} transition-all duration-300 hover:border-aurora-violet/50 hover:glow-violet bezel overflow-hidden relative`}>
           {defaultContent}
         </Card>
       </div>
@@ -486,7 +486,7 @@ export function SpaceWeatherCard({ event, variant = "default", onModalOpen }: Sp
   // Default mode: entire card is a link
   return (
     <Link href={detailHref} className="block h-full group">
-      <Card className="h-full bg-card border-border/50 transition-all duration-300 hover:border-aurora-violet/50 hover:glow-violet bezel scanlines overflow-hidden relative">
+      <Card className={`h-full ${theme.cardSurface} transition-all duration-300 hover:border-aurora-violet/50 hover:glow-violet bezel overflow-hidden relative`}>
         {defaultContent}
       </Card>
     </Link>
