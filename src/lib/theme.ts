@@ -1,6 +1,20 @@
 // Centralized theme configuration for each object type
 
-export type ObjectTheme = "exoplanets" | "stars" | "small-bodies" | "close-approaches" | "fireballs" | "space-weather";
+import {
+  AnyCosmicObject,
+  AnySpaceWeatherEvent,
+  isExoplanet,
+  isSmallBody,
+  isStar,
+} from "@/lib/types";
+
+export type ObjectTheme =
+  | "exoplanets"
+  | "stars"
+  | "small-bodies"
+  | "close-approaches"
+  | "fireballs"
+  | "space-weather";
 export type CardTone = "cosmic" | "neutral";
 
 export const DEFAULT_CARD_TONE: CardTone = "cosmic";
@@ -11,18 +25,8 @@ export const DETAIL_ACCORDION_SURFACE_CLASS =
   "rounded-lg border border-border/45 bg-card/92 px-4 shadow-[inset_0_1px_0_rgba(255,210,160,0.05)]";
 
 export interface ThemeConfig {
-  // Raw color name (for documentation)
-  colorName: string;
   // Text color for names, labels
   text: string;
-  // Background color for badges, buttons when selected
-  bg: string;
-  // Border color
-  border: string;
-  // Hover background
-  hoverBg: string;
-  // Foreground text on colored background
-  textOnBg: string;
   // Glow effect class
   glow: string;
   // Full class string for selected buttons (with !important overrides)
@@ -40,8 +44,6 @@ export interface ThemeConfig {
   sortSelect: string;
   // Filter count badge
   filterBadge: string;
-  // Focus ring
-  focusRing: string;
   // Sort order toggle button classes
   sortOrderBorder: string;
   sortOrderSelected: string;
@@ -59,12 +61,7 @@ export interface ThemeConfig {
 
 export const THEMES: Record<ObjectTheme, ThemeConfig> = {
   exoplanets: {
-    colorName: "primary",
     text: "text-primary",
-    bg: "bg-primary",
-    border: "border-primary",
-    hoverBg: "hover:bg-primary/90",
-    textOnBg: "text-primary-foreground",
     glow: "glow-orange",
     selectedButton: "", // Uses default variant
     badge: "",
@@ -75,7 +72,6 @@ export const THEMES: Record<ObjectTheme, ThemeConfig> = {
     sortSelect:
       "border-primary/30 hover:border-primary/50 focus:ring-primary/50 focus:border-primary/60",
     filterBadge: "",
-    focusRing: "focus:ring-primary",
     sortOrderBorder: "border-primary/30",
     sortOrderSelected: "bg-primary/20 text-primary",
     selectItemFocus:
@@ -87,12 +83,7 @@ export const THEMES: Record<ObjectTheme, ThemeConfig> = {
     footerSurface: "border-t border-border/30 pt-3",
   },
   stars: {
-    colorName: "uranium-green",
     text: "text-uranium-green",
-    bg: "bg-uranium-green",
-    border: "border-uranium-green",
-    hoverBg: "hover:bg-uranium-green/90",
-    textOnBg: "text-void-black",
     glow: "glow-uranium",
     selectedButton:
       "!bg-uranium-green !text-void-black !border-uranium-green hover:!bg-uranium-green/90",
@@ -105,7 +96,6 @@ export const THEMES: Record<ObjectTheme, ThemeConfig> = {
     sortSelect:
       "border-uranium-green/30 hover:border-uranium-green/50 focus:ring-uranium-green/50 focus:border-uranium-green/60",
     filterBadge: "border-uranium-green/50 text-uranium-green",
-    focusRing: "focus:ring-uranium-green",
     sortOrderBorder: "border-uranium-green/30",
     sortOrderSelected: "bg-uranium-green/20 text-uranium-green",
     selectItemFocus:
@@ -117,12 +107,7 @@ export const THEMES: Record<ObjectTheme, ThemeConfig> = {
     footerSurface: "border-t border-border/30 pt-3",
   },
   "small-bodies": {
-    colorName: "secondary",
     text: "text-secondary",
-    bg: "bg-secondary",
-    border: "border-secondary",
-    hoverBg: "hover:bg-secondary/90",
-    textOnBg: "text-secondary-foreground",
     glow: "glow-amber",
     selectedButton: "", // Uses secondary variant
     badge: "",
@@ -133,7 +118,6 @@ export const THEMES: Record<ObjectTheme, ThemeConfig> = {
     sortSelect:
       "border-secondary/30 hover:border-secondary/50 focus:ring-secondary/50 focus:border-secondary/60",
     filterBadge: "border-secondary/50 text-secondary",
-    focusRing: "focus:ring-secondary",
     sortOrderBorder: "border-secondary/30",
     sortOrderSelected: "bg-secondary/20 text-secondary",
     selectItemFocus:
@@ -145,12 +129,7 @@ export const THEMES: Record<ObjectTheme, ThemeConfig> = {
     footerSurface: "border-t border-border/30 pt-3",
   },
   "close-approaches": {
-    colorName: "destructive",
     text: "text-destructive",
-    bg: "bg-destructive",
-    border: "border-destructive",
-    hoverBg: "hover:bg-destructive/90",
-    textOnBg: "text-destructive-foreground",
     glow: "glow-red",
     selectedButton:
       "!bg-destructive !text-destructive-foreground !border-destructive hover:!bg-destructive/90",
@@ -162,7 +141,6 @@ export const THEMES: Record<ObjectTheme, ThemeConfig> = {
     sortSelect:
       "border-destructive/30 hover:border-destructive/50 focus:ring-destructive/50 focus:border-destructive/60",
     filterBadge: "border-destructive/50 text-destructive",
-    focusRing: "focus:ring-destructive",
     sortOrderBorder: "border-destructive/30",
     sortOrderSelected: "bg-destructive/20 text-destructive",
     selectItemFocus:
@@ -174,12 +152,7 @@ export const THEMES: Record<ObjectTheme, ThemeConfig> = {
     footerSurface: "border-t border-border/30 pt-3",
   },
   fireballs: {
-    colorName: "radium-teal",
     text: "text-radium-teal",
-    bg: "bg-radium-teal",
-    border: "border-radium-teal",
-    hoverBg: "hover:bg-radium-teal/90",
-    textOnBg: "text-void-black",
     glow: "glow-teal",
     selectedButton:
       "!bg-radium-teal !text-void-black !border-radium-teal hover:!bg-radium-teal/90",
@@ -191,7 +164,6 @@ export const THEMES: Record<ObjectTheme, ThemeConfig> = {
     sortSelect:
       "border-radium-teal/30 hover:border-radium-teal/50 focus:ring-radium-teal/50 focus:border-radium-teal/60",
     filterBadge: "border-radium-teal/50 text-radium-teal",
-    focusRing: "focus:ring-radium-teal",
     sortOrderBorder: "border-radium-teal/30",
     sortOrderSelected: "bg-radium-teal/20 text-radium-teal",
     selectItemFocus:
@@ -203,31 +175,25 @@ export const THEMES: Record<ObjectTheme, ThemeConfig> = {
     footerSurface: "border-t border-border/30 pt-3",
   },
   "space-weather": {
-    colorName: "aurora-violet",
-    text: "text-aurora-violet",
-    bg: "bg-aurora-violet",
-    border: "border-aurora-violet",
-    hoverBg: "hover:bg-aurora-violet/90",
-    textOnBg: "text-void-black",
-    glow: "glow-violet",
+    text: "text-primary",
+    glow: "glow-orange",
     selectedButton:
-      "!bg-aurora-violet !text-void-black !border-aurora-violet hover:!bg-aurora-violet/90",
-    badge: "border-aurora-violet/50 text-aurora-violet bg-aurora-violet/10",
-    filterChip: "bg-aurora-violet/20 text-aurora-violet border-aurora-violet/30",
-    filterChipHover: "hover:bg-aurora-violet/30",
-    icon: "text-aurora-violet",
-    iconContainer: "bg-aurora-violet/20",
+      "!bg-primary !text-primary-foreground !border-primary hover:!bg-primary/90",
+    badge: "border-primary/50 text-primary bg-primary/10",
+    filterChip: "bg-primary/20 text-primary border-primary/30",
+    filterChipHover: "hover:bg-primary/30",
+    icon: "text-primary",
+    iconContainer: "bg-primary/20",
     sortSelect:
-      "border-aurora-violet/30 hover:border-aurora-violet/50 focus:ring-aurora-violet/50 focus:border-aurora-violet/60",
-    filterBadge: "border-aurora-violet/50 text-aurora-violet",
-    focusRing: "focus:ring-aurora-violet",
-    sortOrderBorder: "border-aurora-violet/30",
-    sortOrderSelected: "bg-aurora-violet/20 text-aurora-violet",
+      "border-primary/30 hover:border-primary/50 focus:ring-primary/50 focus:border-primary/60",
+    filterBadge: "border-primary/50 text-primary",
+    sortOrderBorder: "border-primary/30",
+    sortOrderSelected: "bg-primary/20 text-primary",
     selectItemFocus:
-      "data-[highlighted]:bg-aurora-violet/20 data-[highlighted]:text-aurora-violet data-[highlighted]:[&_svg:not([class*='text-'])]:text-aurora-violet",
-    hoverText: "hover:text-aurora-violet",
+      "data-[highlighted]:bg-primary/20 data-[highlighted]:text-primary data-[highlighted]:[&_svg:not([class*='text-'])]:text-primary",
+    hoverText: "hover:text-primary",
     cardSurface:
-      "bg-card/95 border-border/50 [background-image:radial-gradient(circle_at_top_right,rgba(178,102,255,0.1),transparent_58%)]",
+      "bg-card/95 border-border/50 [background-image:radial-gradient(circle_at_top_right,rgba(255,185,120,0.1),transparent_58%)]",
     metricSurface: "rounded-md border border-border/40 bg-black/15 px-2.5 py-2",
     footerSurface: "border-t border-border/30 pt-3",
   },
@@ -235,18 +201,121 @@ export const THEMES: Record<ObjectTheme, ThemeConfig> = {
 
 // Special theme for comets (subset of small-bodies)
 export const COMET_THEME = {
-  text: "text-radium-teal",
-  bg: "bg-radium-teal",
-  border: "border-radium-teal",
-  hoverBg: "hover:bg-radium-teal/90",
-  textOnBg: "text-void-black",
-  glow: "glow-teal",
   selectedButton:
     "!bg-radium-teal !text-void-black !border-radium-teal hover:!bg-radium-teal/90",
-  badge: "border-radium-teal/50 text-radium-teal bg-radium-teal/10",
 };
 
-// Helper to get theme by object type
-export function getTheme(type: ObjectTheme): ThemeConfig {
-  return THEMES[type];
+export type DetailAccentTheme = "exoplanets" | "stars" | "small-bodies" | "comet";
+
+export interface DetailAccentConfig {
+  heroGlow: string;
+  heroBadge: string;
+  heroIconAccent: string;
+  linkHover: string;
+  compareOutline: string;
+  compareActive: string;
+}
+
+export const DETAIL_THEME_ACCENTS: Record<DetailAccentTheme, DetailAccentConfig> = {
+  exoplanets: {
+    heroGlow: "bg-primary/10",
+    heroBadge: "border-primary/45 text-primary bg-primary/10",
+    heroIconAccent: "text-primary",
+    linkHover: "hover:text-primary",
+    compareOutline:
+      "border-primary/30 bg-primary/5 text-primary/85 hover:bg-primary/10 hover:text-primary",
+    compareActive: "border-primary/55 bg-primary/15 text-primary hover:bg-primary/20",
+  },
+  stars: {
+    heroGlow: "bg-uranium-green/10",
+    heroBadge: "border-uranium-green/50 text-uranium-green bg-uranium-green/10",
+    heroIconAccent: "text-uranium-green",
+    linkHover: "hover:text-uranium-green",
+    compareOutline:
+      "border-uranium-green/30 bg-uranium-green/5 text-uranium-green/85 hover:bg-uranium-green/10 hover:text-uranium-green",
+    compareActive:
+      "border-uranium-green/55 bg-uranium-green/15 text-uranium-green hover:bg-uranium-green/20",
+  },
+  "small-bodies": {
+    heroGlow: "bg-secondary/10",
+    heroBadge: "border-secondary/45 text-secondary bg-secondary/10",
+    heroIconAccent: "text-secondary",
+    linkHover: "hover:text-secondary",
+    compareOutline:
+      "border-secondary/30 bg-secondary/5 text-secondary/85 hover:bg-secondary/10 hover:text-secondary",
+    compareActive:
+      "border-secondary/55 bg-secondary/15 text-secondary hover:bg-secondary/20",
+  },
+  comet: {
+    heroGlow: "bg-radium-teal/10",
+    heroBadge: "border-radium-teal/50 text-radium-teal bg-radium-teal/10",
+    heroIconAccent: "text-radium-teal",
+    linkHover: "hover:text-radium-teal",
+    compareOutline:
+      "border-radium-teal/30 bg-radium-teal/5 text-radium-teal/85 hover:bg-radium-teal/10 hover:text-radium-teal",
+    compareActive:
+      "border-radium-teal/55 bg-radium-teal/15 text-radium-teal hover:bg-radium-teal/20",
+  },
+};
+
+export function resolveDetailAccentTheme(object: AnyCosmicObject): DetailAccentTheme {
+  if (isExoplanet(object)) return "exoplanets";
+  if (isStar(object)) return "stars";
+  if (isSmallBody(object) && object.bodyKind === "comet") return "comet";
+  return "small-bodies";
+}
+
+export function getDetailAccentConfig(object: AnyCosmicObject): DetailAccentConfig {
+  return DETAIL_THEME_ACCENTS[resolveDetailAccentTheme(object)];
+}
+
+export type SpaceWeatherEventTheme = AnySpaceWeatherEvent["eventType"];
+
+export interface SpaceWeatherDetailAccentConfig {
+  heroGlow: string;
+  eventIcon: string;
+  metricAccent: string;
+  actionHover: string;
+  linkedCardHover: string;
+  linkedTitleHover: string;
+  linkedIconHover: string;
+}
+
+export const SPACE_WEATHER_DETAIL_ACCENTS: Record<
+  SpaceWeatherEventTheme,
+  SpaceWeatherDetailAccentConfig
+> = {
+  FLR: {
+    heroGlow: "bg-primary/14",
+    eventIcon: "text-primary",
+    metricAccent: "text-primary",
+    actionHover: "hover:text-primary",
+    linkedCardHover: "hover:border-primary/50 hover:bg-primary/5",
+    linkedTitleHover: "group-hover:text-primary",
+    linkedIconHover: "group-hover:text-primary",
+  },
+  CME: {
+    heroGlow: "bg-primary/14",
+    eventIcon: "text-primary",
+    metricAccent: "text-primary",
+    actionHover: "hover:text-primary",
+    linkedCardHover: "hover:border-primary/50 hover:bg-primary/5",
+    linkedTitleHover: "group-hover:text-primary",
+    linkedIconHover: "group-hover:text-primary",
+  },
+  GST: {
+    heroGlow: "bg-primary/14",
+    eventIcon: "text-primary",
+    metricAccent: "text-primary",
+    actionHover: "hover:text-primary",
+    linkedCardHover: "hover:border-primary/50 hover:bg-primary/5",
+    linkedTitleHover: "group-hover:text-primary",
+    linkedIconHover: "group-hover:text-primary",
+  },
+};
+
+export function getSpaceWeatherDetailAccent(
+  eventType: SpaceWeatherEventTheme
+): SpaceWeatherDetailAccentConfig {
+  return SPACE_WEATHER_DETAIL_ACCENTS[eventType];
 }

@@ -9,6 +9,7 @@ import { getStarBySlug } from "@/lib/star-index";
 import { fetchExoplanetsForHostStar } from "@/lib/nasa-exoplanet";
 import { StarData } from "@/lib/types";
 import { BASE_URL } from "@/lib/config";
+import { THEMES } from "@/lib/theme";
 
 interface StarDetailPageProps {
   params: Promise<{ id: string }>;
@@ -163,8 +164,12 @@ export default async function StarDetailPage({ params }: StarDetailPageProps) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <div className="container mx-auto px-4 py-8">
-        <Breadcrumbs items={breadcrumbItems} className="mb-6" />
+      <div className="container mx-auto max-w-7xl px-4 py-8">
+        <Breadcrumbs
+          items={breadcrumbItems}
+          className="mb-6"
+          linkHoverClassName={THEMES.stars.hoverText}
+        />
         <ObjectDetail object={star} hideDataSources />
 
         {/* Planets in this system */}

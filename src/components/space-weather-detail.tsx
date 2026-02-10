@@ -29,6 +29,7 @@ import {
 import {
   DETAIL_ACCORDION_SURFACE_CLASS,
   DETAIL_CARD_SURFACE_CLASS,
+  getSpaceWeatherDetailAccent,
   THEMES,
 } from "@/lib/theme";
 import {
@@ -45,6 +46,7 @@ import {
   Timer,
   Thermometer,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 const theme = THEMES["space-weather"];
 
@@ -189,6 +191,7 @@ export function SpaceWeatherDetail({ event, compact }: SpaceWeatherDetailProps) 
   const { date } = formatDateTime(event.startTime);
   const keyFacts = getKeyFacts(event, severity);
   const description = getEventDescription(event);
+  const accent = getSpaceWeatherDetailAccent(event.eventType);
 
   const donkiSearchUrl = "https://kauai.ccmc.gsfc.nasa.gov/DONKI/search/";
 
@@ -221,7 +224,9 @@ export function SpaceWeatherDetail({ event, compact }: SpaceWeatherDetailProps) 
           </div>
 
           <h1 className="font-display text-2xl sm:text-3xl md:text-4xl text-foreground mb-2 nixie break-words flex items-center gap-3">
-            <span className={theme.text}>{getEventIcon(event.eventType, "w-8 h-8")}</span>
+            <span className={accent.eventIcon}>
+              {getEventIcon(event.eventType, "w-8 h-8")}
+            </span>
             {typeLabel}
           </h1>
 
@@ -232,18 +237,19 @@ export function SpaceWeatherDetail({ event, compact }: SpaceWeatherDetailProps) 
         </div>
 
         {/* Decorative glow */}
-        <div className={`absolute top-0 right-0 w-64 h-64 ${
-          event.eventType === "FLR" ? "bg-orange-500/10" :
-          event.eventType === "CME" ? "bg-blue-500/10" :
-          "bg-purple-500/10"
-        } rounded-full blur-3xl`} />
+        <div
+          className={cn(
+            "absolute top-0 right-0 w-64 h-64 rounded-full blur-3xl",
+            accent.heroGlow
+          )}
+        />
       </div>
 
       {/* Overview */}
       <Card tone="neutral" className={DETAIL_CARD_SURFACE_CLASS}>
         <CardHeader>
           <CardTitle className="font-display flex items-center gap-2">
-            <Info className="w-5 h-5 text-primary" />
+            <Info className={`w-5 h-5 ${theme.text}`} />
             Overview
           </CardTitle>
         </CardHeader>
@@ -256,7 +262,7 @@ export function SpaceWeatherDetail({ event, compact }: SpaceWeatherDetailProps) 
       <Card tone="neutral" className={DETAIL_CARD_SURFACE_CLASS}>
         <CardHeader>
           <CardTitle className="font-display flex items-center gap-2">
-            <Gauge className="w-5 h-5 text-secondary" />
+            <Gauge className={`w-5 h-5 ${theme.text}`} />
             Key Measurements
           </CardTitle>
         </CardHeader>
@@ -273,7 +279,7 @@ export function SpaceWeatherDetail({ event, compact }: SpaceWeatherDetailProps) 
                 <p className={`text-base sm:text-xl font-mono nixie break-all ${
                   fact.label === "Severity" ? SEVERITY_TEXT_COLORS[severity] :
                   fact.label === "Flare Class" || fact.label === "Speed" || fact.label === "Max Kp Index"
-                    ? theme.text : "text-foreground"
+                    ? accent.metricAccent : "text-foreground"
                 }`}>
                   {fact.value}
                 </p>
@@ -517,16 +523,21 @@ export function SpaceWeatherDetail({ event, compact }: SpaceWeatherDetailProps) 
                     <Link
                       key={i}
                       href={`/space-weather/${encodeURIComponent(linked.activityID)}`}
-                      className="flex items-center justify-between p-3 rounded-lg border border-border/50 hover:border-aurora-violet/50 hover:bg-aurora-violet/5 transition-colors group"
+                      className={cn(
+                        "flex items-center justify-between p-3 rounded-lg border border-border/50 transition-colors group",
+                        accent.linkedCardHover
+                      )}
                     >
                       <div className="flex items-center gap-3">
                         {linkedType && (
-                          <span className={theme.text}>
+                          <span
+                            className={getSpaceWeatherDetailAccent(linkedType).eventIcon}
+                          >
                             {getEventIcon(linkedType, "w-4 h-4")}
                           </span>
                         )}
                         <div>
-                          <p className="font-medium group-hover:text-aurora-violet transition-colors">
+                          <p className={cn("font-medium transition-colors", accent.linkedTitleHover)}>
                             {linkedTypeLabel}
                           </p>
                           <p className="text-xs text-muted-foreground font-mono">
@@ -534,7 +545,12 @@ export function SpaceWeatherDetail({ event, compact }: SpaceWeatherDetailProps) 
                           </p>
                         </div>
                       </div>
-                      <ExternalLink className="w-4 h-4 text-muted-foreground group-hover:text-aurora-violet transition-colors" />
+                      <ExternalLink
+                        className={cn(
+                          "w-4 h-4 text-muted-foreground transition-colors",
+                          accent.linkedIconHover
+                        )}
+                      />
                     </Link>
                   );
                 })}
