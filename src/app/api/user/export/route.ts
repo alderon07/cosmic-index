@@ -5,7 +5,7 @@ import crypto from "node:crypto";
 import { requireAuth, authErrorResponse } from "@/lib/auth";
 import { getUserDb } from "@/lib/user-db";
 import { isMockUserStoreEnabled } from "@/lib/runtime-mode";
-import { listSavedObjects } from "@/lib/mock-user-store";
+import { getCollectionWithItems, listSavedObjects } from "@/lib/mock-user-store";
 import { searchExoplanets } from "@/lib/exoplanet-index";
 import { searchStars } from "@/lib/star-index";
 import { fetchSmallBodies } from "@/lib/jpl-sbdb";
@@ -155,6 +155,17 @@ function getLimitFromRaw(rawParams: Record<string, unknown>, parsedParams: Recor
   const raw = parsedParams.limit;
   if (typeof raw !== "number" || Number.isNaN(raw)) return undefined;
   return Math.max(1, Math.floor(raw));
+}
+
+function parsePositiveInt(value: unknown): number | undefined {
+  if (typeof value === "number" && Number.isFinite(value) && Number.isInteger(value) && value > 0) {
+    return value;
+  }
+  if (typeof value === "string" && /^[1-9]\d*$/.test(value.trim())) {
+    const parsed = Number(value);
+    if (Number.isSafeInteger(parsed)) return parsed;
+  }
+  return undefined;
 }
 
 function getExportRateHeaders(params: {
@@ -342,6 +353,7 @@ export async function POST(request: NextRequest) {
 
     let filters: Record<string, unknown> = {};
     let userLimit: number | undefined;
+    let savedObjectsCollectionId: number | undefined;
 
     if (category === "exoplanets") {
       const result = ExoplanetQuerySchema.safeParse(queryParams);
@@ -417,6 +429,28 @@ export async function POST(request: NextRequest) {
       if (limitValue !== undefined && !Number.isNaN(limitValue)) {
         userLimit = Math.max(1, Math.floor(limitValue));
       }
+
+      if (Object.prototype.hasOwnProperty.call(queryParams, "collectionId")) {
+        const parsedCollectionId = parsePositiveInt(queryParams.collectionId);
+        if (!parsedCollectionId) {
+          return Response.json(
+            {
+              error: "invalid_filters",
+              message: "Invalid collectionId filter.",
+              limitPolicy: withLimitPolicy(false),
+            },
+            {
+              status: 400,
+              headers: {
+                ...baseHeaders,
+                ...getLimitPolicyHeaders(withLimitPolicy(false)),
+              },
+            }
+          );
+        }
+        savedObjectsCollectionId = parsedCollectionId;
+        filters = { collectionId: parsedCollectionId };
+      }
     }
 
     if ((category === "saved-objects" || category === "small-bodies") && cursor) {
@@ -434,6 +468,54 @@ export async function POST(request: NextRequest) {
           },
         }
       );
+    }
+
+    if (category === "saved-objects" && savedObjectsCollectionId !== undefined) {
+      if (useMockStore) {
+        const result = getCollectionWithItems(user.userId, savedObjectsCollectionId);
+        if (!result) {
+          return Response.json(
+            {
+              error: "resource_not_found",
+              message: "Resource not found.",
+              limitPolicy: withLimitPolicy(false),
+            },
+            {
+              status: 404,
+              headers: {
+                ...baseHeaders,
+                ...getLimitPolicyHeaders(withLimitPolicy(false)),
+              },
+            }
+          );
+        }
+      } else if (userDb) {
+        const collectionCheck = await userDb.execute({
+          sql: `
+            SELECT id
+            FROM collections
+            WHERE id = ? AND user_id = ?
+            LIMIT 1
+          `,
+          args: [savedObjectsCollectionId, user.userId],
+        });
+        if (collectionCheck.rows.length === 0) {
+          return Response.json(
+            {
+              error: "resource_not_found",
+              message: "Resource not found.",
+              limitPolicy: withLimitPolicy(false),
+            },
+            {
+              status: 404,
+              headers: {
+                ...baseHeaders,
+                ...getLimitPolicyHeaders(withLimitPolicy(false)),
+              },
+            }
+          );
+        }
+      }
     }
 
     const filterHash = computeFilterHash(filters);
@@ -667,7 +749,10 @@ export async function POST(request: NextRequest) {
             const limit = maxRows;
 
             if (useMockStore || !db) {
-              const saved = listSavedObjects(user.userId, 1, limit).objects;
+              const saved =
+                savedObjectsCollectionId !== undefined
+                  ? (getCollectionWithItems(user.userId, savedObjectsCollectionId)?.items ?? [])
+                  : listSavedObjects(user.userId, 1, limit).objects;
               for (const item of saved) {
                 if (timeoutFired) break;
                 const row = {
@@ -688,16 +773,30 @@ export async function POST(request: NextRequest) {
               let offset = 0;
               while (exportedCount < limit && !timeoutFired) {
                 const batchLimit = Math.min(EXPORT_CHUNK_SIZE, limit - exportedCount);
-                const result = await db.execute({
-                  sql: `
-                    SELECT canonical_id, display_name, notes, created_at
-                    FROM saved_objects
-                    WHERE user_id = ?
-                    ORDER BY created_at DESC
-                    LIMIT ? OFFSET ?
-                  `,
-                  args: [user.userId, batchLimit, offset],
-                });
+                const result =
+                  savedObjectsCollectionId === undefined
+                    ? await db.execute({
+                        sql: `
+                          SELECT canonical_id, display_name, notes, created_at
+                          FROM saved_objects
+                          WHERE user_id = ?
+                          ORDER BY created_at DESC
+                          LIMIT ? OFFSET ?
+                        `,
+                        args: [user.userId, batchLimit, offset],
+                      })
+                    : await db.execute({
+                        sql: `
+                          SELECT so.canonical_id, so.display_name, so.notes, so.created_at
+                          FROM collection_items ci
+                          JOIN saved_objects so ON so.id = ci.saved_object_id
+                          JOIN collections c ON c.id = ci.collection_id
+                          WHERE c.user_id = ? AND c.id = ?
+                          ORDER BY ci.position ASC, ci.added_at DESC
+                          LIMIT ? OFFSET ?
+                        `,
+                        args: [user.userId, savedObjectsCollectionId, batchLimit, offset],
+                      });
 
                 const rows = result.rows as Record<string, unknown>[];
                 if (rows.length === 0) break;
