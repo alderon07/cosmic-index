@@ -22,6 +22,14 @@ start:
 lint:
     bun run lint
 
+# Build CLI binary
+cli-build:
+    cd cli && GOCACHE=/tmp/go-cache go build ./cmd/cosmic-index
+
+# Run CLI tests
+cli-test:
+    cd cli && GOCACHE=/tmp/go-cache go test ./...
+
 # Run JPL SBDB API diagnostic
 sbdb-diag:
     bun run sbdb:diag

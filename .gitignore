@@ -46,3 +46,11 @@ data/
 plans/
 # clerk configuration (can include secrets)
 /.clerk/
+
+# Go CLI artifacts
+/cli/cosmic-index
+/cli/cosmic-index.exe
+/cli/dist/
+/cli/.goreleaser
+/cli/coverage.out
+/cli/*.test
