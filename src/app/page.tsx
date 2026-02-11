@@ -67,32 +67,34 @@ export default function HomePage() {
               </p>
 
               <div className="mt-6 sm:mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-                <Link href="/exoplanets">
-                  <Button size="lg" className="bg-orange-500 text-black hover:bg-orange-400 glow-orange">
+                <Button asChild size="lg" className="bg-orange-500 text-black hover:bg-orange-400 glow-orange">
+                  <Link href="/exoplanets">
                     <Circle className="h-5 w-5" />
                     Start with Exoplanets
-                  </Button>
-                </Link>
-                <Link href="/stars">
-                  <Button
+                  </Link>
+                </Button>
+                <Button
+                  asChild
                     size="lg"
                     variant="outline"
                     className="border-amber-300/55 bg-black/20 text-amber-100 hover:bg-amber-300/10"
                   >
+                  <Link href="/stars">
                     <Star className="h-5 w-5" />
                     Browse Stars
-                  </Button>
-                </Link>
-                <Link href="/small-bodies">
-                  <Button
+                  </Link>
+                </Button>
+                <Button
+                  asChild
                     size="lg"
                     variant="outline"
                     className="border-orange-300/45 bg-black/20 text-orange-100 hover:bg-orange-300/10"
                   >
+                  <Link href="/small-bodies">
                     <CircleDot className="h-5 w-5" />
                     Track Small Bodies
-                  </Button>
-                </Link>
+                  </Link>
+                </Button>
               </div>
             </div>
 
@@ -183,20 +185,21 @@ export default function HomePage() {
             Begin exploration across Cosmic Index.
           </p>
           <div className="mt-4 sm:mt-6 flex flex-col items-stretch sm:items-center justify-center gap-3 sm:flex-row">
-            <Link href="/close-approaches" className="w-full sm:w-auto">
-              <Button className="w-full sm:w-auto bg-orange-500 text-black hover:bg-orange-400 text-sm sm:text-base">
+            <Button asChild className="w-full sm:w-auto bg-orange-500 text-black hover:bg-orange-400 text-sm sm:text-base">
+              <Link href="/close-approaches">
                 Explore Close Approaches
                 <ArrowRight className="h-4 w-4 shrink-0" />
-              </Button>
-            </Link>
-            <Link href="/space-weather" className="w-full sm:w-auto">
-              <Button
+              </Link>
+            </Button>
+            <Button
+              asChild
                 variant="outline"
                 className="w-full sm:w-auto border-amber-300/50 bg-black/15 text-amber-100 hover:bg-amber-300/10 text-sm sm:text-base"
               >
+              <Link href="/space-weather">
                 View Space Weather
-              </Button>
-            </Link>
+              </Link>
+            </Button>
           </div>
         </div>
       </section>
@@ -259,15 +262,16 @@ function ReactorCard({
       </CardHeader>
       <CardContent className="flex h-full flex-col">
         <p className="text-sm text-orange-100/75">{description}</p>
-        <Link href={href} className="mt-auto pt-4 inline-block">
-          <Button
+        <Button
+          asChild
             variant="ghost"
             className="gap-2 px-0 text-orange-300 hover:bg-transparent hover:text-orange-200"
           >
+          <Link href={href} className="mt-auto inline-block pt-4">
             {cta}
             <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
-          </Button>
-        </Link>
+          </Link>
+        </Button>
       </CardContent>
     </Card>
   );

@@ -104,7 +104,9 @@ function FilterChip({
     >
       {label}
       <button
+        type="button"
         onClick={onRemove}
+        aria-label={`Remove ${label} filter`}
         className={`ml-1 rounded-full p-0.5 ${defaultStarTheme.filterChipHover} transition-colors`}
       >
         <X className="w-3 h-3" />
