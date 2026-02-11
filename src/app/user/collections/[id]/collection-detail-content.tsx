@@ -218,10 +218,10 @@ export function CollectionDetailContent() {
 
   if (!auth.isSignedIn) {
     return (
-      <div className="container mx-auto max-w-3xl px-4 py-12">
+      <div className="container mx-auto max-w-7xl px-4 py-12">
         <Card
           tone={ACCOUNT_CARD_TONE}
-          className="relative overflow-hidden border-orange-300/20 bg-[#1a120d]/80"
+          className="relative max-w-3xl overflow-hidden border-orange-300/20 bg-[#1a120d]/80"
         >
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,185,120,0.13),transparent_52%)]" />
           <CardContent className="relative py-10 text-center">
@@ -235,8 +235,8 @@ export function CollectionDetailContent() {
 
   if (isNotFound) {
     return (
-      <div className="container mx-auto max-w-4xl px-4 py-8">
-        <Card tone={ACCOUNT_CARD_TONE} className="border-orange-300/20 bg-[#17100d]/80">
+      <div className="container mx-auto max-w-7xl px-4 py-8">
+        <Card tone={ACCOUNT_CARD_TONE} className="max-w-4xl border-orange-300/20 bg-[#17100d]/80">
           <CardContent className="py-10 text-center">
             <p className="text-muted-foreground">Resource not found.</p>
             <Link
@@ -253,7 +253,7 @@ export function CollectionDetailContent() {
   }
 
   return (
-    <div className="container mx-auto max-w-6xl space-y-5 px-4 py-8">
+    <div className="container mx-auto max-w-7xl space-y-5 px-4 py-8">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div className="min-w-0">
           <Link
