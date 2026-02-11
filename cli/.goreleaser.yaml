@@ -1,0 +1,32 @@
+version: 2
+
+project_name: cosmic-index
+
+before:
+  hooks:
+    - go test ./...
+
+builds:
+  - id: cosmic-index
+    main: ./cmd/cosmic-index
+    binary: cosmic-index
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - darwin
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w -X cosmic-index/cli/internal/version.Version={{.Version}}
+
+archives:
+  - id: cosmic-index-archive
+    formats:
+      - tar.gz
+    name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+
+checksum:
+  name_template: checksums.txt

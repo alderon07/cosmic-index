@@ -44,3 +44,11 @@ next-env.d.ts
 data/
 
 plans/
+
+# Go CLI artifacts
+/cli/cosmic-index
+/cli/cosmic-index.exe
+/cli/dist/
+/cli/.goreleaser
+/cli/coverage.out
+/cli/*.test
