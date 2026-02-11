@@ -110,6 +110,78 @@ func PrintPaginationSummary(w io.Writer, pagination api.Pagination) error {
 	}
 }
 
+func PrintApodTable(w io.Writer, apod api.APODData, fullText bool) error {
+	explanation := apod.Explanation
+	if !fullText {
+		explanation = truncate(explanation, 240)
+	}
+	tw := tabwriter.NewWriter(w, 2, 4, 2, ' ', 0)
+	if _, err := fmt.Fprintln(tw, "DATE\tTITLE\tMEDIA_TYPE\tMEDIA_URL\tHD_URL\tTHUMBNAIL_URL\tCOPYRIGHT\tEXPLANATION"); err != nil {
+		return err
+	}
+	if _, err := fmt.Fprintf(
+		tw,
+		"%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
+		apod.Date,
+		truncate(apod.Title, 80),
+		fallback(apod.MediaType),
+		fallback(apod.ImageURL),
+		fallback(apod.ImageURLHD),
+		fallback(apod.ThumbnailURL),
+		fallback(apod.Copyright),
+		fallback(explanation),
+	); err != nil {
+		return err
+	}
+	return tw.Flush()
+}
+
+func PrintCloseApproachesTable(w io.Writer, rows []api.CloseApproach) error {
+	tw := tabwriter.NewWriter(w, 2, 4, 2, ' ', 0)
+	if _, err := fmt.Fprintln(tw, "DESIGNATION\tAPPROACH_TIME\tDIST_LD\tVEL_KM_S\tH\tPHA"); err != nil {
+		return err
+	}
+	for _, row := range rows {
+		if _, err := fmt.Fprintf(
+			tw,
+			"%s\t%s\t%.2f\t%.2f\t%.1f\t%s\n",
+			truncate(row.Designation, 40),
+			row.ApproachTimeRaw,
+			row.DistanceLd,
+			row.RelativeVelocityKm,
+			row.AbsoluteMagnitude,
+			formatOptionalBool(row.IsPha),
+		); err != nil {
+			return err
+		}
+	}
+	return tw.Flush()
+}
+
+func PrintFireballsTable(w io.Writer, rows []api.FireballEvent) error {
+	tw := tabwriter.NewWriter(w, 2, 4, 2, ' ', 0)
+	if _, err := fmt.Fprintln(tw, "DATE\tRADIATED_J_x1e10\tIMPACT_KT\tLAT\tLON\tALT_KM\tVEL_KM_S\tCOMPLETE"); err != nil {
+		return err
+	}
+	for _, row := range rows {
+		if _, err := fmt.Fprintf(
+			tw,
+			"%s\t%.2f\t%s\t%s\t%s\t%s\t%s\t%t\n",
+			truncate(row.Date, 24),
+			row.RadiatedEnergy,
+			formatFloat(row.ImpactEnergyKt, 2),
+			formatFloat(row.Latitude, 2),
+			formatFloat(row.Longitude, 2),
+			formatFloat(row.AltitudeKm, 2),
+			formatFloat(row.VelocityKmS, 2),
+			row.IsComplete,
+		); err != nil {
+			return err
+		}
+	}
+	return tw.Flush()
+}
+
 func formatInt(value *int) string {
 	if value == nil {
 		return "-"
@@ -130,4 +202,21 @@ func fallback(value string) string {
 		return "-"
 	}
 	return value
+}
+
+func truncate(value string, max int) string {
+	if max <= 0 || len(value) <= max {
+		return value
+	}
+	if max <= 1 {
+		return value[:max]
+	}
+	return value[:max-1] + "..."
+}
+
+func formatOptionalBool(value *bool) string {
+	if value == nil {
+		return "-"
+	}
+	return fmt.Sprintf("%t", *value)
 }

@@ -1,0 +1,76 @@
+package commands
+
+import (
+	"bytes"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
+)
+
+func TestFireballsQueryMapping(t *testing.T) {
+	t.Parallel()
+
+	var gotQuery map[string]string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotQuery = map[string]string{}
+		for key, values := range r.URL.Query() {
+			if len(values) > 0 {
+				gotQuery[key] = values[0]
+			}
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"data":[{"id":"x","date":"2025-01-01 00:00:00","dateRaw":"2025-01-01 00:00:00","radiatedEnergyJ":1.2,"isComplete":false}],"pagination":{"mode":"none","hasMore":false},"meta":{"requestId":"r1","apiVersion":"1","timestamp":"t","count":1,"limitApplied":20}}`))
+	}))
+	defer server.Close()
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	code := Execute(&stdout, &stderr, "test", []string{
+		"--base-url", server.URL,
+		"fireballs",
+		"--date-min", "2025-01-01",
+		"--date-max", "2025-01-31",
+		"--req-loc",
+		"--req-alt",
+		"--req-vel",
+		"--sort", "energy",
+		"--order", "asc",
+		"--limit", "20",
+	})
+	if code != 0 {
+		t.Fatalf("unexpected exit code: %d stderr=%s", code, stderr.String())
+	}
+	if gotQuery["dateMin"] != "2025-01-01" || gotQuery["dateMax"] != "2025-01-31" || gotQuery["reqLoc"] != "true" || gotQuery["reqAlt"] != "true" || gotQuery["reqVel"] != "true" || gotQuery["sort"] != "energy" || gotQuery["order"] != "asc" || gotQuery["limit"] != "20" {
+		t.Fatalf("unexpected mapped query: %#v", gotQuery)
+	}
+	if !strings.Contains(stdout.String(), "RADIATED_J_x1e10") {
+		t.Fatalf("expected fireball table header in output")
+	}
+}
+
+func TestFireballsOrderWithoutSort(t *testing.T) {
+	t.Parallel()
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	code := Execute(&stdout, &stderr, "test", []string{"fireballs", "--order", "desc"})
+	if code != 2 {
+		t.Fatalf("expected usage exit code 2, got %d", code)
+	}
+}
+
+func TestFireballsDateRangeValidation(t *testing.T) {
+	t.Parallel()
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	code := Execute(&stdout, &stderr, "test", []string{
+		"fireballs",
+		"--date-min", "2025-02-01",
+		"--date-max", "2025-01-01",
+	})
+	if code != 2 {
+		t.Fatalf("expected usage exit code 2, got %d", code)
+	}
+}

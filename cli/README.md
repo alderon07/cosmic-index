@@ -18,6 +18,9 @@ go build ./cmd/cosmic-index
 cosmic-index search exoplanets -q kepler --limit 12
 cosmic-index search stars -q kepler --sort planets
 cosmic-index search small-bodies -q apophis --neo
+cosmic-index close-approaches --limit 10
+cosmic-index fireballs --req-loc --sort energy -n 20
+cosmic-index apod
 ```
 
 ### Get details
@@ -26,6 +29,13 @@ cosmic-index search small-bodies -q apophis --neo
 cosmic-index get exoplanets "PSR B1257+12 b"
 cosmic-index get stars "Kepler-22"
 cosmic-index get small-bodies "99942 Apophis"
+```
+
+### APOD
+
+```bash
+cosmic-index apod --date 2026-01-01
+cosmic-index apod --full-text
 ```
 
 ### Output modes
@@ -64,6 +74,12 @@ Global flags:
 - `-o, --output table|json`
 - `--json` (alias for `--output json`)
 - `--debug`
+
+Event command notes:
+
+- `close-approaches --order` requires `--sort`
+- `fireballs --order` requires `--sort`
+- `table` output truncates APOD explanation by default; use `--full-text` to show full text
 
 ## Command aliases
 

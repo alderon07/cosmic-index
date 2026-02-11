@@ -50,6 +50,9 @@ func NewRootCommand(stdout, stderr io.Writer, version string) *cobra.Command {
 	root.PersistentFlags().BoolVar(&state.debug, "debug", false, "Print request/response debug logs to stderr")
 
 	root.AddCommand(newVersionCommand(state))
+	root.AddCommand(newApodCommand(state))
+	root.AddCommand(newCloseApproachesCommand(state))
+	root.AddCommand(newFireballsCommand(state))
 	root.AddCommand(newSearchCommand(state))
 	root.AddCommand(newGetCommand(state))
 

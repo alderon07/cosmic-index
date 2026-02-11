@@ -89,3 +89,38 @@ type SmallBodyData struct {
 	Links             []SourceLink `json:"links"`
 	Summary           string       `json:"summary"`
 }
+
+type APODData struct {
+	Date         string `json:"date"`
+	Title        string `json:"title"`
+	Explanation  string `json:"explanation"`
+	ImageURL     string `json:"imageUrl"`
+	ImageURLHD   string `json:"imageUrlHd,omitempty"`
+	MediaType    string `json:"mediaType"`
+	Copyright    string `json:"copyright,omitempty"`
+	ThumbnailURL string `json:"thumbnailUrl,omitempty"`
+}
+
+type CloseApproach struct {
+	ID                 string  `json:"id"`
+	Designation        string  `json:"designation"`
+	FullName           string  `json:"fullName,omitempty"`
+	ApproachTimeRaw    string  `json:"approachTimeRaw"`
+	DistanceLd         float64 `json:"distanceLd"`
+	RelativeVelocityKm float64 `json:"relativeVelocityKmS"`
+	AbsoluteMagnitude  float64 `json:"absoluteMagnitude"`
+	IsPha              *bool   `json:"isPha,omitempty"`
+}
+
+type FireballEvent struct {
+	ID             string   `json:"id"`
+	Date           string   `json:"date"`
+	DateRaw        string   `json:"dateRaw"`
+	RadiatedEnergy float64  `json:"radiatedEnergyJ"`
+	ImpactEnergyKt *float64 `json:"impactEnergyKt,omitempty"`
+	Latitude       *float64 `json:"latitude,omitempty"`
+	Longitude      *float64 `json:"longitude,omitempty"`
+	AltitudeKm     *float64 `json:"altitudeKm,omitempty"`
+	VelocityKmS    *float64 `json:"velocityKmS,omitempty"`
+	IsComplete     bool     `json:"isComplete"`
+}
