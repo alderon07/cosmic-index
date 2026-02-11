@@ -10,6 +10,7 @@ import { UserAuthButton } from "@/components/auth/user-auth-button";
 import { CompareProvider } from "@/components/compare/compare-provider";
 import { CompareTray } from "@/components/compare/compare-tray";
 import { AppAuthProvider } from "@/components/auth/app-auth-provider";
+import { QueryProvider } from "@/components/providers/query-provider";
 
 const audiowide = Audiowide({
   variable: "--font-display",
@@ -151,6 +152,7 @@ export default function RootLayout({
       <body
         className={`${audiowide.variable} ${inter.variable} ${jetbrainsMono.variable} antialiased min-h-screen bg-background flex flex-col`}
       >
+        <QueryProvider>
         <AppAuthProvider>
         <CompareProvider>
         <KeyboardShortcutsProvider>
@@ -285,6 +287,7 @@ export default function RootLayout({
         </KeyboardShortcutsProvider>
         </CompareProvider>
         </AppAuthProvider>
+        </QueryProvider>
         <Analytics />
       </body>
     </html>

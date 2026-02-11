@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo, useRef, startTransition } from "react";
+import { useState, useEffect, useCallback, useMemo, startTransition } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import dynamic from "next/dynamic";
+import { useQuery } from "@tanstack/react-query";
 import { saveListUrl } from "@/lib/list-url-store";
 import { ObjectCard, ObjectCardSkeleton } from "@/components/object-card";
 import { SearchBar } from "@/components/search-bar";
@@ -17,6 +18,12 @@ import { Star } from "lucide-react";
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { SavedSearchControls } from "@/components/saved-search-controls";
 import { ExportButton } from "@/components/export-button";
+import { queryKeys } from "@/lib/query-keys";
+import {
+  applySearchParamUpdates,
+  buildPathWithSearch,
+  isNoopUrlUpdate,
+} from "@/lib/url-normalize";
 
 const theme = THEMES.stars;
 
@@ -107,30 +114,44 @@ export function StarsPageClient({
     saveListUrl("stars", query ? `${pathname}?${query}` : pathname);
   }, [searchParams, pathname]);
 
-  const [data, setData] = useState<PaginatedResult<StarData> | null>(initialData);
-  const [isLoading, setIsLoading] = useState(!initialData && !initialError);
-  const [error, setError] = useState<string | null>(initialError);
   const [selectedObject, setSelectedObject] = useState<AnyCosmicObject | null>(null);
   const [filterAccordionValue, setFilterAccordionValue] = useState<string>("");
-  const hasSkippedInitialClientFetch = useRef(false);
 
   // Update URL helper - preserves existing params
   const updateUrl = useCallback((updates: Record<string, string | null>) => {
-    const params = new URLSearchParams(searchParams.toString());
-
-    for (const [key, value] of Object.entries(updates)) {
-      if (value === null) {
-        params.delete(key);
-      } else {
-        params.set(key, value);
-      }
-    }
-
-    const query = params.toString();
+    if (isNoopUrlUpdate(searchParams, updates)) return;
+    const params = applySearchParamUpdates(searchParams, updates);
+    const nextPath = buildPathWithSearch(pathname, params);
     startTransition(() => {
-      router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+      router.replace(nextPath, { scroll: false });
     });
   }, [searchParams, pathname, router]);
+
+  const currentFetchKey = useMemo(
+    () => buildStarFetchKey({ searchQuery, filters, page, limit }),
+    [searchQuery, filters, page, limit]
+  );
+
+  const shouldUseInitialError = !initialData && !!initialError && currentFetchKey === initialFetchKey;
+
+  const queryResult = useQuery({
+    queryKey: queryKeys.stars(currentFetchKey),
+    queryFn: ({ signal }) =>
+      apiFetchPaginated<StarData>(`/stars?${currentFetchKey}`, {
+        signal,
+      }),
+    enabled: !shouldUseInitialError,
+    initialData: currentFetchKey === initialFetchKey ? (initialData ?? undefined) : undefined,
+    staleTime: 30_000,
+  });
+
+  const data = queryResult.data ?? null;
+  const isLoading = queryResult.isPending;
+  const error = shouldUseInitialError
+    ? initialError
+    : queryResult.error instanceof Error
+      ? queryResult.error.message
+      : null;
 
   // Page change handler
   const setPage = useCallback((newPage: number) => {
@@ -252,37 +273,6 @@ export function StarsPageClient({
     shortcuts: pageShortcuts,
   });
 
-  // Fetch data when page/limit/search/filters change
-  const fetchData = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const fetchKey = buildStarFetchKey({ searchQuery, filters, page, limit });
-      const result = await apiFetchPaginated<StarData>(`/stars?${fetchKey}`);
-      setData(result);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [searchQuery, filters, page, limit]);
-
-  const currentFetchKey = useMemo(
-    () => buildStarFetchKey({ searchQuery, filters, page, limit }),
-    [searchQuery, filters, page, limit]
-  );
-
-  useEffect(() => {
-    if (!hasSkippedInitialClientFetch.current) {
-      hasSkippedInitialClientFetch.current = true;
-      if (currentFetchKey === initialFetchKey) {
-        return;
-      }
-    }
-    fetchData();
-  }, [fetchData, currentFetchKey, initialFetchKey]);
-
   const totalPages = data?.total ? Math.ceil(data.total / limit) : 0;
 
   return (
@@ -376,7 +366,9 @@ export function StarsPageClient({
         <div className="p-6 bg-destructive/10 border border-destructive/50 rounded-lg text-center">
           <p className="text-destructive">{error}</p>
           <button
-            onClick={fetchData}
+            onClick={() => {
+              void queryResult.refetch();
+            }}
             className="mt-4 text-sm text-primary hover:underline"
           >
             Try again

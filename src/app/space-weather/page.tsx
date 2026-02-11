@@ -2,9 +2,14 @@ import { Suspense } from "react";
 import { fetchSpaceWeather } from "@/lib/nasa-donki";
 import {
   AnySpaceWeatherEvent,
-  SpaceWeatherEventType,
+  SpaceWeatherQuerySchema,
 } from "@/lib/types";
 import { EventStreamResult } from "@/lib/api-client";
+import {
+  buildSpaceWeatherFetchKey,
+  SPACE_WEATHER_LIMIT,
+} from "@/lib/space-weather-fetch-key";
+import { parseEventTypesParam } from "@/lib/space-weather-url";
 import {
   SpaceWeatherLoadingSkeleton,
   SpaceWeatherPageClient,
@@ -27,58 +32,45 @@ function toSingleValueParams(
   }
   return Object.fromEntries(entries);
 }
-
-function parseEventTypes(value?: string): SpaceWeatherEventType[] {
-  if (!value) return ["FLR", "CME", "GST"];
-  const parsed = value
-    .split(",")
-    .map((type) => type.trim().toUpperCase())
-    .filter(
-      (type): type is SpaceWeatherEventType =>
-        type === "FLR" || type === "CME" || type === "GST"
-    );
-  return parsed.length > 0 ? parsed : ["FLR", "CME", "GST"];
-}
-
-function buildInitialFetchKey(eventTypes: SpaceWeatherEventType[]) {
-  const query = new URLSearchParams();
-  if (eventTypes.length < 3) {
-    query.set("eventTypes", eventTypes.join(","));
-  }
-  query.set("limit", "100");
-  return query.toString();
-}
-
 export default async function SpaceWeatherPage({
   searchParams,
 }: SpaceWeatherPageProps) {
   const resolvedSearchParams = await searchParams;
   const raw = toSingleValueParams(resolvedSearchParams);
-
-  const eventTypes = parseEventTypes(raw.eventTypes);
-  const initialFetchKey = buildInitialFetchKey(eventTypes);
+  const parsed = SpaceWeatherQuerySchema.safeParse({
+    eventTypes: raw.eventTypes,
+    limit: raw.limit,
+  });
 
   let initialData: EventStreamResult<AnySpaceWeatherEvent> | null = null;
   let initialError: string | null = null;
+  let initialFetchKey = buildSpaceWeatherFetchKey(
+    ["FLR", "CME", "GST"],
+    SPACE_WEATHER_LIMIT
+  );
 
-  try {
-    const result = await fetchSpaceWeather({
-      eventTypes,
-      limit: 100,
-    });
-    initialData = {
-      events: result.events,
-      count: result.events.length,
-      meta: {
-        count: result.events.length,
-        limitApplied: 100,
-        dateRange: result.meta.dateRange,
-        typesIncluded: result.meta.typesIncluded,
-        ...(result.meta.warnings ? { warnings: result.meta.warnings } : {}),
-      },
-    };
-  } catch (error) {
-    initialError = error instanceof Error ? error.message : "An error occurred";
+  if (!parsed.success) {
+    initialError = "Invalid query parameters.";
+  } else {
+    const limit = parsed.data.limit ?? SPACE_WEATHER_LIMIT;
+    const eventTypes = parseEventTypesParam(parsed.data.eventTypes);
+
+    initialFetchKey = buildSpaceWeatherFetchKey(eventTypes, limit);
+
+    try {
+      const result = await fetchSpaceWeather({
+        eventTypes,
+        limit,
+      });
+
+      initialData = {
+        events: result.events,
+        count: result.count,
+        meta: result.meta,
+      };
+    } catch (error) {
+      initialError = error instanceof Error ? error.message : "An error occurred";
+    }
   }
 
   return (

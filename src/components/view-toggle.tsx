@@ -30,6 +30,7 @@ export function ViewToggle({ view, onChange, theme }: ViewToggleProps) {
       <button
         type="button"
         onClick={() => onChange("grid")}
+        aria-label="Switch to grid view"
         className={`p-1.5 transition-colors ${
           view === "grid"
             ? selectedClass
@@ -43,6 +44,7 @@ export function ViewToggle({ view, onChange, theme }: ViewToggleProps) {
       <button
         type="button"
         onClick={() => onChange("list")}
+        aria-label="Switch to list view"
         className={`p-1.5 transition-colors border-l ${borderClass} ${
           view === "list"
             ? selectedClass

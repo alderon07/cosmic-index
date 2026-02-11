@@ -2,14 +2,13 @@
 
 import {
   useState,
-  useEffect,
   useCallback,
   useMemo,
-  useRef,
   startTransition,
 } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import dynamic from "next/dynamic";
+import { useQuery } from "@tanstack/react-query";
 import {
   SpaceWeatherCard,
   SpaceWeatherCardSkeleton,
@@ -41,6 +40,17 @@ import { ViewToggle, ViewMode } from "@/components/view-toggle";
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { EventTimeline } from "@/components/timeline/event-timeline";
 import { buildTimelineBuckets } from "@/lib/timeline-buckets";
+import { queryKeys } from "@/lib/query-keys";
+import {
+  applySearchParamUpdates,
+  buildPathWithSearch,
+  isNoopUrlUpdate,
+} from "@/lib/url-normalize";
+import { parseEventTypesParam } from "@/lib/space-weather-url";
+import {
+  buildSpaceWeatherFetchKey,
+  SPACE_WEATHER_LIMIT,
+} from "@/lib/space-weather-fetch-key";
 
 const theme = THEMES["space-weather"];
 
@@ -63,7 +73,9 @@ function FilterChip({
     <Badge variant="secondary" className={`gap-1 pr-1 ${theme.filterChip}`}>
       {label}
       <button
+        type="button"
         onClick={onRemove}
+        aria-label={`Remove ${label} filter`}
         className={`ml-1 rounded-full p-0.5 ${theme.filterChipHover} transition-colors`}
       >
         <X className="w-3 h-3" />
@@ -87,15 +99,6 @@ export interface SpaceWeatherPageClientProps {
   initialFetchKey: string;
 }
 
-function buildSpaceWeatherFetchKey(eventTypes: SpaceWeatherEventType[]): string {
-  const params = new URLSearchParams();
-  if (eventTypes.length < 3) {
-    params.set("eventTypes", eventTypes.join(","));
-  }
-  params.set("limit", "100");
-  return params.toString();
-}
-
 export function SpaceWeatherPageClient({
   initialData,
   initialError,
@@ -107,40 +110,35 @@ export function SpaceWeatherPageClient({
 
   // Derive filters from URL (memoized to avoid dependency issues)
   const eventTypesParam = searchParams.get("eventTypes");
-  const eventTypes = useMemo<SpaceWeatherEventType[]>(() => {
-    if (!eventTypesParam) return ["FLR", "CME", "GST"];
-    return eventTypesParam.split(",").filter((t): t is SpaceWeatherEventType =>
-      ["FLR", "CME", "GST"].includes(t)
-    );
-  }, [eventTypesParam]);
+  const eventTypes = useMemo<SpaceWeatherEventType[]>(
+    () => parseEventTypesParam(eventTypesParam),
+    [eventTypesParam]
+  );
+
+  const limit = useMemo(() => {
+    const value = searchParams.get("limit");
+    const parsed = value ? Number.parseInt(value, 10) : SPACE_WEATHER_LIMIT;
+    if (!Number.isFinite(parsed) || parsed < 1 || parsed > 500) {
+      return SPACE_WEATHER_LIMIT;
+    }
+    return parsed;
+  }, [searchParams]);
 
   // Derive view mode from URL (default: grid)
   const viewParam = searchParams.get("view");
   const view: ViewMode = viewParam === "list" ? "list" : "grid";
 
-  const [data, setData] = useState<EventStreamResult<AnySpaceWeatherEvent> | null>(initialData);
-  const [isLoading, setIsLoading] = useState(!initialData && !initialError);
-  const [error, setError] = useState<string | null>(initialError);
   const [filterAccordionValue, setFilterAccordionValue] = useState<string>("filters");
   const [selectedEvent, setSelectedEvent] = useState<AnySpaceWeatherEvent | null>(null);
-  const hasSkippedInitialClientFetch = useRef(false);
 
   // Update URL helper
   const updateUrl = useCallback(
     (updates: Record<string, string | null>) => {
-      const params = new URLSearchParams(searchParams.toString());
-
-      for (const [key, value] of Object.entries(updates)) {
-        if (value === null) {
-          params.delete(key);
-        } else {
-          params.set(key, value);
-        }
-      }
-
-      const query = params.toString();
+      if (isNoopUrlUpdate(searchParams, updates)) return;
+      const params = applySearchParamUpdates(searchParams, updates);
+      const nextPath = buildPathWithSearch(pathname, params);
       startTransition(() => {
-        router.replace(query ? `${pathname}?${query}` : pathname, {
+        router.replace(nextPath, {
           scroll: false,
         });
       });
@@ -168,7 +166,8 @@ export function SpaceWeatherPageClient({
       if (newTypes.length === 3) {
         updateUrl({ eventTypes: null });
       } else {
-        updateUrl({ eventTypes: newTypes.join(",") });
+        const canonicalTypes = parseEventTypesParam(newTypes.join(","));
+        updateUrl({ eventTypes: canonicalTypes.join(",") });
       }
     },
     [eventTypes, updateUrl]
@@ -213,51 +212,31 @@ export function SpaceWeatherPageClient({
     shortcuts: pageShortcuts,
   });
 
-  // Fetch data
-  const fetchData = useCallback(
-    async (signal?: AbortSignal) => {
-      setIsLoading(true);
-      setError(null);
-
-      try {
-        const fetchKey = buildSpaceWeatherFetchKey(eventTypes);
-        const result = await apiFetchEvents<AnySpaceWeatherEvent>(`/space-weather?${fetchKey}`, {
-          signal,
-        });
-
-        if (signal?.aborted) return;
-
-        setData(result);
-      } catch (err) {
-        if (err instanceof Error && err.name === "AbortError") {
-          return;
-        }
-        setError(err instanceof Error ? err.message : "An error occurred");
-      } finally {
-        if (!signal?.aborted) {
-          setIsLoading(false);
-        }
-      }
-    },
-    [eventTypes]
-  );
-
   const currentFetchKey = useMemo(
-    () => buildSpaceWeatherFetchKey(eventTypes),
-    [eventTypes]
+    () => buildSpaceWeatherFetchKey(eventTypes, limit),
+    [eventTypes, limit]
   );
 
-  useEffect(() => {
-    if (!hasSkippedInitialClientFetch.current) {
-      hasSkippedInitialClientFetch.current = true;
-      if (currentFetchKey === initialFetchKey) {
-        return;
-      }
-    }
-    const controller = new AbortController();
-    fetchData(controller.signal);
-    return () => controller.abort();
-  }, [fetchData, currentFetchKey, initialFetchKey]);
+  const shouldUseInitialError = !initialData && !!initialError && currentFetchKey === initialFetchKey;
+
+  const queryResult = useQuery({
+    queryKey: queryKeys.spaceWeather(currentFetchKey),
+    queryFn: ({ signal }) =>
+      apiFetchEvents<AnySpaceWeatherEvent>(`/space-weather?${currentFetchKey}`, {
+        signal,
+      }),
+    enabled: !shouldUseInitialError,
+    initialData: currentFetchKey === initialFetchKey ? (initialData ?? undefined) : undefined,
+    staleTime: 30_000,
+  });
+
+  const data = queryResult.data ?? null;
+  const isLoading = queryResult.isPending;
+  const error = shouldUseInitialError
+    ? initialError
+    : queryResult.error instanceof Error
+      ? queryResult.error.message
+      : null;
 
   const activeFilterCount = eventTypes.length < 3 ? 1 : 0;
 
@@ -270,7 +249,7 @@ export function SpaceWeatherPageClient({
       if (event.eventType === "GST") counts.GST += 1;
     }
     return counts;
-  }, [data?.events]);
+  }, [data]);
 
   const timelineBuckets = useMemo(() => {
     if (!data?.events || data.events.length === 0) return [];
@@ -283,7 +262,7 @@ export function SpaceWeatherPageClient({
       startDate,
       endDate,
     });
-  }, [data?.events]);
+  }, [data]);
 
   return (
     <div className="container mx-auto max-w-7xl px-4 py-8">
@@ -455,7 +434,9 @@ export function SpaceWeatherPageClient({
         <div className="p-6 bg-destructive/10 border border-destructive/50 rounded-lg text-center">
           <p className="text-destructive">{error}</p>
           <button
-            onClick={() => fetchData()}
+            onClick={() => {
+              void queryResult.refetch();
+            }}
             className={`mt-4 text-sm ${theme.text} hover:underline`}
           >
             Try again

@@ -2,13 +2,12 @@
 
 import {
   useState,
-  useEffect,
   useCallback,
   useMemo,
-  useRef,
   startTransition,
 } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
 import { FireballCard, FireballCardSkeleton } from "@/components/fireball-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -49,6 +48,12 @@ import {
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { EventTimeline } from "@/components/timeline/event-timeline";
 import { buildTimelineBuckets } from "@/lib/timeline-buckets";
+import { queryKeys } from "@/lib/query-keys";
+import {
+  applySearchParamUpdates,
+  buildPathWithSearch,
+  isNoopUrlUpdate,
+} from "@/lib/url-normalize";
 
 const theme = THEMES["fireballs"];
 
@@ -82,7 +87,9 @@ function FilterChip({
     <Badge variant="secondary" className={`gap-1 pr-1 ${theme.filterChip}`}>
       {label}
       <button
+        type="button"
         onClick={onRemove}
+        aria-label={`Remove ${label} filter`}
         className={`ml-1 rounded-full p-0.5 ${theme.filterChipHover} transition-colors`}
       >
         <X className="w-3 h-3" />
@@ -146,28 +153,16 @@ export function FireballsPageClient({
     [reqLoc, reqAlt, reqVel, sort, order, view]
   );
 
-  const [data, setData] = useState<EventStreamResult<FireballEvent> | null>(initialData);
-  const [isLoading, setIsLoading] = useState(!initialData && !initialError);
-  const [error, setError] = useState<string | null>(initialError);
   const [filterAccordionValue, setFilterAccordionValue] = useState<string>("");
-  const hasSkippedInitialClientFetch = useRef(false);
 
   // Update URL helper
   const updateUrl = useCallback(
     (updates: Record<string, string | null>) => {
-      const params = new URLSearchParams(searchParams.toString());
-
-      for (const [key, value] of Object.entries(updates)) {
-        if (value === null) {
-          params.delete(key);
-        } else {
-          params.set(key, value);
-        }
-      }
-
-      const query = params.toString();
+      if (isNoopUrlUpdate(searchParams, updates)) return;
+      const params = applySearchParamUpdates(searchParams, updates);
+      const nextPath = buildPathWithSearch(pathname, params);
       startTransition(() => {
-        router.replace(query ? `${pathname}?${query}` : pathname, {
+        router.replace(nextPath, {
           scroll: false,
         });
       });
@@ -227,58 +222,38 @@ export function FireballsPageClient({
     shortcuts: pageShortcuts,
   });
 
-  // Fetch data
-  const fetchData = useCallback(
-    async (signal?: AbortSignal) => {
-      setIsLoading(true);
-      setError(null);
-
-      try {
-        const fetchKey = buildFireballsFetchKey(filters);
-        const result = await apiFetchEvents<FireballEvent>(`/fireballs?${fetchKey}`, {
-          signal,
-        });
-
-        if (signal?.aborted) return;
-
-        setData(result);
-      } catch (err) {
-        if (err instanceof Error && err.name === "AbortError") {
-          return;
-        }
-        setError(err instanceof Error ? err.message : "An error occurred");
-      } finally {
-        if (!signal?.aborted) {
-          setIsLoading(false);
-        }
-      }
-    },
-    [filters]
-  );
-
   const currentFetchKey = useMemo(
     () => buildFireballsFetchKey(filters),
     [filters]
   );
 
-  useEffect(() => {
-    if (!hasSkippedInitialClientFetch.current) {
-      hasSkippedInitialClientFetch.current = true;
-      if (currentFetchKey === initialFetchKey) {
-        return;
-      }
-    }
-    const controller = new AbortController();
-    fetchData(controller.signal);
-    return () => controller.abort();
-  }, [fetchData, currentFetchKey, initialFetchKey]);
+  const shouldUseInitialError = !initialData && !!initialError && currentFetchKey === initialFetchKey;
+
+  const queryResult = useQuery({
+    queryKey: queryKeys.fireballs(currentFetchKey),
+    queryFn: ({ signal }) =>
+      apiFetchEvents<FireballEvent>(`/fireballs?${currentFetchKey}`, {
+        signal,
+      }),
+    enabled: !shouldUseInitialError,
+    initialData: currentFetchKey === initialFetchKey ? (initialData ?? undefined) : undefined,
+    staleTime: 30_000,
+  });
+
+  const data = queryResult.data ?? null;
+  const isLoading = queryResult.isPending;
+  const error = shouldUseInitialError
+    ? initialError
+    : queryResult.error instanceof Error
+      ? queryResult.error.message
+      : null;
 
   const activeFilterCount = countActiveFilters(filters);
 
   // Count complete events for stats
   const completeCount = useMemo(
     () => data?.events.reduce((count, event) => (event.isComplete ? count + 1 : count), 0) ?? 0,
-    [data?.events]
+    [data]
   );
 
   const timelineBuckets = useMemo(() => {
@@ -295,7 +270,7 @@ export function FireballsPageClient({
       startDate: parsedDates[0],
       endDate: parsedDates[parsedDates.length - 1],
     });
-  }, [data?.events]);
+  }, [data]);
 
   return (
     <div className="container mx-auto max-w-7xl px-4 py-8">
@@ -552,7 +527,9 @@ export function FireballsPageClient({
         <div className="p-6 bg-destructive/10 border border-destructive/50 rounded-lg text-center">
           <p className="text-destructive">{error}</p>
           <button
-            onClick={() => fetchData()}
+            onClick={() => {
+              void queryResult.refetch();
+            }}
             className={`mt-4 text-sm ${theme.text} hover:underline`}
           >
             Try again

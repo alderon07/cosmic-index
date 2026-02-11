@@ -22,16 +22,17 @@ export function UserAuthButton() {
 
   if (auth.mode === "mock") {
     return (
-      <Link href="/user/saved-objects">
-        <Button
-          variant="ghost"
-          size="sm"
-          className="gap-1.5 text-muted-foreground hover:text-foreground"
-        >
+      <Button
+        asChild
+        variant="ghost"
+        size="sm"
+        className="gap-1.5 text-muted-foreground hover:text-foreground"
+      >
+        <Link href="/user/saved-objects">
           <FolderHeart className="w-4 h-4" />
           <span className="hidden sm:inline">Mock User</span>
-        </Button>
-      </Link>
+        </Link>
+      </Button>
     );
   }
 
