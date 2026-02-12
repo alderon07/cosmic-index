@@ -204,7 +204,7 @@ export function StarFilterPanel({
             updateFilter("sort", value as StarFilters["sort"])
           }
         >
-          <SelectTrigger className={`w-auto font-mono ${theme.sortSelect}`}>
+          <SelectTrigger className={`w-46 font-mono ${theme.sortSelect}`}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
