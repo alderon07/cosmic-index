@@ -16,7 +16,7 @@ const TIMELINE_BAR_BG_CLASSES: Record<ObjectTheme, string> = {
   "small-bodies": "bg-secondary",
   "close-approaches": "bg-destructive",
   fireballs: "bg-radium-teal",
-  "space-weather": "bg-primary",
+  "space-weather": "bg-aurora-violet",
 };
 
 interface EventTimelineProps {
