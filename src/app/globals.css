@@ -90,6 +90,29 @@
     @apply border-border outline-ring/50;
   }
 
+  html {
+    /* Prevent CLS from viewport width changes when scrollbars appear/disappear. */
+    scrollbar-gutter: stable;
+  }
+
+  @supports (scrollbar-gutter: stable) {
+    /* Radix Select/Dialog uses react-remove-scroll, which also adds right gap compensation.
+       With stable gutter that compensation becomes double and causes horizontal shifting. */
+    body[data-scroll-locked] {
+      margin-right: 0 !important;
+    }
+
+    .with-scroll-bars-hidden {
+      padding-right: 0 !important;
+    }
+  }
+
+  @supports not (scrollbar-gutter: stable) {
+    html {
+      overflow-y: scroll;
+    }
+  }
+
   body {
     @apply bg-background text-foreground font-sans;
     font-feature-settings: "rlig" 1, "calt" 1;
