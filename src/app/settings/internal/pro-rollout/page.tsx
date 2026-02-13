@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getAuthUser } from "@/lib/auth";
-import { isProRolloutAdmin, isProRolloutAdminConfigured } from "@/lib/admin-access";
+import { isInternalAdmin, isInternalAdminConfigured } from "@/lib/admin-access";
 import { resolveLimitMode } from "@/lib/feature-policy";
 import { getUserDb } from "@/lib/user-db";
 import {
@@ -28,12 +28,12 @@ function formatNumber(value: number): string {
 }
 
 export default async function ProRolloutStatusPage() {
-  if (!isProRolloutAdminConfigured()) {
+  if (!isInternalAdminConfigured()) {
     notFound();
   }
 
   const user = await getAuthUser();
-  if (!user || !isProRolloutAdmin(user.userId)) {
+  if (!user || !isInternalAdmin(user.userId)) {
     notFound();
   }
 

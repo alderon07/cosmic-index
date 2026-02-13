@@ -93,3 +93,35 @@ func TestClientGetNonJSONError(t *testing.T) {
 		t.Fatalf("expected body snippet")
 	}
 }
+
+func TestClientGetVercelCheckpointError(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Header().Set("Retry-After", "30")
+		w.WriteHeader(http.StatusTooManyRequests)
+		_, _ = w.Write([]byte("<!DOCTYPE html><html><head><title>Vercel Security Checkpoint</title></head><body>blocked</body></html>"))
+	}))
+	defer server.Close()
+
+	client := New(server.URL+"/api/v1", 5*time.Second, false, nil, "test-agent")
+	_, _, _, err := client.Get(context.Background(), "/exoplanets", nil)
+	if err == nil {
+		t.Fatalf("expected error")
+	}
+
+	requestError, ok := err.(*RequestError)
+	if !ok {
+		t.Fatalf("expected RequestError, got %T", err)
+	}
+	if requestError.Code != "SECURITY_CHECKPOINT" {
+		t.Fatalf("unexpected code: %s", requestError.Code)
+	}
+	if requestError.RetryAfter != "30" {
+		t.Fatalf("unexpected retry-after: %s", requestError.RetryAfter)
+	}
+	if requestError.BodySnippet != "" {
+		t.Fatalf("expected empty body snippet, got %q", requestError.BodySnippet)
+	}
+}

@@ -165,6 +165,15 @@ cosmic-index/
 
 - `GET /api/small-bodies/[id]` - Get detailed small body information
 
+### API Docs Access
+
+- Docs UI is available at `GET /api/docs`.
+- In production, docs/spec are restricted to internal admins.
+- Configure internal admin IDs with:
+  - `INTERNAL_ADMIN_IDS` (preferred, comma-separated Clerk user IDs)
+  - `PRO_ROLLOUT_ADMIN_IDS` (fallback for backward compatibility)
+- Legacy `GET /openapi.json` is not publicly available in production.
+
 ## 🎨 Design System
 
 The project features a custom retrofuturistic design system with:

@@ -1,15 +1,16 @@
 # AGENTS.md
 
 Last updated (UTC): 2026-02-13
-Version: 1.1
+Version: 1.2
 
 This file provides implementation-oriented guidance for agents working in this repo.
 
 ## Change Log
 
 - 2026-02-13: Added explicit sections for project overview, build/test commands, code style, testing instructions, and security considerations.
-- 2026-02-13: Added mandatory policy to update `public/openapi.json` whenever endpoints under `src/app/api/**` change.
+- 2026-02-13: Added mandatory policy to keep the OpenAPI spec updated whenever endpoints under `src/app/api/**` change.
 - 2026-02-13: Added top-level metadata header (`Last updated (UTC)`, `Version`).
+- 2026-02-13: OpenAPI canonical file moved to `src/lib/openapi/openapi.json`; docs/spec are internal-admin-only in production.
 
 ## Project Overview
 
@@ -79,6 +80,12 @@ bun run lint
 - If runtime/network constraints prevent a full local build in agent environments, still run the highest-signal checks available and report any gaps.
 - Endpoint changes are not complete until docs and tests are both updated.
 
+## Commit Policy
+
+- Always commit with a clear, descriptive message.
+- Never commit/push any code without explicit approval.
+- Never commit/push secrets or hardcode credentials; keep secrets in environment variables.
+
 ## Security Considerations
 
 - Never commit secrets or hardcode credentials; keep secrets in environment variables.
@@ -90,9 +97,10 @@ bun run lint
 
 ## OpenAPI Spec Requirement
 
-- If you add, remove, or change any endpoint under `src/app/api/**`, you MUST update `public/openapi.json` in the same change.
+- If you add, remove, or change any endpoint under `src/app/api/**`, you MUST update `src/lib/openapi/openapi.json` in the same change.
 - This includes path/method changes, query/path params, request/response schemas, status codes, auth requirements, and documented rate-limit behavior.
-- `src/app/api/docs/route.ts` serves docs from `/openapi.json`; keep the spec accurate and in sync at all times.
+- `src/app/api/docs/route.ts` serves docs from `/api/internal/openapi`; keep the spec accurate and in sync at all times.
+- In production, OpenAPI docs/spec are restricted to internal admins via `INTERNAL_ADMIN_IDS` (with `PRO_ROLLOUT_ADMIN_IDS` fallback).
 
 ## Architecture (Current)
 

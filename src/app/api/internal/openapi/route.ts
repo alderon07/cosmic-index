@@ -1,20 +1,13 @@
 import { NextResponse } from "next/server";
-import { ApiReference } from "@scalar/nextjs-api-reference";
 import { getAuthUser } from "@/lib/auth";
 import { isInternalAdmin, isInternalAdminConfigured } from "@/lib/admin-access";
 import { isClerkServerConfigured, isMockAuthEnabled } from "@/lib/runtime-mode";
+import openApiSpec from "@/lib/openapi/openapi.json";
 
-const apiDocsHandler = ApiReference({
-  url: "/api/internal/openapi",
-  theme: "deepSpace",
-  darkMode: true,
-  metaData: {
-    title: "Cosmic Index API Reference",
-  },
-});
+export const runtime = "nodejs";
 
 const ROBOT_HEADER = "noindex, nofollow";
-export const runtime = "nodejs";
+const SPEC_PAYLOAD = JSON.stringify(openApiSpec);
 
 function blockedResponse() {
   return NextResponse.json(
@@ -29,12 +22,25 @@ function blockedResponse() {
   );
 }
 
-async function assertInternalAdminAccess() {
-  if (process.env.NODE_ENV !== "production") return null;
+function specResponse() {
+  return new NextResponse(SPEC_PAYLOAD, {
+    status: 200,
+    headers: {
+      "Content-Type": "application/json; charset=utf-8",
+      "Cache-Control": "private, no-store",
+      "X-Robots-Tag": ROBOT_HEADER,
+    },
+  });
+}
+
+export async function GET() {
+  if (process.env.NODE_ENV !== "production") {
+    return specResponse();
+  }
 
   if (!isClerkServerConfigured() || isMockAuthEnabled()) {
     console.error(
-      "[internal-docs] blocked due to production auth misconfiguration (Clerk missing or mock auth enabled)."
+      "[internal-openapi] blocked due to production auth misconfiguration (Clerk missing or mock auth enabled)."
     );
     return blockedResponse();
   }
@@ -48,15 +54,5 @@ async function assertInternalAdminAccess() {
     return blockedResponse();
   }
 
-  return null;
-}
-
-export async function GET(request: Request) {
-  const blocked = await assertInternalAdminAccess();
-  if (blocked) return blocked;
-
-  const response = await apiDocsHandler(request);
-  response.headers.set("Cache-Control", "private, no-store");
-  response.headers.set("X-Robots-Tag", ROBOT_HEADER);
-  return response;
+  return specResponse();
 }

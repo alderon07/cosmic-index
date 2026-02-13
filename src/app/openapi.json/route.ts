@@ -1,10 +1,10 @@
-import openApiSpec from "@/lib/openapi/openapi.json";
+import { NextResponse } from "next/server";
 
 const ROBOT_HEADER = "noindex, nofollow";
-const SPEC_PAYLOAD = JSON.stringify(openApiSpec);
+export const runtime = "nodejs";
 
 function blockedResponse() {
-  return Response.json(
+  return NextResponse.json(
     { error: "not_found" },
     {
       status: 404,
@@ -16,17 +16,11 @@ function blockedResponse() {
   );
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   if (process.env.NODE_ENV === "production") {
     return blockedResponse();
   }
 
-  return new Response(SPEC_PAYLOAD, {
-    status: 200,
-    headers: {
-      "Content-Type": "application/json; charset=utf-8",
-      "Cache-Control": "private, no-store",
-      "X-Robots-Tag": ROBOT_HEADER,
-    },
-  });
+  const target = new URL("/api/internal/openapi", request.url);
+  return NextResponse.redirect(target);
 }
