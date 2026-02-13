@@ -1,8 +1,17 @@
-# CLAUDE.md
+# AGENTS.md
+
+Last updated (UTC): 2026-02-13
+Version: 1.1
 
 This file provides implementation-oriented guidance for agents working in this repo.
 
-## Project Snapshot
+## Change Log
+
+- 2026-02-13: Added explicit sections for project overview, build/test commands, code style, testing instructions, and security considerations.
+- 2026-02-13: Added mandatory policy to update `public/openapi.json` whenever endpoints under `src/app/api/**` change.
+- 2026-02-13: Added top-level metadata header (`Last updated (UTC)`, `Version`).
+
+## Project Overview
 
 Cosmic Index is a Next.js 16 App Router application for browsing and comparing:
 
@@ -16,7 +25,7 @@ Cosmic Index is a Next.js 16 App Router application for browsing and comparing:
 
 It also includes Pro-tier features (saved objects, collections, saved searches, alerts, exports, billing).
 
-## Commands
+## Build and Test Commands
 
 Use `just` recipes when possible:
 
@@ -35,12 +44,55 @@ just ingest-all
 
 Equivalent Bun scripts are in `package.json` (`bun run <script>`).
 
-Tests:
+Core build/test commands:
 
 ```bash
+bun run lint
+bun run build
 bun test
 bun test src/lib/__tests__/compare-facts.test.ts
+just cli-test
 ```
+
+## Code Style Guidelines
+
+- Use TypeScript strict-mode friendly code; avoid `any` unless unavoidable and documented.
+- Prefer App Router server components by default; add `"use client"` only when interactivity requires it.
+- Keep imports project-relative via `@/*` aliases when possible.
+- Validate API input at the route boundary (Zod schemas in `src/lib/types.ts` and route-level parsing).
+- Keep API response shapes consistent with shared response utilities and existing route patterns.
+- Preserve canonical ID conventions (`exoplanet:*`, `star:*`, `small-body:*`, and hashed event IDs).
+- Reuse existing libraries/utilities before adding new dependencies.
+
+## Testing Instructions
+
+- Add or update tests for any behavioral change, especially in API routes and shared data utilities.
+- For endpoint work, include happy-path and error-path coverage (validation, auth, and limits where applicable).
+- Run targeted tests first, then broader checks:
+
+```bash
+bun test src/app/api/user/saved-objects/route.test.ts
+bun test
+bun run lint
+```
+
+- If runtime/network constraints prevent a full local build in agent environments, still run the highest-signal checks available and report any gaps.
+- Endpoint changes are not complete until docs and tests are both updated.
+
+## Security Considerations
+
+- Never commit secrets or hardcode credentials; keep secrets in environment variables.
+- Treat all request input as untrusted. Validate, constrain, and sanitize at API boundaries.
+- Keep auth and authorization logic aligned with `src/lib/auth.ts` and `src/proxy.ts`.
+- Preserve rate-limiting and abuse protections (`src/lib/rate-limit.ts`, `src/lib/api-middleware.ts`).
+- Keep webhook and billing flows signature-verified and idempotent.
+- Be explicit and minimal when trusting proxy headers (`TRUST_CLOUDFLARE_HEADERS`, `TRUST_FLY_HEADERS`).
+
+## OpenAPI Spec Requirement
+
+- If you add, remove, or change any endpoint under `src/app/api/**`, you MUST update `public/openapi.json` in the same change.
+- This includes path/method changes, query/path params, request/response schemas, status codes, auth requirements, and documented rate-limit behavior.
+- `src/app/api/docs/route.ts` serves docs from `/openapi.json`; keep the spec accurate and in sync at all times.
 
 ## Architecture (Current)
 
