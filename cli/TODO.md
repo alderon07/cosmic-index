@@ -2,12 +2,12 @@
 
 Tracks `cosmic-index` CLI feature work.
 
-## In Progress
+## Done
 
-- [ ] Add hidden compatibility aliases:
+- [x] Add hidden compatibility aliases:
   - `cosmic-index search close-approaches`
   - `cosmic-index search fireballs`
-- [ ] Add `completion` command support (`bash`, `zsh`, `fish`, `powershell`).
+- [x] Add `completion` command support (`bash`, `zsh`, `fish`, `powershell`).
 
 ## Next
 

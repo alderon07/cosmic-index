@@ -41,6 +41,9 @@ func NewRootCommand(stdout, stderr io.Writer, version string) *cobra.Command {
 		Short:         "Explore Cosmic Index from your terminal",
 		SilenceErrors: true,
 		SilenceUsage:  true,
+		CompletionOptions: cobra.CompletionOptions{
+			DisableDefaultCmd: true,
+		},
 	}
 
 	root.PersistentFlags().StringVar(&state.baseURL, "base-url", "", "Cosmic Index base URL (default: https://cosmic-index.vercel.app)")
@@ -55,6 +58,7 @@ func NewRootCommand(stdout, stderr io.Writer, version string) *cobra.Command {
 	root.AddCommand(newFireballsCommand(state))
 	root.AddCommand(newSearchCommand(state))
 	root.AddCommand(newGetCommand(state))
+	root.AddCommand(newCompletionCommand(state))
 
 	return root
 }
