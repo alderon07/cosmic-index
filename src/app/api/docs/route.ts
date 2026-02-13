@@ -24,12 +24,12 @@ function blockedResponse() {
   );
 }
 
-export async function GET(request: Request) {
+export async function GET() {
   if (process.env.NODE_ENV === "production") {
     return blockedResponse();
   }
 
-  const response = await apiDocsHandler(request);
+  const response = await apiDocsHandler();
   response.headers.set("Cache-Control", "private, no-store");
   response.headers.set("X-Robots-Tag", ROBOT_HEADER);
   return response;
