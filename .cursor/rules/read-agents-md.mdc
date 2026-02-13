@@ -1,0 +1,12 @@
+---
+description: Read AGENTS.md for general project context
+alwaysApply: true
+---
+
+# Project Context
+
+At the start of work on this repo, **read `AGENTS.md`** for general context.
+
+`AGENTS.md` contains implementation-oriented guidance for agents: project overview, build/test commands, code style, testing instructions, security considerations, and policies (e.g. updating the OpenAPI spec when endpoints change).
+
+Use it to align with project conventions and avoid contradicting documented policies.
