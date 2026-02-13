@@ -125,6 +125,12 @@
 
 /* Atompunk Visual Effects */
 @layer utilities {
+  /* Shared app shell width so nav, main content, and footer always align */
+  .shell-container {
+    @apply mx-auto w-full px-4;
+    max-width: 90rem;
+  }
+
   /* Reactor Orange Glow */
   .glow-orange {
     box-shadow: 0 0 20px rgba(var(--glow-orange), 0.4),

@@ -48,7 +48,7 @@ export default function HomePage() {
           ))}
         </div>
 
-        <div className="relative container mx-auto max-w-7xl px-4 py-10 sm:py-16 md:py-24">
+        <div className="relative shell-container py-10 sm:py-16 md:py-24">
           <div className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr] lg:items-end min-w-0">
             <div className="animate-reveal-up min-w-0">
               <span className="inline-flex flex-wrap items-center gap-2 rounded-full border border-orange-300/40 bg-orange-500/10 px-3 py-1.5 text-[10px] sm:text-xs uppercase tracking-[0.15em] sm:tracking-[0.2em] text-orange-200 animate-card-breathe motion-reduce:animate-none">
@@ -126,7 +126,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="container mx-auto max-w-7xl px-4 py-8 md:py-12 animate-reveal-up-late overflow-hidden min-w-0">
+      <section className="shell-container py-8 md:py-12 animate-reveal-up-late overflow-hidden min-w-0">
         <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between min-w-0">
           <div className="min-w-0">
             <p className="text-xs uppercase tracking-[0.22em] text-primary">
@@ -145,7 +145,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="container mx-auto max-w-7xl px-4 pb-10 pt-4 md:pb-20 overflow-hidden min-w-0">
+      <section className="shell-container pb-10 pt-4 md:pb-20 overflow-hidden min-w-0">
         <div className="grid gap-4 sm:gap-6 md:grid-cols-3 min-w-0">
           <div className="h-full min-w-0 animate-reveal-up">
             <ReactorCard
