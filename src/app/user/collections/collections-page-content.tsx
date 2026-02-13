@@ -162,7 +162,7 @@ export function CollectionsPageContent() {
 
   if (!auth.isSignedIn) {
     return (
-      <div className="container mx-auto max-w-7xl px-4 py-12">
+      <div className="shell-container py-12">
         <Card
           tone={ACCOUNT_CARD_TONE}
           className="relative max-w-3xl overflow-hidden border-orange-300/20 bg-[#1a120d]/80"
@@ -178,7 +178,7 @@ export function CollectionsPageContent() {
   }
 
   return (
-    <div className="container mx-auto max-w-7xl px-4 py-8">
+    <div className="shell-container py-8">
       <div className="grid gap-6 lg:grid-cols-[minmax(0,280px)_1fr] lg:items-start">
         <Card
           tone={ACCOUNT_CARD_TONE}

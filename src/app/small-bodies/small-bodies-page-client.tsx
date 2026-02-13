@@ -258,7 +258,7 @@ export function SmallBodiesPageClient({
   const totalPages = data?.total ? Math.ceil(data.total / limit) : 0;
 
   return (
-    <div className="container mx-auto max-w-7xl px-4 py-8">
+    <div className="shell-container py-8">
       {/* Page Header */}
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-2">
@@ -433,7 +433,7 @@ export function SmallBodiesPageClient({
 // Loading skeleton for Suspense fallback
 export function SmallBodiesLoadingSkeleton() {
   return (
-    <div className="container mx-auto max-w-7xl px-4 py-8">
+    <div className="shell-container py-8">
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-2">
           <div className={`w-10 h-10 rounded-lg ${theme.iconContainer} flex items-center justify-center`}>

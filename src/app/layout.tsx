@@ -159,7 +159,7 @@ export default function RootLayout({
         <div className="relative vignette flex min-h-screen flex-1 flex-col">
           {/* Navigation */}
           <header className="sticky top-0 z-50 border-b border-orange-200/20 bg-[#120d0a]/90 backdrop-blur-md">
-            <nav className="container mx-auto max-w-7xl px-4 h-16 flex items-center justify-between">
+            <nav className="shell-container h-16 flex items-center justify-between">
               <Link href="/" className="flex items-center gap-2 group">
                 <div className="h-8 w-8 rounded-full border border-orange-300/35 reactor-gradient pulse-glow" />
                 <span className="font-display text-xl tracking-wider text-orange-100 transition-colors group-hover:text-orange-300">
@@ -228,7 +228,7 @@ export default function RootLayout({
 
           {/* Footer */}
           <footer className="mt-auto border-t border-orange-200/20 bg-[#100c09]">
-            <div className="container mx-auto max-w-7xl px-4 py-8">
+            <div className="shell-container py-8">
               <div className="flex flex-col md:flex-row items-center justify-between gap-4">
                 <div className="flex items-center gap-2">
                   <div className="h-6 w-6 rounded-full border border-orange-300/30 reactor-gradient opacity-80" />

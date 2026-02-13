@@ -169,7 +169,7 @@ export function SavedObjectsPageContent() {
 
   if (!auth.isSignedIn) {
     return (
-      <div className="container mx-auto max-w-7xl px-4 py-12">
+      <div className="shell-container py-12">
         <Card
           tone={ACCOUNT_CARD_TONE}
           className="relative max-w-3xl overflow-hidden border-orange-300/20 bg-[#1a120d]/80"
@@ -217,7 +217,7 @@ export function SavedObjectsPageContent() {
   );
 
   return (
-    <div className="container mx-auto max-w-7xl px-4 py-8">
+    <div className="shell-container py-8">
       {isLoading ? (
         <>
           <div className="mb-6">{headingContent}</div>

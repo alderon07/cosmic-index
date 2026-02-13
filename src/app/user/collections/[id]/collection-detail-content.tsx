@@ -218,7 +218,7 @@ export function CollectionDetailContent() {
 
   if (!auth.isSignedIn) {
     return (
-      <div className="container mx-auto max-w-7xl px-4 py-12">
+      <div className="shell-container py-12">
         <Card
           tone={ACCOUNT_CARD_TONE}
           className="relative max-w-3xl overflow-hidden border-orange-300/20 bg-[#1a120d]/80"
@@ -235,7 +235,7 @@ export function CollectionDetailContent() {
 
   if (isNotFound) {
     return (
-      <div className="container mx-auto max-w-7xl px-4 py-8">
+      <div className="shell-container py-8">
         <Card tone={ACCOUNT_CARD_TONE} className="max-w-4xl border-orange-300/20 bg-[#17100d]/80">
           <CardContent className="py-10 text-center">
             <p className="text-muted-foreground">Resource not found.</p>
@@ -253,7 +253,7 @@ export function CollectionDetailContent() {
   }
 
   return (
-    <div className="container mx-auto max-w-7xl space-y-5 px-4 py-8">
+    <div className="shell-container space-y-5 py-8">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div className="min-w-0">
           <Link
