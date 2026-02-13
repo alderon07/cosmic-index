@@ -209,7 +209,7 @@ export default function RootLayout({
                 </Link>
                 <Link
                   href="/space-weather"
-                  className={`font-display text-sm tracking-wide text-aurora-violet/85 transition-colors ${THEMES["space-weather"].hoverText}`}
+                  className={`font-display text-sm tracking-wide transition-colors ${THEMES["space-weather"].hoverText}`}
                   title="Space Weather"
                 >
                   <CloudLightning className="w-5 h-5 sm:hidden" />
