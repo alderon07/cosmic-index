@@ -157,11 +157,23 @@ export function getWaitlistEnforceThreshold(): number {
   return parsePositiveInt(process.env.WAITLIST_ENFORCE_THRESHOLD, 125);
 }
 
-export function getProRolloutAdminIds(): string[] {
-  const raw = process.env.PRO_ROLLOUT_ADMIN_IDS;
+function parseAdminIds(raw: string | undefined): string[] {
   if (!raw) return [];
   return raw
     .split(",")
     .map((value) => value.trim())
     .filter(Boolean);
+}
+
+export function getInternalAdminIds(): string[] {
+  const preferred = parseAdminIds(process.env.INTERNAL_ADMIN_IDS);
+  if (preferred.length > 0) return preferred;
+  return parseAdminIds(process.env.PRO_ROLLOUT_ADMIN_IDS);
+}
+
+/**
+ * @deprecated Prefer getInternalAdminIds().
+ */
+export function getProRolloutAdminIds(): string[] {
+  return getInternalAdminIds();
 }

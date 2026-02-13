@@ -1,14 +1,35 @@
-import { getProRolloutAdminIds } from "@/lib/runtime-mode";
+import { getInternalAdminIds } from "@/lib/runtime-mode";
 
-export function getProRolloutAdminSet(): Set<string> {
-  return new Set(getProRolloutAdminIds());
+export function getInternalAdminSet(): Set<string> {
+  return new Set(getInternalAdminIds());
 }
 
-export function isProRolloutAdminConfigured(): boolean {
-  return getProRolloutAdminSet().size > 0;
+export function isInternalAdminConfigured(): boolean {
+  return getInternalAdminSet().size > 0;
 }
 
-export function isProRolloutAdmin(userId: string | null | undefined): boolean {
+export function isInternalAdmin(userId: string | null | undefined): boolean {
   if (!userId) return false;
-  return getProRolloutAdminSet().has(userId);
+  return getInternalAdminSet().has(userId);
+}
+
+/**
+ * @deprecated Prefer getInternalAdminSet().
+ */
+export function getProRolloutAdminSet(): Set<string> {
+  return getInternalAdminSet();
+}
+
+/**
+ * @deprecated Prefer isInternalAdminConfigured().
+ */
+export function isProRolloutAdminConfigured(): boolean {
+  return isInternalAdminConfigured();
+}
+
+/**
+ * @deprecated Prefer isInternalAdmin().
+ */
+export function isProRolloutAdmin(userId: string | null | undefined): boolean {
+  return isInternalAdmin(userId);
 }

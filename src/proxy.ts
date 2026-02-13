@@ -11,25 +11,52 @@ import { isClerkServerConfigured, isMockAuthEnabled } from "@/lib/runtime-mode";
  */
 
 export default async function proxy(request: NextRequest, event: NextFetchEvent) {
+  const pathname = request.nextUrl.pathname;
+  const isProduction = process.env.NODE_ENV === "production";
+  const isProtectedPage =
+    pathname.startsWith("/settings") || pathname.startsWith("/user/");
+  const isProtectedDocRoute =
+    isProduction &&
+    (pathname.startsWith("/api/docs") ||
+      pathname.startsWith("/api/internal/openapi") ||
+      pathname.startsWith("/openapi.json"));
+
   if (isMockAuthEnabled()) {
     return NextResponse.next();
   }
 
   if (!isClerkServerConfigured()) {
-    if (
-      request.nextUrl.pathname.startsWith("/settings") ||
-      request.nextUrl.pathname.startsWith("/user/")
-    ) {
+    if (isProtectedPage) {
       return NextResponse.redirect(new URL("/", request.url));
+    }
+    if (isProtectedDocRoute) {
+      return NextResponse.json(
+        { error: "not_found" },
+        {
+          status: 404,
+          headers: {
+            "Cache-Control": "private, no-store",
+            "X-Robots-Tag": "noindex, nofollow",
+          },
+        }
+      );
     }
     return NextResponse.next();
   }
 
   const { clerkMiddleware, createRouteMatcher } = await import("@clerk/nextjs/server");
-  const isProtectedPage = createRouteMatcher(["/settings(.*)", "/user/(.*)"]);
+  const protectedPatterns = ["/settings(.*)", "/user/(.*)"];
+  if (isProduction) {
+    protectedPatterns.push(
+      "/api/docs(.*)",
+      "/api/internal/openapi(.*)",
+      "/openapi.json"
+    );
+  }
+  const isProtectedRoute = createRouteMatcher(protectedPatterns);
 
   return clerkMiddleware(async (auth, req) => {
-    if (isProtectedPage(req)) {
+    if (isProtectedRoute(req)) {
       await auth.protect();
     }
   })(request, event);

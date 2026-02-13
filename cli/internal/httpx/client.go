@@ -14,6 +14,7 @@ import (
 )
 
 const snippetLimit = 300
+const detectionSampleLimit = 8192
 
 type Client struct {
 	apiRoot    string
@@ -118,6 +119,15 @@ func (c *Client) buildURL(endpoint string, query url.Values) (string, error) {
 }
 
 func parseError(status int, headers http.Header, body []byte) error {
+	if isVercelSecurityCheckpoint(status, headers, body) {
+		return &RequestError{
+			Status:     status,
+			Code:       "SECURITY_CHECKPOINT",
+			Message:    "blocked by Vercel Security Checkpoint (bot protection); retry later or use --base-url with a trusted endpoint",
+			RetryAfter: headers.Get("Retry-After"),
+		}
+	}
+
 	var envelope api.ErrorEnvelope
 	if err := json.Unmarshal(body, &envelope); err == nil && envelope.Error.Code != "" {
 		return &RequestError{
@@ -141,4 +151,23 @@ func parseError(status int, headers http.Header, body []byte) error {
 		RetryAfter:  headers.Get("Retry-After"),
 		BodySnippet: snippet,
 	}
+}
+
+func isVercelSecurityCheckpoint(status int, headers http.Header, body []byte) bool {
+	if status != http.StatusTooManyRequests {
+		return false
+	}
+
+	contentType := strings.ToLower(headers.Get("Content-Type"))
+	if !strings.Contains(contentType, "text/html") {
+		return false
+	}
+
+	sample := body
+	if len(sample) > detectionSampleLimit {
+		sample = sample[:detectionSampleLimit]
+	}
+	text := strings.ToLower(string(sample))
+
+	return strings.Contains(text, "vercel security checkpoint")
 }

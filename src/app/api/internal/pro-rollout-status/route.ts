@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/auth";
-import { isProRolloutAdmin, isProRolloutAdminConfigured } from "@/lib/admin-access";
+import { isInternalAdmin, isInternalAdminConfigured } from "@/lib/admin-access";
 import { resolveLimitMode } from "@/lib/feature-policy";
 import { getUserDb } from "@/lib/user-db";
 import {
@@ -20,12 +20,12 @@ function getBaseHeaders() {
 export async function GET() {
   const headers = getBaseHeaders();
 
-  if (!isProRolloutAdminConfigured()) {
+  if (!isInternalAdminConfigured()) {
     return NextResponse.json({ error: "not_found" }, { status: 404, headers });
   }
 
   const user = await getAuthUser();
-  if (!user || !isProRolloutAdmin(user.userId)) {
+  if (!user || !isInternalAdmin(user.userId)) {
     return NextResponse.json({ error: "forbidden" }, { status: 403, headers });
   }
 

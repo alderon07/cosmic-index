@@ -75,6 +75,20 @@ Global flags:
 - `--json` (alias for `--output json`)
 - `--debug`
 
+## Troubleshooting
+
+If you see `HTTP 429` with `Vercel Security Checkpoint`, the request was blocked by edge bot protection and returned HTML instead of API JSON.
+
+- Retry after a short delay (respect `retry_after` when shown).
+- Use `--debug` to inspect the exact request/response path and status.
+- For development, target your local app directly:
+
+```bash
+cosmic-index --base-url http://localhost:3000 search exoplanets -q kepler
+```
+
+- Or set `COSMIC_INDEX_BASE_URL` to a trusted/self-hosted deployment URL.
+
 Event command notes:
 
 - `close-approaches --order` requires `--sort`
@@ -98,4 +112,4 @@ cd cli
 go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@latest
 ```
 
-Code generation integration can target `../public/openapi.json` in a follow-up once the desired generated surface is finalized.
+Code generation integration can target `../src/lib/openapi/openapi.json` in a follow-up once the desired generated surface is finalized.
