@@ -55,7 +55,7 @@ export async function GET(request: Request) {
   const blocked = await assertInternalAdminAccess();
   if (blocked) return blocked;
 
-  const response = await apiDocsHandler(request);
+  const response = await apiDocsHandler();
   response.headers.set("Cache-Control", "private, no-store");
   response.headers.set("X-Robots-Tag", ROBOT_HEADER);
   return response;
