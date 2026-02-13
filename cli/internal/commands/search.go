@@ -15,6 +15,8 @@ func newSearchCommand(state *runtime) *cobra.Command {
 	cmd.AddCommand(newSearchExoplanetsCommand(state))
 	cmd.AddCommand(newSearchStarsCommand(state))
 	cmd.AddCommand(newSearchSmallBodiesCommand(state))
+	cmd.AddCommand(newSearchCloseApproachesAlias(state))
+	cmd.AddCommand(newSearchFireballsAlias(state))
 
 	return cmd
 }

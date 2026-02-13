@@ -2,6 +2,7 @@ package commands
 
 import (
 	"bytes"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -47,5 +48,75 @@ func TestApodDateValidation(t *testing.T) {
 	code := Execute(&stdout, &stderr, "test", []string{"apod", "--date", "2026/01/01"})
 	if code != 2 {
 		t.Fatalf("expected usage exit code 2, got %d", code)
+	}
+}
+
+const apodDetailJSON = `{"data":{"date":"2026-01-15","title":"A title","explanation":"An explanation","imageUrl":"https://example.com","mediaType":"image"},"meta":{"requestId":"r1","apiVersion":"1","timestamp":"t"}}`
+
+func TestApodJSON(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(apodDetailJSON))
+	}))
+	defer server.Close()
+
+	var stdout, stderr bytes.Buffer
+	code := Execute(&stdout, &stderr, "test", []string{
+		"--base-url", server.URL,
+		"--output", "json",
+		"apod",
+	})
+	if code != 0 {
+		t.Fatalf("expected exit 0, got %d stderr=%s", code, stderr.String())
+	}
+
+	var payload map[string]any
+	if err := json.Unmarshal(stdout.Bytes(), &payload); err != nil {
+		t.Fatalf("expected valid JSON, got error: %v output=%q", err, stdout.String())
+	}
+}
+
+func TestApodDateQueryParam(t *testing.T) {
+	t.Parallel()
+
+	var gotDate string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotDate = r.URL.Query().Get("date")
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(apodDetailJSON))
+	}))
+	defer server.Close()
+
+	var stdout, stderr bytes.Buffer
+	code := Execute(&stdout, &stderr, "test", []string{
+		"--base-url", server.URL,
+		"apod", "--date", "2026-01-15",
+	})
+	if code != 0 {
+		t.Fatalf("expected exit 0, got %d stderr=%s", code, stderr.String())
+	}
+	if gotDate != "2026-01-15" {
+		t.Fatalf("expected date=2026-01-15, got %q", gotDate)
+	}
+}
+
+func TestApodValidDateAccepted(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(apodDetailJSON))
+	}))
+	defer server.Close()
+
+	var stdout, stderr bytes.Buffer
+	code := Execute(&stdout, &stderr, "test", []string{
+		"--base-url", server.URL,
+		"apod", "--date", "2026-01-01",
+	})
+	if code != 0 {
+		t.Fatalf("expected exit 0, got %d stderr=%s", code, stderr.String())
 	}
 }
