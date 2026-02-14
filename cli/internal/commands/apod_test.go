@@ -120,3 +120,26 @@ func TestApodValidDateAccepted(t *testing.T) {
 		t.Fatalf("expected exit 0, got %d stderr=%s", code, stderr.String())
 	}
 }
+
+func TestApodColumnsSubset(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(apodDetailJSON))
+	}))
+	defer server.Close()
+
+	var stdout, stderr bytes.Buffer
+	code := Execute(&stdout, &stderr, "test", []string{
+		"--base-url", server.URL,
+		"apod", "--columns", "date,explanation",
+	})
+	if code != 0 {
+		t.Fatalf("expected exit 0, got %d stderr=%s", code, stderr.String())
+	}
+	header := strings.Split(strings.TrimSpace(stdout.String()), "\n")[0]
+	if !strings.Contains(header, "DATE") || !strings.Contains(header, "EXPLANATION") || strings.Contains(header, "MEDIA_TYPE") {
+		t.Fatalf("unexpected header: %q", header)
+	}
+}

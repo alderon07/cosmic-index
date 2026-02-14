@@ -89,3 +89,26 @@ func TestCloseApproachesOptionalPhaRendersDash(t *testing.T) {
 		t.Fatalf("expected optional PHA field to render as '-', got row: %q", lines[1])
 	}
 }
+
+func TestCloseApproachesColumnsSubset(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"data":[],"pagination":{"mode":"none","hasMore":false},"meta":{"requestId":"r1","apiVersion":"1","timestamp":"t","count":0}}`))
+	}))
+	defer server.Close()
+
+	var stdout, stderr bytes.Buffer
+	code := Execute(&stdout, &stderr, "test", []string{
+		"--base-url", server.URL,
+		"close-approaches", "--columns", "designation,h",
+	})
+	if code != 0 {
+		t.Fatalf("expected exit 0, got %d stderr=%s", code, stderr.String())
+	}
+	header := strings.Split(strings.TrimSpace(stdout.String()), "\n")[0]
+	if !strings.Contains(header, "DESIGNATION") || !strings.Contains(header, "H") || strings.Contains(header, "DIST_LD") {
+		t.Fatalf("unexpected header: %q", header)
+	}
+}

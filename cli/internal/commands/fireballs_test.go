@@ -74,3 +74,26 @@ func TestFireballsDateRangeValidation(t *testing.T) {
 		t.Fatalf("expected usage exit code 2, got %d", code)
 	}
 }
+
+func TestFireballsColumnsSubset(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"data":[],"pagination":{"mode":"none","hasMore":false},"meta":{"requestId":"r1","apiVersion":"1","timestamp":"t","count":0,"limitApplied":20}}`))
+	}))
+	defer server.Close()
+
+	var stdout, stderr bytes.Buffer
+	code := Execute(&stdout, &stderr, "test", []string{
+		"--base-url", server.URL,
+		"fireballs", "--columns", "date,complete",
+	})
+	if code != 0 {
+		t.Fatalf("expected exit 0, got %d stderr=%s", code, stderr.String())
+	}
+	header := strings.Split(strings.TrimSpace(stdout.String()), "\n")[0]
+	if !strings.Contains(header, "DATE") || !strings.Contains(header, "COMPLETE") || strings.Contains(header, "LAT") {
+		t.Fatalf("unexpected header: %q", header)
+	}
+}

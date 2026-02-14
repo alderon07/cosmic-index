@@ -31,6 +31,14 @@ cosmic-index get stars "Kepler-22"
 cosmic-index get small-bodies "99942 Apophis"
 ```
 
+### Compare exoplanets
+
+```bash
+cosmic-index compare exoplanets "Kepler-22 b" "Kepler-452 b"
+cosmic-index compare exoplanets "Kepler-22 b" "TRAPPIST-1 e" "Proxima Cen b"
+cosmic-index --output json compare exoplanets "Kepler-22 b" "Kepler-452 b"
+```
+
 ### APOD
 
 ```bash
@@ -48,6 +56,31 @@ cosmic-index --json get exoplanets "Kepler-22 b"
 ```
 
 `table` output is intended for humans. Use `json` for scripts.
+
+### Table column selection
+
+Use `--columns` to select and reorder table columns:
+
+```bash
+cosmic-index search exoplanets -q kepler --columns name,id,method
+cosmic-index fireballs --columns date,complete
+cosmic-index compare exoplanets "Kepler-22 b" "Kepler-452 b" --columns host-star,discovery-method
+```
+
+Notes:
+
+- `--columns` is table-only; JSON output ignores it.
+- Keys are case-insensitive and de-duplicated while preserving first occurrence.
+
+Supported keys by command:
+
+- `search exoplanets`: `id,name,year,method,dist-pc`
+- `search stars`: `id,name,planets,spectral,dist-pc`
+- `search small-bodies`: `id,name,kind,orbit,neo,pha`
+- `close-approaches`: `designation,approach-time,dist-ld,vel-km-s,h,pha`
+- `fireballs`: `date,radiated-j-x1e10,impact-kt,lat,lon,alt-km,vel-km-s,complete`
+- `apod`: `date,title,media-type,media-url,hd-url,thumbnail-url,copyright,explanation`
+- `compare exoplanets` (metrics): `host-star,radius-earth,mass-earth,orbital-period-days,distance-pc,equilibrium-temp-k,discovery-method,discovery-year,stars-in-system,planets-in-system`
 
 ### Base URL
 
@@ -79,7 +112,8 @@ Global flags:
 
 If you see `HTTP 429` with `Vercel Security Checkpoint`, the request was blocked by edge bot protection and returned HTML instead of API JSON.
 
-- Retry after a short delay (respect `retry_after` when shown).
+- The CLI automatically retries transient `429`/`503` responses and honors `Retry-After` when provided.
+- If retries are exhausted, retry after a short delay (respect `retry_after` when shown).
 - Use `--debug` to inspect the exact request/response path and status.
 - For development, target your local app directly:
 

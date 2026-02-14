@@ -11,11 +11,10 @@ Tracks `cosmic-index` CLI feature work.
 
 ## Next
 
-- [ ] Add `compare` command:
+- [x] Add `compare` command:
   - `cosmic-index compare exoplanets <id1> <id2> [id3]`
-- [ ] Add `export` command with `--format csv|json` and `--out`.
-- [ ] Add retry/backoff support for `429` / `503` with `Retry-After`.
-- [ ] Add `--columns` option for table outputs.
+- [x] Add retry/backoff support for `429` / `503` with `Retry-After`.
+- [x] Add `--columns` option for table outputs.
 - [ ] Add `--no-trunc` option for long fields in table outputs.
 
 ## Future

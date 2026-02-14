@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -214,5 +215,25 @@ func TestFindAliasCloseApproachesRoutes(t *testing.T) {
 	}
 	if gotQuery["dateMin"] != "now" {
 		t.Fatalf("expected dateMin=now, got %v", gotQuery)
+	}
+}
+
+func TestSearchCloseApproachesAliasColumns(t *testing.T) {
+	t.Parallel()
+
+	server := newAliasTestServer(t, "/api/v1/close-approaches", nil)
+	defer server.Close()
+
+	var stdout, stderr bytes.Buffer
+	code := Execute(&stdout, &stderr, "test", []string{
+		"--base-url", server.URL,
+		"search", "close-approaches",
+		"--columns", "designation,h",
+	})
+	if code != 0 {
+		t.Fatalf("expected exit 0, got %d stderr=%s", code, stderr.String())
+	}
+	if !strings.Contains(stdout.String(), "DESIGNATION") || strings.Contains(stdout.String(), "DIST_LD") {
+		t.Fatalf("unexpected filtered output: %q", stdout.String())
 	}
 }

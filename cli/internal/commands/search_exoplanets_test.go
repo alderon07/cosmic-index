@@ -2,8 +2,10 @@ package commands
 
 import (
 	"bytes"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -40,20 +42,20 @@ func TestSearchExoplanetsQueryMapping(t *testing.T) {
 	}
 
 	expect := map[string]string{
-		"query":          "kepler",
+		"query":           "kepler",
 		"discoveryMethod": "Transit",
-		"year":           "2020",
-		"hasRadius":      "true",
-		"hasMass":        "true",
-		"sizeCategory":   "jupiter",
-		"habitable":      "true",
-		"facility":       "Kepler",
-		"multiPlanet":    "true",
-		"maxDistancePc":  "100",
-		"sort":           "name",
-		"order":          "asc",
-		"page":           "2",
-		"limit":          "10",
+		"year":            "2020",
+		"hasRadius":       "true",
+		"hasMass":         "true",
+		"sizeCategory":    "jupiter",
+		"habitable":       "true",
+		"facility":        "Kepler",
+		"multiPlanet":     "true",
+		"maxDistancePc":   "100",
+		"sort":            "name",
+		"order":           "asc",
+		"page":            "2",
+		"limit":           "10",
 	}
 	for key, want := range expect {
 		if got := gotQuery[key]; got != want {
@@ -279,5 +281,61 @@ func TestSearchExoplanetsHiddenAliasFlags(t *testing.T) {
 	}
 	if gotQuery["maxDistancePc"] != "50" {
 		t.Fatalf("--max-distance-pc: expected maxDistancePc=50, got %q", gotQuery["maxDistancePc"])
+	}
+}
+
+func TestSearchExoplanetsColumnsSubsetOrder(t *testing.T) {
+	t.Parallel()
+
+	server := newAliasTestServer(t, "/api/v1/exoplanets", nil)
+	defer server.Close()
+
+	var stdout, stderr bytes.Buffer
+	code := Execute(&stdout, &stderr, "test", []string{
+		"--base-url", server.URL,
+		"search", "exoplanets", "--columns", "name,id",
+	})
+	if code != 0 {
+		t.Fatalf("expected exit 0, got %d stderr=%s", code, stderr.String())
+	}
+	header := strings.Split(strings.TrimSpace(stdout.String()), "\n")[0]
+	if !strings.Contains(header, "NAME") || !strings.Contains(header, "ID") || strings.Contains(header, "YEAR") {
+		t.Fatalf("unexpected filtered header: %q", header)
+	}
+}
+
+func TestSearchExoplanetsColumnsInvalid(t *testing.T) {
+	t.Parallel()
+
+	var stdout, stderr bytes.Buffer
+	code := Execute(&stdout, &stderr, "test", []string{
+		"search", "exoplanets", "--columns", "bogus",
+	})
+	if code != 2 {
+		t.Fatalf("expected exit 2, got %d stderr=%s", code, stderr.String())
+	}
+	if !strings.Contains(stderr.String(), "valid:") {
+		t.Fatalf("expected valid key list in error, got %q", stderr.String())
+	}
+}
+
+func TestSearchExoplanetsColumnsIgnoredInJSON(t *testing.T) {
+	t.Parallel()
+
+	server := newAliasTestServer(t, "", nil)
+	defer server.Close()
+
+	var stdout, stderr bytes.Buffer
+	code := Execute(&stdout, &stderr, "test", []string{
+		"--base-url", server.URL,
+		"--output", "json",
+		"search", "exoplanets", "--columns", "bogus",
+	})
+	if code != 0 {
+		t.Fatalf("expected exit 0, got %d stderr=%s", code, stderr.String())
+	}
+	var payload map[string]any
+	if err := json.Unmarshal(stdout.Bytes(), &payload); err != nil {
+		t.Fatalf("expected valid JSON output, got %v (%q)", err, stdout.String())
 	}
 }

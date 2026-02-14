@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/url"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -98,4 +99,62 @@ func metaBool(meta map[string]any, key string) (bool, bool) {
 	}
 	value, ok := raw.(bool)
 	return value, ok
+}
+
+func parseColumnsFlag(raw string, commandLabel string, allowed []string) ([]string, error) {
+	if strings.TrimSpace(raw) == "" {
+		return nil, nil
+	}
+
+	allowedSet := make(map[string]struct{}, len(allowed))
+	for _, key := range allowed {
+		allowedSet[key] = struct{}{}
+	}
+
+	seen := map[string]struct{}{}
+	selected := make([]string, 0, len(allowed))
+	invalidSet := map[string]struct{}{}
+	invalid := make([]string, 0)
+
+	for _, token := range strings.Split(raw, ",") {
+		key := strings.ToLower(strings.TrimSpace(token))
+		if key == "" {
+			continue
+		}
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		seen[key] = struct{}{}
+
+		if _, ok := allowedSet[key]; !ok {
+			if _, exists := invalidSet[key]; !exists {
+				invalidSet[key] = struct{}{}
+				invalid = append(invalid, key)
+			}
+			continue
+		}
+
+		selected = append(selected, key)
+	}
+
+	validList := append([]string(nil), allowed...)
+	sort.Strings(validList)
+	if len(invalid) > 0 {
+		sort.Strings(invalid)
+		return nil, fmt.Errorf(
+			"invalid --columns for %s: %s (valid: %s)",
+			commandLabel,
+			strings.Join(invalid, ","),
+			strings.Join(validList, ","),
+		)
+	}
+	if len(selected) == 0 {
+		return nil, fmt.Errorf(
+			"--columns for %s did not include any valid keys (valid: %s)",
+			commandLabel,
+			strings.Join(validList, ","),
+		)
+	}
+
+	return selected, nil
 }

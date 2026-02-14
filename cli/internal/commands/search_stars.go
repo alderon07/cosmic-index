@@ -22,6 +22,7 @@ type starSearchOptions struct {
 	order         string
 	page          int
 	limit         int
+	columns       string
 }
 
 func newSearchStarsCommand(state *runtime) *cobra.Command {
@@ -35,6 +36,15 @@ func newSearchStarsCommand(state *runtime) *cobra.Command {
 		Aliases: []string{"star"},
 		Short:   "Search stars",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			var selectedColumns []string
+			if state.cfg.Output == "table" {
+				selected, err := parseColumnsFlag(opts.columns, "search stars", output.StarTableColumnKeys())
+				if err != nil {
+					return usageError(err.Error())
+				}
+				selectedColumns = selected
+			}
+
 			query, err := buildStarQuery(cmd, opts)
 			if err != nil {
 				return usageError(err.Error())
@@ -54,7 +64,7 @@ func newSearchStarsCommand(state *runtime) *cobra.Command {
 				return apiError(fmt.Errorf("failed to decode star response: %w", err))
 			}
 
-			if err := output.PrintStarTable(state.stdout, envelope.Data); err != nil {
+			if err := output.PrintStarTable(state.stdout, envelope.Data, selectedColumns); err != nil {
 				return apiError(err)
 			}
 			return output.PrintPaginationSummary(state.stderr, envelope.Pagination)
@@ -68,6 +78,7 @@ func newSearchStarsCommand(state *runtime) *cobra.Command {
 	cmd.Flags().Float64Var(&opts.maxDistancePc, "max-distance", 0, "Maximum distance in parsecs")
 	cmd.Flags().StringVar(&opts.sort, "sort", "", "Sort by: name|distance|brightness|vmag|planets|planets-desc")
 	cmd.Flags().StringVar(&opts.order, "order", "", "Sort order: asc|desc")
+	cmd.Flags().StringVar(&opts.columns, "columns", "", "Table columns: id,name,planets,spectral,dist-pc")
 	cmd.Flags().IntVarP(&opts.page, "page", "p", defaultPage, "Page number")
 	cmd.Flags().IntVarP(&opts.limit, "limit", "n", defaultLimit, "Results per page (max 48)")
 

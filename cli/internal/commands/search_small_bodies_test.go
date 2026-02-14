@@ -3,6 +3,7 @@ package commands
 import (
 	"bytes"
 	"encoding/json"
+	"strings"
 	"testing"
 )
 
@@ -136,5 +137,25 @@ func TestSearchSmallBodiesJSON(t *testing.T) {
 	var payload map[string]any
 	if err := json.Unmarshal(stdout.Bytes(), &payload); err != nil {
 		t.Fatalf("expected valid JSON, got error: %v output=%q", err, stdout.String())
+	}
+}
+
+func TestSearchSmallBodiesColumnsSubset(t *testing.T) {
+	t.Parallel()
+
+	server := newAliasTestServer(t, "/api/v1/small-bodies", nil)
+	defer server.Close()
+
+	var stdout, stderr bytes.Buffer
+	code := Execute(&stdout, &stderr, "test", []string{
+		"--base-url", server.URL,
+		"search", "small-bodies", "--columns", "name,neo",
+	})
+	if code != 0 {
+		t.Fatalf("expected exit 0, got %d stderr=%s", code, stderr.String())
+	}
+	header := strings.Split(strings.TrimSpace(stdout.String()), "\n")[0]
+	if !strings.Contains(header, "NAME") || !strings.Contains(header, "NEO") || strings.Contains(header, "PHA") {
+		t.Fatalf("unexpected header: %q", header)
 	}
 }

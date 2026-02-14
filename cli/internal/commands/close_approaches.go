@@ -19,6 +19,7 @@ type closeApproachOptions struct {
 	sort      string
 	order     string
 	limit     int
+	columns   string
 }
 
 func newCloseApproachesCommand(state *runtime) *cobra.Command {
@@ -31,6 +32,15 @@ func newCloseApproachesCommand(state *runtime) *cobra.Command {
 			return state.initClient()
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			var selectedColumns []string
+			if state.cfg.Output == "table" {
+				selected, err := parseColumnsFlag(opts.columns, "close-approaches", output.CloseApproachTableColumnKeys())
+				if err != nil {
+					return usageError(err.Error())
+				}
+				selectedColumns = selected
+			}
+
 			query, err := buildCloseApproachQuery(cmd, opts)
 			if err != nil {
 				return usageError(err.Error())
@@ -54,7 +64,7 @@ func newCloseApproachesCommand(state *runtime) *cobra.Command {
 				return apiError(fmt.Errorf("failed to decode close-approaches response: %w", err))
 			}
 
-			if err := output.PrintCloseApproachesTable(state.stdout, envelope.Data); err != nil {
+			if err := output.PrintCloseApproachesTable(state.stdout, envelope.Data, selectedColumns); err != nil {
 				return apiError(err)
 			}
 
@@ -85,6 +95,7 @@ func newCloseApproachesCommand(state *runtime) *cobra.Command {
 	cmd.Flags().BoolVar(&opts.phaOnly, "pha-only", false, "Only potentially hazardous asteroids")
 	cmd.Flags().StringVar(&opts.sort, "sort", "", "Sort by: date|dist|h|v-rel")
 	cmd.Flags().StringVar(&opts.order, "order", "", "Sort order: asc|desc (requires --sort)")
+	cmd.Flags().StringVar(&opts.columns, "columns", "", "Table columns: designation,approach-time,dist-ld,vel-km-s,h,pha")
 	cmd.Flags().IntVarP(&opts.limit, "limit", "n", 0, "Maximum number of events (1..200)")
 	return cmd
 }

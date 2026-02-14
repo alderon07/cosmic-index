@@ -14,6 +14,7 @@ import (
 type apodOptions struct {
 	date     string
 	fullText bool
+	columns  string
 }
 
 func newApodCommand(state *runtime) *cobra.Command {
@@ -27,6 +28,15 @@ func newApodCommand(state *runtime) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if cmd.Flags().Changed("date") && !validateDateYYYYMMDD(opts.date) {
 				return usageError("date must be in YYYY-MM-DD format")
+			}
+
+			var selectedColumns []string
+			if state.cfg.Output == "table" {
+				selected, err := parseColumnsFlag(opts.columns, "apod", output.ApodTableColumnKeys())
+				if err != nil {
+					return usageError(err.Error())
+				}
+				selectedColumns = selected
 			}
 
 			query := url.Values{}
@@ -46,11 +56,12 @@ func newApodCommand(state *runtime) *cobra.Command {
 				return apiError(fmt.Errorf("failed to decode apod response: %w", err))
 			}
 
-			return output.PrintApodTable(state.stdout, envelope.Data, opts.fullText)
+			return output.PrintApodTable(state.stdout, envelope.Data, opts.fullText, selectedColumns)
 		},
 	}
 
 	cmd.Flags().StringVar(&opts.date, "date", "", "APOD date (YYYY-MM-DD)")
 	cmd.Flags().BoolVar(&opts.fullText, "full-text", false, "Show full APOD explanation in table output")
+	cmd.Flags().StringVar(&opts.columns, "columns", "", "Table columns: date,title,media-type,media-url,hd-url,thumbnail-url,copyright,explanation")
 	return cmd
 }

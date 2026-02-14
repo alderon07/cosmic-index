@@ -58,6 +58,7 @@ func NewRootCommand(stdout, stderr io.Writer, version string) *cobra.Command {
 	root.AddCommand(newFireballsCommand(state))
 	root.AddCommand(newSearchCommand(state))
 	root.AddCommand(newGetCommand(state))
+	root.AddCommand(newCompareCommand(state))
 	root.AddCommand(newCompletionCommand(state))
 
 	return root
