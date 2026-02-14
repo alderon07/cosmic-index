@@ -28,6 +28,7 @@ type exoplanetSearchOptions struct {
 	order           string
 	page            int
 	limit           int
+	columns         string
 }
 
 func newSearchExoplanetsCommand(state *runtime) *cobra.Command {
@@ -41,6 +42,15 @@ func newSearchExoplanetsCommand(state *runtime) *cobra.Command {
 		Aliases: []string{"exo", "exoplanet"},
 		Short:   "Search exoplanets",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			var selectedColumns []string
+			if state.cfg.Output == "table" {
+				selected, err := parseColumnsFlag(opts.columns, "search exoplanets", output.ExoplanetTableColumnKeys())
+				if err != nil {
+					return usageError(err.Error())
+				}
+				selectedColumns = selected
+			}
+
 			query, err := buildExoplanetQuery(cmd, opts)
 			if err != nil {
 				return usageError(err.Error())
@@ -60,7 +70,7 @@ func newSearchExoplanetsCommand(state *runtime) *cobra.Command {
 				return apiError(fmt.Errorf("failed to decode exoplanet response: %w", err))
 			}
 
-			if err := output.PrintExoplanetTable(state.stdout, envelope.Data); err != nil {
+			if err := output.PrintExoplanetTable(state.stdout, envelope.Data, selectedColumns); err != nil {
 				return apiError(err)
 			}
 			return output.PrintPaginationSummary(state.stderr, envelope.Pagination)
@@ -82,6 +92,7 @@ func newSearchExoplanetsCommand(state *runtime) *cobra.Command {
 	cmd.Flags().IntVar(&opts.year, "year", 0, "Discovery year")
 	cmd.Flags().StringVar(&opts.sort, "sort", "", "Sort by: name|year|discovered|distance|radius|mass")
 	cmd.Flags().StringVar(&opts.order, "order", "", "Sort order: asc|desc")
+	cmd.Flags().StringVar(&opts.columns, "columns", "", "Table columns: id,name,year,method,dist-pc")
 	cmd.Flags().IntVarP(&opts.page, "page", "p", defaultPage, "Page number")
 	cmd.Flags().IntVarP(&opts.limit, "limit", "n", defaultLimit, "Results per page (max 48)")
 	_ = cmd.Flags().MarkHidden("discovery-method")

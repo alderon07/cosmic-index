@@ -52,11 +52,14 @@ type ExoplanetData struct {
 	DiscoveredYear    *int         `json:"discoveredYear,omitempty"`
 	DiscoveryMethod   string       `json:"discoveryMethod"`
 	DiscoveryFacility string       `json:"discoveryFacility,omitempty"`
+	OrbitalPeriodDays *float64     `json:"orbitalPeriodDays,omitempty"`
 	HostStar          string       `json:"hostStar"`
 	DistanceParsecs   *float64     `json:"distanceParsecs,omitempty"`
 	RadiusEarth       *float64     `json:"radiusEarth,omitempty"`
 	MassEarth         *float64     `json:"massEarth,omitempty"`
 	EquilibriumTempK  *float64     `json:"equilibriumTempK,omitempty"`
+	StarsInSystem     *int         `json:"starsInSystem,omitempty"`
+	PlanetsInSystem   *int         `json:"planetsInSystem,omitempty"`
 	KeyFacts          []KeyFact    `json:"keyFacts"`
 	Links             []SourceLink `json:"links"`
 	Summary           string       `json:"summary"`

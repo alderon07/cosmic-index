@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -15,6 +16,8 @@ import (
 
 const snippetLimit = 300
 const detectionSampleLimit = 8192
+const maxAttempts = 3
+const maxRetryDelay = 5 * time.Second
 
 type Client struct {
 	apiRoot    string
@@ -22,6 +25,8 @@ type Client struct {
 	debug      bool
 	stderr     io.Writer
 	userAgent  string
+	now        func() time.Time
+	sleep      func(context.Context, time.Duration) error
 }
 
 type RequestError struct {
@@ -58,6 +63,8 @@ func New(apiRoot string, timeout time.Duration, debug bool, stderr io.Writer, us
 		debug:     debug,
 		stderr:    stderr,
 		userAgent: userAgent,
+		now:       time.Now,
+		sleep:     waitWithContext,
 	}
 }
 
@@ -70,37 +77,65 @@ func (c *Client) Get(ctx context.Context, endpoint string, query url.Values) ([]
 		ctx = context.Background()
 	}
 
-	if c.debug {
-		fmt.Fprintf(c.stderr, "-> GET %s\n", requestURL)
+	for attempt := 1; attempt <= maxAttempts; attempt++ {
+		if c.debug {
+			fmt.Fprintf(c.stderr, "-> GET %s\n", requestURL)
+		}
+
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, requestURL, nil)
+		if err != nil {
+			return nil, nil, 0, err
+		}
+		req.Header.Set("Accept", "application/json")
+		req.Header.Set("User-Agent", c.userAgent)
+
+		resp, err := c.httpClient.Do(req)
+		if err != nil {
+			return nil, nil, 0, err
+		}
+
+		body, readErr := io.ReadAll(resp.Body)
+		_ = resp.Body.Close()
+		if readErr != nil {
+			return nil, resp.Header, resp.StatusCode, readErr
+		}
+
+		if c.debug {
+			fmt.Fprintf(c.stderr, "<- %d %s\n", resp.StatusCode, http.StatusText(resp.StatusCode))
+		}
+
+		if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+			return body, resp.Header, resp.StatusCode, nil
+		}
+
+		requestErr := parseError(resp.StatusCode, resp.Header, body)
+		if !isRetriableStatus(resp.StatusCode) || attempt == maxAttempts {
+			return nil, resp.Header, resp.StatusCode, requestErr
+		}
+
+		wait, ok := parseRetryAfter(resp.Header, c.now())
+		source := "retry-after"
+		if !ok {
+			wait = computeBackoff(attempt)
+			source = "backoff"
+		}
+		if wait > maxRetryDelay {
+			wait = maxRetryDelay
+		}
+		if wait <= 0 {
+			wait = computeBackoff(attempt)
+			source = "backoff"
+		}
+
+		if c.debug {
+			fmt.Fprintf(c.stderr, "retry attempt=%d/%d status=%d delay=%s source=%s\n", attempt+1, maxAttempts, resp.StatusCode, wait, source)
+		}
+		if err := c.sleep(ctx, wait); err != nil {
+			return nil, resp.Header, resp.StatusCode, err
+		}
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, requestURL, nil)
-	if err != nil {
-		return nil, nil, 0, err
-	}
-	req.Header.Set("Accept", "application/json")
-	req.Header.Set("User-Agent", c.userAgent)
-
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return nil, nil, 0, err
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, resp.Header, resp.StatusCode, err
-	}
-
-	if c.debug {
-		fmt.Fprintf(c.stderr, "<- %d %s\n", resp.StatusCode, http.StatusText(resp.StatusCode))
-	}
-
-	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
-		return body, resp.Header, resp.StatusCode, nil
-	}
-
-	return nil, resp.Header, resp.StatusCode, parseError(resp.StatusCode, resp.Header, body)
+	return nil, nil, 0, fmt.Errorf("unreachable")
 }
 
 func (c *Client) buildURL(endpoint string, query url.Values) (string, error) {
@@ -150,6 +185,58 @@ func parseError(status int, headers http.Header, body []byte) error {
 		Message:     fmt.Sprintf("request failed (status=%d)", status),
 		RetryAfter:  headers.Get("Retry-After"),
 		BodySnippet: snippet,
+	}
+}
+
+func isRetriableStatus(status int) bool {
+	return status == http.StatusTooManyRequests || status == http.StatusServiceUnavailable
+}
+
+func parseRetryAfter(headers http.Header, now time.Time) (time.Duration, bool) {
+	raw := strings.TrimSpace(headers.Get("Retry-After"))
+	if raw == "" {
+		return 0, false
+	}
+
+	seconds, err := strconv.ParseInt(raw, 10, 64)
+	if err == nil {
+		if seconds <= 0 {
+			return 0, false
+		}
+		delay := time.Duration(seconds) * time.Second
+		if delay <= 0 {
+			return 0, false
+		}
+		return delay, true
+	}
+
+	retryAt, err := http.ParseTime(raw)
+	if err != nil {
+		return 0, false
+	}
+	delay := retryAt.Sub(now)
+	if delay <= 0 {
+		return 0, false
+	}
+	return delay, true
+}
+
+func computeBackoff(attempt int) time.Duration {
+	if attempt <= 1 {
+		return 200 * time.Millisecond
+	}
+	return 500 * time.Millisecond
+}
+
+func waitWithContext(ctx context.Context, wait time.Duration) error {
+	timer := time.NewTimer(wait)
+	defer timer.Stop()
+
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-timer.C:
+		return nil
 	}
 }
 

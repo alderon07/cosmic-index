@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -132,4 +133,70 @@ func TestMetaBool(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestParseColumnsFlag(t *testing.T) {
+	t.Parallel()
+
+	allowed := []string{"id", "name", "year"}
+
+	t.Run("empty raw returns nil selection", func(t *testing.T) {
+		got, err := parseColumnsFlag("", "exoplanets", allowed)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if got != nil {
+			t.Fatalf("expected nil, got %#v", got)
+		}
+	})
+
+	t.Run("normalizes and dedupes preserving order", func(t *testing.T) {
+		got, err := parseColumnsFlag(" Name,ID,name,year ", "exoplanets", allowed)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		want := []string{"name", "id", "year"}
+		if len(got) != len(want) {
+			t.Fatalf("len=%d want=%d (%#v)", len(got), len(want), got)
+		}
+		for i := range want {
+			if got[i] != want[i] {
+				t.Fatalf("index %d got=%q want=%q", i, got[i], want[i])
+			}
+		}
+	})
+
+	t.Run("invalid key returns deterministic error", func(t *testing.T) {
+		_, err := parseColumnsFlag("name,bogus", "exoplanets", allowed)
+		if err == nil {
+			t.Fatal("expected error")
+		}
+		msg := err.Error()
+		if !strings.Contains(msg, "invalid --columns for exoplanets: bogus") {
+			t.Fatalf("unexpected error: %q", msg)
+		}
+		if !strings.Contains(msg, "valid: id,name,year") {
+			t.Fatalf("expected sorted valid key list, got %q", msg)
+		}
+	})
+
+	t.Run("only empty tokens fails", func(t *testing.T) {
+		_, err := parseColumnsFlag(" , , ", "exoplanets", allowed)
+		if err == nil {
+			t.Fatal("expected error")
+		}
+		if !strings.Contains(err.Error(), "did not include any valid keys") {
+			t.Fatalf("unexpected error: %q", err.Error())
+		}
+	})
+
+	t.Run("trailing comma keeps valid key", func(t *testing.T) {
+		got, err := parseColumnsFlag("id,", "exoplanets", allowed)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(got) != 1 || got[0] != "id" {
+			t.Fatalf("unexpected parsed keys: %#v", got)
+		}
+	})
 }

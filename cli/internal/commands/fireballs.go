@@ -21,6 +21,7 @@ type fireballOptions struct {
 	sort    string
 	order   string
 	limit   int
+	columns string
 }
 
 func newFireballsCommand(state *runtime) *cobra.Command {
@@ -32,6 +33,15 @@ func newFireballsCommand(state *runtime) *cobra.Command {
 			return state.initClient()
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			var selectedColumns []string
+			if state.cfg.Output == "table" {
+				selected, err := parseColumnsFlag(opts.columns, "fireballs", output.FireballTableColumnKeys())
+				if err != nil {
+					return usageError(err.Error())
+				}
+				selectedColumns = selected
+			}
+
 			query, err := buildFireballsQuery(cmd, opts)
 			if err != nil {
 				return usageError(err.Error())
@@ -55,7 +65,7 @@ func newFireballsCommand(state *runtime) *cobra.Command {
 				return apiError(fmt.Errorf("failed to decode fireballs response: %w", err))
 			}
 
-			if err := output.PrintFireballsTable(state.stdout, envelope.Data); err != nil {
+			if err := output.PrintFireballsTable(state.stdout, envelope.Data, selectedColumns); err != nil {
 				return apiError(err)
 			}
 
@@ -80,6 +90,7 @@ func newFireballsCommand(state *runtime) *cobra.Command {
 	cmd.Flags().BoolVar(&opts.reqVel, "req-vel", false, "Only events with velocity data")
 	cmd.Flags().StringVar(&opts.sort, "sort", "", "Sort by: date|energy|impact-e|vel|alt")
 	cmd.Flags().StringVar(&opts.order, "order", "", "Sort order: asc|desc (requires --sort)")
+	cmd.Flags().StringVar(&opts.columns, "columns", "", "Table columns: date,radiated-j-x1e10,impact-kt,lat,lon,alt-km,vel-km-s,complete")
 	cmd.Flags().IntVarP(&opts.limit, "limit", "n", 0, "Maximum number of events (1..500)")
 
 	return cmd

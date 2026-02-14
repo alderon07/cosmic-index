@@ -20,6 +20,7 @@ type smallBodySearchOptions struct {
 	orbitClass string
 	page       int
 	limit      int
+	columns    string
 }
 
 func newSearchSmallBodiesCommand(state *runtime) *cobra.Command {
@@ -33,6 +34,15 @@ func newSearchSmallBodiesCommand(state *runtime) *cobra.Command {
 		Aliases: []string{"sb", "smallbodies", "small-body"},
 		Short:   "Search small bodies",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			var selectedColumns []string
+			if state.cfg.Output == "table" {
+				selected, err := parseColumnsFlag(opts.columns, "search small-bodies", output.SmallBodyTableColumnKeys())
+				if err != nil {
+					return usageError(err.Error())
+				}
+				selectedColumns = selected
+			}
+
 			query, err := buildSmallBodyQuery(cmd, opts)
 			if err != nil {
 				return usageError(err.Error())
@@ -52,7 +62,7 @@ func newSearchSmallBodiesCommand(state *runtime) *cobra.Command {
 				return apiError(fmt.Errorf("failed to decode small-body response: %w", err))
 			}
 
-			if err := output.PrintSmallBodyTable(state.stdout, envelope.Data); err != nil {
+			if err := output.PrintSmallBodyTable(state.stdout, envelope.Data, selectedColumns); err != nil {
 				return apiError(err)
 			}
 			return output.PrintPaginationSummary(state.stderr, envelope.Pagination)
@@ -64,6 +74,7 @@ func newSearchSmallBodiesCommand(state *runtime) *cobra.Command {
 	cmd.Flags().BoolVar(&opts.neo, "neo", false, "Filter to near-Earth objects")
 	cmd.Flags().BoolVar(&opts.pha, "pha", false, "Filter to potentially hazardous objects")
 	cmd.Flags().StringVar(&opts.orbitClass, "orbit-class", "", "Orbit class filter")
+	cmd.Flags().StringVar(&opts.columns, "columns", "", "Table columns: id,name,kind,orbit,neo,pha")
 	cmd.Flags().IntVarP(&opts.page, "page", "p", defaultPage, "Page number")
 	cmd.Flags().IntVarP(&opts.limit, "limit", "n", defaultLimit, "Results per page (max 48)")
 
