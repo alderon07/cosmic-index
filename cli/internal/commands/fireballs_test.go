@@ -97,3 +97,33 @@ func TestFireballsColumnsSubset(t *testing.T) {
 		t.Fatalf("unexpected header: %q", header)
 	}
 }
+
+func TestFireballsNoTruncDate(t *testing.T) {
+	t.Parallel()
+
+	longDate := "2025-01-01 00:00:00 UTC (long token)"
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"data":[{"id":"x","date":"` + longDate + `","dateRaw":"` + longDate + `","radiatedEnergyJ":1.2,"isComplete":false}],"pagination":{"mode":"none","hasMore":false},"meta":{"requestId":"r1","apiVersion":"1","timestamp":"t","count":1,"limitApplied":20}}`))
+	}))
+	defer server.Close()
+
+	var stdoutDefault, stderr bytes.Buffer
+	code := Execute(&stdoutDefault, &stderr, "test", []string{"--base-url", server.URL, "fireballs", "--columns", "date"})
+	if code != 0 {
+		t.Fatalf("unexpected exit code: %d stderr=%s", code, stderr.String())
+	}
+	if strings.Contains(stdoutDefault.String(), longDate) {
+		t.Fatalf("expected default truncation, got %q", stdoutDefault.String())
+	}
+
+	var stdoutNoTrunc bytes.Buffer
+	stderr.Reset()
+	code = Execute(&stdoutNoTrunc, &stderr, "test", []string{"--base-url", server.URL, "fireballs", "--columns", "date", "--no-trunc"})
+	if code != 0 {
+		t.Fatalf("unexpected exit code: %d stderr=%s", code, stderr.String())
+	}
+	if !strings.Contains(stdoutNoTrunc.String(), longDate) {
+		t.Fatalf("expected full date with --no-trunc, got %q", stdoutNoTrunc.String())
+	}
+}

@@ -42,7 +42,7 @@ func TestPrintExoplanetCompareTableMissingAsDash(t *testing.T) {
 	itemB := api.ExoplanetData{DisplayName: "Beta", HostStar: "Host B", DiscoveryMethod: "Imaging"}
 
 	var out bytes.Buffer
-	if err := PrintExoplanetCompareTable(&out, []api.ExoplanetData{itemA, itemB}, nil); err != nil {
+	if err := PrintExoplanetCompareTable(&out, []api.ExoplanetData{itemA, itemB}, nil, TableRenderOptions{}); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if !strings.Contains(out.String(), "Radius") || !strings.Contains(out.String(), "-        -") {
@@ -58,7 +58,7 @@ func TestPrintExoplanetCompareTableTruncatesHeaderNames(t *testing.T) {
 	err := PrintExoplanetCompareTable(&out, []api.ExoplanetData{
 		{DisplayName: longName, HostStar: "H1", DiscoveryMethod: "Transit"},
 		{DisplayName: "Beta", HostStar: "H2", DiscoveryMethod: "Transit"},
-	}, nil)
+	}, nil, TableRenderOptions{})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -74,7 +74,7 @@ func TestPrintExoplanetCompareTableMetricFilter(t *testing.T) {
 	err := PrintExoplanetCompareTable(&out, []api.ExoplanetData{
 		{DisplayName: "Alpha", HostStar: "H1", DiscoveryMethod: "Transit"},
 		{DisplayName: "Beta", HostStar: "H2", DiscoveryMethod: "Transit"},
-	}, []string{"host-star", "discovery-method"})
+	}, []string{"host-star", "discovery-method"}, TableRenderOptions{})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -85,6 +85,23 @@ func TestPrintExoplanetCompareTableMetricFilter(t *testing.T) {
 	}
 	if !strings.Contains(text, "Host Star") || !strings.Contains(text, "Discovery Method") {
 		t.Fatalf("expected selected metrics only, got %q", text)
+	}
+}
+
+func TestPrintExoplanetCompareTableNoTruncHeader(t *testing.T) {
+	t.Parallel()
+
+	longName := "This Is A Very Long Exoplanet Name That Should Not Truncate"
+	var out bytes.Buffer
+	err := PrintExoplanetCompareTable(&out, []api.ExoplanetData{
+		{DisplayName: longName, HostStar: "H1", DiscoveryMethod: "Transit"},
+		{DisplayName: "Beta", HostStar: "H2", DiscoveryMethod: "Transit"},
+	}, nil, TableRenderOptions{NoTrunc: true})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(out.String(), longName) {
+		t.Fatalf("expected full header name, got %q", out.String())
 	}
 }
 

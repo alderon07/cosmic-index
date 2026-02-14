@@ -64,7 +64,7 @@ A rweb encyclopedia for exploring cosmic objects beyond our solar system. Browse
 ### Prerequisites
 
 - [Bun](https://bun.sh/) (recommended) or Node.js 20+
-- [just](https://github.com/casey/just) (optional) – command runner; run `just` to see all tasks
+- [mise](https://mise.jdx.dev/) (optional but recommended) – runtime and task runner; run `mise tasks` to see all tasks
 - Optional: Upstash Redis account for caching
 
 ### Installation
@@ -98,13 +98,13 @@ UPSTASH_REDIS_REST_TOKEN=your_redis_token
 4. Run the development server:
 
 ```bash
-just dev
+mise run dev
 # or: bun run dev
 ```
 
 5. Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-Run `just` (or `just --list`) to see all available commands (dev, build, lint, ingest, etc.).
+Run `mise tasks` to see all available commands (dev, build, lint, ingest, etc.).
 
 ## 📁 Project Structure
 
@@ -185,20 +185,21 @@ The project features a custom retrofuturistic design system with:
 
 ## 🧪 Development
 
-### Commands (just)
+### Commands (mise)
 
-Run `just` to list all recipes. Common ones:
+Run `mise tasks` to list all tasks. Common ones:
 
-- `just dev` - Start development server with Turbopack
-- `just build` - Build for production
-- `just start` - Start production server
-- `just lint` - Run ESLint
-- `just sbdb-diag` - Run JPL SBDB diagnostic
-- `just ingest-stars` / `just ingest-exoplanets` - Ingest data into Turso (requires TURSO\_\* in .env.local)
-- `just ingest-stars-reset` / `just ingest-exoplanets-reset` - Reset checkpoint and re-ingest
-- `just ingest-all` - Ingest stars then exoplanets (full reset + ingest)
+- `mise run dev` - Start development server with Turbopack
+- `mise run build` - Build for production
+- `mise run start` - Start production server
+- `mise run lint` - Run ESLint
+- `mise run sbdb-diag` - Run JPL SBDB diagnostic
+- `mise run ingest-stars` / `mise run ingest-exoplanets` - Ingest data into Turso (requires TURSO\_\* in .env.local)
+- `mise run ingest-stars-reset` / `mise run ingest-exoplanets-reset` - Reset checkpoint and re-ingest
+- `mise run ingest-all` - Ingest stars then exoplanets (full reset + ingest)
+- `mise run cli-build` / `mise run cli-test` - Build or test CLI
 
-Without just, use `bun run <script>` (e.g. `bun run dev`, `bun run ingest:stars`).
+Without mise, use `bun run <script>` (e.g. `bun run dev`, `bun run ingest:stars`) and run CLI commands directly under `cli/`.
 
 ### Testing
 

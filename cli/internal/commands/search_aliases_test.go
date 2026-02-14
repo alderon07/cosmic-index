@@ -237,3 +237,20 @@ func TestSearchCloseApproachesAliasColumns(t *testing.T) {
 		t.Fatalf("unexpected filtered output: %q", stdout.String())
 	}
 }
+
+func TestSearchCloseApproachesAliasNoTruncFlagAccepted(t *testing.T) {
+	t.Parallel()
+
+	server := newAliasTestServer(t, "/api/v1/close-approaches", nil)
+	defer server.Close()
+
+	var stdout, stderr bytes.Buffer
+	code := Execute(&stdout, &stderr, "test", []string{
+		"--base-url", server.URL,
+		"search", "close-approaches",
+		"--no-trunc",
+	})
+	if code != 0 {
+		t.Fatalf("expected exit 0, got %d stderr=%s", code, stderr.String())
+	}
+}

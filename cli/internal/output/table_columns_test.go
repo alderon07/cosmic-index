@@ -69,7 +69,7 @@ func TestPrintCloseApproachesTableColumnsSubset(t *testing.T) {
 
 	rows := []api.CloseApproach{{Designation: "Apophis", ApproachTimeRaw: "2026-Jan-01", DistanceLd: 1.2, RelativeVelocityKm: 5.6, AbsoluteMagnitude: 19.3}}
 	var out bytes.Buffer
-	if err := PrintCloseApproachesTable(&out, rows, []string{"designation", "h"}); err != nil {
+	if err := PrintCloseApproachesTable(&out, rows, []string{"designation", "h"}, TableRenderOptions{}); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	header := strings.Fields(strings.Split(strings.TrimSpace(out.String()), "\n")[0])
@@ -83,7 +83,7 @@ func TestPrintFireballsTableColumnsSubset(t *testing.T) {
 
 	rows := []api.FireballEvent{{Date: "2026-01-01", RadiatedEnergy: 1.2, IsComplete: true}}
 	var out bytes.Buffer
-	if err := PrintFireballsTable(&out, rows, []string{"date", "complete"}); err != nil {
+	if err := PrintFireballsTable(&out, rows, []string{"date", "complete"}, TableRenderOptions{}); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	header := strings.Fields(strings.Split(strings.TrimSpace(out.String()), "\n")[0])
@@ -104,7 +104,7 @@ func TestPrintApodTableColumnsFullTextAndSubset(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	if err := PrintApodTable(&out, apod, true, []string{"date", "explanation"}); err != nil {
+	if err := PrintApodTable(&out, apod, true, []string{"date", "explanation"}, TableRenderOptions{}); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	text := out.String()
@@ -116,6 +116,82 @@ func TestPrintApodTableColumnsFullTextAndSubset(t *testing.T) {
 	}
 	if !strings.Contains(text, strings.Repeat("x", 300)) {
 		t.Fatalf("expected full explanation when fullText=true")
+	}
+}
+
+func TestPrintCloseApproachesTableNoTrunc(t *testing.T) {
+	t.Parallel()
+
+	long := "99942 Apophis Very Long Designation Value"
+	rows := []api.CloseApproach{{Designation: long, ApproachTimeRaw: "2026-Jan-01", DistanceLd: 1.2, RelativeVelocityKm: 5.6, AbsoluteMagnitude: 19.3}}
+
+	var outDefault bytes.Buffer
+	if err := PrintCloseApproachesTable(&outDefault, rows, []string{"designation"}, TableRenderOptions{}); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if strings.Contains(outDefault.String(), long) {
+		t.Fatalf("expected default truncation, got %q", outDefault.String())
+	}
+
+	var outNoTrunc bytes.Buffer
+	if err := PrintCloseApproachesTable(&outNoTrunc, rows, []string{"designation"}, TableRenderOptions{NoTrunc: true}); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(outNoTrunc.String(), long) {
+		t.Fatalf("expected full designation with no-trunc, got %q", outNoTrunc.String())
+	}
+}
+
+func TestPrintFireballsTableNoTrunc(t *testing.T) {
+	t.Parallel()
+
+	long := "2026-01-01 00:00:00 UTC (long token)"
+	rows := []api.FireballEvent{{Date: long, RadiatedEnergy: 1.2, IsComplete: true}}
+
+	var outDefault bytes.Buffer
+	if err := PrintFireballsTable(&outDefault, rows, []string{"date"}, TableRenderOptions{}); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if strings.Contains(outDefault.String(), long) {
+		t.Fatalf("expected default truncation, got %q", outDefault.String())
+	}
+
+	var outNoTrunc bytes.Buffer
+	if err := PrintFireballsTable(&outNoTrunc, rows, []string{"date"}, TableRenderOptions{NoTrunc: true}); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(outNoTrunc.String(), long) {
+		t.Fatalf("expected full date with no-trunc, got %q", outNoTrunc.String())
+	}
+}
+
+func TestPrintApodTableNoTrunc(t *testing.T) {
+	t.Parallel()
+
+	longTitle := strings.Repeat("T", 120)
+	longExplanation := strings.Repeat("x", 300)
+	apod := api.APODData{
+		Date:        "2026-01-01",
+		Title:       longTitle,
+		Explanation: longExplanation,
+		ImageURL:    "https://example.com",
+		MediaType:   "image",
+	}
+
+	var outDefault bytes.Buffer
+	if err := PrintApodTable(&outDefault, apod, false, []string{"title", "explanation"}, TableRenderOptions{}); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if strings.Contains(outDefault.String(), longTitle) || strings.Contains(outDefault.String(), longExplanation) {
+		t.Fatalf("expected truncated fields by default, got %q", outDefault.String())
+	}
+
+	var outNoTrunc bytes.Buffer
+	if err := PrintApodTable(&outNoTrunc, apod, false, []string{"title", "explanation"}, TableRenderOptions{NoTrunc: true}); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(outNoTrunc.String(), longTitle) || !strings.Contains(outNoTrunc.String(), longExplanation) {
+		t.Fatalf("expected full fields with no-trunc, got %q", outNoTrunc.String())
 	}
 }
 

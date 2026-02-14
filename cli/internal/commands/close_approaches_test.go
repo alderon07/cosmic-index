@@ -112,3 +112,33 @@ func TestCloseApproachesColumnsSubset(t *testing.T) {
 		t.Fatalf("unexpected header: %q", header)
 	}
 }
+
+func TestCloseApproachesNoTruncDesignation(t *testing.T) {
+	t.Parallel()
+
+	longDesignation := "99942 Apophis Very Long Designation Value"
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"data":[{"id":"a","designation":"` + longDesignation + `","approachTimeRaw":"2025-Jan-01 00:00","distanceLd":1.23,"relativeVelocityKmS":12.34,"absoluteMagnitude":21.1}],"pagination":{"mode":"none","hasMore":false},"meta":{"requestId":"r1","apiVersion":"1","timestamp":"t","count":1}}`))
+	}))
+	defer server.Close()
+
+	var stdoutDefault, stderr bytes.Buffer
+	code := Execute(&stdoutDefault, &stderr, "test", []string{"--base-url", server.URL, "close-approaches", "--columns", "designation"})
+	if code != 0 {
+		t.Fatalf("unexpected exit code: %d stderr=%s", code, stderr.String())
+	}
+	if strings.Contains(stdoutDefault.String(), longDesignation) {
+		t.Fatalf("expected default truncation, got %q", stdoutDefault.String())
+	}
+
+	var stdoutNoTrunc bytes.Buffer
+	stderr.Reset()
+	code = Execute(&stdoutNoTrunc, &stderr, "test", []string{"--base-url", server.URL, "close-approaches", "--columns", "designation", "--no-trunc"})
+	if code != 0 {
+		t.Fatalf("unexpected exit code: %d stderr=%s", code, stderr.String())
+	}
+	if !strings.Contains(stdoutNoTrunc.String(), longDesignation) {
+		t.Fatalf("expected full designation with --no-trunc, got %q", stdoutNoTrunc.String())
+	}
+}
