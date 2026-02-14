@@ -20,6 +20,7 @@ type closeApproachOptions struct {
 	order     string
 	limit     int
 	columns   string
+	noTrunc   bool
 }
 
 func newCloseApproachesCommand(state *runtime) *cobra.Command {
@@ -64,7 +65,12 @@ func newCloseApproachesCommand(state *runtime) *cobra.Command {
 				return apiError(fmt.Errorf("failed to decode close-approaches response: %w", err))
 			}
 
-			if err := output.PrintCloseApproachesTable(state.stdout, envelope.Data, selectedColumns); err != nil {
+			if err := output.PrintCloseApproachesTable(
+				state.stdout,
+				envelope.Data,
+				selectedColumns,
+				output.TableRenderOptions{NoTrunc: opts.noTrunc},
+			); err != nil {
 				return apiError(err)
 			}
 
@@ -95,6 +101,7 @@ func newCloseApproachesCommand(state *runtime) *cobra.Command {
 	cmd.Flags().BoolVar(&opts.phaOnly, "pha-only", false, "Only potentially hazardous asteroids")
 	cmd.Flags().StringVar(&opts.sort, "sort", "", "Sort by: date|dist|h|v-rel")
 	cmd.Flags().StringVar(&opts.order, "order", "", "Sort order: asc|desc (requires --sort)")
+	cmd.Flags().BoolVar(&opts.noTrunc, "no-trunc", false, "Disable truncation of long table fields")
 	cmd.Flags().StringVar(&opts.columns, "columns", "", "Table columns: designation,approach-time,dist-ld,vel-km-s,h,pha")
 	cmd.Flags().IntVarP(&opts.limit, "limit", "n", 0, "Maximum number of events (1..200)")
 	return cmd

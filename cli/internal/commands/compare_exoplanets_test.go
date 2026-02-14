@@ -275,3 +275,40 @@ func TestCompareExoplanetsColumnsIgnoredInJSON(t *testing.T) {
 		t.Fatalf("expected exit 0, got %d stderr=%s", code, stderr.String())
 	}
 }
+
+func TestCompareExoplanetsNoTruncHeaderNames(t *testing.T) {
+	t.Parallel()
+
+	longName := "This Is A Very Long Exoplanet Name That Should Not Truncate"
+	server := newCompareServer(t, map[string]compareResponse{
+		"a": {body: exoplanetEnvelope("a", longName, "Host A")},
+		"b": {body: exoplanetEnvelope("b", "Beta", "Host B")},
+	}, nil)
+	defer server.Close()
+
+	var stdoutDefault, stderr bytes.Buffer
+	code := Execute(&stdoutDefault, &stderr, "test", []string{
+		"--base-url", server.URL,
+		"compare", "exoplanets", "a", "b",
+	})
+	if code != 0 {
+		t.Fatalf("expected exit 0, got %d stderr=%s", code, stderr.String())
+	}
+	if strings.Contains(stdoutDefault.String(), longName) {
+		t.Fatalf("expected default truncation, got %q", stdoutDefault.String())
+	}
+
+	var stdoutNoTrunc bytes.Buffer
+	stderr.Reset()
+	code = Execute(&stdoutNoTrunc, &stderr, "test", []string{
+		"--base-url", server.URL,
+		"compare", "exoplanets", "a", "b",
+		"--no-trunc",
+	})
+	if code != 0 {
+		t.Fatalf("expected exit 0, got %d stderr=%s", code, stderr.String())
+	}
+	if !strings.Contains(stdoutNoTrunc.String(), longName) {
+		t.Fatalf("expected full header name with --no-trunc, got %q", stdoutNoTrunc.String())
+	}
+}

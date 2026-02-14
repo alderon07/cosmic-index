@@ -72,6 +72,17 @@ Notes:
 - `--columns` is table-only; JSON output ignores it.
 - Keys are case-insensitive and de-duplicated while preserving first occurrence.
 
+Use `--no-trunc` to disable truncation of long table fields on supported commands:
+
+```bash
+cosmic-index apod --no-trunc
+cosmic-index close-approaches --columns designation --no-trunc
+cosmic-index fireballs --columns date --no-trunc
+cosmic-index compare exoplanets "Kepler-22 b" "Kepler-452 b" --no-trunc
+```
+
+`--no-trunc` is table-only and is ignored in JSON mode.
+
 Supported keys by command:
 
 - `search exoplanets`: `id,name,year,method,dist-pc`
@@ -127,7 +138,7 @@ Event command notes:
 
 - `close-approaches --order` requires `--sort`
 - `fireballs --order` requires `--sort`
-- `table` output truncates APOD explanation by default; use `--full-text` to show full text
+- `table` output truncates APOD explanation by default; use `--full-text` or `--no-trunc` to show full text
 
 ## Command aliases
 

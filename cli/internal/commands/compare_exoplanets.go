@@ -20,6 +20,7 @@ type compareExoplanetResult struct {
 func newCompareExoplanetsCommand(state *runtime) *cobra.Command {
 	opts := struct {
 		columns string
+		noTrunc bool
 	}{}
 
 	cmd := &cobra.Command{
@@ -83,10 +84,16 @@ func newCompareExoplanetsCommand(state *runtime) *cobra.Command {
 				return writeJSONRaw(state.stdout, payload)
 			}
 
-			return output.PrintExoplanetCompareTable(state.stdout, items, selectedMetricKeys)
+			return output.PrintExoplanetCompareTable(
+				state.stdout,
+				items,
+				selectedMetricKeys,
+				output.TableRenderOptions{NoTrunc: opts.noTrunc},
+			)
 		},
 	}
 
+	cmd.Flags().BoolVar(&opts.noTrunc, "no-trunc", false, "Disable truncation of long table fields")
 	cmd.Flags().StringVar(&opts.columns, "columns", "", "Compare metrics: host-star,radius-earth,mass-earth,orbital-period-days,distance-pc,equilibrium-temp-k,discovery-method,discovery-year,stars-in-system,planets-in-system")
 	return cmd
 }

@@ -14,6 +14,10 @@ type tableColumnSpec[T any] struct {
 	value  func(T) string
 }
 
+type TableRenderOptions struct {
+	NoTrunc bool
+}
+
 func ExoplanetTableColumnKeys() []string {
 	return []string{"id", "name", "year", "method", "dist-pc"}
 }
@@ -126,12 +130,12 @@ func PrintPaginationSummary(w io.Writer, pagination api.Pagination) error {
 	}
 }
 
-func PrintApodTable(w io.Writer, apod api.APODData, fullText bool, columns []string) error {
+func PrintApodTable(w io.Writer, apod api.APODData, fullText bool, columns []string, opts TableRenderOptions) error {
 	explanation := apod.Explanation
-	if !fullText {
+	if !fullText && !opts.NoTrunc {
 		explanation = truncate(explanation, 240)
 	}
-	specs, err := selectTableColumns(apodColumnSpecs(explanation), columns)
+	specs, err := selectTableColumns(apodColumnSpecs(explanation, opts.NoTrunc), columns)
 	if err != nil {
 		return err
 	}
@@ -146,8 +150,8 @@ func PrintApodTable(w io.Writer, apod api.APODData, fullText bool, columns []str
 	return tw.Flush()
 }
 
-func PrintCloseApproachesTable(w io.Writer, rows []api.CloseApproach, columns []string) error {
-	specs, err := selectTableColumns(closeApproachColumnSpecs(), columns)
+func PrintCloseApproachesTable(w io.Writer, rows []api.CloseApproach, columns []string, opts TableRenderOptions) error {
+	specs, err := selectTableColumns(closeApproachColumnSpecs(opts.NoTrunc), columns)
 	if err != nil {
 		return err
 	}
@@ -164,8 +168,8 @@ func PrintCloseApproachesTable(w io.Writer, rows []api.CloseApproach, columns []
 	return tw.Flush()
 }
 
-func PrintFireballsTable(w io.Writer, rows []api.FireballEvent, columns []string) error {
-	specs, err := selectTableColumns(fireballColumnSpecs(), columns)
+func PrintFireballsTable(w io.Writer, rows []api.FireballEvent, columns []string, opts TableRenderOptions) error {
+	specs, err := selectTableColumns(fireballColumnSpecs(opts.NoTrunc), columns)
 	if err != nil {
 		return err
 	}
@@ -219,9 +223,14 @@ func smallBodyColumnSpecs() []tableColumnSpec[api.SmallBodyData] {
 	}
 }
 
-func closeApproachColumnSpecs() []tableColumnSpec[api.CloseApproach] {
+func closeApproachColumnSpecs(noTrunc bool) []tableColumnSpec[api.CloseApproach] {
 	return []tableColumnSpec[api.CloseApproach]{
-		{key: "designation", header: "DESIGNATION", value: func(row api.CloseApproach) string { return truncate(row.Designation, 40) }},
+		{key: "designation", header: "DESIGNATION", value: func(row api.CloseApproach) string {
+			if noTrunc {
+				return row.Designation
+			}
+			return truncate(row.Designation, 40)
+		}},
 		{key: "approach-time", header: "APPROACH_TIME", value: func(row api.CloseApproach) string { return row.ApproachTimeRaw }},
 		{key: "dist-ld", header: "DIST_LD", value: func(row api.CloseApproach) string { return fmt.Sprintf("%.2f", row.DistanceLd) }},
 		{key: "vel-km-s", header: "VEL_KM_S", value: func(row api.CloseApproach) string { return fmt.Sprintf("%.2f", row.RelativeVelocityKm) }},
@@ -230,9 +239,14 @@ func closeApproachColumnSpecs() []tableColumnSpec[api.CloseApproach] {
 	}
 }
 
-func fireballColumnSpecs() []tableColumnSpec[api.FireballEvent] {
+func fireballColumnSpecs(noTrunc bool) []tableColumnSpec[api.FireballEvent] {
 	return []tableColumnSpec[api.FireballEvent]{
-		{key: "date", header: "DATE", value: func(row api.FireballEvent) string { return truncate(row.Date, 24) }},
+		{key: "date", header: "DATE", value: func(row api.FireballEvent) string {
+			if noTrunc {
+				return row.Date
+			}
+			return truncate(row.Date, 24)
+		}},
 		{key: "radiated-j-x1e10", header: "RADIATED_J_x1e10", value: func(row api.FireballEvent) string { return fmt.Sprintf("%.2f", row.RadiatedEnergy) }},
 		{key: "impact-kt", header: "IMPACT_KT", value: func(row api.FireballEvent) string { return formatFloat(row.ImpactEnergyKt, 2) }},
 		{key: "lat", header: "LAT", value: func(row api.FireballEvent) string { return formatFloat(row.Latitude, 2) }},
@@ -243,10 +257,15 @@ func fireballColumnSpecs() []tableColumnSpec[api.FireballEvent] {
 	}
 }
 
-func apodColumnSpecs(explanation string) []tableColumnSpec[api.APODData] {
+func apodColumnSpecs(explanation string, noTrunc bool) []tableColumnSpec[api.APODData] {
 	return []tableColumnSpec[api.APODData]{
 		{key: "date", header: "DATE", value: func(apod api.APODData) string { return apod.Date }},
-		{key: "title", header: "TITLE", value: func(apod api.APODData) string { return truncate(apod.Title, 80) }},
+		{key: "title", header: "TITLE", value: func(apod api.APODData) string {
+			if noTrunc {
+				return apod.Title
+			}
+			return truncate(apod.Title, 80)
+		}},
 		{key: "media-type", header: "MEDIA_TYPE", value: func(apod api.APODData) string { return fallback(apod.MediaType) }},
 		{key: "media-url", header: "MEDIA_URL", value: func(apod api.APODData) string { return fallback(apod.ImageURL) }},
 		{key: "hd-url", header: "HD_URL", value: func(apod api.APODData) string { return fallback(apod.ImageURLHD) }},

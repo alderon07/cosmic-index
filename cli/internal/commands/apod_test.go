@@ -143,3 +143,49 @@ func TestApodColumnsSubset(t *testing.T) {
 		t.Fatalf("unexpected header: %q", header)
 	}
 }
+
+func TestApodNoTruncShowsFullExplanationWithoutFullText(t *testing.T) {
+	t.Parallel()
+
+	longExplanation := strings.Repeat("x", 300)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"data":{"date":"2026-01-01","title":"A title","explanation":"` + longExplanation + `","imageUrl":"https://example.com","mediaType":"video"},"meta":{"requestId":"r1","apiVersion":"1","timestamp":"t"}}`))
+	}))
+	defer server.Close()
+
+	var stdout, stderr bytes.Buffer
+	code := Execute(&stdout, &stderr, "test", []string{"--base-url", server.URL, "apod", "--no-trunc"})
+	if code != 0 {
+		t.Fatalf("unexpected exit code: %d stderr=%s", code, stderr.String())
+	}
+	if !strings.Contains(stdout.String(), longExplanation) {
+		t.Fatalf("expected full explanation with --no-trunc")
+	}
+}
+
+func TestApodNoTruncIgnoredInJSON(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(apodDetailJSON))
+	}))
+	defer server.Close()
+
+	var stdout, stderr bytes.Buffer
+	code := Execute(&stdout, &stderr, "test", []string{
+		"--base-url", server.URL,
+		"--output", "json",
+		"apod",
+		"--no-trunc",
+	})
+	if code != 0 {
+		t.Fatalf("expected exit 0, got %d stderr=%s", code, stderr.String())
+	}
+
+	var payload map[string]any
+	if err := json.Unmarshal(stdout.Bytes(), &payload); err != nil {
+		t.Fatalf("expected valid JSON, got error: %v output=%q", err, stdout.String())
+	}
+}

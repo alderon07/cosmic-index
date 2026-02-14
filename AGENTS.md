@@ -34,19 +34,19 @@ It also includes Pro-tier features (saved objects, collections, saved searches, 
 
 ## Build and Test Commands
 
-Use `just` recipes when possible:
+Use `mise` tasks when possible:
 
 ```bash
-just dev
-just build
-just start
-just lint
-just sbdb-diag
-just ingest-stars
-just ingest-stars-reset
-just ingest-exoplanets
-just ingest-exoplanets-reset
-just ingest-all
+mise run dev
+mise run build
+mise run start
+mise run lint
+mise run sbdb-diag
+mise run ingest-stars
+mise run ingest-stars-reset
+mise run ingest-exoplanets
+mise run ingest-exoplanets-reset
+mise run ingest-all
 ```
 
 Equivalent Bun scripts are in `package.json` (`bun run <script>`).
@@ -58,7 +58,7 @@ bun run lint
 bun run build
 bun test
 bun test src/lib/__tests__/compare-facts.test.ts
-just cli-test
+mise run cli-test
 ```
 
 ## Code Style Guidelines

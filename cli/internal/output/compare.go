@@ -126,7 +126,7 @@ func ExoplanetCompareMetricKeys() []string {
 	}
 }
 
-func PrintExoplanetCompareTable(w io.Writer, items []api.ExoplanetData, metricKeys []string) error {
+func PrintExoplanetCompareTable(w io.Writer, items []api.ExoplanetData, metricKeys []string, opts TableRenderOptions) error {
 	rows, err := selectCompareRows(exoplanetCompareRows(), metricKeys)
 	if err != nil {
 		return err
@@ -137,7 +137,11 @@ func PrintExoplanetCompareTable(w io.Writer, items []api.ExoplanetData, metricKe
 		return err
 	}
 	for _, item := range items {
-		if _, err := fmt.Fprintf(tw, "\t%s", truncate(nonEmpty(item.DisplayName), 24)); err != nil {
+		displayName := nonEmpty(item.DisplayName)
+		if !opts.NoTrunc {
+			displayName = truncate(displayName, 24)
+		}
+		if _, err := fmt.Fprintf(tw, "\t%s", displayName); err != nil {
 			return err
 		}
 	}

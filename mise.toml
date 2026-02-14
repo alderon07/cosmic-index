@@ -1,0 +1,56 @@
+[tools]
+go = "1.23"
+
+[tasks.dev]
+description = "Start dev server"
+run = "bun run dev"
+
+[tasks.build]
+description = "Build app for production"
+run = "bun run build"
+
+[tasks.start]
+description = "Start production server"
+run = "bun run start"
+
+[tasks.lint]
+description = "Run ESLint"
+run = "bun run lint"
+
+[tasks.sbdb-diag]
+description = "Run JPL SBDB diagnostic"
+run = "bun run sbdb:diag"
+
+[tasks.ingest-stars]
+description = "Ingest host stars into Turso"
+run = "bun run ingest:stars"
+
+[tasks.ingest-stars-reset]
+description = "Reset star ingest checkpoint and ingest"
+run = """
+bun run ingest:stars -- --reset
+bun run ingest:stars
+"""
+
+[tasks.ingest-exoplanets]
+description = "Ingest exoplanets into Turso"
+run = "bun run ingest:exoplanets"
+
+[tasks.ingest-exoplanets-reset]
+description = "Reset exoplanet ingest checkpoint and ingest"
+run = """
+bun run ingest:exoplanets -- --reset
+bun run ingest:exoplanets
+"""
+
+[tasks.ingest-all]
+description = "Reset+ingest stars and exoplanets"
+depends = ["ingest-stars-reset", "ingest-exoplanets-reset"]
+
+[tasks.cli-build]
+description = "Build CLI binary"
+run = "cd cli && GOCACHE=/tmp/go-build-cache GOMODCACHE=/tmp/go-mod-cache go build ./cmd/cosmic-index"
+
+[tasks.cli-test]
+description = "Run CLI tests"
+run = "cd cli && GOCACHE=/tmp/go-build-cache GOMODCACHE=/tmp/go-mod-cache go test ./..."

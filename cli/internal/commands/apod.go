@@ -15,6 +15,7 @@ type apodOptions struct {
 	date     string
 	fullText bool
 	columns  string
+	noTrunc  bool
 }
 
 func newApodCommand(state *runtime) *cobra.Command {
@@ -56,12 +57,19 @@ func newApodCommand(state *runtime) *cobra.Command {
 				return apiError(fmt.Errorf("failed to decode apod response: %w", err))
 			}
 
-			return output.PrintApodTable(state.stdout, envelope.Data, opts.fullText, selectedColumns)
+			return output.PrintApodTable(
+				state.stdout,
+				envelope.Data,
+				opts.fullText,
+				selectedColumns,
+				output.TableRenderOptions{NoTrunc: opts.noTrunc},
+			)
 		},
 	}
 
 	cmd.Flags().StringVar(&opts.date, "date", "", "APOD date (YYYY-MM-DD)")
 	cmd.Flags().BoolVar(&opts.fullText, "full-text", false, "Show full APOD explanation in table output")
+	cmd.Flags().BoolVar(&opts.noTrunc, "no-trunc", false, "Disable truncation of long table fields")
 	cmd.Flags().StringVar(&opts.columns, "columns", "", "Table columns: date,title,media-type,media-url,hd-url,thumbnail-url,copyright,explanation")
 	return cmd
 }

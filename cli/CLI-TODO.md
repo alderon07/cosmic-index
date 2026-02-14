@@ -15,7 +15,7 @@ Tracks `cosmic-index` CLI feature work.
   - `cosmic-index compare exoplanets <id1> <id2> [id3]`
 - [x] Add retry/backoff support for `429` / `503` with `Retry-After`.
 - [x] Add `--columns` option for table outputs.
-- [ ] Add `--no-trunc` option for long fields in table outputs.
+- [x] Add `--no-trunc` option for long fields in table outputs.
 
 ## Future
 
