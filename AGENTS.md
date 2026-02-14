@@ -12,6 +12,12 @@ This file provides implementation-oriented guidance for agents working in this r
 - 2026-02-13: Added top-level metadata header (`Last updated (UTC)`, `Version`).
 - 2026-02-13: OpenAPI canonical file moved to `src/lib/openapi/openapi.json`; docs/spec are internal-admin-only in production.
 
+## General
+- When making a plan always ask your these questions
+  - are there are gotchas, caveats, edge cases I missed
+  - any performance improvements I can make that I missed
+  - any implementation details that I missed
+
 ## Project Overview
 
 Cosmic Index is a Next.js 16 App Router application for browsing and comparing:
