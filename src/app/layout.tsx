@@ -210,8 +210,8 @@ export default function RootLayout({
                       >
                         Small-Bodies
                       </NavigationMenuTrigger>
-                      <NavigationMenuContent className="!top-full !left-1/2 !mt-2 !w-[40rem] !-translate-x-1/2 rounded-xl border border-border/60 bg-[#160f0b]/96 p-4 shadow-[0_18px_42px_rgba(0,0,0,0.4)] backdrop-blur-md">
-                        <ul className="grid auto-rows-fr grid-cols-2 gap-3">
+                      <NavigationMenuContent className="!top-full !right-auto !left-0 !mt-2.5 !w-[28rem] rounded-lg border border-border/50 bg-[#160f0b]/97 p-3.5 shadow-[0_12px_36px_rgba(0,0,0,0.45)] backdrop-blur-md">
+                        <ul className="grid grid-cols-2 gap-2">
                           <li>
                             <NavigationMenuLink
                               className="!p-0 data-[active]:!bg-transparent data-[active]:!text-inherit hover:!bg-transparent hover:!text-inherit focus:!bg-transparent focus:!text-inherit"
@@ -219,15 +219,16 @@ export default function RootLayout({
                             >
                               <Link
                                 href="/small-bodies"
-                                className="group flex h-full min-h-[8.75rem] flex-col justify-start rounded-lg border border-border/45 bg-card/55 px-4 py-3.5 text-left transition-colors hover:border-secondary/35 hover:bg-secondary/10"
+                                className="group flex h-full flex-col justify-start rounded-md border border-border/40 bg-card/50 text-left transition-colors hover:border-secondary/35 hover:bg-secondary/8"
                               >
-                                <div className="flex flex-col gap-2 p-6">
-                                  <div className="flex gap-2 font-display text-lg leading-[1.1] tracking-[0.02em] text-orange-100/90 group-hover:text-secondary">
-                                  <CircleDot className="w-5 h-5 text-orange-100/90 group-hover:text-secondary" /> <span>Browse Small Bodies</span>
+                                <div className="px-4 py-3.5">
+                                  <div className="flex items-center gap-2 text-orange-100/85 group-hover:text-secondary">
+                                    <CircleDot className="w-4 h-4 shrink-0" />
+                                    <span className="font-display text-[0.82rem] tracking-wide">Browse Small Bodies</span>
                                   </div>
-                                  <div className="mt-2.5 max-w-[26ch] font-sans text-sm leading-[1.4] text-orange-100/65 group-hover:text-secondary/85">
+                                  <p className="mt-2 font-sans text-xs leading-[1.5] text-orange-100/50 group-hover:text-secondary/75">
                                     Asteroids and comets catalog for discovery and detail views.
-                                  </div>
+                                  </p>
                                 </div>
                               </Link>
                             </NavigationMenuLink>
@@ -239,21 +240,22 @@ export default function RootLayout({
                             >
                               <Link
                                 href="/close-approaches"
-                                className="group flex h-full min-h-[8.75rem] flex-col justify-start rounded-lg border border-border/45 bg-card/55 px-4 py-3.5 text-left transition-colors hover:border-destructive/35 hover:bg-destructive/10"
+                                className="group flex h-full flex-col justify-start rounded-md border border-border/40 bg-card/50 text-left transition-colors hover:border-destructive/35 hover:bg-destructive/8"
                               >
-                                <div className="flex flex-col gap-2 p-6">
-                                  <div className="flex gap-2 font-display text-lg leading-[1.1] tracking-[0.02em] text-orange-100/90 group-hover:text-secondary">
-                                  <Crosshair className="w-5 h-5 text-destructive-100/90 group-hover:text-destructive" /> <div className="font-display text-lg leading-[1.1] tracking-[0.02em] text-orange-100/90 group-hover:text-destructive">Close Approaches</div>
+                                <div className="px-4 py-3.5">
+                                  <div className="flex items-center gap-2 text-orange-100/85 group-hover:text-destructive">
+                                    <Crosshair className="w-4 h-4 shrink-0" />
+                                    <span className="font-display text-[0.82rem] tracking-wide">Close Approaches</span>
                                   </div>
-                                    <div className="mt-2.5 max-w-[26ch] font-sans text-sm leading-[1.4] text-destructive-100/65 group-hover:text-destructive/85">
-                                      Upcoming NEO flyby events near Earth with distance and velocity.
-                                    </div> 
-                                  </div>
-                                </Link>
-                              </NavigationMenuLink>
-                            </li>
-                          </ul>
-                        </NavigationMenuContent>
+                                  <p className="mt-2 font-sans text-xs leading-[1.5] text-orange-100/50 group-hover:text-destructive/75">
+                                    Upcoming NEO flyby events near Earth with distance and velocity.
+                                  </p>
+                                </div>
+                              </Link>
+                            </NavigationMenuLink>
+                          </li>
+                        </ul>
+                      </NavigationMenuContent>
                       </NavigationMenuItem>
                     </NavigationMenuList>
                   </NavigationMenu>
