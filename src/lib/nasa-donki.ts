@@ -190,6 +190,50 @@ interface RawGST {
   linkedEvents?: RawLinkedEvent[];
 }
 
+function getEventCompletenessScore(event: AnySpaceWeatherEvent): number {
+  let score = 0;
+
+  for (const value of Object.values(event)) {
+    if (value === undefined || value === null) continue;
+
+    if (Array.isArray(value)) {
+      if (value.length > 0) score += 1;
+      continue;
+    }
+
+    if (typeof value === "string") {
+      if (value.trim().length > 0) score += 1;
+      continue;
+    }
+
+    score += 1;
+  }
+
+  return score;
+}
+
+export function dedupeSpaceWeatherEvents(
+  events: AnySpaceWeatherEvent[]
+): AnySpaceWeatherEvent[] {
+  const eventsById = new Map<string, AnySpaceWeatherEvent>();
+
+  for (const event of events) {
+    const existing = eventsById.get(event.id);
+    if (!existing) {
+      eventsById.set(event.id, event);
+      continue;
+    }
+
+    const existingScore = getEventCompletenessScore(existing);
+    const candidateScore = getEventCompletenessScore(event);
+    if (candidateScore > existingScore) {
+      eventsById.set(event.id, event);
+    }
+  }
+
+  return Array.from(eventsById.values());
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // Individual Event Type Fetchers
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -429,15 +473,23 @@ export async function fetchSpaceWeather(
     }
   }
 
+  const dedupedEvents = dedupeSpaceWeatherEvents(allEvents);
+  if (dedupedEvents.length !== allEvents.length) {
+    const duplicateCount = allEvents.length - dedupedEvents.length;
+    console.warn(
+      `[DONKI] Removed ${duplicateCount} duplicate space weather event(s) by id`
+    );
+  }
+
   // Sort by startTime descending (most recent first)
-  allEvents.sort((a, b) => {
+  dedupedEvents.sort((a, b) => {
     const dateA = new Date(a.startTime).getTime();
     const dateB = new Date(b.startTime).getTime();
     return dateB - dateA;
   });
 
   // Apply limit (DONKI doesn't support limit param, so we do it client-side)
-  const limitedEvents = allEvents.slice(0, limit);
+  const limitedEvents = dedupedEvents.slice(0, limit);
 
   return {
     events: limitedEvents,
@@ -521,7 +573,7 @@ export async function fetchSpaceWeatherEventById(
   }
 
   // Find the exact event by ID
-  return events.find((e) => e.id === eventId) || null;
+  return dedupeSpaceWeatherEvents(events).find((e) => e.id === eventId) || null;
 }
 
 /**
