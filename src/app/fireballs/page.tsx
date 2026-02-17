@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import { fetchFireballs } from "@/lib/cneos-fireball";
 import { FireballEvent } from "@/lib/types";
@@ -10,6 +11,11 @@ import {
 interface FireballsPageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
+
+export const metadata: Metadata = {
+  title: "Fireballs",
+  description: "View recent fireball events from NASA CNEOS datasets.",
+};
 
 function toSingleValueParams(
   params: Record<string, string | string[] | undefined>

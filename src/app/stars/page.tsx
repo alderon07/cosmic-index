@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import { StarData, StarQueryParams, StarQuerySchema } from "@/lib/types";
 import { searchStars } from "@/lib/star-index";
@@ -8,6 +9,11 @@ import { DEFAULT_PAGE_SIZE } from "@/lib/constants";
 interface StarsPageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
+
+export const metadata: Metadata = {
+  title: "Stars",
+  description: "Explore host stars of known exoplanets from NASA data.",
+};
 
 function toSingleValueParams(
   params: Record<string, string | string[] | undefined>

@@ -1,4 +1,5 @@
 const STAR_POSITIONS = Array.from({ length: 48 }, (_, index) => ({
+  id: `bg-star-${index}`,
   left: (index * 37 + 11) % 100,
   top: (index * 53 + 7) % 100,
   delay: ((index * 13) % 22) / 10,
@@ -18,9 +19,9 @@ export default function AppTemplate({
         <div className="absolute -right-24 bottom-8 h-72 w-72 rounded-full bg-amber-400/10 blur-3xl" />
         <div className="absolute -left-1/2 top-0 h-full w-1/2 bg-gradient-to-r from-transparent via-orange-300/12 to-transparent animate-data-sweep motion-reduce:hidden" />
         <div className="absolute right-[8%] top-20 h-28 w-28 rounded-full border border-orange-300/20 animate-float-drift motion-reduce:animate-none" />
-        {STAR_POSITIONS.map((star, index) => (
+        {STAR_POSITIONS.map((star) => (
           <span
-            key={index}
+            key={star.id}
             className="absolute h-1 w-1 rounded-full bg-orange-100/45 animate-pulse motion-reduce:animate-none"
             style={{
               left: `${star.left}%`,

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import { ExoplanetData, ExoplanetQuerySchema, ExoplanetQueryParams } from "@/lib/types";
 import { searchExoplanets } from "@/lib/exoplanet-index";
@@ -8,6 +9,11 @@ import { DEFAULT_PAGE_SIZE } from "@/lib/constants";
 interface ExoplanetsPageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
+
+export const metadata: Metadata = {
+  title: "Exoplanets",
+  description: "Browse confirmed exoplanets from NASA's Exoplanet Archive.",
+};
 
 function toSingleValueParams(
   params: Record<string, string | string[] | undefined>

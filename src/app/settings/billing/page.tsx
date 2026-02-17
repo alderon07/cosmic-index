@@ -1,4 +1,5 @@
 import { Metadata } from "next";
+import { Suspense } from "react";
 import { getUserDb } from "@/lib/user-db";
 import { BillingContent } from "./billing-content";
 import { getAuthUser } from "@/lib/auth";
@@ -66,12 +67,14 @@ export default async function BillingPage() {
     <div className="container mx-auto px-4 py-8 max-w-2xl">
       <h1 className="font-display text-2xl tracking-wide mb-6">Billing</h1>
 
-      <BillingContent
-        tier={tier}
-        hasStripeCustomer={hasStripeCustomer}
-        proBillingEnabled={getProBillingEnabled()}
-        waitlistEnabled={getWaitlistEnabled()}
-      />
+      <Suspense fallback={<p className="text-sm text-muted-foreground">Loading billing controls...</p>}>
+        <BillingContent
+          tier={tier}
+          hasStripeCustomer={hasStripeCustomer}
+          proBillingEnabled={getProBillingEnabled()}
+          waitlistEnabled={getWaitlistEnabled()}
+        />
+      </Suspense>
     </div>
   );
 }
