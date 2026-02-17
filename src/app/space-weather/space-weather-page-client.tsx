@@ -10,6 +10,8 @@ import {
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import dynamic from "next/dynamic";
 import { useQuery } from "@tanstack/react-query";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import {
   SpaceWeatherCard,
   SpaceWeatherCardSkeleton,
@@ -154,6 +156,121 @@ function FilterChip({
 function truncateText(value: string, maxLength: number): string {
   if (value.length <= maxLength) return value;
   return `${value.slice(0, maxLength - 1).trimEnd()}…`;
+}
+
+function stripMarkdownForPreview(value: string): string {
+  return value
+    .replace(/^#{1,6}\s+/gm, "")        // strip heading markers
+    .replace(/\*\*(.+?)\*\*/g, "$1")     // strip bold
+    .replace(/__(.+?)__/g, "$1")         // strip bold (alt)
+    .replace(/\*(.+?)\*/g, "$1")         // strip italic
+    .replace(/_(.+?)_/g, "$1")           // strip italic (alt)
+    .replace(/~~(.+?)~~/g, "$1")         // strip strikethrough
+    .replace(/`(.+?)`/g, "$1")           // strip inline code
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1") // links → text only
+    .replace(/^\s*[-*+]\s+/gm, "")      // strip list markers
+    .replace(/^\s*\d+\.\s+/gm, "")      // strip numbered list markers
+    .replace(/^\s*>\s?/gm, "")          // strip blockquote markers
+    .replace(/---+/g, "")               // strip horizontal rules
+    .replace(/\n{2,}/g, " ")            // collapse multi-newlines into space
+    .replace(/\n/g, " ")                // remaining newlines → space
+    .replace(/\s{2,}/g, " ")            // collapse runs of whitespace
+    .trim();
+}
+
+function NotificationMarkdown({ content }: { content: string }) {
+  return (
+    <div className="max-w-prose font-sans text-[0.9rem] leading-[1.75] text-foreground/80 [&>*:first-child]:mt-0">
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={{
+          h1: ({ children }) => (
+            <h3 className="mt-6 mb-2.5 font-sans text-base font-semibold tracking-tight text-foreground">
+              {children}
+            </h3>
+          ),
+          h2: ({ children }) => (
+            <h4 className="mt-5 mb-2 font-sans text-[0.94rem] font-semibold tracking-tight text-foreground">
+              {children}
+            </h4>
+          ),
+          h3: ({ children }) => (
+            <h5 className="mt-4 mb-1.5 font-sans text-sm font-semibold text-foreground/95">
+              {children}
+            </h5>
+          ),
+          p: ({ children }) => (
+            <p className="mb-3.5 last:mb-0">{children}</p>
+          ),
+          ul: ({ children }) => (
+            <ul className="mb-3.5 list-disc pl-5 space-y-2 last:mb-0 marker:text-muted-foreground/40">
+              {children}
+            </ul>
+          ),
+          ol: ({ children }) => (
+            <ol className="mb-3.5 list-decimal pl-5 space-y-2 last:mb-0 marker:text-muted-foreground/40">
+              {children}
+            </ol>
+          ),
+          li: ({ children }) => (
+            <li className="pl-1 leading-[1.65]">{children}</li>
+          ),
+          code: ({ children, className }) => (
+            <code
+              className={`rounded px-1.5 py-0.5 text-[0.82em] font-mono bg-muted/50 text-foreground/85 ${className ?? ""}`}
+            >
+              {children}
+            </code>
+          ),
+          pre: ({ children }) => (
+            <pre className="my-4 overflow-x-auto rounded-md border border-border/30 bg-black/15 p-4 text-[0.82rem] leading-relaxed font-mono text-foreground/85 last:mb-0">
+              {children}
+            </pre>
+          ),
+          a: ({ children, href }) => (
+            <a
+              href={href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`${theme.text} ${theme.hoverText} underline underline-offset-2 decoration-aurora-violet/40 hover:decoration-aurora-violet/70 transition-colors`}
+            >
+              {children}
+            </a>
+          ),
+          blockquote: ({ children }) => (
+            <blockquote className="my-4 border-l-2 border-aurora-violet/30 pl-4 text-foreground/65 italic [&>p]:mb-2">
+              {children}
+            </blockquote>
+          ),
+          strong: ({ children }) => (
+            <strong className="text-foreground font-semibold">{children}</strong>
+          ),
+          em: ({ children }) => <em className="italic text-foreground/70">{children}</em>,
+          hr: () => <hr className="my-5 border-border/25" />,
+          table: ({ children }) => (
+            <div className="my-4 overflow-x-auto rounded-md border border-border/30">
+              <table className="w-full text-sm">{children}</table>
+            </div>
+          ),
+          thead: ({ children }) => (
+            <thead className="border-b border-border/30 bg-muted/15 text-foreground/70 text-xs uppercase tracking-wider">
+              {children}
+            </thead>
+          ),
+          tbody: ({ children }) => <tbody className="divide-y divide-border/15">{children}</tbody>,
+          tr: ({ children }) => <tr className="hover:bg-muted/10 transition-colors">{children}</tr>,
+          th: ({ children }) => (
+            <th className="px-3 py-2.5 text-left font-medium">{children}</th>
+          ),
+          td: ({ children }) => (
+            <td className="px-3 py-2.5">{children}</td>
+          ),
+        }}
+      >
+        {content}
+      </ReactMarkdown>
+    </div>
+  );
 }
 
 function formatNotificationIssueTime(value: string): string {
@@ -452,20 +569,19 @@ export function SpaceWeatherPageClient({
             Space Weather
           </h1>
         </div>
-        <p className="text-muted-foreground mb-2">
+        <p className="text-[0.94rem] leading-relaxed text-muted-foreground mb-3 max-w-2xl">
           Solar flares, coronal mass ejections, geomagnetic storms,
           interplanetary shocks, high-speed streams, and SEP events from the
-          last 90 days
+          last 90 days.
         </p>
-        <div className="flex items-start gap-2 p-3 rounded-lg bg-muted/30 border border-muted-foreground/20">
-          <AlertTriangle className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
-          <p className="text-sm text-muted-foreground/80">
-            Data from NASA&apos;s Space Weather Database (DONKI). This is a{" "}
-            <span className="text-foreground">research catalog</span> of space
-            weather events, not a real-time operational monitoring feed. This
-            page shows a rolling 90-day window for events. DONKI notifications
-            are limited to a rolling 30-day query window. Events may be added
-            or updated days after occurrence.
+        <div className="flex items-start gap-3 p-3.5 rounded-lg bg-muted/30 border border-muted-foreground/15">
+          <AlertTriangle className="w-4 h-4 text-muted-foreground/60 mt-0.5 shrink-0" />
+          <p className="text-[0.82rem] leading-[1.65] text-muted-foreground/70 max-w-xl">
+            Data from NASA&apos;s DONKI. This is a{" "}
+            <span className="text-foreground/90 font-medium">research catalog</span>,
+            not a real-time monitoring feed. Events cover a 90-day window;
+            notifications are limited to 30 days. Events may be added or
+            updated days after occurrence.
           </p>
         </div>
       </div>
@@ -589,30 +705,30 @@ export function SpaceWeatherPageClient({
             className="w-full"
           >
             <AccordionItem value="notifications-panel" className="border-none">
-              <AccordionTrigger className="px-6 py-5 hover:no-underline">
+              <AccordionTrigger className="px-5 md:px-6 py-5 hover:no-underline">
                 <div className="w-full space-y-2 text-left">
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <CardTitle className="font-display text-xl flex items-center gap-2">
-                      <AlertTriangle className={`w-4 h-4 ${theme.text}`} />
+                    <CardTitle className="font-display text-lg md:text-xl tracking-tight flex items-center gap-2.5">
+                      <AlertTriangle className={`w-4.5 h-4.5 ${theme.text}`} />
                       DONKI Notifications
                     </CardTitle>
-                    <Badge variant="outline" className={theme.badge}>
+                    <Badge variant="outline" className={`${theme.badge} font-medium tabular-nums`}>
                       {notificationTotal} recent
                     </Badge>
                   </div>
-                  <p className="text-sm leading-relaxed text-muted-foreground">
-                    Separate alert feed from DONKI. Notification queries are limited to
-                    a rolling 30-day window.
+                  <p className="text-[0.82rem] leading-[1.6] text-muted-foreground/70 max-w-lg">
+                    Separate alert feed from NASA&apos;s DONKI system. Limited to a
+                    rolling 30-day query window.
                   </p>
                 </div>
               </AccordionTrigger>
-              <AccordionContent className="px-6 pb-6 space-y-4">
+              <AccordionContent className="px-5 md:px-6 pb-6 space-y-4">
                 {notificationsQueryResult.isPending && (
-                  <p className="text-sm text-muted-foreground">Loading notifications…</p>
+                  <p className="text-sm leading-relaxed text-muted-foreground/70">Loading notifications…</p>
                 )}
 
                 {notificationsQueryResult.error instanceof Error && (
-                  <p className="text-sm text-destructive">
+                  <p className="text-sm leading-relaxed text-destructive">
                     {notificationsQueryResult.error.message}
                   </p>
                 )}
@@ -620,7 +736,7 @@ export function SpaceWeatherPageClient({
                 {notificationWarnings.length > 0 && (
                   <div className="p-3 rounded-md border border-yellow-500/30 bg-yellow-500/10 space-y-1.5">
                     {notificationWarnings.map((warning, idx) => (
-                      <p key={idx} className="text-xs leading-relaxed text-muted-foreground">
+                      <p key={idx} className="text-[0.8rem] leading-relaxed text-muted-foreground">
                         {warning}
                       </p>
                     ))}
@@ -630,21 +746,22 @@ export function SpaceWeatherPageClient({
                 {!notificationsQueryResult.isPending &&
                   !(notificationsQueryResult.error instanceof Error) &&
                   notifications.length === 0 && (
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-sm leading-relaxed text-muted-foreground/70">
                     No notifications in the current DONKI window.
                   </p>
                 )}
 
-                <div className="space-y-3">
+                <div className="space-y-3.5">
                   {notifications.map((notification) => (
                     <Card
                       key={notification.id}
                       tone="neutral"
                       className="border-border/45 bg-black/20"
                     >
-                      <CardContent className="p-4 md:p-5 space-y-3">
+                      <CardContent className="p-4 md:p-6 space-y-4">
+                        {/* Header: badge + metadata + source link */}
                         <div className="flex flex-wrap items-start justify-between gap-3">
-                          <div className="space-y-2 min-w-0">
+                          <div className="space-y-1.5 min-w-0">
                             <div className="flex flex-wrap items-center gap-2">
                               <Badge
                                 variant="outline"
@@ -652,15 +769,15 @@ export function SpaceWeatherPageClient({
                               >
                                 {notification.type.toUpperCase()}
                               </Badge>
-                              <span className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
-                                Message ID
+                              <span className="text-xs text-muted-foreground/50 select-none" aria-hidden>
+                                &middot;
                               </span>
-                              <span className="text-xs font-mono text-muted-foreground break-all">
-                                {notification.id}
-                              </span>
+                              <time className="text-xs text-muted-foreground/80">
+                                {formatNotificationIssueTime(notification.issuedAt)}
+                              </time>
                             </div>
-                            <p className="text-xs font-mono text-muted-foreground/90">
-                              {formatNotificationIssueTime(notification.issuedAt)}
+                            <p className="font-mono text-[0.7rem] leading-none text-muted-foreground/45 break-all select-all">
+                              {notification.id}
                             </p>
                           </div>
                           {notification.url && (
@@ -668,7 +785,7 @@ export function SpaceWeatherPageClient({
                               href={notification.url}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className={`inline-flex items-center gap-1.5 text-xs ${theme.text} ${theme.hoverText}`}
+                              className={`inline-flex items-center gap-1.5 text-xs font-medium ${theme.text} ${theme.hoverText} transition-colors`}
                             >
                               <ExternalLink className="w-3.5 h-3.5" />
                               View source
@@ -676,20 +793,24 @@ export function SpaceWeatherPageClient({
                           )}
                         </div>
 
-                        <p className="text-sm md:text-[0.95rem] leading-relaxed text-foreground">
-                          {truncateText(notification.body, 260) || "No notification message body provided."}
+                        {/* Body preview */}
+                        <p className="max-w-prose font-sans text-[0.9rem] leading-[1.7] text-foreground/85">
+                          {truncateText(stripMarkdownForPreview(notification.body), 280) || "No notification message body provided."}
                         </p>
 
-                        {notification.body.length > 260 && (
+                        {/* Expandable full body */}
+                        {stripMarkdownForPreview(notification.body).length > 280 && (
                           <Accordion type="single" collapsible className="w-full">
-                            <AccordionItem value="body" className="border-border/30">
-                              <AccordionTrigger className="text-xs py-2.5">
-                                Read full notification
+                            <AccordionItem value="body" className="border-border/25">
+                              <AccordionTrigger className="py-2.5 text-[0.8rem] font-medium text-muted-foreground/70 hover:text-foreground transition-colors">
+                                <span className="inline-flex items-center gap-1.5">
+                                  Read full notification
+                                </span>
                               </AccordionTrigger>
-                              <AccordionContent className="pt-1">
-                                <p className="text-xs leading-relaxed text-muted-foreground whitespace-pre-wrap break-words">
-                                  {notification.body}
-                                </p>
+                              <AccordionContent className="pt-3 pb-1">
+                                <div className="rounded-lg border border-border/20 bg-black/15 px-5 py-4 md:px-6 md:py-5">
+                                  <NotificationMarkdown content={notification.body} />
+                                </div>
                               </AccordionContent>
                             </AccordionItem>
                           </Accordion>
