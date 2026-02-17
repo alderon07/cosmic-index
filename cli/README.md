@@ -2,6 +2,11 @@
 
 Go-based CLI for Cosmic Index API (`/api/v1/*`).
 
+## Planning docs
+
+- Roadmap: [`docs/cli-auth.md`](docs/cli-auth.md)
+- Checklist: [`docs/cli-auth-checklist.md`](docs/cli-auth-checklist.md)
+
 ## Install (local development)
 
 ```bash
