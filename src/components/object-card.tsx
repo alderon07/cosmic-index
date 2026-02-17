@@ -558,8 +558,11 @@ export function ObjectCard({ object, onModalOpen, variant = "default" }: ObjectC
         {/* Key Facts Grid */}
         <div className="flex-1">
           <div className="pb-4 grid grid-cols-2 gap-x-3 gap-y-2.5">
-            {displayFacts.map((fact, index) => (
-              <div key={index} className="min-w-0 rounded-md border border-border/40 bg-black/15 px-2.5 py-2">
+            {displayFacts.map((fact) => (
+              <div
+                key={`${fact.label}:${fact.value}:${fact.unit ?? ""}`}
+                className="min-w-0 rounded-md border border-border/40 bg-black/15 px-2.5 py-2"
+              >
                 <p className="truncate text-[11px] uppercase tracking-[0.08em] text-muted-foreground/85 flex items-center gap-1.5">
                   {(() => {
                     const FactIcon = getFactIcon(fact.label);
@@ -681,6 +684,13 @@ interface ObjectCardSkeletonProps {
 
 export function ObjectCardSkeleton({ variant = "default" }: ObjectCardSkeletonProps) {
   if (variant === "compact") {
+    const compactFactSkeletonKeys = [
+      "compact-fact-1",
+      "compact-fact-2",
+      "compact-fact-3",
+      "compact-fact-4",
+    ];
+
     return (
       <Card className="py-0 bg-card border-border/50 bezel overflow-hidden min-h-[44px]">
         <CardContent className="py-3 px-4 min-h-[44px] flex flex-col md:grid md:grid-cols-[1fr_2fr_1fr] md:items-center justify-center gap-y-2.5 md:gap-y-0 md:gap-x-6">
@@ -690,8 +700,8 @@ export function ObjectCardSkeleton({ variant = "default" }: ObjectCardSkeletonPr
           </div>
           <div className="w-full md:w-auto min-w-0">
             <div className="grid grid-cols-4 gap-x-4 sm:gap-x-6 min-w-0 w-full md:w-auto">
-              {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="min-w-0 flex flex-col items-center gap-0.5">
+              {compactFactSkeletonKeys.map((key) => (
+                <div key={key} className="min-w-0 flex flex-col items-center gap-0.5">
                   <div className="h-3 w-8 data-stream rounded" />
                   <div className="h-3 data-stream rounded w-full max-w-14" />
                 </div>
@@ -714,8 +724,8 @@ export function ObjectCardSkeleton({ variant = "default" }: ObjectCardSkeletonPr
       </CardHeader>
       <CardContent className="pt-0">
         <div className="grid grid-cols-2 gap-x-4 gap-y-3">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i}>
+          {["default-fact-1", "default-fact-2", "default-fact-3", "default-fact-4"].map((key) => (
+            <div key={key}>
               <div className="h-3 w-12 data-stream rounded mb-1" />
               <div className="h-4 w-16 data-stream rounded" />
             </div>

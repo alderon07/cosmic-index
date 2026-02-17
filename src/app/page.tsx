@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 
 const STAR_POSITIONS = Array.from({ length: 60 }, (_, index) => ({
+  id: `star-${index}`,
   left: (index * 37 + 11) % 100,
   top: (index * 53 + 5) % 100,
   delay: ((index * 17) % 24) / 10,
@@ -34,9 +35,9 @@ export default function HomePage() {
           <div className="absolute -right-24 bottom-0 h-80 w-80 rounded-full bg-amber-400/15 blur-3xl" />
           <div className="pointer-events-none absolute -left-1/2 top-0 h-full w-1/2 bg-gradient-to-r from-transparent via-orange-300/18 to-transparent animate-data-sweep motion-reduce:hidden" />
           <div className="pointer-events-none absolute right-0 top-1/4 h-32 w-32 rounded-full border border-orange-300/25 animate-float-drift motion-reduce:animate-none" />
-          {STAR_POSITIONS.map((star, index) => (
+          {STAR_POSITIONS.map((star) => (
             <span
-              key={index}
+              key={star.id}
               className="absolute h-1 w-1 rounded-full bg-orange-100/60 animate-pulse"
               style={{
                 left: `${star.left}%`,

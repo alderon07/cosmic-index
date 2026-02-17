@@ -194,10 +194,10 @@ export function StarFilterPanel({
 
       {/* Sort Selector - Always visible */}
       <div className="flex items-center gap-3">
-        <label className="flex items-center gap-1.5 text-xs text-muted-foreground uppercase tracking-wider">
+        <p className="flex items-center gap-1.5 text-xs text-muted-foreground uppercase tracking-wider">
           <ArrowUpDown className={`w-3.5 h-3.5 ${theme.text}`} />
           Sort
-        </label>
+        </p>
         <Select
           value={filters.sort || "name"}
           onValueChange={(value) =>
@@ -289,9 +289,9 @@ export function StarFilterPanel({
           <AccordionContent className="pb-4 space-y-4">
             {/* Spectral Class */}
             <div>
-              <label className="text-xs text-muted-foreground uppercase tracking-wider block mb-2">
+              <p className="text-xs text-muted-foreground uppercase tracking-wider block mb-2">
                 Spectral Class
-              </label>
+              </p>
               <div className="flex flex-wrap gap-2">
                 {spectralClasses.map((sc) => {
                   const info = SPECTRAL_CLASS_INFO[sc];
@@ -328,9 +328,9 @@ export function StarFilterPanel({
 
             {/* Min Planets */}
             <div>
-              <label className="text-xs text-muted-foreground uppercase tracking-wider block mb-2">
+              <p className="text-xs text-muted-foreground uppercase tracking-wider block mb-2">
                 Minimum Planets
-              </label>
+              </p>
               <div className="flex flex-wrap gap-2">
                 {MIN_PLANETS_PRESETS.map((preset) => (
                   <Button
@@ -359,9 +359,9 @@ export function StarFilterPanel({
 
             {/* Max Distance */}
             <div>
-              <label className="text-xs text-muted-foreground uppercase tracking-wider block mb-2">
+              <p className="text-xs text-muted-foreground uppercase tracking-wider block mb-2">
                 Max Distance
-              </label>
+              </p>
               <Select
                 value={filters.maxDistancePc?.toString() || "all"}
                 onValueChange={(value) =>

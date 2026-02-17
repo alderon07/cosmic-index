@@ -134,9 +134,9 @@ export function NasaImageGallery({ object, compact }: NasaImageGalleryProps) {
         </CardHeader>
         <CardContent className="overflow-hidden">
           <div className="flex gap-2 sm:gap-3 overflow-x-auto min-w-0">
-            {[1, 2, 3, 4].map((i) => (
+            {["image-skeleton-1", "image-skeleton-2", "image-skeleton-3", "image-skeleton-4"].map((key) => (
               <div
-                key={i}
+                key={key}
                 className={`${thumbnailSize} flex-shrink-0 rounded-lg data-stream bg-muted/30`}
               />
             ))}

@@ -51,7 +51,7 @@ async function assertInternalAdminAccess() {
   return null;
 }
 
-export async function GET(request: Request) {
+export async function GET() {
   const blocked = await assertInternalAdminAccess();
   if (blocked) return blocked;
 

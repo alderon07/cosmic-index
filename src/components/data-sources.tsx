@@ -18,9 +18,9 @@ export function DataSources({ links, sourceId }: DataSourcesProps) {
       </CardHeader>
       <CardContent>
         <div className="flex flex-wrap gap-2">
-          {links.map((link, index) => (
+          {links.map((link) => (
             <a
-              key={index}
+              key={`${link.url}:${link.label}`}
               href={link.url}
               target="_blank"
               rel="noopener noreferrer"

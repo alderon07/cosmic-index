@@ -83,9 +83,12 @@ export function Breadcrumbs({
           {resolvedItems.map((item, index) => {
             const isLast = index === resolvedItems.length - 1;
             const isFirst = index === 0;
+            const crumbKey = item.href
+              ? `${item.href}:${item.label}`
+              : `${item.label}:${isLast ? "current" : "node"}`;
 
             return (
-              <li key={index} className="flex items-center">
+              <li key={crumbKey} className="flex items-center">
                 {index > 0 && (
                   <ChevronRight className="w-4 h-4 mx-1 flex-shrink-0" />
                 )}

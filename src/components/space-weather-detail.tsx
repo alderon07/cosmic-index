@@ -296,9 +296,9 @@ export function SpaceWeatherDetail({ event, compact }: SpaceWeatherDetailProps) 
         </CardHeader>
         <CardContent>
           <div className={`grid gap-3 sm:gap-4 ${compact ? "grid-cols-2 md:grid-cols-3" : "grid-cols-2 md:grid-cols-3 lg:grid-cols-4"}`}>
-            {keyFacts.map((fact, index) => (
+            {keyFacts.map((fact) => (
               <div
-                key={index}
+                key={`${fact.label}:${fact.value}`}
                 className="p-3 sm:p-4 bg-muted/30 rounded-lg border border-border/30 min-w-0"
               >
                 <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1 truncate">
@@ -505,8 +505,11 @@ export function SpaceWeatherDetail({ event, compact }: SpaceWeatherDetailProps) 
                           </tr>
                         </thead>
                         <tbody>
-                          {(event as GSTEvent).allKpReadings.map((reading, i) => (
-                            <tr key={i} className="border-t border-border/30">
+                          {(event as GSTEvent).allKpReadings.map((reading) => (
+                            <tr
+                              key={`${reading.observedTime}:${reading.source}:${reading.kpIndex}`}
+                              className="border-t border-border/30"
+                            >
                               <td className="px-4 py-2 font-mono text-xs">
                                 {formatDateTime(reading.observedTime).time}
                               </td>
@@ -604,7 +607,7 @@ export function SpaceWeatherDetail({ event, compact }: SpaceWeatherDetailProps) 
                 This event is connected to other space weather activity:
               </p>
               <div className="space-y-2">
-                {event.linkedEvents.map((linked, i) => {
+                {event.linkedEvents.map((linked) => {
                   const linkedType = parseEventType(linked.activityID);
                   const linkedTypeLabel = linkedType ? getEventTypeLabel(linkedType) : "DONKI Event";
                   const linkedCardClass = cn(
@@ -644,7 +647,7 @@ export function SpaceWeatherDetail({ event, compact }: SpaceWeatherDetailProps) 
                   if (linkedType) {
                     return (
                       <Link
-                        key={i}
+                        key={linked.activityID}
                         href={internalHref}
                         className={linkedCardClass}
                       >
@@ -655,7 +658,7 @@ export function SpaceWeatherDetail({ event, compact }: SpaceWeatherDetailProps) 
 
                   return (
                     <a
-                      key={i}
+                      key={linked.activityID}
                       href={donkiSearchUrl}
                       target="_blank"
                       rel="noopener noreferrer"

@@ -293,6 +293,13 @@ export function CloseApproachCard({ approach, showHighlightBadge, variant = "def
 
 export function CloseApproachCardSkeleton({ variant = "default" }: { variant?: CloseApproachCardVariant }) {
   if (variant === "compact") {
+    const compactMetricSkeletonKeys = [
+      "metric-distance",
+      "metric-velocity",
+      "metric-size",
+      "metric-time",
+    ];
+
     return (
       <Card className="py-0 bg-card border-border/50 bezel overflow-hidden min-h-[44px]">
         <CardContent className="p-3 min-h-[44px] flex flex-col md:grid md:grid-cols-[1fr_auto_1fr] md:items-center gap-y-2.5 md:gap-y-0 md:gap-x-6">
@@ -302,8 +309,8 @@ export function CloseApproachCardSkeleton({ variant = "default" }: { variant?: C
           </div>
           <div className="w-full md:w-auto min-w-0">
             <div className="grid grid-cols-4 gap-x-4 sm:gap-x-6 min-w-0 w-full md:w-auto">
-              {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="min-w-0 flex flex-col items-center gap-0.5">
+              {compactMetricSkeletonKeys.map((key) => (
+                <div key={key} className="min-w-0 flex flex-col items-center gap-0.5">
                   <div className="h-3 w-8 data-stream rounded" />
                   <div className="h-3 data-stream rounded w-full max-w-16" />
                 </div>

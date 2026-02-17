@@ -84,6 +84,26 @@ const SpaceWeatherDetailModal = dynamic(
   { ssr: false }
 );
 
+const GRID_SKELETON_KEYS = [
+  "sw-grid-sk-1",
+  "sw-grid-sk-2",
+  "sw-grid-sk-3",
+  "sw-grid-sk-4",
+  "sw-grid-sk-5",
+  "sw-grid-sk-6",
+] as const;
+
+const LIST_SKELETON_KEYS = [
+  "sw-list-sk-1",
+  "sw-list-sk-2",
+  "sw-list-sk-3",
+  "sw-list-sk-4",
+  "sw-list-sk-5",
+  "sw-list-sk-6",
+  "sw-list-sk-7",
+  "sw-list-sk-8",
+] as const;
+
 function getEventCompletenessScore(event: AnySpaceWeatherEvent): number {
   let score = 0;
 
@@ -684,8 +704,8 @@ export function SpaceWeatherPageClient({
               <p className="text-sm text-yellow-500 font-medium">
                 Partial results
               </p>
-              {(data.meta.warnings as string[]).map((warning, i) => (
-                <p key={i} className="text-sm text-muted-foreground">
+              {(data.meta.warnings as string[]).map((warning) => (
+                <p key={warning} className="text-sm text-muted-foreground">
                   {warning}
                 </p>
               ))}
@@ -736,8 +756,8 @@ export function SpaceWeatherPageClient({
 
                 {notificationWarnings.length > 0 && (
                   <div className="p-3 rounded-md border border-yellow-500/30 bg-yellow-500/10 space-y-1.5">
-                    {notificationWarnings.map((warning, idx) => (
-                      <p key={idx} className="text-[0.8rem] leading-relaxed text-muted-foreground">
+                    {notificationWarnings.map((warning) => (
+                      <p key={warning} className="text-[0.8rem] leading-relaxed text-muted-foreground">
                         {warning}
                       </p>
                     ))}
@@ -894,8 +914,8 @@ export function SpaceWeatherPageClient({
       {/* Loading State - Grid */}
       {isLoading && view === "grid" && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <SpaceWeatherCardSkeleton key={i} />
+          {GRID_SKELETON_KEYS.map((placeholderKey) => (
+            <SpaceWeatherCardSkeleton key={placeholderKey} />
           ))}
         </div>
       )}
@@ -903,8 +923,8 @@ export function SpaceWeatherPageClient({
       {/* Loading State - List */}
       {isLoading && view === "list" && (
         <div className="min-w-0 overflow-hidden space-y-2">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <SpaceWeatherCardSkeleton key={i} variant="compact" />
+          {LIST_SKELETON_KEYS.map((placeholderKey) => (
+            <SpaceWeatherCardSkeleton key={placeholderKey} variant="compact" />
           ))}
         </div>
       )}
@@ -987,8 +1007,8 @@ export function SpaceWeatherLoadingSkeleton() {
         </div>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <SpaceWeatherCardSkeleton key={i} />
+        {GRID_SKELETON_KEYS.map((placeholderKey) => (
+          <SpaceWeatherCardSkeleton key={placeholderKey} />
         ))}
       </div>
     </div>

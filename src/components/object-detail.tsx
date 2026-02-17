@@ -219,9 +219,9 @@ export function ObjectDetail({
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
-            {object.keyFacts.map((fact, index) => (
+            {object.keyFacts.map((fact) => (
               <div
-                key={index}
+                key={`${fact.label}:${fact.value}:${fact.unit ?? ""}`}
                 className="p-3 sm:p-4 bg-muted/30 rounded-lg border border-border/30 min-w-0"
               >
                 <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1 truncate">
@@ -726,9 +726,9 @@ export function ObjectDetail({
           </CardHeader>
           <CardContent>
             <div className="flex flex-wrap gap-2">
-              {object.links.map((link, index) => (
+              {object.links.map((link) => (
                 <a
-                  key={index}
+                  key={`${link.url}:${link.label}`}
                   href={link.url}
                   target="_blank"
                   rel="noopener noreferrer"
@@ -782,8 +782,8 @@ export function ObjectDetailSkeleton() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="p-4 bg-muted/30 rounded-lg">
+            {["detail-fact-1", "detail-fact-2", "detail-fact-3", "detail-fact-4"].map((key) => (
+              <div key={key} className="p-4 bg-muted/30 rounded-lg">
                 <div className="h-3 w-16 data-stream rounded mb-2" />
                 <div className="h-8 w-20 data-stream rounded" />
               </div>
