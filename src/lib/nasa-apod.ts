@@ -3,12 +3,23 @@ import { withCache, CACHE_TTL, CACHE_KEYS } from "./cache";
 
 const APOD_API_URL = "https://api.nasa.gov/planetary/apod";
 const API_TIMEOUT_MS = 15000;
+let hasWarnedMissingNasaApiKey = false;
 
 // Use NASA_API_KEY if available, otherwise fall back to DEMO_KEY
 // Note: DEMO_KEY has rate limits (30 req/hour, 50 req/day)
 // For production, get a free key from https://api.nasa.gov/
 function getApiKey(): string {
-  return process.env.NASA_API_KEY || "DEMO_KEY";
+  const apiKey = process.env.NASA_API_KEY?.trim();
+  if (apiKey) return apiKey;
+
+  if (process.env.NODE_ENV === "production" && !hasWarnedMissingNasaApiKey) {
+    hasWarnedMissingNasaApiKey = true;
+    console.warn(
+      "[APOD] NASA_API_KEY is not configured in production; falling back to DEMO_KEY with stricter rate limits."
+    );
+  }
+
+  return "DEMO_KEY";
 }
 
 // Raw response from NASA APOD API

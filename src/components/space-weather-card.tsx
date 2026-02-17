@@ -14,18 +14,22 @@ import {
   SolarFlareEvent,
   CMEEvent,
   GSTEvent,
+  IPSEvent,
+  HSSEvent,
+  SEPEvent,
   SpaceWeatherSeverity,
 } from "@/lib/types";
 import {
-  getFlareClassSeverity,
-  getCMESeverity,
-  getKpSeverity,
+  getEventSeverity,
   getEventTypeLabel,
   formatFlareClass,
   formatCMESpeed,
   formatKpIndex,
 } from "@/lib/nasa-donki";
-import { THEMES } from "@/lib/theme";
+import {
+  SPACE_WEATHER_SEVERITY_BADGE_CLASSES,
+  THEMES,
+} from "@/lib/theme";
 import {
   Sun,
   Cloud,
@@ -43,15 +47,6 @@ import { SaveEventButton } from "@/components/save-event-button";
 
 const theme = THEMES["space-weather"];
 
-// Severity color mapping
-const SEVERITY_COLORS: Record<SpaceWeatherSeverity, string> = {
-  minor: "border-muted-foreground/50 text-muted-foreground bg-muted/10",
-  moderate: "border-yellow-500/50 text-yellow-500 bg-yellow-500/10",
-  strong: "border-amber-500/50 text-amber-500 bg-amber-500/10",
-  severe: "border-orange-500/50 text-orange-500 bg-orange-500/10",
-  extreme: "border-red-500/50 text-red-500 bg-red-500/10",
-};
-
 function getEventIcon(type: AnySpaceWeatherEvent["eventType"]) {
   switch (type) {
     case "FLR":
@@ -60,6 +55,12 @@ function getEventIcon(type: AnySpaceWeatherEvent["eventType"]) {
       return <Cloud className="w-4 h-4" />;
     case "GST":
       return <Magnet className="w-4 h-4" />;
+    case "IPS":
+      return <Cloud className="w-4 h-4" />;
+    case "HSS":
+      return <Gauge className="w-4 h-4" />;
+    case "SEP":
+      return <Sun className="w-4 h-4" />;
   }
 }
 
@@ -97,11 +98,18 @@ function getPrimaryMetricLabel(eventType: AnySpaceWeatherEvent["eventType"]): st
     case "FLR": return "Class";
     case "CME": return "Speed";
     case "GST": return "Kp Index";
+    case "IPS": return "Location";
+    case "HSS": return "Instruments";
+    case "SEP": return "Instruments";
   }
 }
 
 function getSecondaryMetricLabel(eventType: AnySpaceWeatherEvent["eventType"]): string {
-  return eventType === "GST" ? "Readings" : "Source";
+  if (eventType === "GST") return "Readings";
+  if (eventType === "IPS" || eventType === "HSS" || eventType === "SEP") {
+    return "Source";
+  }
+  return "Source";
 }
 
 function formatSeverity(severity: SpaceWeatherSeverity): string {
@@ -113,6 +121,9 @@ const LINKED_EVENT_LABELS: Record<string, string> = {
   FLR: "Flare",
   CME: "CME",
   GST: "Storm",
+  IPS: "Shock",
+  HSS: "Stream",
+  SEP: "SEP",
 };
 
 /**
@@ -128,7 +139,7 @@ function formatLinkedEvents(
   const counts: Record<string, number> = {};
   for (const event of linkedEvents) {
     // Extract event type from activityID (e.g., "2024-01-15T06:30:00-FLR-001" → "FLR")
-    const match = event.activityID.match(/-(FLR|CME|GST)-/);
+    const match = event.activityID.match(/-(FLR|CME|GST|IPS|HSS|SEP)-/);
     if (match) {
       const type = match[1];
       counts[type] = (counts[type] || 0) + 1;
@@ -139,8 +150,7 @@ function formatLinkedEvents(
   const parts: string[] = [];
   for (const [type, count] of Object.entries(counts)) {
     const label = LINKED_EVENT_LABELS[type] || type;
-    // Pluralize CME → CMEs, but Flare → Flares, Storm → Storms
-    const plural = count > 1 ? (label === "CME" ? "s" : "s") : "";
+    const plural = count > 1 ? "s" : "";
     parts.push(`${count} ${label}${plural}`);
   }
 
@@ -156,44 +166,70 @@ interface SpaceWeatherCardProps {
 }
 
 export function SpaceWeatherCard({ event, variant = "default", onModalOpen }: SpaceWeatherCardProps) {
-  const eventTypeForCanonical =
-    event.eventType === "FLR" ? "flr" : event.eventType === "CME" ? "cme" : "gst";
-  const canonicalId = eventObjectId(eventTypeForCanonical, {
-    id: event.id,
-    start: event.startTime,
-    type: event.eventType,
-  });
+  const eventTypeForCanonical = event.eventType === "FLR"
+    ? "flr"
+    : event.eventType === "CME"
+      ? "cme"
+      : event.eventType === "GST"
+        ? "gst"
+        : null;
+
+  const canonicalId = eventTypeForCanonical
+    ? eventObjectId(eventTypeForCanonical, {
+      id: event.id,
+      start: event.startTime,
+      type: event.eventType,
+    })
+    : null;
 
   const { date, time } = formatDateTime(event.startTime);
 
-  // Get severity based on event type
-  let severity: SpaceWeatherSeverity;
+  const severity: SpaceWeatherSeverity = getEventSeverity(event);
   let primaryMetric: string;
   let secondaryMetric: string | undefined;
 
   switch (event.eventType) {
     case "FLR": {
       const flr = event as SolarFlareEvent;
-      severity = getFlareClassSeverity(flr.classType);
       primaryMetric = formatFlareClass(flr.classType);
       secondaryMetric = flr.sourceLocation;
       break;
     }
     case "CME": {
       const cme = event as CMEEvent;
-      severity = getCMESeverity(cme.speed);
       primaryMetric = formatCMESpeed(cme.speed);
       secondaryMetric = cme.sourceLocation;
       break;
     }
     case "GST": {
       const gst = event as GSTEvent;
-      severity = getKpSeverity(gst.kpIndex);
       primaryMetric = formatKpIndex(gst.kpIndex);
       secondaryMetric =
         gst.allKpReadings.length > 1
           ? `${gst.allKpReadings.length} readings`
           : undefined;
+      break;
+    }
+    case "IPS": {
+      const ips = event as IPSEvent;
+      primaryMetric = ips.location || "Unknown";
+      secondaryMetric = ips.instruments?.[0];
+      break;
+    }
+    case "HSS": {
+      const hss = event as HSSEvent;
+      primaryMetric = hss.instruments?.length
+        ? `${hss.instruments.length} tracked`
+        : "Unknown";
+      secondaryMetric = hss.instruments?.[0];
+      break;
+    }
+    case "SEP": {
+      const sep = event as SEPEvent;
+      primaryMetric = sep.instruments?.length
+        ? `${sep.instruments.length} tracked`
+        : "Unknown";
+      secondaryMetric = sep.instruments?.[0];
       break;
     }
   }
@@ -307,8 +343,10 @@ export function SpaceWeatherCard({ event, variant = "default", onModalOpen }: Sp
           </div>
           {/* Badge + navigation/chevron (right column on md+) */}
           <div className="flex shrink-0 items-center justify-end gap-2 min-w-0">
-            <SaveEventButton canonicalId={canonicalId} displayName={`${getEventTypeLabel(event.eventType)} ${date}`} eventPayload={event} />
-            <Badge variant="outline" className={`text-[10px] shrink-0 py-0 px-1.5 ${SEVERITY_COLORS[severity]}`}>
+            {canonicalId && (
+              <SaveEventButton canonicalId={canonicalId} displayName={`${getEventTypeLabel(event.eventType)} ${date}`} eventPayload={event} />
+            )}
+            <Badge variant="outline" className={`text-[10px] shrink-0 py-0 px-1.5 ${SPACE_WEATHER_SEVERITY_BADGE_CLASSES[severity]}`}>
               {formatSeverity(severity)}
             </Badge>
             {onModalOpen ? (
@@ -447,8 +485,10 @@ export function SpaceWeatherCard({ event, variant = "default", onModalOpen }: Sp
               <div />
             )}
             <div className="flex items-center gap-1.5">
-              <SaveEventButton canonicalId={canonicalId} displayName={`${getEventTypeLabel(event.eventType)} ${date}`} eventPayload={event} />
-              <Badge variant="outline" className={`text-xs ${SEVERITY_COLORS[severity]}`}>
+              {canonicalId && (
+                <SaveEventButton canonicalId={canonicalId} displayName={`${getEventTypeLabel(event.eventType)} ${date}`} eventPayload={event} />
+              )}
+              <Badge variant="outline" className={`text-xs ${SPACE_WEATHER_SEVERITY_BADGE_CLASSES[severity]}`}>
               {formatSeverity(severity)}
               </Badge>
               <Badge variant="outline" className={`text-xs ${theme.badge}`}>

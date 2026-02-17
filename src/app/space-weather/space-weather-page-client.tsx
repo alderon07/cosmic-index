@@ -25,6 +25,8 @@ import {
 import {
   SpaceWeatherEventType,
   AnySpaceWeatherEvent,
+  SpaceWeatherNotification,
+  SPACE_WEATHER_EVENT_TYPES,
 } from "@/lib/types";
 import {
   apiFetchEvents,
@@ -32,7 +34,12 @@ import {
   EventStreamResult,
   PaginatedResult,
 } from "@/lib/api-client";
-import { THEMES } from "@/lib/theme";
+import {
+  SPACE_WEATHER_EVENT_BREAKDOWN_LABELS,
+  SPACE_WEATHER_EVENT_LABELS,
+  SPACE_WEATHER_NOTIFICATION_BADGES,
+  THEMES,
+} from "@/lib/theme";
 import {
   Sun,
   Cloud,
@@ -41,9 +48,11 @@ import {
   RotateCcw,
   X,
   AlertTriangle,
+  ExternalLink,
 } from "lucide-react";
 import { ViewToggle, ViewMode } from "@/components/view-toggle";
 import { Pagination, PaginationInfo } from "@/components/pagination";
+import { Card, CardContent, CardTitle } from "@/components/ui/card";
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { EventTimeline } from "@/components/timeline/event-timeline";
 import { buildTimelineBuckets } from "@/lib/timeline-buckets";
@@ -56,6 +65,8 @@ import {
 import { parseEventTypesParam } from "@/lib/space-weather-url";
 import {
   buildSpaceWeatherFetchKey,
+  buildSpaceWeatherNotificationsFetchKey,
+  SPACE_WEATHER_NOTIFICATIONS_UI_LIMIT,
   SPACE_WEATHER_TIMELINE_LIMIT,
   SPACE_WEATHER_UI_PAGE_SIZE,
 } from "@/lib/space-weather-fetch-key";
@@ -140,13 +151,38 @@ function FilterChip({
   );
 }
 
+function truncateText(value: string, maxLength: number): string {
+  if (value.length <= maxLength) return value;
+  return `${value.slice(0, maxLength - 1).trimEnd()}…`;
+}
+
+function formatNotificationIssueTime(value: string): string {
+  if (!value) return "Unknown issue time";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+
+  return parsed.toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: "UTC",
+    timeZoneName: "short",
+  });
+}
+
 const EVENT_TYPE_INFO: Record<
   SpaceWeatherEventType,
   { label: string; icon: React.ReactNode }
 > = {
-  FLR: { label: "Solar Flares", icon: <Sun className="w-3.5 h-3.5" /> },
-  CME: { label: "CMEs", icon: <Cloud className="w-3.5 h-3.5" /> },
-  GST: { label: "Geomagnetic Storms", icon: <Magnet className="w-3.5 h-3.5" /> },
+  FLR: { label: SPACE_WEATHER_EVENT_LABELS.FLR, icon: <Sun className="w-3.5 h-3.5" /> },
+  CME: { label: SPACE_WEATHER_EVENT_LABELS.CME, icon: <Cloud className="w-3.5 h-3.5" /> },
+  GST: { label: SPACE_WEATHER_EVENT_LABELS.GST, icon: <Magnet className="w-3.5 h-3.5" /> },
+  IPS: { label: SPACE_WEATHER_EVENT_LABELS.IPS, icon: <Cloud className="w-3.5 h-3.5" /> },
+  HSS: { label: SPACE_WEATHER_EVENT_LABELS.HSS, icon: <CloudLightning className="w-3.5 h-3.5" /> },
+  SEP: { label: SPACE_WEATHER_EVENT_LABELS.SEP, icon: <Sun className="w-3.5 h-3.5" /> },
 };
 
 export interface SpaceWeatherPageClientProps {
@@ -218,8 +254,8 @@ export function SpaceWeatherPageClient({
         newTypes = [...eventTypes, type];
       }
 
-      // If all three selected, clear the param (default)
-      if (newTypes.length === 3) {
+      // If all event types selected, clear the param (default)
+      if (newTypes.length === SPACE_WEATHER_EVENT_TYPES.length) {
         updateUrl({ eventTypes: null, page: null });
       } else {
         const canonicalTypes = parseEventTypesParam(newTypes.join(","));
@@ -284,6 +320,7 @@ export function SpaceWeatherPageClient({
     enabled: !shouldUseInitialError,
     initialData: currentFetchKey === initialFetchKey ? (initialData ?? undefined) : undefined,
     staleTime: 30_000,
+    retry: 1,
   });
 
   const timelineFetchKey = useMemo(
@@ -299,6 +336,23 @@ export function SpaceWeatherPageClient({
       }),
     enabled: !shouldUseInitialError,
     staleTime: 30_000,
+    retry: 1,
+  });
+
+  const notificationsFetchKey = useMemo(
+    () => buildSpaceWeatherNotificationsFetchKey(SPACE_WEATHER_NOTIFICATIONS_UI_LIMIT, 1, "all"),
+    []
+  );
+
+  const notificationsQueryResult = useQuery({
+    queryKey: queryKeys.spaceWeatherNotifications(notificationsFetchKey),
+    queryFn: ({ signal }) =>
+      apiFetchPaginated<SpaceWeatherNotification>(
+        `/space-weather/notifications?${notificationsFetchKey}`,
+        { signal }
+      ),
+    staleTime: 60_000,
+    retry: 1,
   });
 
   const data = queryResult.data ?? null;
@@ -346,15 +400,20 @@ export function SpaceWeatherPageClient({
     }
   }, [data, page, totalPages, setPage]);
 
-  const activeFilterCount = eventTypes.length < 3 ? 1 : 0;
+  const activeFilterCount = eventTypes.length < SPACE_WEATHER_EVENT_TYPES.length ? 1 : 0;
 
   // Count events by type
   const countByType = useMemo(() => {
-    const counts = { FLR: 0, CME: 0, GST: 0 };
+    const counts: Record<SpaceWeatherEventType, number> = {
+      FLR: 0,
+      CME: 0,
+      GST: 0,
+      IPS: 0,
+      HSS: 0,
+      SEP: 0,
+    };
     for (const event of events) {
-      if (event.eventType === "FLR") counts.FLR += 1;
-      if (event.eventType === "CME") counts.CME += 1;
-      if (event.eventType === "GST") counts.GST += 1;
+      counts[event.eventType] += 1;
     }
     return counts;
   }, [events]);
@@ -375,6 +434,10 @@ export function SpaceWeatherPageClient({
     });
   }, [timelineQueryResult.data]);
 
+  const notifications = notificationsQueryResult.data?.objects ?? [];
+  const notificationWarnings = (notificationsQueryResult.data?.meta?.warnings as string[] | undefined) ?? [];
+  const notificationTotal = notificationsQueryResult.data?.total ?? notifications.length;
+
   return (
     <div className="shell-container py-8">
       {/* Page Header */}
@@ -390,7 +453,8 @@ export function SpaceWeatherPageClient({
           </h1>
         </div>
         <p className="text-muted-foreground mb-2">
-          Solar flares, coronal mass ejections, and geomagnetic storms from the
+          Solar flares, coronal mass ejections, geomagnetic storms,
+          interplanetary shocks, high-speed streams, and SEP events from the
           last 90 days
         </p>
         <div className="flex items-start gap-2 p-3 rounded-lg bg-muted/30 border border-muted-foreground/20">
@@ -399,8 +463,9 @@ export function SpaceWeatherPageClient({
             Data from NASA&apos;s Space Weather Database (DONKI). This is a{" "}
             <span className="text-foreground">research catalog</span> of space
             weather events, not a real-time operational monitoring feed. This
-            page shows a rolling 90-day window. Events may be added or updated
-            days after occurrence.
+            page shows a rolling 90-day window for events. DONKI notifications
+            are limited to a rolling 30-day query window. Events may be added
+            or updated days after occurrence.
           </p>
         </div>
       </div>
@@ -467,7 +532,7 @@ export function SpaceWeatherPageClient({
               </p>
 
               <div className="flex flex-wrap gap-2">
-                {(["FLR", "CME", "GST"] as SpaceWeatherEventType[]).map(
+                {SPACE_WEATHER_EVENT_TYPES.map(
                   (type) => {
                     const info = EVENT_TYPE_INFO[type];
                     const isSelected = eventTypes.includes(type);
@@ -512,6 +577,133 @@ export function SpaceWeatherPageClient({
         </div>
       )}
 
+      <div className="mb-10">
+        <Card
+          tone="neutral"
+          className="border-border/50 bg-card/95 [background-image:radial-gradient(circle_at_top_right,rgba(178,102,255,0.1),transparent_60%)]"
+        >
+          <Accordion
+            type="single"
+            collapsible
+            defaultValue="notifications-panel"
+            className="w-full"
+          >
+            <AccordionItem value="notifications-panel" className="border-none">
+              <AccordionTrigger className="px-6 py-5 hover:no-underline">
+                <div className="w-full space-y-2 text-left">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <CardTitle className="font-display text-xl flex items-center gap-2">
+                      <AlertTriangle className={`w-4 h-4 ${theme.text}`} />
+                      DONKI Notifications
+                    </CardTitle>
+                    <Badge variant="outline" className={theme.badge}>
+                      {notificationTotal} recent
+                    </Badge>
+                  </div>
+                  <p className="text-sm leading-relaxed text-muted-foreground">
+                    Separate alert feed from DONKI. Notification queries are limited to
+                    a rolling 30-day window.
+                  </p>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="px-6 pb-6 space-y-4">
+                {notificationsQueryResult.isPending && (
+                  <p className="text-sm text-muted-foreground">Loading notifications…</p>
+                )}
+
+                {notificationsQueryResult.error instanceof Error && (
+                  <p className="text-sm text-destructive">
+                    {notificationsQueryResult.error.message}
+                  </p>
+                )}
+
+                {notificationWarnings.length > 0 && (
+                  <div className="p-3 rounded-md border border-yellow-500/30 bg-yellow-500/10 space-y-1.5">
+                    {notificationWarnings.map((warning, idx) => (
+                      <p key={idx} className="text-xs leading-relaxed text-muted-foreground">
+                        {warning}
+                      </p>
+                    ))}
+                  </div>
+                )}
+
+                {!notificationsQueryResult.isPending &&
+                  !(notificationsQueryResult.error instanceof Error) &&
+                  notifications.length === 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    No notifications in the current DONKI window.
+                  </p>
+                )}
+
+                <div className="space-y-3">
+                  {notifications.map((notification) => (
+                    <Card
+                      key={notification.id}
+                      tone="neutral"
+                      className="border-border/45 bg-black/20"
+                    >
+                      <CardContent className="p-4 md:p-5 space-y-3">
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div className="space-y-2 min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <Badge
+                                variant="outline"
+                                className={SPACE_WEATHER_NOTIFICATION_BADGES[notification.type]}
+                              >
+                                {notification.type.toUpperCase()}
+                              </Badge>
+                              <span className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
+                                Message ID
+                              </span>
+                              <span className="text-xs font-mono text-muted-foreground break-all">
+                                {notification.id}
+                              </span>
+                            </div>
+                            <p className="text-xs font-mono text-muted-foreground/90">
+                              {formatNotificationIssueTime(notification.issuedAt)}
+                            </p>
+                          </div>
+                          {notification.url && (
+                            <a
+                              href={notification.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className={`inline-flex items-center gap-1.5 text-xs ${theme.text} ${theme.hoverText}`}
+                            >
+                              <ExternalLink className="w-3.5 h-3.5" />
+                              View source
+                            </a>
+                          )}
+                        </div>
+
+                        <p className="text-sm md:text-[0.95rem] leading-relaxed text-foreground">
+                          {truncateText(notification.body, 260) || "No notification message body provided."}
+                        </p>
+
+                        {notification.body.length > 260 && (
+                          <Accordion type="single" collapsible className="w-full">
+                            <AccordionItem value="body" className="border-border/30">
+                              <AccordionTrigger className="text-xs py-2.5">
+                                Read full notification
+                              </AccordionTrigger>
+                              <AccordionContent className="pt-1">
+                                <p className="text-xs leading-relaxed text-muted-foreground whitespace-pre-wrap break-words">
+                                  {notification.body}
+                                </p>
+                              </AccordionContent>
+                            </AccordionItem>
+                          </Accordion>
+                        )}
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+        </Card>
+      </div>
+
       {/* Results Info */}
       {data && !isLoading && (
         <div className="mb-6 space-y-4">
@@ -538,8 +730,11 @@ export function SpaceWeatherPageClient({
               Current page breakdown:
               <span className="text-muted-foreground/70">
                 {" "}
-                ({countByType.FLR} flares, {countByType.CME} CMEs,{" "}
-                {countByType.GST} storms).
+                (
+                {SPACE_WEATHER_EVENT_TYPES.map((type) =>
+                  `${countByType[type]} ${SPACE_WEATHER_EVENT_BREAKDOWN_LABELS[type]}`
+                ).join(", ")}
+                ).
               </span>
             </p>
           )}

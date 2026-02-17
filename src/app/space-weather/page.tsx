@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { fetchSpaceWeather } from "@/lib/nasa-donki";
 import {
   AnySpaceWeatherEvent,
+  SPACE_WEATHER_EVENT_TYPES,
   SpaceWeatherQuerySchema,
 } from "@/lib/types";
 import { PaginatedResult } from "@/lib/api-client";
@@ -45,7 +46,7 @@ export default async function SpaceWeatherPage({
   let initialData: PaginatedResult<AnySpaceWeatherEvent> | null = null;
   let initialError: string | null = null;
   let initialFetchKey = buildSpaceWeatherFetchKey(
-    ["FLR", "CME", "GST"],
+    [...SPACE_WEATHER_EVENT_TYPES],
     SPACE_WEATHER_UI_PAGE_SIZE,
     1
   );

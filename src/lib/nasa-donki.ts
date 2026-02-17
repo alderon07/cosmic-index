@@ -1,154 +1,68 @@
 import {
+  SPACE_WEATHER_EVENT_TYPES,
   SpaceWeatherEventType,
   SpaceWeatherSeverity,
   SolarFlareEvent,
   CMEEvent,
   GSTEvent,
+  IPSEvent,
+  HSSEvent,
+  SEPEvent,
   AnySpaceWeatherEvent,
   SpaceWeatherQueryParams,
   SpaceWeatherListResponse,
+  SpaceWeatherNotification,
+  SpaceWeatherNotificationsListResponse,
+  SpaceWeatherNotificationsQueryParams,
 } from "./types";
 import { withCache, CACHE_TTL, CACHE_KEYS } from "./cache";
 
-// Base URL from env, with fallback to CCMC direct (no key required)
-const DONKI_BASE_URL =
-  process.env.DONKI_BASE_URL ||
-  "https://kauai.ccmc.gsfc.nasa.gov/DONKI/WS/get";
-const NASA_API_KEY = process.env.NASA_API_KEY; // Only needed for api.nasa.gov gateway
+const DONKI_CCMC_BASE_URL = "https://kauai.ccmc.gsfc.nasa.gov/DONKI/WS/get";
+const DONKI_NASA_BASE_URL = "https://api.nasa.gov/DONKI";
 
-const API_TIMEOUT_MS = 20000; // DONKI can be slow
+const API_TIMEOUT_MS = 20000;
 const DEFAULT_DAYS_BACK = 90;
+const DEFAULT_NOTIFICATION_DAYS_BACK = 7;
+const NOTIFICATIONS_MAX_WINDOW_DAYS = 30;
+const RETRY_COUNT = 1;
+const RETRY_BASE_DELAY_MS = 300;
+const RETRY_JITTER_MS = 250;
+
 export const SPACE_WEATHER_MAX_TOTAL_RESULTS = 420;
+export const SPACE_WEATHER_NOTIFICATIONS_MAX_TOTAL_RESULTS = 300;
 
-// Cache version - increment to invalidate old cached responses
-const CACHE_VERSION = 2;
+let hasWarnedMissingNasaApiKey = false;
+const CACHE_VERSION = 3;
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// Severity Helpers
-// ═══════════════════════════════════════════════════════════════════════════════
+const SINGLE_FLIGHT = new Map<string, Promise<unknown>>();
 
-/**
- * Get severity level from solar flare class type
- * M1-M4.9 = moderate, M5-M9.9 = strong, X1-X9.9 = severe, X10+ = extreme
- */
-export function getFlareClassSeverity(classType: string): SpaceWeatherSeverity {
-  const match = classType.match(/^([ABCMX])(\d+\.?\d*)/i);
-  if (!match) return "minor";
-
-  const letter = match[1].toUpperCase();
-  const number = parseFloat(match[2]);
-
-  switch (letter) {
-    case "X":
-      if (number >= 10) return "extreme";
-      return "severe";
-    case "M":
-      if (number >= 5) return "strong";
-      return "moderate";
-    case "C":
-      return "minor";
-    default:
-      return "minor";
+export class DonkiUpstreamUnavailableError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "DonkiUpstreamUnavailableError";
   }
 }
 
-/**
- * Get severity level from Kp index
- * Kp5 = minor (G1), Kp6 = moderate (G2), Kp7 = strong (G3), Kp8 = severe (G4), Kp9 = extreme (G5)
- */
-export function getKpSeverity(kp: number): SpaceWeatherSeverity {
-  if (kp >= 9) return "extreme";
-  if (kp >= 8) return "severe";
-  if (kp >= 7) return "strong";
-  if (kp >= 6) return "moderate";
-  return "minor";
+interface DonkiTypeFetchResult {
+  type: SpaceWeatherEventType;
+  events: AnySpaceWeatherEvent[];
+  failed: boolean;
+  failureMessage?: string;
 }
-
-/**
- * Get severity level from CME speed
- * Based on typical CME speeds and space weather impact
- */
-export function getCMESeverity(speed?: number): SpaceWeatherSeverity {
-  if (!speed) return "minor";
-  if (speed >= 2000) return "extreme";
-  if (speed >= 1500) return "severe";
-  if (speed >= 1000) return "strong";
-  if (speed >= 500) return "moderate";
-  return "minor";
-}
-
-/**
- * Get human-readable label for event type
- */
-export function getEventTypeLabel(type: SpaceWeatherEventType): string {
-  switch (type) {
-    case "FLR":
-      return "Solar Flare";
-    case "CME":
-      return "Coronal Mass Ejection";
-    case "GST":
-      return "Geomagnetic Storm";
-  }
-}
-
-/**
- * Format flare class for display (e.g., "M1.2" → "M1.2-class")
- */
-export function formatFlareClass(classType: string): string {
-  return `${classType}-class`;
-}
-
-/**
- * Format CME speed for display
- */
-export function formatCMESpeed(speed?: number): string {
-  if (!speed) return "Unknown";
-  return `${Math.round(speed)} km/s`;
-}
-
-/**
- * Format Kp index for display with G-scale
- */
-export function formatKpIndex(kp: number): string {
-  const gScale = kp >= 9 ? "G5" : kp >= 8 ? "G4" : kp >= 7 ? "G3" : kp >= 6 ? "G2" : kp >= 5 ? "G1" : "";
-  return gScale ? `Kp${kp} (${gScale})` : `Kp${kp}`;
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// Date Helpers
-// ═══════════════════════════════════════════════════════════════════════════════
-
-function getDefaultDateRange(): { start: string; end: string } {
-  const end = new Date();
-  const start = new Date();
-  start.setDate(start.getDate() - DEFAULT_DAYS_BACK);
-
-  return {
-    start: start.toISOString().split("T")[0],
-    end: end.toISOString().split("T")[0],
-  };
-}
-
-function buildUrl(endpoint: string, startDate: string, endDate: string): string {
-  const url = new URL(`${DONKI_BASE_URL}/${endpoint}`);
-  url.searchParams.set("startDate", startDate);
-  url.searchParams.set("endDate", endDate);
-
-  // Add API key if using api.nasa.gov gateway
-  if (DONKI_BASE_URL.includes("api.nasa.gov") && NASA_API_KEY) {
-    url.searchParams.set("api_key", NASA_API_KEY);
-  }
-
-  return url.toString();
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// Raw API Response Types
-// ═══════════════════════════════════════════════════════════════════════════════
 
 interface RawLinkedEvent {
   activityID: string;
   [key: string]: unknown;
+}
+
+interface RawInstrument {
+  displayName?: string;
+}
+
+interface RawSentNotification {
+  messageID?: string;
+  messageIssueTime?: string;
+  messageURL?: string;
 }
 
 interface RawFLR {
@@ -159,7 +73,7 @@ interface RawFLR {
   classType: string;
   sourceLocation?: string;
   activeRegionNum?: number;
-  linkedEvents?: RawLinkedEvent[];
+  linkedEvents?: RawLinkedEvent[] | null;
 }
 
 interface RawCMEAnalysis {
@@ -174,8 +88,8 @@ interface RawCME {
   startTime: string;
   sourceLocation?: string;
   activeRegionNum?: number;
-  cmeAnalyses?: RawCMEAnalysis[];
-  linkedEvents?: RawLinkedEvent[];
+  cmeAnalyses?: RawCMEAnalysis[] | null;
+  linkedEvents?: RawLinkedEvent[] | null;
 }
 
 interface RawKpIndex {
@@ -187,13 +101,190 @@ interface RawKpIndex {
 interface RawGST {
   gstID: string;
   startTime: string;
-  allKpIndex?: RawKpIndex[];
-  linkedEvents?: RawLinkedEvent[];
+  allKpIndex?: RawKpIndex[] | null;
+  linkedEvents?: RawLinkedEvent[] | null;
+}
+
+interface RawIPS {
+  activityID: string;
+  eventTime: string;
+  location?: string;
+  submissionTime?: string;
+  link?: string;
+  instruments?: RawInstrument[] | null;
+  linkedEvents?: RawLinkedEvent[] | null;
+  sentNotifications?: RawSentNotification[] | null;
+}
+
+interface RawHSS {
+  hssID: string;
+  eventTime: string;
+  submissionTime?: string;
+  link?: string;
+  instruments?: RawInstrument[] | null;
+  linkedEvents?: RawLinkedEvent[] | null;
+  sentNotifications?: RawSentNotification[] | null;
+}
+
+interface RawSEP {
+  sepID: string;
+  eventTime: string;
+  submissionTime?: string;
+  link?: string;
+  instruments?: RawInstrument[] | null;
+  linkedEvents?: RawLinkedEvent[] | null;
+  sentNotifications?: RawSentNotification[] | null;
+}
+
+interface RawNotification {
+  messageType?: string;
+  messageID?: string;
+  messageURL?: string;
+  messageIssueTime?: string;
+  messageBody?: string;
+}
+
+interface NotificationWindow {
+  requestedStart: string;
+  requestedEnd: string;
+  effectiveStart: string;
+  effectiveEnd: string;
+  warnings: string[];
+}
+
+interface NotificationCacheValue {
+  notifications: SpaceWeatherNotification[];
+  sawUnknownType: boolean;
+}
+
+function randomJitterMs(): number {
+  return Math.floor(Math.random() * RETRY_JITTER_MS);
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function withSingleFlight<T>(key: string, fn: () => Promise<T>): Promise<T> {
+  const existing = SINGLE_FLIGHT.get(key);
+  if (existing) {
+    return existing as Promise<T>;
+  }
+
+  const pending = fn().finally(() => {
+    SINGLE_FLIGHT.delete(key);
+  });
+
+  SINGLE_FLIGHT.set(key, pending as Promise<unknown>);
+  return pending;
+}
+
+function toUtcDateString(date: Date): string {
+  return date.toISOString().slice(0, 10);
+}
+
+function fromUtcDateString(date: string): Date {
+  return new Date(`${date}T00:00:00.000Z`);
+}
+
+function addDaysUtc(date: string, days: number): string {
+  const d = fromUtcDateString(date);
+  d.setUTCDate(d.getUTCDate() + days);
+  return toUtcDateString(d);
+}
+
+function getTodayUtcDate(): string {
+  return toUtcDateString(new Date());
+}
+
+function getDefaultDateRange(): { start: string; end: string } {
+  const end = getTodayUtcDate();
+  return {
+    start: addDaysUtc(end, -DEFAULT_DAYS_BACK),
+    end,
+  };
+}
+
+function normalizeNullableArray<T>(value: T[] | null | undefined): T[] | undefined {
+  if (!Array.isArray(value) || value.length === 0) return undefined;
+  return value;
+}
+
+function getNasaApiKey(): string | undefined {
+  const value = process.env.NASA_API_KEY?.trim();
+  return value && value.length > 0 ? value : undefined;
+}
+
+function warnMissingNasaApiKey(message: string): void {
+  if (process.env.NODE_ENV !== "production" || hasWarnedMissingNasaApiKey) return;
+  hasWarnedMissingNasaApiKey = true;
+  console.warn(message);
+}
+
+function getDonkiBaseUrl(): string {
+  const configured = process.env.DONKI_BASE_URL?.trim();
+  if (configured && configured.length > 0) {
+    if (configured.includes("api.nasa.gov") && !getNasaApiKey()) {
+      warnMissingNasaApiKey(
+        "[DONKI] DONKI_BASE_URL targets api.nasa.gov but NASA_API_KEY is missing in production.",
+      );
+    }
+    return configured;
+  }
+
+  if (getNasaApiKey()) {
+    return DONKI_NASA_BASE_URL;
+  }
+
+  warnMissingNasaApiKey(
+    "[DONKI] NASA_API_KEY is not configured in production; falling back to CCMC DONKI endpoint.",
+  );
+  return DONKI_CCMC_BASE_URL;
+}
+
+function getCacheContext(): string {
+  const base = getDonkiBaseUrl();
+  const runtimeMode = process.env.COSMIC_USE_MOCK_AUTH ?? process.env.NEXT_PUBLIC_USE_MOCK_AUTH ?? "unset";
+  return `${process.env.NODE_ENV ?? "unknown"}:${runtimeMode}:${base}`;
+}
+
+function buildUrl(
+  endpoint: string,
+  startDate: string,
+  endDate: string,
+  extraParams?: Record<string, string>,
+): string {
+  const donkiBaseUrl = getDonkiBaseUrl();
+  const url = new URL(`${donkiBaseUrl}/${endpoint}`);
+  url.searchParams.set("startDate", startDate);
+  url.searchParams.set("endDate", endDate);
+
+  if (extraParams) {
+    for (const [key, value] of Object.entries(extraParams)) {
+      if (value) url.searchParams.set(key, value);
+    }
+  }
+
+  const nasaApiKey = getNasaApiKey();
+  if (donkiBaseUrl.includes("api.nasa.gov") && nasaApiKey) {
+    url.searchParams.set("api_key", nasaApiKey);
+  }
+
+  return url.toString();
+}
+
+function toEpochFromEvent(event: AnySpaceWeatherEvent): number {
+  const direct = Date.parse(event.startTime);
+  if (!Number.isNaN(direct)) return direct;
+
+  const fromId = Date.parse(event.id.split("-").slice(0, 3).join("-") + "Z");
+  if (!Number.isNaN(fromId)) return fromId;
+
+  return Number.MIN_SAFE_INTEGER;
 }
 
 function getEventCompletenessScore(event: AnySpaceWeatherEvent): number {
   let score = 0;
-
   for (const value of Object.values(event)) {
     if (value === undefined || value === null) continue;
 
@@ -214,9 +305,9 @@ function getEventCompletenessScore(event: AnySpaceWeatherEvent): number {
 }
 
 export function dedupeSpaceWeatherEvents(
-  events: AnySpaceWeatherEvent[]
+  events: AnySpaceWeatherEvent[],
 ): AnySpaceWeatherEvent[] {
-  const eventsById = new Map<string, AnySpaceWeatherEvent>();
+  const byId = new Map<string, AnySpaceWeatherEvent>();
 
   for (const event of events) {
     const normalizedId = event.id.trim();
@@ -225,52 +316,47 @@ export function dedupeSpaceWeatherEvents(
       ? { ...event, id: normalizedId }
       : event;
 
-    const existing = eventsById.get(dedupeId);
+    const existing = byId.get(dedupeId);
     if (!existing) {
-      eventsById.set(dedupeId, normalizedEvent);
+      byId.set(dedupeId, normalizedEvent);
       continue;
     }
 
-    const existingScore = getEventCompletenessScore(existing);
-    const candidateScore = getEventCompletenessScore(normalizedEvent);
-    if (candidateScore > existingScore) {
-      eventsById.set(dedupeId, normalizedEvent);
+    if (getEventCompletenessScore(normalizedEvent) > getEventCompletenessScore(existing)) {
+      byId.set(dedupeId, normalizedEvent);
     }
   }
 
-  return Array.from(eventsById.values());
-}
-
-function toEpochOrMin(timestamp: string): number {
-  const parsed = Date.parse(timestamp);
-  return Number.isNaN(parsed) ? Number.MIN_SAFE_INTEGER : parsed;
+  return Array.from(byId.values());
 }
 
 export function normalizeSpaceWeatherResultSet(
   events: AnySpaceWeatherEvent[],
   limit: number,
-  page?: number
+  page?: number,
 ): {
   events: AnySpaceWeatherEvent[];
   totalAvailable: number;
   totalCapApplied: boolean;
   duplicateCount: number;
 } {
-  const dedupedEvents = dedupeSpaceWeatherEvents(events);
-  const duplicateCount = events.length - dedupedEvents.length;
+  const deduped = dedupeSpaceWeatherEvents(events);
+  const duplicateCount = events.length - deduped.length;
 
-  const sortedEvents = [...dedupedEvents].sort(
-    (a, b) => toEpochOrMin(b.startTime) - toEpochOrMin(a.startTime)
-  );
+  const sorted = [...deduped].sort((a, b) => {
+    const tsDiff = toEpochFromEvent(b) - toEpochFromEvent(a);
+    if (tsDiff !== 0) return tsDiff;
+    return b.id.localeCompare(a.id);
+  });
 
-  const cappedEvents = sortedEvents.slice(0, SPACE_WEATHER_MAX_TOTAL_RESULTS);
-  const totalAvailable = cappedEvents.length;
-  const totalCapApplied = sortedEvents.length > SPACE_WEATHER_MAX_TOTAL_RESULTS;
+  const capped = sorted.slice(0, SPACE_WEATHER_MAX_TOTAL_RESULTS);
+  const totalAvailable = capped.length;
+  const totalCapApplied = sorted.length > SPACE_WEATHER_MAX_TOTAL_RESULTS;
 
   if (typeof page === "number") {
     const start = (page - 1) * limit;
     return {
-      events: cappedEvents.slice(start, start + limit),
+      events: capped.slice(start, start + limit),
       totalAvailable,
       totalCapApplied,
       duplicateCount,
@@ -278,16 +364,22 @@ export function normalizeSpaceWeatherResultSet(
   }
 
   return {
-    events: cappedEvents.slice(0, limit),
+    events: capped.slice(0, limit),
     totalAvailable,
     totalCapApplied,
     duplicateCount,
   };
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// Individual Event Type Fetchers
-// ═══════════════════════════════════════════════════════════════════════════════
+function isRetryableError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  const message = error.message.toLowerCase();
+  if (message.includes("timed out")) return true;
+  if (message.includes("fetch failed")) return true;
+  if (message.includes("etimedout")) return true;
+  if (message.includes("donki api error: 5")) return true;
+  return false;
+}
 
 async function fetchWithTimeout<T>(url: string): Promise<T> {
   const controller = new AbortController();
@@ -317,144 +409,560 @@ async function fetchWithTimeout<T>(url: string): Promise<T> {
   }
 }
 
-/**
- * Fetch Solar Flares from DONKI
- */
-async function fetchSolarFlaresRaw(
-  startDate: string,
-  endDate: string
-): Promise<SolarFlareEvent[]> {
-  const cacheKey = `${CACHE_KEYS.SPACE_WEATHER_FLR}:v${CACHE_VERSION}:${startDate}:${endDate}`;
+async function fetchWithRetry<T>(url: string): Promise<T> {
+  let attempt = 0;
+  let lastError: unknown;
 
-  return withCache(cacheKey, CACHE_TTL.SPACE_WEATHER, async () => {
+  while (attempt <= RETRY_COUNT) {
     try {
-      const url = buildUrl("FLR", startDate, endDate);
-      const data = await fetchWithTimeout<RawFLR[]>(url);
-
-      if (!Array.isArray(data)) {
-        console.warn("[DONKI] FLR endpoint returned non-array:", typeof data);
-        return [];
+      return await fetchWithTimeout<T>(url);
+    } catch (error) {
+      lastError = error;
+      if (attempt >= RETRY_COUNT || !isRetryableError(error)) {
+        throw error;
       }
 
-      return data.map((flr): SolarFlareEvent => ({
-        id: flr.flrID,
-        eventType: "FLR",
-        startTime: flr.beginTime,
-        peakTime: flr.peakTime,
-        endTime: flr.endTime,
-        classType: flr.classType,
-        sourceLocation: flr.sourceLocation,
-        activeRegionNum: flr.activeRegionNum,
-        linkedEvents: flr.linkedEvents,
-      }));
-    } catch (error) {
-      console.error("[DONKI] Failed to fetch solar flares:", error);
-      return [];
+      const delayMs = RETRY_BASE_DELAY_MS + randomJitterMs();
+      await sleep(delayMs);
+      attempt += 1;
     }
-  });
+  }
+
+  throw lastError instanceof Error ? lastError : new Error("DONKI request failed");
 }
 
-/**
- * Fetch Coronal Mass Ejections from DONKI
- */
-async function fetchCMEsRaw(
-  startDate: string,
-  endDate: string
-): Promise<CMEEvent[]> {
-  const cacheKey = `${CACHE_KEYS.SPACE_WEATHER_CME}:v${CACHE_VERSION}:${startDate}:${endDate}`;
-
-  return withCache(cacheKey, CACHE_TTL.SPACE_WEATHER, async () => {
-    try {
-      const url = buildUrl("CME", startDate, endDate);
-      const data = await fetchWithTimeout<RawCME[]>(url);
-
-      if (!Array.isArray(data)) {
-        console.warn("[DONKI] CME endpoint returned non-array:", typeof data);
-        return [];
-      }
-
-      return data.map((cme): CMEEvent => {
-        // Find the most accurate analysis, or fall back to first one
-        const analysis = cme.cmeAnalyses?.find((a) => a.isMostAccurate) ||
-          cme.cmeAnalyses?.[0];
-
-        return {
-          id: cme.activityID,
-          eventType: "CME",
-          startTime: cme.startTime,
-          sourceLocation: cme.sourceLocation,
-          activeRegionNum: cme.activeRegionNum,
-          speed: analysis?.speed,
-          halfAngle: analysis?.halfAngle,
-          cmeType: analysis?.type,
-          linkedEvents: cme.linkedEvents,
-        };
-      });
-    } catch (error) {
-      console.error("[DONKI] Failed to fetch CMEs:", error);
-      return [];
+function getFetchFailureMessage(error: unknown): string {
+  if (!(error instanceof Error)) return "Unknown upstream error";
+  const cause = (error as { cause?: unknown }).cause;
+  if (cause && typeof cause === "object" && "code" in cause) {
+    const code = (cause as { code?: unknown }).code;
+    if (typeof code === "string" && code.trim().length > 0) {
+      return `${error.message} (${code})`;
     }
-  });
+  }
+  return error.message;
 }
 
-/**
- * Fetch Geomagnetic Storms from DONKI
- */
-async function fetchGSTsRaw(
-  startDate: string,
-  endDate: string
-): Promise<GSTEvent[]> {
-  const cacheKey = `${CACHE_KEYS.SPACE_WEATHER_GST}:v${CACHE_VERSION}:${startDate}:${endDate}`;
+function normalizeInstruments(instruments: RawInstrument[] | null | undefined): string[] | undefined {
+  if (!Array.isArray(instruments) || instruments.length === 0) return undefined;
 
-  return withCache(cacheKey, CACHE_TTL.SPACE_WEATHER, async () => {
-    try {
-      const url = buildUrl("GST", startDate, endDate);
-      const data = await fetchWithTimeout<RawGST[]>(url);
+  const names = instruments
+    .map((instrument) => instrument.displayName?.trim())
+    .filter((value): value is string => !!value && value.length > 0);
 
-      if (!Array.isArray(data)) {
-        console.warn("[DONKI] GST endpoint returned non-array:", typeof data);
-        return [];
-      }
-
-      return data.map((gst): GSTEvent => {
-        // Extract all Kp readings
-        const allKpReadings = (gst.allKpIndex || []).map((kp) => ({
-          observedTime: kp.observedTime,
-          kpIndex: kp.kpIndex,
-          source: kp.source,
-        }));
-
-        // Get max Kp for the storm
-        const maxKp = allKpReadings.length > 0
-          ? Math.max(...allKpReadings.map((r) => r.kpIndex))
-          : 0;
-
-        return {
-          id: gst.gstID,
-          eventType: "GST",
-          startTime: gst.startTime,
-          kpIndex: maxKp,
-          allKpReadings,
-          linkedEvents: gst.linkedEvents,
-        };
-      });
-    } catch (error) {
-      console.error("[DONKI] Failed to fetch geomagnetic storms:", error);
-      return [];
-    }
-  });
+  return names.length > 0 ? names : undefined;
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// Main Fetch Function
-// ═══════════════════════════════════════════════════════════════════════════════
+function logSourceFetch(source: string, startedAt: number, rowCount: number): void {
+  const latencyMs = Date.now() - startedAt;
+  console.info(`[DONKI] source=${source} status=ok latency_ms=${latencyMs} rows=${rowCount}`);
+}
 
-/**
- * Fetch space weather events from NASA DONKI
- * Uses Promise.allSettled to handle partial failures gracefully
- */
+async function fetchSolarFlaresRaw(startDate: string, endDate: string): Promise<DonkiTypeFetchResult> {
+  const cacheKey = `${CACHE_KEYS.SPACE_WEATHER_FLR}:v${CACHE_VERSION}:${getCacheContext()}:${startDate}:${endDate}`;
+  const startedAt = Date.now();
+
+  try {
+    const events = await withSingleFlight(
+      cacheKey,
+      async () =>
+        withCache(cacheKey, CACHE_TTL.SPACE_WEATHER, async () => {
+          const url = buildUrl("FLR", startDate, endDate);
+          const data = await fetchWithRetry<RawFLR[]>(url);
+
+          if (!Array.isArray(data)) {
+            console.warn("[DONKI] FLR endpoint returned non-array:", typeof data);
+            return [];
+          }
+
+          return data.map((flr): SolarFlareEvent => ({
+            id: flr.flrID,
+            eventType: "FLR",
+            startTime: flr.beginTime,
+            peakTime: flr.peakTime,
+            endTime: flr.endTime,
+            classType: flr.classType,
+            sourceLocation: flr.sourceLocation,
+            activeRegionNum: flr.activeRegionNum,
+            linkedEvents: normalizeNullableArray(flr.linkedEvents),
+          }));
+        }),
+    );
+
+    logSourceFetch("FLR", startedAt, events.length);
+    return { type: "FLR", events, failed: false };
+  } catch (error) {
+    console.error("[DONKI] Failed to fetch solar flares:", error);
+    return {
+      type: "FLR",
+      events: [],
+      failed: true,
+      failureMessage: getFetchFailureMessage(error),
+    };
+  }
+}
+
+async function fetchCMEsRaw(startDate: string, endDate: string): Promise<DonkiTypeFetchResult> {
+  const cacheKey = `${CACHE_KEYS.SPACE_WEATHER_CME}:v${CACHE_VERSION}:${getCacheContext()}:${startDate}:${endDate}`;
+  const startedAt = Date.now();
+
+  try {
+    const events = await withSingleFlight(
+      cacheKey,
+      async () =>
+        withCache(cacheKey, CACHE_TTL.SPACE_WEATHER, async () => {
+          const url = buildUrl("CME", startDate, endDate);
+          const data = await fetchWithRetry<RawCME[]>(url);
+
+          if (!Array.isArray(data)) {
+            console.warn("[DONKI] CME endpoint returned non-array:", typeof data);
+            return [];
+          }
+
+          return data.map((cme): CMEEvent => {
+            const analyses = normalizeNullableArray(cme.cmeAnalyses) ?? [];
+            const analysis = analyses.find((item) => item.isMostAccurate) ?? analyses[0];
+
+            return {
+              id: cme.activityID,
+              eventType: "CME",
+              startTime: cme.startTime,
+              sourceLocation: cme.sourceLocation,
+              activeRegionNum: cme.activeRegionNum,
+              speed: analysis?.speed,
+              halfAngle: analysis?.halfAngle,
+              cmeType: analysis?.type,
+              linkedEvents: normalizeNullableArray(cme.linkedEvents),
+            };
+          });
+        }),
+    );
+
+    logSourceFetch("CME", startedAt, events.length);
+    return { type: "CME", events, failed: false };
+  } catch (error) {
+    console.error("[DONKI] Failed to fetch CMEs:", error);
+    return {
+      type: "CME",
+      events: [],
+      failed: true,
+      failureMessage: getFetchFailureMessage(error),
+    };
+  }
+}
+
+async function fetchGSTsRaw(startDate: string, endDate: string): Promise<DonkiTypeFetchResult> {
+  const cacheKey = `${CACHE_KEYS.SPACE_WEATHER_GST}:v${CACHE_VERSION}:${getCacheContext()}:${startDate}:${endDate}`;
+  const startedAt = Date.now();
+
+  try {
+    const events = await withSingleFlight(
+      cacheKey,
+      async () =>
+        withCache(cacheKey, CACHE_TTL.SPACE_WEATHER, async () => {
+          const url = buildUrl("GST", startDate, endDate);
+          const data = await fetchWithRetry<RawGST[]>(url);
+
+          if (!Array.isArray(data)) {
+            console.warn("[DONKI] GST endpoint returned non-array:", typeof data);
+            return [];
+          }
+
+          return data.map((gst): GSTEvent => {
+            const allKpReadings = (normalizeNullableArray(gst.allKpIndex) ?? []).map((kp) => ({
+              observedTime: kp.observedTime,
+              kpIndex: kp.kpIndex,
+              source: kp.source,
+            }));
+
+            const maxKp = allKpReadings.length > 0
+              ? Math.max(...allKpReadings.map((reading) => reading.kpIndex))
+              : 0;
+
+            return {
+              id: gst.gstID,
+              eventType: "GST",
+              startTime: gst.startTime,
+              kpIndex: maxKp,
+              allKpReadings,
+              linkedEvents: normalizeNullableArray(gst.linkedEvents),
+            };
+          });
+        }),
+    );
+
+    logSourceFetch("GST", startedAt, events.length);
+    return { type: "GST", events, failed: false };
+  } catch (error) {
+    console.error("[DONKI] Failed to fetch geomagnetic storms:", error);
+    return {
+      type: "GST",
+      events: [],
+      failed: true,
+      failureMessage: getFetchFailureMessage(error),
+    };
+  }
+}
+
+async function fetchIPSRaw(startDate: string, endDate: string): Promise<DonkiTypeFetchResult> {
+  const cacheKey = `${CACHE_KEYS.SPACE_WEATHER_IPS}:v${CACHE_VERSION}:${getCacheContext()}:${startDate}:${endDate}`;
+  const startedAt = Date.now();
+
+  try {
+    const events = await withSingleFlight(
+      cacheKey,
+      async () =>
+        withCache(cacheKey, CACHE_TTL.SPACE_WEATHER, async () => {
+          const url = buildUrl("IPS", startDate, endDate);
+          const data = await fetchWithRetry<RawIPS[]>(url);
+
+          if (!Array.isArray(data)) {
+            console.warn("[DONKI] IPS endpoint returned non-array:", typeof data);
+            return [];
+          }
+
+          return data.map((ips): IPSEvent => ({
+            id: ips.activityID,
+            eventType: "IPS",
+            startTime: ips.eventTime,
+            location: ips.location,
+            submissionTime: ips.submissionTime,
+            instruments: normalizeInstruments(ips.instruments),
+            sourceLink: ips.link,
+            linkedEvents: normalizeNullableArray(ips.linkedEvents),
+          }));
+        }),
+    );
+
+    logSourceFetch("IPS", startedAt, events.length);
+    return { type: "IPS", events, failed: false };
+  } catch (error) {
+    console.error("[DONKI] Failed to fetch interplanetary shocks:", error);
+    return {
+      type: "IPS",
+      events: [],
+      failed: true,
+      failureMessage: getFetchFailureMessage(error),
+    };
+  }
+}
+
+async function fetchHSSRaw(startDate: string, endDate: string): Promise<DonkiTypeFetchResult> {
+  const cacheKey = `${CACHE_KEYS.SPACE_WEATHER_HSS}:v${CACHE_VERSION}:${getCacheContext()}:${startDate}:${endDate}`;
+  const startedAt = Date.now();
+
+  try {
+    const events = await withSingleFlight(
+      cacheKey,
+      async () =>
+        withCache(cacheKey, CACHE_TTL.SPACE_WEATHER, async () => {
+          const url = buildUrl("HSS", startDate, endDate);
+          const data = await fetchWithRetry<RawHSS[]>(url);
+
+          if (!Array.isArray(data)) {
+            console.warn("[DONKI] HSS endpoint returned non-array:", typeof data);
+            return [];
+          }
+
+          return data.map((hss): HSSEvent => ({
+            id: hss.hssID,
+            eventType: "HSS",
+            startTime: hss.eventTime,
+            submissionTime: hss.submissionTime,
+            instruments: normalizeInstruments(hss.instruments),
+            sourceLink: hss.link,
+            linkedEvents: normalizeNullableArray(hss.linkedEvents),
+          }));
+        }),
+    );
+
+    logSourceFetch("HSS", startedAt, events.length);
+    return { type: "HSS", events, failed: false };
+  } catch (error) {
+    console.error("[DONKI] Failed to fetch high-speed streams:", error);
+    return {
+      type: "HSS",
+      events: [],
+      failed: true,
+      failureMessage: getFetchFailureMessage(error),
+    };
+  }
+}
+
+async function fetchSEPRaw(startDate: string, endDate: string): Promise<DonkiTypeFetchResult> {
+  const cacheKey = `${CACHE_KEYS.SPACE_WEATHER_SEP}:v${CACHE_VERSION}:${getCacheContext()}:${startDate}:${endDate}`;
+  const startedAt = Date.now();
+
+  try {
+    const events = await withSingleFlight(
+      cacheKey,
+      async () =>
+        withCache(cacheKey, CACHE_TTL.SPACE_WEATHER, async () => {
+          const url = buildUrl("SEP", startDate, endDate);
+          const data = await fetchWithRetry<RawSEP[]>(url);
+
+          if (!Array.isArray(data)) {
+            console.warn("[DONKI] SEP endpoint returned non-array:", typeof data);
+            return [];
+          }
+
+          return data.map((sep): SEPEvent => ({
+            id: sep.sepID,
+            eventType: "SEP",
+            startTime: sep.eventTime,
+            submissionTime: sep.submissionTime,
+            instruments: normalizeInstruments(sep.instruments),
+            sourceLink: sep.link,
+            linkedEvents: normalizeNullableArray(sep.linkedEvents),
+          }));
+        }),
+    );
+
+    logSourceFetch("SEP", startedAt, events.length);
+    return { type: "SEP", events, failed: false };
+  } catch (error) {
+    console.error("[DONKI] Failed to fetch solar energetic particle events:", error);
+    return {
+      type: "SEP",
+      events: [],
+      failed: true,
+      failureMessage: getFetchFailureMessage(error),
+    };
+  }
+}
+
+function resolveNotificationWindow(startDate?: string, endDate?: string): NotificationWindow {
+  const requestedEnd = endDate ?? getTodayUtcDate();
+  const defaultStart = addDaysUtc(requestedEnd, -DEFAULT_NOTIFICATION_DAYS_BACK);
+  const requestedStart = startDate ?? defaultStart;
+
+  const warnings: string[] = [];
+  const maxStart = addDaysUtc(requestedEnd, -NOTIFICATIONS_MAX_WINDOW_DAYS);
+
+  let effectiveStart = requestedStart;
+  if (requestedStart < maxStart) {
+    effectiveStart = maxStart;
+    warnings.push(
+      `Notifications are limited to ${NOTIFICATIONS_MAX_WINDOW_DAYS} days; using ${effectiveStart} to ${requestedEnd}.`,
+    );
+  }
+
+  if (effectiveStart > requestedEnd) {
+    effectiveStart = requestedEnd;
+  }
+
+  return {
+    requestedStart,
+    requestedEnd,
+    effectiveStart,
+    effectiveEnd: requestedEnd,
+    warnings,
+  };
+}
+
+function normalizeNotificationType(value: string | undefined): SpaceWeatherNotification["type"] {
+  switch (value?.toUpperCase()) {
+    case "FLR":
+      return "FLR";
+    case "SEP":
+      return "SEP";
+    case "CME":
+      return "CME";
+    case "IPS":
+      return "IPS";
+    case "GST":
+      return "GST";
+    default:
+      return "other";
+  }
+}
+
+function extractActivityIDs(messageBody: string): string[] {
+  const matches = messageBody.match(
+    /\b\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}-(?:FLR|CME|GST|IPS|HSS|SEP|MPC|RBE)-\d{3}\b/g,
+  );
+
+  if (!matches) return [];
+  return Array.from(new Set(matches));
+}
+
+export async function fetchSpaceWeatherNotifications(
+  params: SpaceWeatherNotificationsQueryParams = {},
+): Promise<SpaceWeatherNotificationsListResponse> {
+  const type = params.type ?? "all";
+  const page = params.page;
+  const limit = params.limit ?? 20;
+  const window = resolveNotificationWindow(params.startDate, params.endDate);
+  const warnings = [...window.warnings];
+
+  const cacheKey = `${CACHE_KEYS.SPACE_WEATHER_NOTIFICATIONS}:v${CACHE_VERSION}:${getCacheContext()}:${window.effectiveStart}:${window.effectiveEnd}:${type}`;
+
+  let cachedResult: NotificationCacheValue;
+  try {
+    cachedResult = await withSingleFlight(
+      cacheKey,
+      async () =>
+        withCache(cacheKey, CACHE_TTL.SPACE_WEATHER_NOTIFICATIONS, async (): Promise<NotificationCacheValue> => {
+          const url = buildUrl("notifications", window.effectiveStart, window.effectiveEnd, {
+            type,
+          });
+
+          const startedAt = Date.now();
+          const data = await fetchWithRetry<RawNotification[]>(url);
+
+          if (!Array.isArray(data)) {
+            console.warn("[DONKI] notifications endpoint returned non-array:", typeof data);
+            return { notifications: [], sawUnknownType: false };
+          }
+
+          const notifications: SpaceWeatherNotification[] = [];
+          let sawUnknownType = false;
+
+          for (const entry of data) {
+            const messageID = entry.messageID?.trim();
+            if (!messageID) continue;
+
+            const body = entry.messageBody?.trim() ?? "";
+            const normalizedType = normalizeNotificationType(entry.messageType);
+            if (normalizedType === "other") {
+              sawUnknownType = true;
+            }
+
+            notifications.push({
+              id: messageID,
+              type: normalizedType,
+              issuedAt: entry.messageIssueTime ?? "",
+              url: entry.messageURL,
+              body,
+              activityIDs: extractActivityIDs(body),
+            });
+          }
+
+          const latencyMs = Date.now() - startedAt;
+          console.info(
+            `[DONKI] source=notifications status=ok latency_ms=${latencyMs} rows=${notifications.length} type=${type}`,
+          );
+
+          return { notifications, sawUnknownType };
+        }),
+    );
+  } catch (error) {
+    console.error("[DONKI] Failed to fetch notifications:", error);
+    throw new DonkiUpstreamUnavailableError(
+      `DONKI notifications request failed (${getFetchFailureMessage(error)}).`,
+    );
+  }
+
+  if (cachedResult.sawUnknownType) {
+    warnings.push("Some notification types were returned as 'other' because they are not enabled in this MVP.");
+  }
+
+  const sorted = [...cachedResult.notifications].sort((a, b) => {
+    const tsDiff = Date.parse(b.issuedAt) - Date.parse(a.issuedAt);
+    if (!Number.isNaN(tsDiff) && tsDiff !== 0) return tsDiff;
+    return b.id.localeCompare(a.id);
+  });
+
+  const capped = sorted.slice(0, SPACE_WEATHER_NOTIFICATIONS_MAX_TOTAL_RESULTS);
+  const totalCapApplied = sorted.length > SPACE_WEATHER_NOTIFICATIONS_MAX_TOTAL_RESULTS;
+  const totalAvailable = capped.length;
+
+  const notifications = typeof page === "number"
+    ? capped.slice((page - 1) * limit, (page - 1) * limit + limit)
+    : capped.slice(0, limit);
+
+  return {
+    notifications,
+    count: notifications.length,
+    totalAvailable,
+    limitApplied: limit,
+    ...(typeof page === "number" ? { page } : {}),
+    meta: {
+      dateRange: {
+        requestedStart: window.requestedStart,
+        requestedEnd: window.requestedEnd,
+        effectiveStart: window.effectiveStart,
+        effectiveEnd: window.effectiveEnd,
+      },
+      typeIncluded: type,
+      warnings: warnings.length > 0 ? warnings : undefined,
+      totalCapApplied,
+      totalCap: SPACE_WEATHER_NOTIFICATIONS_MAX_TOTAL_RESULTS,
+    },
+  };
+}
+
+export function getFlareClassSeverity(classType: string): SpaceWeatherSeverity {
+  const match = classType.match(/^([ABCMX])(\d+\.?\d*)/i);
+  if (!match) return "minor";
+
+  const letter = match[1].toUpperCase();
+  const number = parseFloat(match[2]);
+
+  switch (letter) {
+    case "X":
+      if (number >= 10) return "extreme";
+      return "severe";
+    case "M":
+      if (number >= 5) return "strong";
+      return "moderate";
+    case "C":
+      return "minor";
+    default:
+      return "minor";
+  }
+}
+
+export function getKpSeverity(kp: number): SpaceWeatherSeverity {
+  if (kp >= 9) return "extreme";
+  if (kp >= 8) return "severe";
+  if (kp >= 7) return "strong";
+  if (kp >= 6) return "moderate";
+  return "minor";
+}
+
+export function getCMESeverity(speed?: number): SpaceWeatherSeverity {
+  if (!speed) return "minor";
+  if (speed >= 2000) return "extreme";
+  if (speed >= 1500) return "severe";
+  if (speed >= 1000) return "strong";
+  if (speed >= 500) return "moderate";
+  return "minor";
+}
+
+export function getEventTypeLabel(type: SpaceWeatherEventType): string {
+  switch (type) {
+    case "FLR":
+      return "Solar Flare";
+    case "CME":
+      return "Coronal Mass Ejection";
+    case "GST":
+      return "Geomagnetic Storm";
+    case "IPS":
+      return "Interplanetary Shock";
+    case "HSS":
+      return "High-Speed Stream";
+    case "SEP":
+      return "Solar Energetic Particle Event";
+  }
+}
+
+export function formatFlareClass(classType: string): string {
+  return `${classType}-class`;
+}
+
+export function formatCMESpeed(speed?: number): string {
+  if (!speed) return "Unknown";
+  return `${Math.round(speed)} km/s`;
+}
+
+export function formatKpIndex(kp: number): string {
+  const gScale = kp >= 9 ? "G5" : kp >= 8 ? "G4" : kp >= 7 ? "G3" : kp >= 6 ? "G2" : kp >= 5 ? "G1" : "";
+  return gScale ? `Kp${kp} (${gScale})` : `Kp${kp}`;
+}
+
 export async function fetchSpaceWeather(
-  params: SpaceWeatherQueryParams = {}
+  params: SpaceWeatherQueryParams = {},
 ): Promise<SpaceWeatherListResponse> {
   const defaultRange = getDefaultDateRange();
   const startDate = params.startDate || defaultRange.start;
@@ -462,73 +970,49 @@ export async function fetchSpaceWeather(
   const limit = params.limit ?? 100;
   const page = params.page;
 
-  // Parse event types to fetch
   const requestedTypes: SpaceWeatherEventType[] = params.eventTypes?.length
     ? params.eventTypes
-    : ["FLR", "CME", "GST"];
+    : [...SPACE_WEATHER_EVENT_TYPES];
 
   const warnings: string[] = [];
   const typesIncluded: SpaceWeatherEventType[] = [];
   let allEvents: AnySpaceWeatherEvent[] = [];
 
-  // Build fetch promises for requested types
-  const fetchPromises: Promise<{
-    type: SpaceWeatherEventType;
-    events: AnySpaceWeatherEvent[];
-  }>[] = [];
+  const fetchPromises: Promise<DonkiTypeFetchResult>[] = [];
 
-  if (requestedTypes.includes("FLR")) {
-    fetchPromises.push(
-      fetchSolarFlaresRaw(startDate, endDate).then((events) => ({
-        type: "FLR" as const,
-        events,
-      }))
-    );
-  }
+  if (requestedTypes.includes("FLR")) fetchPromises.push(fetchSolarFlaresRaw(startDate, endDate));
+  if (requestedTypes.includes("CME")) fetchPromises.push(fetchCMEsRaw(startDate, endDate));
+  if (requestedTypes.includes("GST")) fetchPromises.push(fetchGSTsRaw(startDate, endDate));
+  if (requestedTypes.includes("IPS")) fetchPromises.push(fetchIPSRaw(startDate, endDate));
+  if (requestedTypes.includes("HSS")) fetchPromises.push(fetchHSSRaw(startDate, endDate));
+  if (requestedTypes.includes("SEP")) fetchPromises.push(fetchSEPRaw(startDate, endDate));
 
-  if (requestedTypes.includes("CME")) {
-    fetchPromises.push(
-      fetchCMEsRaw(startDate, endDate).then((events) => ({
-        type: "CME" as const,
-        events,
-      }))
-    );
-  }
-
-  if (requestedTypes.includes("GST")) {
-    fetchPromises.push(
-      fetchGSTsRaw(startDate, endDate).then((events) => ({
-        type: "GST" as const,
-        events,
-      }))
-    );
-  }
-
-  // Fetch all in parallel with allSettled for partial failure handling
-  const results = await Promise.allSettled(fetchPromises);
+  const results = await Promise.all(fetchPromises);
+  let failedTypeCount = 0;
 
   for (const result of results) {
-    if (result.status === "fulfilled") {
-      const { type, events } = result.value;
-      if (events.length > 0) {
-        typesIncluded.push(type);
-        allEvents = allEvents.concat(events);
-      } else {
-        // Empty result - might be no events or might be an error that returned []
-        typesIncluded.push(type);
-      }
-    } else {
-      // Promise rejected - this shouldn't happen since we catch in individual fetchers
-      // but handle it anyway
-      console.error("[DONKI] Unexpected promise rejection:", result.reason);
-      warnings.push("Some event types could not be fetched");
+    if (result.failed) {
+      failedTypeCount += 1;
+      warnings.push(`${getEventTypeLabel(result.type)} data source is temporarily unavailable.`);
+      continue;
     }
+
+    typesIncluded.push(result.type);
+    if (result.events.length > 0) {
+      allEvents = allEvents.concat(result.events);
+    }
+  }
+
+  if (failedTypeCount === requestedTypes.length) {
+    throw new DonkiUpstreamUnavailableError(
+      `DONKI requests timed out or failed for all requested event types (${requestedTypes.join(", ")}).`,
+    );
   }
 
   const normalizedResult = normalizeSpaceWeatherResultSet(allEvents, limit, page);
   if (normalizedResult.duplicateCount > 0) {
     console.warn(
-      `[DONKI] Removed ${normalizedResult.duplicateCount} duplicate space weather event(s) by id`
+      `[DONKI] Removed ${normalizedResult.duplicateCount} duplicate space weather event(s) by id`,
     );
   }
 
@@ -548,42 +1032,23 @@ export async function fetchSpaceWeather(
   };
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// Single Event Fetch
-// ═══════════════════════════════════════════════════════════════════════════════
-
-/**
- * Parse event type from a DONKI event ID
- * ID format: "2024-01-15T06:30:00-FLR-001" or "2024-01-15T06:30:00-CME-001"
- */
 export function parseEventType(eventId: string): SpaceWeatherEventType | null {
   if (eventId.includes("-FLR-")) return "FLR";
   if (eventId.includes("-CME-")) return "CME";
   if (eventId.includes("-GST-")) return "GST";
+  if (eventId.includes("-IPS-")) return "IPS";
+  if (eventId.includes("-HSS-")) return "HSS";
+  if (eventId.includes("-SEP-")) return "SEP";
   return null;
 }
 
-/**
- * Parse date from a DONKI event ID
- * ID format: "2024-01-15T06:30:00-FLR-001"
- */
 export function parseEventDate(eventId: string): string | null {
-  // Extract date portion (YYYY-MM-DD) from the ID
   const match = eventId.match(/^(\d{4}-\d{2}-\d{2})/);
   return match ? match[1] : null;
 }
 
-/**
- * Fetch a single space weather event by ID
- *
- * Strategy:
- * 1. Parse the event type from the ID
- * 2. Extract the date from the ID
- * 3. Fetch events for a 3-day window around that date (to handle timezone edge cases)
- * 4. Find the exact event by ID
- */
 export async function fetchSpaceWeatherEventById(
-  eventId: string
+  eventId: string,
 ): Promise<AnySpaceWeatherEvent | null> {
   const eventType = parseEventType(eventId);
   const eventDate = parseEventDate(eventId);
@@ -593,38 +1058,43 @@ export async function fetchSpaceWeatherEventById(
     return null;
   }
 
-  // Create a date window around the event (±1 day to handle timezone edge cases)
-  const date = new Date(eventDate);
-  const startDate = new Date(date);
-  startDate.setDate(startDate.getDate() - 1);
-  const endDate = new Date(date);
-  endDate.setDate(endDate.getDate() + 1);
+  const startStr = addDaysUtc(eventDate, -1);
+  const endStr = addDaysUtc(eventDate, 1);
 
-  const startStr = startDate.toISOString().split("T")[0];
-  const endStr = endDate.toISOString().split("T")[0];
+  let fetchResult: DonkiTypeFetchResult | null = null;
 
-  let events: AnySpaceWeatherEvent[] = [];
-
-  // Fetch only the relevant event type
   switch (eventType) {
     case "FLR":
-      events = await fetchSolarFlaresRaw(startStr, endStr);
+      fetchResult = await fetchSolarFlaresRaw(startStr, endStr);
       break;
     case "CME":
-      events = await fetchCMEsRaw(startStr, endStr);
+      fetchResult = await fetchCMEsRaw(startStr, endStr);
       break;
     case "GST":
-      events = await fetchGSTsRaw(startStr, endStr);
+      fetchResult = await fetchGSTsRaw(startStr, endStr);
+      break;
+    case "IPS":
+      fetchResult = await fetchIPSRaw(startStr, endStr);
+      break;
+    case "HSS":
+      fetchResult = await fetchHSSRaw(startStr, endStr);
+      break;
+    case "SEP":
+      fetchResult = await fetchSEPRaw(startStr, endStr);
       break;
   }
 
-  // Find the exact event by ID
-  return dedupeSpaceWeatherEvents(events).find((e) => e.id === eventId) || null;
+  if (!fetchResult) return null;
+
+  if (fetchResult.failed) {
+    throw new DonkiUpstreamUnavailableError(
+      `DONKI request timed out or failed while fetching ${eventType} event details.`,
+    );
+  }
+
+  return dedupeSpaceWeatherEvents(fetchResult.events).find((event) => event.id === eventId) || null;
 }
 
-/**
- * Get severity for any space weather event
- */
 export function getEventSeverity(event: AnySpaceWeatherEvent): SpaceWeatherSeverity {
   switch (event.eventType) {
     case "FLR":
@@ -633,5 +1103,9 @@ export function getEventSeverity(event: AnySpaceWeatherEvent): SpaceWeatherSever
       return getCMESeverity(event.speed);
     case "GST":
       return getKpSeverity(event.kpIndex);
+    case "IPS":
+    case "HSS":
+    case "SEP":
+      return "minor";
   }
 }

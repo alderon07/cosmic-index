@@ -160,4 +160,14 @@ describe("GET /api/v1/space-weather", () => {
     expect(body.pagination.hasMore).toBe(false);
     expect(body.meta.totalAvailable).toBe(40);
   });
+
+  it("accepts IPS/HSS/SEP in eventTypes filter", async () => {
+    const request = new NextRequest(
+      "http://localhost:3000/api/v1/space-weather?eventTypes=IPS,HSS,SEP&limit=21"
+    );
+    const response = await GET(request);
+
+    expect(response.status).toBe(200);
+    expect(lastFetchParams?.eventTypes).toEqual(["IPS", "HSS", "SEP"]);
+  });
 });

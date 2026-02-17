@@ -4,11 +4,11 @@ import { BASE_URL } from "@/lib/config";
 export const metadata: Metadata = {
   title: "Space Weather",
   description:
-    "Track solar flares, coronal mass ejections, and geomagnetic storms from NASA's DONKI database. View recent space weather events affecting Earth.",
+    "Track solar flares, CMEs, geomagnetic storms, interplanetary shocks, high-speed streams, and SEP events from NASA's DONKI database, plus latest space weather notifications.",
   openGraph: {
     title: "Space Weather | Cosmic Index",
     description:
-      "Track solar flares, coronal mass ejections, and geomagnetic storms from NASA's DONKI database. View recent space weather events affecting Earth.",
+      "Track solar flares, CMEs, geomagnetic storms, interplanetary shocks, high-speed streams, and SEP events from NASA's DONKI database, plus latest space weather notifications.",
     url: `${BASE_URL}/space-weather`,
     type: "website",
     images: [
@@ -24,7 +24,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Space Weather | Cosmic Index",
     description:
-      "Track solar flares, CMEs, and geomagnetic storms from NASA's DONKI database.",
+      "Track NASA DONKI space weather events (FLR/CME/GST/IPS/HSS/SEP) and the latest notifications feed.",
     images: ["/og-image.png"],
   },
   alternates: {

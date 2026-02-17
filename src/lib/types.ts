@@ -681,7 +681,31 @@ export const FireballQuerySchema = z.object({
 // Space Weather Types (NASA DONKI)
 // ═══════════════════════════════════════════════════════════════════════════════
 
-export type SpaceWeatherEventType = "FLR" | "CME" | "GST";
+export const SPACE_WEATHER_EVENT_TYPES = [
+  "FLR",
+  "CME",
+  "GST",
+  "IPS",
+  "HSS",
+  "SEP",
+] as const;
+
+export type SpaceWeatherEventType = (typeof SPACE_WEATHER_EVENT_TYPES)[number];
+
+export const SPACE_WEATHER_NOTIFICATION_FILTER_TYPES = [
+  "all",
+  "FLR",
+  "SEP",
+  "CME",
+  "IPS",
+  "GST",
+] as const;
+
+export type SpaceWeatherNotificationFilterType =
+  (typeof SPACE_WEATHER_NOTIFICATION_FILTER_TYPES)[number];
+export type SpaceWeatherNotificationType =
+  | SpaceWeatherNotificationFilterType
+  | "other";
 
 // Severity levels matching NOAA Space Weather Scales
 export type SpaceWeatherSeverity = "minor" | "moderate" | "strong" | "severe" | "extreme";
@@ -727,7 +751,35 @@ export interface GSTEvent extends SpaceWeatherEvent {
   }>;
 }
 
-export type AnySpaceWeatherEvent = SolarFlareEvent | CMEEvent | GSTEvent;
+export interface IPSEvent extends SpaceWeatherEvent {
+  eventType: "IPS";
+  location?: string;
+  submissionTime?: string;
+  instruments?: string[];
+  sourceLink?: string;
+}
+
+export interface HSSEvent extends SpaceWeatherEvent {
+  eventType: "HSS";
+  submissionTime?: string;
+  instruments?: string[];
+  sourceLink?: string;
+}
+
+export interface SEPEvent extends SpaceWeatherEvent {
+  eventType: "SEP";
+  submissionTime?: string;
+  instruments?: string[];
+  sourceLink?: string;
+}
+
+export type AnySpaceWeatherEvent =
+  | SolarFlareEvent
+  | CMEEvent
+  | GSTEvent
+  | IPSEvent
+  | HSSEvent
+  | SEPEvent;
 
 export interface SpaceWeatherQueryParams {
   startDate?: string; // YYYY-MM-DD
@@ -752,6 +804,43 @@ export interface SpaceWeatherListResponse {
   };
 }
 
+export interface SpaceWeatherNotification {
+  id: string;
+  type: SpaceWeatherNotificationType;
+  issuedAt: string;
+  url?: string;
+  body: string;
+  activityIDs: string[];
+}
+
+export interface SpaceWeatherNotificationsQueryParams {
+  startDate?: string; // YYYY-MM-DD
+  endDate?: string; // YYYY-MM-DD
+  type?: SpaceWeatherNotificationFilterType;
+  page?: number;
+  limit?: number;
+}
+
+export interface SpaceWeatherNotificationsListResponse {
+  notifications: SpaceWeatherNotification[];
+  count: number;
+  totalAvailable: number;
+  limitApplied: number;
+  page?: number;
+  meta: {
+    dateRange: {
+      requestedStart: string;
+      requestedEnd: string;
+      effectiveStart: string;
+      effectiveEnd: string;
+    };
+    typeIncluded: SpaceWeatherNotificationFilterType;
+    warnings?: string[];
+    totalCapApplied: boolean;
+    totalCap: number;
+  };
+}
+
 // Zod schema for Space Weather query validation
 export const SpaceWeatherQuerySchema = z
   .object({
@@ -763,9 +852,33 @@ export const SpaceWeatherQuerySchema = z
       .string()
       .regex(/^\d{4}-\d{2}-\d{2}$/)
       .optional(),
-    eventTypes: z.string().optional(), // Comma-separated: "FLR,CME,GST"
+    eventTypes: z.string().optional(), // Comma-separated: "FLR,CME,GST,IPS,HSS,SEP"
     page: z.coerce.number().int().min(1).optional(),
     limit: z.coerce.number().int().min(1).max(500).default(100),
+  })
+  .superRefine((value, ctx) => {
+    if (value.startDate && value.endDate && value.startDate > value.endDate) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["startDate"],
+        message: "startDate must be before or equal to endDate",
+      });
+    }
+  });
+
+export const SpaceWeatherNotificationsQuerySchema = z
+  .object({
+    startDate: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/)
+      .optional(),
+    endDate: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/)
+      .optional(),
+    type: z.enum(SPACE_WEATHER_NOTIFICATION_FILTER_TYPES).optional(),
+    page: z.coerce.number().int().min(1).optional(),
+    limit: z.coerce.number().int().min(1).max(200).default(20),
   })
   .superRefine((value, ctx) => {
     if (value.startDate && value.endDate && value.startDate > value.endDate) {

@@ -8,4 +8,6 @@ export const queryKeys = {
   fireballs: (fetchKey: string) => ["events", "fireballs", fetchKey] as const,
   spaceWeather: (fetchKey: string) =>
     ["events", "space-weather", fetchKey] as const,
+  spaceWeatherNotifications: (fetchKey: string) =>
+    ["events", "space-weather", "notifications", fetchKey] as const,
 };

@@ -1,13 +1,9 @@
 import { NextRequest } from "next/server";
-import { fetchSpaceWeather } from "@/lib/nasa-donki";
-import {
-  SpaceWeatherQuerySchema,
-  SpaceWeatherEventType,
-  SPACE_WEATHER_EVENT_TYPES,
-} from "@/lib/types";
 import { getCacheControlHeader, CACHE_TTL } from "@/lib/cache";
 import { initRequest, withRateLimit, validateParams } from "@/lib/api-middleware";
 import { apiPaginated, handleRouteError } from "@/lib/api-response";
+import { fetchSpaceWeatherNotifications } from "@/lib/nasa-donki";
+import { SpaceWeatherNotificationsQuerySchema } from "@/lib/types";
 
 export async function GET(request: NextRequest) {
   const { requestId } = initRequest();
@@ -17,38 +13,26 @@ export async function GET(request: NextRequest) {
 
   const pageParamPresent = request.nextUrl.searchParams.has("page");
   const searchParams = Object.fromEntries(request.nextUrl.searchParams);
-  const params = validateParams(searchParams, SpaceWeatherQuerySchema, requestId);
+  const params = validateParams(searchParams, SpaceWeatherNotificationsQuerySchema, requestId);
   if (params instanceof Response) return params;
 
   try {
-    // Parse eventTypes from comma-separated string to array
-    let eventTypes: SpaceWeatherEventType[] | undefined;
-    if (params.data.eventTypes) {
-      const types = params.data.eventTypes.split(",").map((t) => t.trim().toUpperCase());
-      const validTypes = types.filter(
-        (t): t is SpaceWeatherEventType => SPACE_WEATHER_EVENT_TYPES.includes(t as SpaceWeatherEventType),
-      );
-      if (validTypes.length > 0) {
-        eventTypes = validTypes;
-      }
-    }
-
-    const result = await fetchSpaceWeather({
+    const result = await fetchSpaceWeatherNotifications({
       startDate: params.data.startDate,
       endDate: params.data.endDate,
-      eventTypes,
+      type: params.data.type,
       page: params.data.page,
       limit: params.data.limit,
     });
 
     const extraMeta = {
-      count: result.events.length,
+      count: result.notifications.length,
       limitApplied: result.limitApplied,
       totalAvailable: result.totalAvailable,
       totalCapApplied: result.meta.totalCapApplied,
       totalCap: result.meta.totalCap,
       dateRange: result.meta.dateRange,
-      typesIncluded: result.meta.typesIncluded,
+      typeIncluded: result.meta.typeIncluded,
       ...(result.meta.warnings ? { warnings: result.meta.warnings } : {}),
     };
 
@@ -57,25 +41,37 @@ export async function GET(request: NextRequest) {
       const total = result.totalAvailable;
       const hasMore = page * result.limitApplied < total;
 
-      return apiPaginated(result.events, {
-        mode: "offset",
-        page,
-        limit: result.limitApplied,
-        total,
-        hasMore,
-      }, requestId, {
-        "Cache-Control": getCacheControlHeader(CACHE_TTL.SPACE_WEATHER),
-        ...rateLimit.headers,
-      }, extraMeta);
+      return apiPaginated(
+        result.notifications,
+        {
+          mode: "offset",
+          page,
+          limit: result.limitApplied,
+          total,
+          hasMore,
+        },
+        requestId,
+        {
+          "Cache-Control": getCacheControlHeader(CACHE_TTL.SPACE_WEATHER_NOTIFICATIONS),
+          ...rateLimit.headers,
+        },
+        extraMeta,
+      );
     }
 
-    return apiPaginated(result.events, {
-      mode: "none",
-      hasMore: false as const,
-    }, requestId, {
-      "Cache-Control": getCacheControlHeader(CACHE_TTL.SPACE_WEATHER),
-      ...rateLimit.headers,
-    }, extraMeta);
+    return apiPaginated(
+      result.notifications,
+      {
+        mode: "none",
+        hasMore: false as const,
+      },
+      requestId,
+      {
+        "Cache-Control": getCacheControlHeader(CACHE_TTL.SPACE_WEATHER_NOTIFICATIONS),
+        ...rateLimit.headers,
+      },
+      extraMeta,
+    );
   } catch (error) {
     return handleRouteError(error, requestId, rateLimit.headers);
   }
