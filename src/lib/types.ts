@@ -733,32 +733,49 @@ export interface SpaceWeatherQueryParams {
   startDate?: string; // YYYY-MM-DD
   endDate?: string; // YYYY-MM-DD
   eventTypes?: SpaceWeatherEventType[]; // Filter by type
+  page?: number;
   limit?: number;
 }
 
 export interface SpaceWeatherListResponse {
   events: AnySpaceWeatherEvent[];
   count: number;
+  totalAvailable: number;
+  limitApplied: number;
+  page?: number;
   meta: {
     dateRange: { start: string; end: string };
     typesIncluded: SpaceWeatherEventType[];
     warnings?: string[]; // Partial failure notices (e.g., "CME endpoint unavailable")
+    totalCapApplied: boolean;
+    totalCap: number;
   };
 }
 
 // Zod schema for Space Weather query validation
-export const SpaceWeatherQuerySchema = z.object({
-  startDate: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/)
-    .optional(),
-  endDate: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/)
-    .optional(),
-  eventTypes: z.string().optional(), // Comma-separated: "FLR,CME,GST"
-  limit: z.coerce.number().int().min(1).max(500).default(100),
-});
+export const SpaceWeatherQuerySchema = z
+  .object({
+    startDate: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/)
+      .optional(),
+    endDate: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/)
+      .optional(),
+    eventTypes: z.string().optional(), // Comma-separated: "FLR,CME,GST"
+    page: z.coerce.number().int().min(1).optional(),
+    limit: z.coerce.number().int().min(1).max(500).default(100),
+  })
+  .superRefine((value, ctx) => {
+    if (value.startDate && value.endDate && value.startDate > value.endDate) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["startDate"],
+        message: "startDate must be before or equal to endDate",
+      });
+    }
+  });
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // Pro Tier Types (Saved Objects, Collections, etc.)

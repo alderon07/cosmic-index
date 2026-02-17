@@ -56,7 +56,9 @@ export function EventTimeline({
   }, [buckets.length, totalCount]);
 
   return (
-    <Card className={`bg-card border-border/50 bezel ${degradeMode ? "" : "scanlines"} mb-6`}>
+    <Card
+      className={`bg-card border-border/50 ${themeConfig.timelineHoverBorder} bezel ${degradeMode ? "" : "scanlines"} mb-6`}
+    >
       <CardHeader>
         <CardTitle className="font-display flex items-center gap-2">
           <Activity className={`w-5 h-5 ${themeConfig.icon}`} />
@@ -67,7 +69,7 @@ export function EventTimeline({
         {buckets.length > 0 ? (
           <div className="space-y-4">
             <TimelineLegend totalEvents={totalCount} bucketCount={buckets.length} />
-            <div className="grid grid-flow-col auto-cols-fr gap-1 min-h-28 items-end">
+            <div className="grid h-28 grid-flow-col auto-cols-fr gap-1 items-end">
               {buckets.map((bucket) => {
                 const percentage = Math.max(4, (bucket.count / maxCount) * 100);
                 const barHeight = `${percentage}%`;
@@ -81,7 +83,7 @@ export function EventTimeline({
                           if (disabled || !onBucketClick) return;
                           onBucketClick(bucket);
                         }}
-                        className={`relative rounded-sm border border-border/40 bg-muted/30 transition-colors focus:outline-none focus:ring-2 focus:ring-ring/60 ${
+                        className={`relative h-full w-full rounded-sm border border-border/40 bg-muted/30 transition-colors focus:outline-none focus:ring-2 focus:ring-ring/60 ${
                           disabled ? "cursor-not-allowed opacity-70" : "hover:bg-muted/50"
                         }`}
                         aria-label={`${bucket.label}, ${bucket.count} events`}

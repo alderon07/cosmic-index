@@ -19,6 +19,7 @@ export interface PaginatedResult<T> {
   hasMore: boolean;
   mode: "offset" | "cursor" | "none";
   nextCursor?: string;
+  meta?: Record<string, unknown>;
 }
 
 /** Unwrapped event-stream result */
@@ -79,6 +80,7 @@ export async function apiFetchPaginated<T>(
       hasMore: pag.hasMore,
       mode: pag.mode,
       nextCursor: pag.nextCursor,
+      meta: json.meta ?? {},
     };
   }
 
@@ -90,6 +92,7 @@ export async function apiFetchPaginated<T>(
     limit: json.limit ?? 24,
     hasMore: json.hasMore ?? false,
     mode: "offset",
+    meta: json.meta ?? {},
   };
 }
 

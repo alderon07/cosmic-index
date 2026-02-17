@@ -11,6 +11,14 @@ import { CompareProvider } from "@/components/compare/compare-provider";
 import { CompareTray } from "@/components/compare/compare-tray";
 import { AppAuthProvider } from "@/components/auth/app-auth-provider";
 import { QueryProvider } from "@/components/providers/query-provider";
+import {
+  NavigationMenu,
+  NavigationMenuContent,
+  NavigationMenuItem,
+  NavigationMenuLink,
+  NavigationMenuList,
+  NavigationMenuTrigger,
+} from "@/components/ui/navigation-menu";
 
 const audiowide = Audiowide({
   variable: "--font-display",
@@ -162,7 +170,7 @@ export default function RootLayout({
             <nav className="shell-container h-16 flex items-center justify-between">
               <Link href="/" className="flex items-center gap-2 group">
                 <div className="h-8 w-8 rounded-full border border-orange-300/35 reactor-gradient pulse-glow" />
-                <span className="font-display text-xl tracking-wider text-orange-100 transition-colors group-hover:text-orange-300">
+                <span className="hidden sm:inline font-display text-xl tracking-wider text-orange-100 transition-colors group-hover:text-orange-300">
                   Cosmic Index
                 </span>
               </Link>
@@ -185,18 +193,76 @@ export default function RootLayout({
                 </Link>
                 <Link
                   href="/small-bodies"
-                  className={`font-display text-sm tracking-wide text-orange-100/75 transition-colors ${THEMES["small-bodies"].hoverText}`}
+                  className={`font-display text-sm tracking-wide text-orange-100/75 transition-colors sm:hidden ${THEMES["small-bodies"].hoverText}`}
                   title="Small Bodies"
                 >
-                  <CircleDot className="w-5 h-5 sm:hidden" />
+                  <CircleDot className="w-5 h-5" />
                   <span className="hidden sm:inline">Small-Bodies</span>
                 </Link>
+                <NavigationMenu
+                  viewport={false}
+                  className="hidden sm:flex"
+                >
+                  <NavigationMenuList>
+                    <NavigationMenuItem>
+                      <NavigationMenuTrigger
+                        className={`font-display text-sm tracking-wide text-orange-100/75 transition-colors ${THEMES["small-bodies"].hoverText} bg-transparent p-0 h-auto hover:!bg-transparent hover:!text-secondary focus:!bg-transparent focus:!text-secondary focus-visible:!text-secondary data-[state=open]:!bg-transparent data-[state=open]:!text-secondary data-[state=closed]:text-orange-100/75`}
+                      >
+                        Small-Bodies
+                      </NavigationMenuTrigger>
+                      <NavigationMenuContent className="!top-full !left-1/2 !mt-2 !w-[40rem] !-translate-x-1/2 rounded-xl border border-border/60 bg-[#160f0b]/96 p-4 shadow-[0_18px_42px_rgba(0,0,0,0.4)] backdrop-blur-md">
+                        <ul className="grid auto-rows-fr grid-cols-2 gap-3">
+                          <li>
+                            <NavigationMenuLink
+                              className="!p-0 data-[active]:!bg-transparent data-[active]:!text-inherit hover:!bg-transparent hover:!text-inherit focus:!bg-transparent focus:!text-inherit"
+                              asChild
+                            >
+                              <Link
+                                href="/small-bodies"
+                                className="group flex h-full min-h-[8.75rem] flex-col justify-start rounded-lg border border-border/45 bg-card/55 px-4 py-3.5 text-left transition-colors hover:border-secondary/35 hover:bg-secondary/10"
+                              >
+                                <div className="flex flex-col gap-2 p-6">
+                                  <div className="flex gap-2 font-display text-lg leading-[1.1] tracking-[0.02em] text-orange-100/90 group-hover:text-secondary">
+                                  <CircleDot className="w-5 h-5 text-orange-100/90 group-hover:text-secondary" /> <span>Browse Small Bodies</span>
+                                  </div>
+                                  <div className="mt-2.5 max-w-[26ch] font-sans text-sm leading-[1.4] text-orange-100/65 group-hover:text-secondary/85">
+                                    Asteroids and comets catalog for discovery and detail views.
+                                  </div>
+                                </div>
+                              </Link>
+                            </NavigationMenuLink>
+                          </li>
+                          <li>
+                            <NavigationMenuLink
+                              className="!p-0 data-[active]:!bg-transparent data-[active]:!text-inherit hover:!bg-transparent hover:!text-inherit focus:!bg-transparent focus:!text-inherit"
+                              asChild
+                            >
+                              <Link
+                                href="/close-approaches"
+                                className="group flex h-full min-h-[8.75rem] flex-col justify-start rounded-lg border border-border/45 bg-card/55 px-4 py-3.5 text-left transition-colors hover:border-destructive/35 hover:bg-destructive/10"
+                              >
+                                <div className="flex flex-col gap-2 p-6">
+                                  <div className="flex gap-2 font-display text-lg leading-[1.1] tracking-[0.02em] text-orange-100/90 group-hover:text-secondary">
+                                  <Crosshair className="w-5 h-5 text-destructive-100/90 group-hover:text-destructive" /> <div className="font-display text-lg leading-[1.1] tracking-[0.02em] text-orange-100/90 group-hover:text-destructive">Close Approaches</div>
+                                  </div>
+                                    <div className="mt-2.5 max-w-[26ch] font-sans text-sm leading-[1.4] text-destructive-100/65 group-hover:text-destructive/85">
+                                      Upcoming NEO flyby events near Earth with distance and velocity.
+                                    </div> 
+                                  </div>
+                                </Link>
+                              </NavigationMenuLink>
+                            </li>
+                          </ul>
+                        </NavigationMenuContent>
+                      </NavigationMenuItem>
+                    </NavigationMenuList>
+                  </NavigationMenu>
                 <Link
                   href="/close-approaches"
-                  className={`font-display text-sm tracking-wide text-orange-100/75 transition-colors ${THEMES["close-approaches"].hoverText}`}
+                  className={`font-display text-sm tracking-wide text-orange-100/75 transition-colors sm:hidden ${THEMES["close-approaches"].hoverText}`}
                   title="Close Approaches"
                 >
-                  <Crosshair className="w-5 h-5 sm:hidden" />
+                  <Crosshair className="w-5 h-5" />
                   <span className="hidden sm:inline">Close-Approaches</span>
                 </Link>
                 <Link

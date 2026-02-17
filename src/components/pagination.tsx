@@ -193,6 +193,7 @@ interface PaginationInfoProps {
   pageSize: number;
   totalItems: number;
   className?: string;
+  itemLabel?: string;
 }
 
 export function PaginationInfo({
@@ -200,9 +201,10 @@ export function PaginationInfo({
   pageSize,
   totalItems,
   className,
+  itemLabel = "objects",
 }: PaginationInfoProps) {
-  const start = (currentPage - 1) * pageSize + 1;
-  const end = Math.min(currentPage * pageSize, totalItems);
+  const start = totalItems === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+  const end = totalItems === 0 ? 0 : Math.min(currentPage * pageSize, totalItems);
 
   return (
     <p className={`text-sm text-muted-foreground ${className ?? ""}`}>
@@ -210,7 +212,7 @@ export function PaginationInfo({
       <span className="font-mono text-foreground">
         {start}-{end}
       </span>{" "}
-      of <span className="font-mono text-foreground">{totalItems}</span> objects
+      of <span className="font-mono text-foreground">{totalItems}</span> {itemLabel}
     </p>
   );
 }
