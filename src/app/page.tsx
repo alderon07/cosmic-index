@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { Button } from "@/components/ui/button";
@@ -24,6 +25,12 @@ const STAR_POSITIONS = Array.from({ length: 60 }, (_, index) => ({
   delay: ((index * 17) % 24) / 10,
   duration: 2.2 + ((index * 19) % 16) / 10,
 }));
+
+export const metadata: Metadata = {
+  title: "Cosmic Index",
+  description:
+    "Explore exoplanets, stars, small bodies, close approaches, fireballs, and space weather from NASA and JPL data.",
+};
 
 export default function HomePage() {
   return (

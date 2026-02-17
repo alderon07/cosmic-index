@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { CollectionDetailContent } from "./collection-detail-content";
 
 export const metadata: Metadata = {
@@ -7,5 +8,9 @@ export const metadata: Metadata = {
 };
 
 export default function CollectionDetailPage() {
-  return <CollectionDetailContent />;
+  return (
+    <Suspense fallback={<div className="shell-container py-8 text-sm text-muted-foreground">Loading collection...</div>}>
+      <CollectionDetailContent />
+    </Suspense>
+  );
 }

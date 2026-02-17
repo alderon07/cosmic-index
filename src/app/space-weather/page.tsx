@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import { fetchSpaceWeather } from "@/lib/nasa-donki";
 import {
@@ -19,6 +20,11 @@ import {
 interface SpaceWeatherPageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
+
+export const metadata: Metadata = {
+  title: "Space Weather",
+  description: "Monitor recent solar flares, CMEs, geomagnetic storms, and related alerts.",
+};
 
 function toSingleValueParams(
   params: Record<string, string | string[] | undefined>

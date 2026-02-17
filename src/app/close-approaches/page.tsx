@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import { fetchCloseApproaches } from "@/lib/cneos-close-approach";
 import { CloseApproach } from "@/lib/types";
@@ -10,6 +11,11 @@ import { EventStreamResult } from "@/lib/api-client";
 interface CloseApproachesPageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
+
+export const metadata: Metadata = {
+  title: "Close Approaches",
+  description: "Track near-Earth asteroid close approaches and encounter details.",
+};
 
 function toSingleValueParams(
   params: Record<string, string | string[] | undefined>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
+import Image from "next/image";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Camera,
@@ -179,12 +180,12 @@ export function NasaImageGallery({ object, compact }: NasaImageGalleryProps) {
                 onClick={() => setLightboxIndex(index)}
                 className={`relative ${thumbnailSize} flex-shrink-0 rounded-lg overflow-hidden border border-border/30 bezel group cursor-pointer transition-all hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary`}
               >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
+                <Image
                   src={image.thumbnailUrl}
                   alt={image.title}
-                  className="w-full h-full object-cover transition-transform group-hover:scale-105"
-                  loading="lazy"
+                  fill
+                  className="object-cover transition-transform group-hover:scale-105"
+                  sizes={compact ? "(max-width: 640px) 128px, 160px" : "224px"}
                 />
                 {/* Vignette overlay */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
@@ -268,12 +269,15 @@ export function NasaImageGallery({ object, compact }: NasaImageGalleryProps) {
             )}
 
             <div className="flex h-full w-full flex-col items-center justify-center px-4">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={currentImage.imageUrl}
-                alt={currentImage.title}
-                className="max-w-full max-h-[70vh] object-contain rounded-lg"
-              />
+              <div className="relative h-[70vh] w-full max-w-6xl">
+                <Image
+                  src={currentImage.imageUrl}
+                  alt={currentImage.title}
+                  fill
+                  className="rounded-lg object-contain"
+                  sizes="100vw"
+                />
+              </div>
 
               <div className="mt-4 max-w-2xl text-center space-y-1">
                 <h2 className="text-white font-display text-lg">

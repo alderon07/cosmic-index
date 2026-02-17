@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import {
   SmallBodyData,
@@ -15,6 +16,11 @@ import { DEFAULT_PAGE_SIZE } from "@/lib/constants";
 interface SmallBodiesPageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
+
+export const metadata: Metadata = {
+  title: "Small Bodies",
+  description: "Discover asteroids and comets from JPL's Small-Body Database.",
+};
 
 function toSingleValueParams(
   params: Record<string, string | string[] | undefined>
