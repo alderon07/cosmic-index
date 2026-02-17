@@ -17,10 +17,11 @@ const DONKI_BASE_URL =
 const NASA_API_KEY = process.env.NASA_API_KEY; // Only needed for api.nasa.gov gateway
 
 const API_TIMEOUT_MS = 20000; // DONKI can be slow
-const DEFAULT_DAYS_BACK = 30;
+const DEFAULT_DAYS_BACK = 90;
+export const SPACE_WEATHER_MAX_TOTAL_RESULTS = 420;
 
 // Cache version - increment to invalidate old cached responses
-const CACHE_VERSION = 1;
+const CACHE_VERSION = 2;
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // Severity Helpers
@@ -218,20 +219,70 @@ export function dedupeSpaceWeatherEvents(
   const eventsById = new Map<string, AnySpaceWeatherEvent>();
 
   for (const event of events) {
-    const existing = eventsById.get(event.id);
+    const normalizedId = event.id.trim();
+    const dedupeId = normalizedId.length > 0 ? normalizedId : event.id;
+    const normalizedEvent = normalizedId.length > 0 && normalizedId !== event.id
+      ? { ...event, id: normalizedId }
+      : event;
+
+    const existing = eventsById.get(dedupeId);
     if (!existing) {
-      eventsById.set(event.id, event);
+      eventsById.set(dedupeId, normalizedEvent);
       continue;
     }
 
     const existingScore = getEventCompletenessScore(existing);
-    const candidateScore = getEventCompletenessScore(event);
+    const candidateScore = getEventCompletenessScore(normalizedEvent);
     if (candidateScore > existingScore) {
-      eventsById.set(event.id, event);
+      eventsById.set(dedupeId, normalizedEvent);
     }
   }
 
   return Array.from(eventsById.values());
+}
+
+function toEpochOrMin(timestamp: string): number {
+  const parsed = Date.parse(timestamp);
+  return Number.isNaN(parsed) ? Number.MIN_SAFE_INTEGER : parsed;
+}
+
+export function normalizeSpaceWeatherResultSet(
+  events: AnySpaceWeatherEvent[],
+  limit: number,
+  page?: number
+): {
+  events: AnySpaceWeatherEvent[];
+  totalAvailable: number;
+  totalCapApplied: boolean;
+  duplicateCount: number;
+} {
+  const dedupedEvents = dedupeSpaceWeatherEvents(events);
+  const duplicateCount = events.length - dedupedEvents.length;
+
+  const sortedEvents = [...dedupedEvents].sort(
+    (a, b) => toEpochOrMin(b.startTime) - toEpochOrMin(a.startTime)
+  );
+
+  const cappedEvents = sortedEvents.slice(0, SPACE_WEATHER_MAX_TOTAL_RESULTS);
+  const totalAvailable = cappedEvents.length;
+  const totalCapApplied = sortedEvents.length > SPACE_WEATHER_MAX_TOTAL_RESULTS;
+
+  if (typeof page === "number") {
+    const start = (page - 1) * limit;
+    return {
+      events: cappedEvents.slice(start, start + limit),
+      totalAvailable,
+      totalCapApplied,
+      duplicateCount,
+    };
+  }
+
+  return {
+    events: cappedEvents.slice(0, limit),
+    totalAvailable,
+    totalCapApplied,
+    duplicateCount,
+  };
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -408,7 +459,8 @@ export async function fetchSpaceWeather(
   const defaultRange = getDefaultDateRange();
   const startDate = params.startDate || defaultRange.start;
   const endDate = params.endDate || defaultRange.end;
-  const limit = params.limit || 100;
+  const limit = params.limit ?? 100;
+  const page = params.page;
 
   // Parse event types to fetch
   const requestedTypes: SpaceWeatherEventType[] = params.eventTypes?.length
@@ -473,31 +525,25 @@ export async function fetchSpaceWeather(
     }
   }
 
-  const dedupedEvents = dedupeSpaceWeatherEvents(allEvents);
-  if (dedupedEvents.length !== allEvents.length) {
-    const duplicateCount = allEvents.length - dedupedEvents.length;
+  const normalizedResult = normalizeSpaceWeatherResultSet(allEvents, limit, page);
+  if (normalizedResult.duplicateCount > 0) {
     console.warn(
-      `[DONKI] Removed ${duplicateCount} duplicate space weather event(s) by id`
+      `[DONKI] Removed ${normalizedResult.duplicateCount} duplicate space weather event(s) by id`
     );
   }
 
-  // Sort by startTime descending (most recent first)
-  dedupedEvents.sort((a, b) => {
-    const dateA = new Date(a.startTime).getTime();
-    const dateB = new Date(b.startTime).getTime();
-    return dateB - dateA;
-  });
-
-  // Apply limit (DONKI doesn't support limit param, so we do it client-side)
-  const limitedEvents = dedupedEvents.slice(0, limit);
-
   return {
-    events: limitedEvents,
-    count: limitedEvents.length,
+    events: normalizedResult.events,
+    count: normalizedResult.events.length,
+    totalAvailable: normalizedResult.totalAvailable,
+    limitApplied: limit,
+    ...(typeof page === "number" ? { page } : {}),
     meta: {
       dateRange: { start: startDate, end: endDate },
       typesIncluded,
       warnings: warnings.length > 0 ? warnings : undefined,
+      totalCapApplied: normalizedResult.totalCapApplied,
+      totalCap: SPACE_WEATHER_MAX_TOTAL_RESULTS,
     },
   };
 }

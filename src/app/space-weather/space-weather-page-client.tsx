@@ -2,6 +2,7 @@
 
 import {
   useState,
+  useEffect,
   useCallback,
   useMemo,
   startTransition,
@@ -25,7 +26,12 @@ import {
   SpaceWeatherEventType,
   AnySpaceWeatherEvent,
 } from "@/lib/types";
-import { apiFetchEvents, EventStreamResult } from "@/lib/api-client";
+import {
+  apiFetchEvents,
+  apiFetchPaginated,
+  EventStreamResult,
+  PaginatedResult,
+} from "@/lib/api-client";
 import { THEMES } from "@/lib/theme";
 import {
   Sun,
@@ -37,6 +43,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { ViewToggle, ViewMode } from "@/components/view-toggle";
+import { Pagination, PaginationInfo } from "@/components/pagination";
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { EventTimeline } from "@/components/timeline/event-timeline";
 import { buildTimelineBuckets } from "@/lib/timeline-buckets";
@@ -49,7 +56,8 @@ import {
 import { parseEventTypesParam } from "@/lib/space-weather-url";
 import {
   buildSpaceWeatherFetchKey,
-  SPACE_WEATHER_LIMIT,
+  SPACE_WEATHER_TIMELINE_LIMIT,
+  SPACE_WEATHER_UI_PAGE_SIZE,
 } from "@/lib/space-weather-fetch-key";
 
 const theme = THEMES["space-weather"];
@@ -61,6 +69,54 @@ const SpaceWeatherDetailModal = dynamic(
     ),
   { ssr: false }
 );
+
+function getEventCompletenessScore(event: AnySpaceWeatherEvent): number {
+  let score = 0;
+
+  for (const value of Object.values(event)) {
+    if (value === undefined || value === null) continue;
+
+    if (Array.isArray(value)) {
+      if (value.length > 0) score += 1;
+      continue;
+    }
+
+    if (typeof value === "string") {
+      if (value.trim().length > 0) score += 1;
+      continue;
+    }
+
+    score += 1;
+  }
+
+  return score;
+}
+
+function dedupeEventsForRender(
+  events: AnySpaceWeatherEvent[]
+): AnySpaceWeatherEvent[] {
+  const eventsById = new Map<string, AnySpaceWeatherEvent>();
+
+  for (const event of events) {
+    const normalizedId = event.id.trim();
+    const dedupeId = normalizedId.length > 0 ? normalizedId : event.id;
+    const normalizedEvent = normalizedId.length > 0 && normalizedId !== event.id
+      ? { ...event, id: normalizedId }
+      : event;
+
+    const existing = eventsById.get(dedupeId);
+    if (!existing) {
+      eventsById.set(dedupeId, normalizedEvent);
+      continue;
+    }
+
+    if (getEventCompletenessScore(normalizedEvent) > getEventCompletenessScore(existing)) {
+      eventsById.set(dedupeId, normalizedEvent);
+    }
+  }
+
+  return Array.from(eventsById.values());
+}
 
 function FilterChip({
   label,
@@ -94,7 +150,7 @@ const EVENT_TYPE_INFO: Record<
 };
 
 export interface SpaceWeatherPageClientProps {
-  initialData: EventStreamResult<AnySpaceWeatherEvent> | null;
+  initialData: PaginatedResult<AnySpaceWeatherEvent> | null;
   initialError: string | null;
   initialFetchKey: string;
 }
@@ -115,14 +171,14 @@ export function SpaceWeatherPageClient({
     [eventTypesParam]
   );
 
-  const limit = useMemo(() => {
-    const value = searchParams.get("limit");
-    const parsed = value ? Number.parseInt(value, 10) : SPACE_WEATHER_LIMIT;
-    if (!Number.isFinite(parsed) || parsed < 1 || parsed > 500) {
-      return SPACE_WEATHER_LIMIT;
-    }
+  const rawPageParam = searchParams.get("page");
+  const page = useMemo(() => {
+    if (!rawPageParam) return 1;
+    const parsed = Number.parseInt(rawPageParam, 10);
+    if (!Number.isFinite(parsed) || parsed < 1) return 1;
     return parsed;
-  }, [searchParams]);
+  }, [rawPageParam]);
+  const limit = SPACE_WEATHER_UI_PAGE_SIZE;
 
   // Derive view mode from URL (default: grid)
   const viewParam = searchParams.get("view");
@@ -164,17 +220,17 @@ export function SpaceWeatherPageClient({
 
       // If all three selected, clear the param (default)
       if (newTypes.length === 3) {
-        updateUrl({ eventTypes: null });
+        updateUrl({ eventTypes: null, page: null });
       } else {
         const canonicalTypes = parseEventTypesParam(newTypes.join(","));
-        updateUrl({ eventTypes: canonicalTypes.join(",") });
+        updateUrl({ eventTypes: canonicalTypes.join(","), page: null });
       }
     },
     [eventTypes, updateUrl]
   );
 
   const handleFilterReset = useCallback(() => {
-    updateUrl({ eventTypes: null });
+    updateUrl({ eventTypes: null, page: null });
   }, [updateUrl]);
 
   // Handle view mode change
@@ -213,8 +269,8 @@ export function SpaceWeatherPageClient({
   });
 
   const currentFetchKey = useMemo(
-    () => buildSpaceWeatherFetchKey(eventTypes, limit),
-    [eventTypes, limit]
+    () => buildSpaceWeatherFetchKey(eventTypes, limit, page),
+    [eventTypes, limit, page]
   );
 
   const shouldUseInitialError = !initialData && !!initialError && currentFetchKey === initialFetchKey;
@@ -222,11 +278,26 @@ export function SpaceWeatherPageClient({
   const queryResult = useQuery({
     queryKey: queryKeys.spaceWeather(currentFetchKey),
     queryFn: ({ signal }) =>
-      apiFetchEvents<AnySpaceWeatherEvent>(`/space-weather?${currentFetchKey}`, {
+      apiFetchPaginated<AnySpaceWeatherEvent>(`/space-weather?${currentFetchKey}`, {
         signal,
       }),
     enabled: !shouldUseInitialError,
     initialData: currentFetchKey === initialFetchKey ? (initialData ?? undefined) : undefined,
+    staleTime: 30_000,
+  });
+
+  const timelineFetchKey = useMemo(
+    () => buildSpaceWeatherFetchKey(eventTypes, SPACE_WEATHER_TIMELINE_LIMIT),
+    [eventTypes]
+  );
+
+  const timelineQueryResult = useQuery({
+    queryKey: [...queryKeys.spaceWeather(timelineFetchKey), "timeline"],
+    queryFn: ({ signal }) =>
+      apiFetchEvents<AnySpaceWeatherEvent>(`/space-weather?${timelineFetchKey}`, {
+        signal,
+      }),
+    enabled: !shouldUseInitialError,
     staleTime: 30_000,
   });
 
@@ -237,32 +308,72 @@ export function SpaceWeatherPageClient({
     : queryResult.error instanceof Error
       ? queryResult.error.message
       : null;
+  const events = useMemo(() => {
+    const rawEvents = data?.objects ?? [];
+    const dedupedEvents = dedupeEventsForRender(rawEvents);
+
+    if (
+      process.env.NODE_ENV !== "production" &&
+      dedupedEvents.length !== rawEvents.length
+    ) {
+      console.warn(
+        `[space-weather] Removed ${rawEvents.length - dedupedEvents.length} duplicate event(s) before render`
+      );
+    }
+
+    return dedupedEvents;
+  }, [data?.objects]);
+
+  const totalItems = data?.total ?? 0;
+  const totalPages = totalItems > 0 ? Math.ceil(totalItems / limit) : 1;
+
+  const setPage = useCallback((nextPage: number) => {
+    const sanitized = Math.max(1, nextPage);
+    updateUrl({
+      page: sanitized === 1 ? null : sanitized.toString(),
+    });
+  }, [updateUrl]);
+
+  useEffect(() => {
+    if (rawPageParam !== null && page === 1) {
+      updateUrl({ page: null });
+    }
+  }, [rawPageParam, page, updateUrl]);
+
+  useEffect(() => {
+    if (data && page > totalPages) {
+      setPage(totalPages);
+    }
+  }, [data, page, totalPages, setPage]);
 
   const activeFilterCount = eventTypes.length < 3 ? 1 : 0;
 
   // Count events by type
   const countByType = useMemo(() => {
     const counts = { FLR: 0, CME: 0, GST: 0 };
-    for (const event of data?.events ?? []) {
+    for (const event of events) {
       if (event.eventType === "FLR") counts.FLR += 1;
       if (event.eventType === "CME") counts.CME += 1;
       if (event.eventType === "GST") counts.GST += 1;
     }
     return counts;
-  }, [data]);
+  }, [events]);
 
   const timelineBuckets = useMemo(() => {
-    if (!data?.events || data.events.length === 0) return [];
+    const timelineEvents = dedupeEventsForRender(
+      (timelineQueryResult.data as EventStreamResult<AnySpaceWeatherEvent> | undefined)?.events ?? []
+    );
+    if (timelineEvents.length === 0) return [];
 
     const endDate = new Date();
-    const startDate = new Date(endDate.getTime() - 29 * 24 * 60 * 60 * 1000);
+    const startDate = new Date(endDate.getTime() - 89 * 24 * 60 * 60 * 1000);
 
     return buildTimelineBuckets({
-      events: data.events.map((event) => ({ timestamp: event.startTime })),
+      events: timelineEvents.map((event) => ({ timestamp: event.startTime })),
       startDate,
       endDate,
     });
-  }, [data]);
+  }, [timelineQueryResult.data]);
 
   return (
     <div className="shell-container py-8">
@@ -279,15 +390,17 @@ export function SpaceWeatherPageClient({
           </h1>
         </div>
         <p className="text-muted-foreground mb-2">
-          Solar flares, coronal mass ejections, and geomagnetic storms
+          Solar flares, coronal mass ejections, and geomagnetic storms from the
+          last 90 days
         </p>
         <div className="flex items-start gap-2 p-3 rounded-lg bg-muted/30 border border-muted-foreground/20">
           <AlertTriangle className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
           <p className="text-sm text-muted-foreground/80">
             Data from NASA&apos;s Space Weather Database (DONKI). This is a{" "}
             <span className="text-foreground">research catalog</span> of space
-            weather events, not a real-time operational monitoring feed. Events
-            may be added or updated days after occurrence.
+            weather events, not a real-time operational monitoring feed. This
+            page shows a rolling 90-day window. Events may be added or updated
+            days after occurrence.
           </p>
         </div>
       </div>
@@ -401,21 +514,35 @@ export function SpaceWeatherPageClient({
 
       {/* Results Info */}
       {data && !isLoading && (
-        <div className="mb-6">
-          <p className="text-sm text-muted-foreground">
-            Showing{" "}
-            <span className="font-mono text-foreground">
-              {data.events.length}
-            </span>{" "}
-            events from the last 30 days
-            {data.events.length > 0 && (
+        <div className="mb-6 space-y-4">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <PaginationInfo
+              currentPage={page}
+              pageSize={limit}
+              totalItems={totalItems}
+              itemLabel="events"
+            />
+            {totalPages > 1 && (
+              <div className="md:w-auto">
+                <Pagination
+                  currentPage={page}
+                  totalPages={totalPages}
+                  onPageChange={setPage}
+                  theme="space-weather"
+                />
+              </div>
+            )}
+          </div>
+          {events.length > 0 && (
+            <p className="text-sm text-muted-foreground">
+              Current page breakdown:
               <span className="text-muted-foreground/70">
                 {" "}
                 ({countByType.FLR} flares, {countByType.CME} CMEs,{" "}
-                {countByType.GST} storms)
+                {countByType.GST} storms).
               </span>
-            )}
-          </p>
+            </p>
+          )}
         </div>
       )}
 
@@ -435,7 +562,10 @@ export function SpaceWeatherPageClient({
           <p className="text-destructive">{error}</p>
           <button
             onClick={() => {
-              void queryResult.refetch();
+              void Promise.all([
+                queryResult.refetch(),
+                timelineQueryResult.refetch(),
+              ]);
             }}
             className={`mt-4 text-sm ${theme.text} hover:underline`}
           >
@@ -463,9 +593,9 @@ export function SpaceWeatherPageClient({
       )}
 
       {/* Results Grid */}
-      {!isLoading && data && data.events.length > 0 && view === "grid" && (
+      {!isLoading && data && events.length > 0 && view === "grid" && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {data.events.map((event) => (
+          {events.map((event) => (
             <SpaceWeatherCard
               key={event.id}
               event={event}
@@ -476,9 +606,9 @@ export function SpaceWeatherPageClient({
       )}
 
       {/* Results List */}
-      {!isLoading && data && data.events.length > 0 && view === "list" && (
+      {!isLoading && data && events.length > 0 && view === "list" && (
         <div className="min-w-0 overflow-hidden space-y-2">
-          {data.events.map((event) => (
+          {events.map((event) => (
             <SpaceWeatherCard
               key={event.id}
               event={event}
@@ -489,16 +619,27 @@ export function SpaceWeatherPageClient({
         </div>
       )}
 
+      {!isLoading && data && totalPages > 1 && (
+        <div className="mt-8">
+          <Pagination
+            currentPage={page}
+            totalPages={totalPages}
+            onPageChange={setPage}
+            theme="space-weather"
+          />
+        </div>
+      )}
+
       {/* Empty State */}
-      {!isLoading && data && data.events.length === 0 && (
+      {!isLoading && data && events.length === 0 && (
         <div className="p-12 text-center">
           <Sun className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
           <h2 className="font-display text-xl text-foreground mb-2">
             No space weather events
           </h2>
           <p className="text-muted-foreground">
-            No events found for the selected filters. Try showing all event
-            types.
+            No events found for the selected filters in the last 90 days. Try
+            showing all event types.
           </p>
         </div>
       )}

@@ -57,6 +57,8 @@ export interface ThemeConfig {
   metricSurface: string;
   // Footer row treatment for card internals
   footerSurface: string;
+  // Timeline panel hover border treatment
+  timelineHoverBorder: string;
 }
 
 export const THEMES: Record<ObjectTheme, ThemeConfig> = {
@@ -81,6 +83,7 @@ export const THEMES: Record<ObjectTheme, ThemeConfig> = {
       "bg-card/95 border-border/50 [background-image:radial-gradient(circle_at_top_right,rgba(255,185,120,0.08),transparent_58%)]",
     metricSurface: "rounded-md border border-border/40 bg-black/15 px-2.5 py-2",
     footerSurface: "border-t border-border/30 pt-3",
+    timelineHoverBorder: "hover:border-reactor-orange/35",
   },
   stars: {
     text: "text-uranium-green",
@@ -105,6 +108,7 @@ export const THEMES: Record<ObjectTheme, ThemeConfig> = {
       "bg-card/95 border-border/50 [background-image:radial-gradient(circle_at_top_right,rgba(181,255,87,0.1),transparent_58%)]",
     metricSurface: "rounded-md border border-border/40 bg-black/15 px-2.5 py-2",
     footerSurface: "border-t border-border/30 pt-3",
+    timelineHoverBorder: "hover:border-uranium-green/40",
   },
   "small-bodies": {
     text: "text-secondary",
@@ -127,6 +131,7 @@ export const THEMES: Record<ObjectTheme, ThemeConfig> = {
       "bg-card/95 border-border/50 [background-image:radial-gradient(circle_at_top_right,rgba(255,182,39,0.1),transparent_58%)]",
     metricSurface: "rounded-md border border-border/40 bg-black/15 px-2.5 py-2",
     footerSurface: "border-t border-border/30 pt-3",
+    timelineHoverBorder: "hover:border-secondary/40",
   },
   "close-approaches": {
     text: "text-destructive",
@@ -150,6 +155,7 @@ export const THEMES: Record<ObjectTheme, ThemeConfig> = {
       "bg-card/95 border-border/50 [background-image:radial-gradient(circle_at_top_right,rgba(255,80,80,0.08),transparent_58%)]",
     metricSurface: "rounded-md border border-border/40 bg-black/15 px-2.5 py-2",
     footerSurface: "border-t border-border/30 pt-3",
+    timelineHoverBorder: "hover:border-destructive/40",
   },
   fireballs: {
     text: "text-radium-teal",
@@ -173,6 +179,7 @@ export const THEMES: Record<ObjectTheme, ThemeConfig> = {
       "bg-card/95 border-border/50 [background-image:radial-gradient(circle_at_top_right,rgba(61,219,217,0.09),transparent_58%)]",
     metricSurface: "rounded-md border border-border/40 bg-black/15 px-2.5 py-2",
     footerSurface: "border-t border-border/30 pt-3",
+    timelineHoverBorder: "hover:border-radium-teal/40",
   },
   "space-weather": {
     text: "text-aurora-violet",
@@ -197,6 +204,7 @@ export const THEMES: Record<ObjectTheme, ThemeConfig> = {
       "bg-card/95 border-border/50 [background-image:radial-gradient(circle_at_top_right,rgba(178,102,255,0.12),transparent_58%)]",
     metricSurface: "rounded-md border border-border/40 bg-black/15 px-2.5 py-2",
     footerSurface: "border-t border-border/30 pt-3",
+    timelineHoverBorder: "hover:border-aurora-violet/40",
   },
 };
 
