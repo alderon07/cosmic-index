@@ -1,6 +1,9 @@
-import { SpaceWeatherEventType } from "@/lib/types";
+import {
+  SpaceWeatherEventType,
+  SPACE_WEATHER_EVENT_TYPES,
+} from "@/lib/types";
 
-const EVENT_TYPE_ORDER: SpaceWeatherEventType[] = ["FLR", "CME", "GST"];
+const EVENT_TYPE_ORDER: SpaceWeatherEventType[] = [...SPACE_WEATHER_EVENT_TYPES];
 
 export function parseEventTypesParam(value?: string | null): SpaceWeatherEventType[] {
   if (!value) return [...EVENT_TYPE_ORDER];

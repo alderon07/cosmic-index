@@ -44,7 +44,7 @@
     },
     {
       "name": "Space Weather",
-      "description": "Space weather events (solar flares, CMEs, geomagnetic storms) from NASA DONKI"
+      "description": "Space weather events and notifications from NASA DONKI"
     },
     {
       "name": "APOD",
@@ -1029,7 +1029,7 @@
       "get": {
         "operationId": "listSpaceWeather",
         "summary": "List space weather events",
-        "description": "Retrieve recent space weather events from NASA DONKI, including solar flares (FLR), coronal mass ejections (CME), and geomagnetic storms (GST). If `startDate` and `endDate` are omitted, the default search window is the last 90 days. When `page` is omitted, this endpoint returns legacy `pagination.mode = \"none\"`. When `page` is provided, the endpoint returns offset pagination metadata. Result sets are deduplicated by event id and capped to a maximum of 420 events before pagination is applied. Partial failures (e.g., one endpoint unavailable) are reported in `meta.warnings` rather than failing the entire request.",
+        "description": "Retrieve recent space weather events from NASA DONKI, including solar flares (FLR), coronal mass ejections (CME), geomagnetic storms (GST), interplanetary shocks (IPS), high-speed streams (HSS), and solar energetic particle events (SEP). If `startDate` and `endDate` are omitted, the default search window is the last 90 days. When `page` is omitted, this endpoint returns legacy `pagination.mode = \"none\"`. When `page` is provided, the endpoint returns offset pagination metadata. Result sets are deduplicated by event id and capped to a maximum of 420 events before pagination is applied. Partial failures (e.g., one endpoint unavailable) are reported in `meta.warnings`; if all requested event type sources are unavailable, the endpoint returns `503 UPSTREAM_UNAVAILABLE`.",
         "tags": [
           "Space Weather"
         ],
@@ -1055,11 +1055,11 @@
           {
             "name": "eventTypes",
             "in": "query",
-            "description": "Comma-separated list of event types to include. Valid values: FLR, CME, GST.",
+            "description": "Comma-separated list of event types to include. Valid values: FLR, CME, GST, IPS, HSS, SEP.",
             "schema": {
               "type": "string"
             },
-            "example": "FLR,CME"
+            "example": "FLR,CME,IPS"
           },
           {
             "name": "page",
@@ -1166,7 +1166,10 @@
                                 "enum": [
                                   "FLR",
                                   "CME",
-                                  "GST"
+                                  "GST",
+                                  "IPS",
+                                  "HSS",
+                                  "SEP"
                                 ]
                               },
                               "description": "Which event types were included in the response."
@@ -1209,7 +1212,10 @@
                         "typesIncluded": [
                           "FLR",
                           "CME",
-                          "GST"
+                          "GST",
+                          "IPS",
+                          "HSS",
+                          "SEP"
                         ]
                       }
                     }
@@ -1240,7 +1246,8 @@
                         },
                         "typesIncluded": [
                           "FLR",
-                          "CME"
+                          "CME",
+                          "IPS"
                         ]
                       }
                     }
@@ -1635,6 +1642,257 @@
           },
           "503": {
             "description": "Rate limiting unavailable"
+          }
+        }
+      }
+    },
+    "/space-weather/notifications": {
+      "get": {
+        "operationId": "listSpaceWeatherNotifications",
+        "summary": "List DONKI notifications",
+        "description": "Retrieve DONKI notifications as a separate alert feed. If `startDate` and `endDate` are omitted, the default search window is the last 7 days. DONKI limits notification queries to a 30-day range; when the requested range exceeds 30 days the effective start is clamped to `endDate - 30 days` and the adjustment is reported in `meta.warnings`.",
+        "tags": [
+          "Space Weather"
+        ],
+        "parameters": [
+          {
+            "name": "startDate",
+            "in": "query",
+            "description": "Start date for notification search (YYYY-MM-DD). Defaults to 7 days before endDate when omitted.",
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            }
+          },
+          {
+            "name": "endDate",
+            "in": "query",
+            "description": "End date for notification search (YYYY-MM-DD). Defaults to today when omitted.",
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "description": "Notification type filter. MVP supports all, FLR, SEP, CME, IPS, GST.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "all",
+                "FLR",
+                "SEP",
+                "CME",
+                "IPS",
+                "GST"
+              ],
+              "default": "all"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Offset page number. When provided (including `1`), response pagination mode is `offset`.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Maximum number of notifications per response page (default: 20).",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of DONKI notifications.",
+            "headers": {
+              "$ref": "#/components/headers/StandardResponseHeaders"
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data",
+                    "pagination",
+                    "meta"
+                  ],
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/SpaceWeatherNotification"
+                      }
+                    },
+                    "pagination": {
+                      "oneOf": [
+                        {
+                          "$ref": "#/components/schemas/NonePagination"
+                        },
+                        {
+                          "$ref": "#/components/schemas/OffsetPagination"
+                        }
+                      ]
+                    },
+                    "meta": {
+                      "allOf": [
+                        {
+                          "$ref": "#/components/schemas/ApiMeta"
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "count": {
+                              "type": "integer",
+                              "description": "Number of notifications returned."
+                            },
+                            "limitApplied": {
+                              "type": "integer",
+                              "description": "The effective limit used."
+                            },
+                            "totalAvailable": {
+                              "type": "integer",
+                              "description": "Total notifications available after applying the hard result cap."
+                            },
+                            "totalCapApplied": {
+                              "type": "boolean",
+                              "description": "Whether the hard cap was applied before pagination."
+                            },
+                            "totalCap": {
+                              "type": "integer",
+                              "description": "Hard maximum number of notifications that can be paged through in a single query."
+                            },
+                            "dateRange": {
+                              "type": "object",
+                              "required": [
+                                "requestedStart",
+                                "requestedEnd",
+                                "effectiveStart",
+                                "effectiveEnd"
+                              ],
+                              "properties": {
+                                "requestedStart": {
+                                  "type": "string"
+                                },
+                                "requestedEnd": {
+                                  "type": "string"
+                                },
+                                "effectiveStart": {
+                                  "type": "string"
+                                },
+                                "effectiveEnd": {
+                                  "type": "string"
+                                }
+                              }
+                            },
+                            "typeIncluded": {
+                              "type": "string",
+                              "enum": [
+                                "all",
+                                "FLR",
+                                "SEP",
+                                "CME",
+                                "IPS",
+                                "GST"
+                              ]
+                            },
+                            "warnings": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  }
+                },
+                "examples": {
+                  "legacyNoneMode": {
+                    "summary": "Legacy response when page is omitted",
+                    "value": {
+                      "data": [],
+                      "pagination": {
+                        "mode": "none",
+                        "hasMore": false
+                      },
+                      "meta": {
+                        "requestId": "req_example",
+                        "apiVersion": "1",
+                        "timestamp": "2026-02-17T00:00:00.000Z",
+                        "count": 0,
+                        "limitApplied": 20,
+                        "totalAvailable": 0,
+                        "totalCapApplied": false,
+                        "totalCap": 300,
+                        "dateRange": {
+                          "requestedStart": "2026-02-10",
+                          "requestedEnd": "2026-02-17",
+                          "effectiveStart": "2026-02-10",
+                          "effectiveEnd": "2026-02-17"
+                        },
+                        "typeIncluded": "all"
+                      }
+                    }
+                  },
+                  "offsetMode": {
+                    "summary": "Offset pagination response with clamped date range",
+                    "value": {
+                      "data": [],
+                      "pagination": {
+                        "mode": "offset",
+                        "page": 2,
+                        "limit": 8,
+                        "total": 41,
+                        "hasMore": true
+                      },
+                      "meta": {
+                        "requestId": "req_example",
+                        "apiVersion": "1",
+                        "timestamp": "2026-02-17T00:00:00.000Z",
+                        "count": 8,
+                        "limitApplied": 8,
+                        "totalAvailable": 41,
+                        "totalCapApplied": false,
+                        "totalCap": 300,
+                        "dateRange": {
+                          "requestedStart": "2025-11-01",
+                          "requestedEnd": "2026-02-17",
+                          "effectiveStart": "2026-01-18",
+                          "effectiveEnd": "2026-02-17"
+                        },
+                        "typeIncluded": "CME",
+                        "warnings": [
+                          "Notifications are limited to 30 days; using 2026-01-18 to 2026-02-17."
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimitExceeded"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/UpstreamUnavailable"
           }
         }
       }
@@ -2544,7 +2802,10 @@
             "enum": [
               "FLR",
               "CME",
-              "GST"
+              "GST",
+              "IPS",
+              "HSS",
+              "SEP"
             ]
           },
           "startTime": {
@@ -2711,6 +2972,15 @@
           },
           {
             "$ref": "#/components/schemas/GSTEvent"
+          },
+          {
+            "$ref": "#/components/schemas/IPSEvent"
+          },
+          {
+            "$ref": "#/components/schemas/HSSEvent"
+          },
+          {
+            "$ref": "#/components/schemas/SEPEvent"
           }
         ],
         "discriminator": {
@@ -2718,7 +2988,10 @@
           "mapping": {
             "FLR": "#/components/schemas/SolarFlareEvent",
             "CME": "#/components/schemas/CMEEvent",
-            "GST": "#/components/schemas/GSTEvent"
+            "GST": "#/components/schemas/GSTEvent",
+            "IPS": "#/components/schemas/IPSEvent",
+            "HSS": "#/components/schemas/HSSEvent",
+            "SEP": "#/components/schemas/SEPEvent"
           }
         }
       },
@@ -2818,6 +3091,166 @@
           "imageUrl": {
             "type": "string",
             "format": "uri"
+          }
+        }
+      },
+      "IPSEvent": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/SpaceWeatherEventBase"
+          },
+          {
+            "type": "object",
+            "required": [
+              "eventType"
+            ],
+            "properties": {
+              "eventType": {
+                "type": "string",
+                "const": "IPS"
+              },
+              "location": {
+                "type": "string",
+                "description": "Location of the detected interplanetary shock."
+              },
+              "submissionTime": {
+                "type": "string",
+                "format": "date-time",
+                "description": "Submission timestamp from DONKI."
+              },
+              "instruments": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Instrument display names associated with this event."
+              },
+              "sourceLink": {
+                "type": "string",
+                "format": "uri",
+                "description": "Link to the upstream DONKI event record."
+              }
+            }
+          }
+        ]
+      },
+      "HSSEvent": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/SpaceWeatherEventBase"
+          },
+          {
+            "type": "object",
+            "required": [
+              "eventType"
+            ],
+            "properties": {
+              "eventType": {
+                "type": "string",
+                "const": "HSS"
+              },
+              "submissionTime": {
+                "type": "string",
+                "format": "date-time",
+                "description": "Submission timestamp from DONKI."
+              },
+              "instruments": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Instrument display names associated with this event."
+              },
+              "sourceLink": {
+                "type": "string",
+                "format": "uri",
+                "description": "Link to the upstream DONKI event record."
+              }
+            }
+          }
+        ]
+      },
+      "SEPEvent": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/SpaceWeatherEventBase"
+          },
+          {
+            "type": "object",
+            "required": [
+              "eventType"
+            ],
+            "properties": {
+              "eventType": {
+                "type": "string",
+                "const": "SEP"
+              },
+              "submissionTime": {
+                "type": "string",
+                "format": "date-time",
+                "description": "Submission timestamp from DONKI."
+              },
+              "instruments": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Instrument display names associated with this event."
+              },
+              "sourceLink": {
+                "type": "string",
+                "format": "uri",
+                "description": "Link to the upstream DONKI event record."
+              }
+            }
+          }
+        ]
+      },
+      "SpaceWeatherNotification": {
+        "type": "object",
+        "required": [
+          "id",
+          "type",
+          "issuedAt",
+          "body",
+          "activityIDs"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "DONKI notification message ID."
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "FLR",
+              "SEP",
+              "CME",
+              "IPS",
+              "GST",
+              "other"
+            ],
+            "description": "Normalized notification type used by the API."
+          },
+          "issuedAt": {
+            "type": "string",
+            "description": "DONKI message issue timestamp."
+          },
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "description": "Link to DONKI notification detail when provided."
+          },
+          "body": {
+            "type": "string",
+            "description": "Full DONKI notification body text."
+          },
+          "activityIDs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Activity IDs extracted from the message body."
           }
         }
       }

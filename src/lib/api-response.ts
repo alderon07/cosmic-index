@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { ErrorCode, ERROR_STATUS } from "./api-errors";
 import { ExoplanetIndexUnavailableError } from "./exoplanet-index";
 import { isContractMismatch, isUpstreamFailure } from "./jpl-sbdb";
+import { DonkiUpstreamUnavailableError } from "./nasa-donki";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // Response Envelope Types
@@ -189,6 +190,18 @@ export function handleRouteError(
   }
 
   // 2. Upstream failure (5xx/timeout from NASA/JPL/CNEOS/DONKI)
+  if (error instanceof DonkiUpstreamUnavailableError) {
+    return apiError(
+      ErrorCode.UPSTREAM_UNAVAILABLE,
+      "DONKI data source is temporarily unavailable. Please try again.",
+      ERROR_STATUS[ErrorCode.UPSTREAM_UNAVAILABLE],
+      requestId,
+      undefined,
+      { ...headers, "Retry-After": "60" },
+    );
+  }
+
+  // 3. Upstream failure (5xx/timeout from NASA/JPL/CNEOS/DONKI)
   if (isUpstreamFailure(error)) {
     return apiError(
       ErrorCode.UPSTREAM_UNAVAILABLE,
@@ -200,7 +213,7 @@ export function handleRouteError(
     );
   }
 
-  // 3. Contract mismatch (upstream changed their response shape)
+  // 4. Contract mismatch (upstream changed their response shape)
   if (isContractMismatch(error)) {
     console.warn(`[${requestId}] Contract mismatch:`, message);
     return apiError(
@@ -213,7 +226,7 @@ export function handleRouteError(
     );
   }
 
-  // 4. Request cancelled/aborted — normal client behavior
+  // 5. Request cancelled/aborted — normal client behavior
   if (message.includes("cancelled") || message.includes("aborted")) {
     // Log at debug level, not error — this is expected
     if (process.env.NODE_ENV === "development") {
@@ -229,7 +242,7 @@ export function handleRouteError(
     );
   }
 
-  // 5. Timeout
+  // 6. Timeout
   if (message.includes("timed out")) {
     return apiError(
       ErrorCode.UPSTREAM_UNAVAILABLE,
@@ -241,7 +254,7 @@ export function handleRouteError(
     );
   }
 
-  // 6. Rate limit from upstream (e.g., NASA API key exhausted)
+  // 7. Rate limit from upstream (e.g., NASA API key exhausted)
   if (message.includes("rate limit")) {
     return apiError(
       ErrorCode.RATE_LIMIT_EXCEEDED,
@@ -253,7 +266,7 @@ export function handleRouteError(
     );
   }
 
-  // 7. Catch-all
+  // 8. Catch-all
   return apiError(
     ErrorCode.INTERNAL_ERROR,
     "An unexpected error occurred. Please try again later.",

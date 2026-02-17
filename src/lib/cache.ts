@@ -52,6 +52,7 @@ export const CACHE_TTL = {
   FIREBALL_LIST: 60 * 60,            // 1 hour (data updates infrequently)
   SPACE_WEATHER: 30 * 60,            // 30 minutes (more real-time data)
   SPACE_WEATHER_DETAIL: 6 * 60 * 60, // 6 hours (events don't change after recording)
+  SPACE_WEATHER_NOTIFICATIONS: 10 * 60, // 10 minutes (more volatile alert stream)
 } as const;
 
 // Cache key prefixes
@@ -71,6 +72,10 @@ export const CACHE_KEYS = {
   SPACE_WEATHER_FLR: "sw:flr",
   SPACE_WEATHER_CME: "sw:cme",
   SPACE_WEATHER_GST: "sw:gst",
+  SPACE_WEATHER_IPS: "sw:ips",
+  SPACE_WEATHER_HSS: "sw:hss",
+  SPACE_WEATHER_SEP: "sw:sep",
+  SPACE_WEATHER_NOTIFICATIONS: "sw:notifications",
 } as const;
 
 // Create a hash from query parameters for cache keys

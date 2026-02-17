@@ -1,6 +1,11 @@
 import {
+  DonkiUpstreamUnavailableError,
   dedupeSpaceWeatherEvents,
+  fetchSpaceWeather,
+  fetchSpaceWeatherNotifications,
+  fetchSpaceWeatherEventById,
   normalizeSpaceWeatherResultSet,
+  parseEventType,
   SPACE_WEATHER_MAX_TOTAL_RESULTS,
 } from "../nasa-donki";
 import { AnySpaceWeatherEvent } from "../types";
@@ -231,5 +236,307 @@ describe("normalizeSpaceWeatherResultSet", () => {
       "2026-02-02T00:00:00-CME-002",
     ]);
     expect(result.totalAvailable).toBe(3);
+  });
+});
+
+describe("space weather type expansion", () => {
+  it("parses IPS/HSS/SEP event ids", () => {
+    expect(parseEventType("2026-01-19T18:55:00-IPS-001")).toBe("IPS");
+    expect(parseEventType("2026-01-28T08:08:00-HSS-001")).toBe("HSS");
+    expect(parseEventType("2026-01-18T22:33:00-SEP-001")).toBe("SEP");
+  });
+
+  it("fetches IPS/HSS/SEP when requested", async () => {
+    const originalFetch = globalThis.fetch;
+    const originalRedisUrl = process.env.UPSTASH_REDIS_REST_URL;
+    const originalRedisToken = process.env.UPSTASH_REDIS_REST_TOKEN;
+    delete process.env.UPSTASH_REDIS_REST_URL;
+    delete process.env.UPSTASH_REDIS_REST_TOKEN;
+
+    globalThis.fetch = async (input: string | URL | Request) => {
+      const url =
+        typeof input === "string"
+          ? input
+          : input instanceof URL
+            ? input.toString()
+            : input.url;
+
+      if (url.includes("/IPS")) {
+        return new Response(
+          JSON.stringify([
+            {
+              activityID: "2026-01-19T18:55:00-IPS-001",
+              eventTime: "2026-01-19T18:55Z",
+              location: "Earth",
+              instruments: [{ displayName: "ACE: MAG" }],
+            },
+          ]),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      }
+      if (url.includes("/HSS")) {
+        return new Response(
+          JSON.stringify([
+            {
+              hssID: "2026-01-28T08:08:00-HSS-001",
+              eventTime: "2026-01-28T08:08Z",
+              instruments: [{ displayName: "ACE: SWEPAM" }],
+            },
+          ]),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      }
+      if (url.includes("/SEP")) {
+        return new Response(
+          JSON.stringify([
+            {
+              sepID: "2026-01-18T22:33:00-SEP-001",
+              eventTime: "2026-01-18T22:33Z",
+              instruments: [{ displayName: "SOHO: COSTEP" }],
+            },
+          ]),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      }
+
+      return new Response(JSON.stringify([]), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    };
+
+    const result = await fetchSpaceWeather({
+      startDate: "2026-01-15",
+      endDate: "2026-01-31",
+      eventTypes: ["IPS", "HSS", "SEP"],
+      limit: 21,
+      page: 1,
+    });
+
+    expect(result.events).toHaveLength(3);
+    expect(result.meta.typesIncluded).toEqual(["IPS", "HSS", "SEP"]);
+
+    globalThis.fetch = originalFetch;
+    if (originalRedisUrl) process.env.UPSTASH_REDIS_REST_URL = originalRedisUrl;
+    if (originalRedisToken) process.env.UPSTASH_REDIS_REST_TOKEN = originalRedisToken;
+  });
+});
+
+describe("notifications integration", () => {
+  const originalFetch = globalThis.fetch;
+  const originalRedisUrl = process.env.UPSTASH_REDIS_REST_URL;
+  const originalRedisToken = process.env.UPSTASH_REDIS_REST_TOKEN;
+
+  beforeEach(() => {
+    delete process.env.UPSTASH_REDIS_REST_URL;
+    delete process.env.UPSTASH_REDIS_REST_TOKEN;
+    globalThis.fetch = originalFetch;
+  });
+
+  afterAll(() => {
+    globalThis.fetch = originalFetch;
+    if (originalRedisUrl) {
+      process.env.UPSTASH_REDIS_REST_URL = originalRedisUrl;
+    } else {
+      delete process.env.UPSTASH_REDIS_REST_URL;
+    }
+    if (originalRedisToken) {
+      process.env.UPSTASH_REDIS_REST_TOKEN = originalRedisToken;
+    } else {
+      delete process.env.UPSTASH_REDIS_REST_TOKEN;
+    }
+  });
+
+  it("clamps notification windows to DONKI's 30-day range", async () => {
+    const requestedUrls: string[] = [];
+
+    globalThis.fetch = async (input: string | URL | Request) => {
+      const url =
+        typeof input === "string"
+          ? input
+          : input instanceof URL
+            ? input.toString()
+            : input.url;
+      requestedUrls.push(url);
+
+      return new Response(JSON.stringify([]), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    };
+
+    const result = await fetchSpaceWeatherNotifications({
+      startDate: "2025-11-01",
+      endDate: "2026-02-17",
+      type: "CME",
+      limit: 8,
+      page: 1,
+    });
+
+    expect(requestedUrls).toHaveLength(1);
+    expect(requestedUrls[0]).toContain("startDate=2026-01-18");
+    expect(requestedUrls[0]).toContain("endDate=2026-02-17");
+    expect(result.meta.warnings?.length).toBeGreaterThan(0);
+  });
+
+  it("maps unsupported notification messageType values to 'other'", async () => {
+    globalThis.fetch = async () =>
+      new Response(
+        JSON.stringify([
+          {
+            messageType: "MPC",
+            messageID: "20260120-AL-001",
+            messageIssueTime: "2026-01-20T20:00Z",
+            messageBody:
+              "Activity ID: 2026-01-19T22:49:00-MPC-001\\nAdditional message body",
+          },
+        ]),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      );
+
+    const result = await fetchSpaceWeatherNotifications({
+      endDate: "2026-01-21",
+      type: "all",
+      limit: 8,
+      page: 1,
+    });
+
+    expect(result.notifications).toHaveLength(1);
+    expect(result.notifications[0].type).toBe("other");
+    expect(result.meta.warnings?.some((warning) => warning.includes("other"))).toBe(true);
+  });
+});
+
+describe("DONKI upstream failure handling", () => {
+  const originalFetch = globalThis.fetch;
+  const originalRedisUrl = process.env.UPSTASH_REDIS_REST_URL;
+  const originalRedisToken = process.env.UPSTASH_REDIS_REST_TOKEN;
+  const originalNasaApiKey = process.env.NASA_API_KEY;
+  const originalDonkiBaseUrl = process.env.DONKI_BASE_URL;
+
+  beforeEach(() => {
+    delete process.env.UPSTASH_REDIS_REST_URL;
+    delete process.env.UPSTASH_REDIS_REST_TOKEN;
+    delete process.env.NASA_API_KEY;
+    delete process.env.DONKI_BASE_URL;
+    globalThis.fetch = originalFetch;
+  });
+
+  afterAll(() => {
+    globalThis.fetch = originalFetch;
+    if (originalRedisUrl) {
+      process.env.UPSTASH_REDIS_REST_URL = originalRedisUrl;
+    } else {
+      delete process.env.UPSTASH_REDIS_REST_URL;
+    }
+    if (originalRedisToken) {
+      process.env.UPSTASH_REDIS_REST_TOKEN = originalRedisToken;
+    } else {
+      delete process.env.UPSTASH_REDIS_REST_TOKEN;
+    }
+    if (originalNasaApiKey) {
+      process.env.NASA_API_KEY = originalNasaApiKey;
+    } else {
+      delete process.env.NASA_API_KEY;
+    }
+    if (originalDonkiBaseUrl) {
+      process.env.DONKI_BASE_URL = originalDonkiBaseUrl;
+    } else {
+      delete process.env.DONKI_BASE_URL;
+    }
+  });
+
+  it("throws DonkiUpstreamUnavailableError when all requested event types fail", async () => {
+    globalThis.fetch = async () => {
+      throw new TypeError("fetch failed");
+    };
+
+    await expect(
+      fetchSpaceWeather({
+        startDate: "2026-02-01",
+        endDate: "2026-02-02",
+        eventTypes: ["FLR", "CME", "GST"],
+        limit: 21,
+        page: 1,
+      })
+    ).rejects.toBeInstanceOf(DonkiUpstreamUnavailableError);
+  });
+
+  it("returns partial data with warnings when at least one source succeeds", async () => {
+    globalThis.fetch = async (input: string | URL | Request) => {
+      const url =
+        typeof input === "string"
+          ? input
+          : input instanceof URL
+            ? input.toString()
+            : input.url;
+      if (url.includes("/FLR")) {
+        return new Response(
+          JSON.stringify([
+            {
+              flrID: "2026-02-16T04:24:00-FLR-001",
+              beginTime: "2026-02-16T04:24:00Z",
+              classType: "M1.0",
+            },
+          ]),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        );
+      }
+      throw new TypeError("fetch failed");
+    };
+
+    const result = await fetchSpaceWeather({
+      startDate: "2026-02-01",
+      endDate: "2026-02-02",
+      eventTypes: ["FLR", "CME", "GST"],
+      limit: 21,
+      page: 1,
+    });
+
+    expect(result.events).toHaveLength(1);
+    expect(result.meta.typesIncluded).toEqual(["FLR"]);
+    expect(result.meta.warnings?.length).toBe(2);
+  });
+
+  it("throws DonkiUpstreamUnavailableError for detail lookup when upstream fetch fails", async () => {
+    globalThis.fetch = async () => {
+      throw new TypeError("fetch failed");
+    };
+
+    await expect(
+      fetchSpaceWeatherEventById("2026-02-16T18:00:00-GST-001")
+    ).rejects.toBeInstanceOf(DonkiUpstreamUnavailableError);
+  });
+
+  it("defaults to NASA DONKI gateway when NASA_API_KEY is set", async () => {
+    process.env.NASA_API_KEY = "test_nasa_key";
+    delete process.env.DONKI_BASE_URL;
+
+    const requestedUrls: string[] = [];
+    globalThis.fetch = async (input: string | URL | Request) => {
+      const url =
+        typeof input === "string"
+          ? input
+          : input instanceof URL
+            ? input.toString()
+            : input.url;
+      requestedUrls.push(url);
+      return new Response(JSON.stringify([]), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    };
+
+    await fetchSpaceWeather({
+      startDate: "2026-02-01",
+      endDate: "2026-02-02",
+      eventTypes: ["FLR"],
+      limit: 21,
+      page: 1,
+    });
+
+    expect(requestedUrls).toHaveLength(1);
+    expect(requestedUrls[0]).toContain("api.nasa.gov/DONKI/FLR");
+    expect(requestedUrls[0]).toContain("api_key=test_nasa_key");
   });
 });

@@ -3,6 +3,8 @@
 import {
   AnyCosmicObject,
   AnySpaceWeatherEvent,
+  SpaceWeatherEventType,
+  SpaceWeatherNotificationType,
   isExoplanet,
   isSmallBody,
   isStar,
@@ -321,6 +323,33 @@ export const SPACE_WEATHER_DETAIL_ACCENTS: Record<
     linkedTitleHover: "group-hover:text-aurora-violet",
     linkedIconHover: "group-hover:text-aurora-violet",
   },
+  IPS: {
+    heroGlow: "bg-aurora-violet/14",
+    eventIcon: "text-aurora-violet",
+    metricAccent: "text-aurora-violet",
+    actionHover: "hover:text-aurora-violet",
+    linkedCardHover: "hover:border-aurora-violet/50 hover:bg-aurora-violet/5",
+    linkedTitleHover: "group-hover:text-aurora-violet",
+    linkedIconHover: "group-hover:text-aurora-violet",
+  },
+  HSS: {
+    heroGlow: "bg-aurora-violet/14",
+    eventIcon: "text-aurora-violet",
+    metricAccent: "text-aurora-violet",
+    actionHover: "hover:text-aurora-violet",
+    linkedCardHover: "hover:border-aurora-violet/50 hover:bg-aurora-violet/5",
+    linkedTitleHover: "group-hover:text-aurora-violet",
+    linkedIconHover: "group-hover:text-aurora-violet",
+  },
+  SEP: {
+    heroGlow: "bg-aurora-violet/14",
+    eventIcon: "text-aurora-violet",
+    metricAccent: "text-aurora-violet",
+    actionHover: "hover:text-aurora-violet",
+    linkedCardHover: "hover:border-aurora-violet/50 hover:bg-aurora-violet/5",
+    linkedTitleHover: "group-hover:text-aurora-violet",
+    linkedIconHover: "group-hover:text-aurora-violet",
+  },
 };
 
 export function getSpaceWeatherDetailAccent(
@@ -328,3 +357,53 @@ export function getSpaceWeatherDetailAccent(
 ): SpaceWeatherDetailAccentConfig {
   return SPACE_WEATHER_DETAIL_ACCENTS[eventType];
 }
+
+export const SPACE_WEATHER_EVENT_LABELS: Record<SpaceWeatherEventType, string> = {
+  FLR: "Solar Flares",
+  CME: "CMEs",
+  GST: "Geomagnetic Storms",
+  IPS: "Interplanetary Shocks",
+  HSS: "High-Speed Streams",
+  SEP: "Solar Energetic Particles",
+};
+
+export const SPACE_WEATHER_EVENT_BREAKDOWN_LABELS: Record<
+  SpaceWeatherEventType,
+  string
+> = {
+  FLR: "flares",
+  CME: "CMEs",
+  GST: "storms",
+  IPS: "shocks",
+  HSS: "streams",
+  SEP: "SEP events",
+};
+
+export const SPACE_WEATHER_SEVERITY_BADGE_CLASSES: Record<string, string> = {
+  minor: "border-muted-foreground/50 text-muted-foreground bg-muted/10",
+  moderate: "border-yellow-500/50 text-yellow-500 bg-yellow-500/10",
+  strong: "border-amber-500/50 text-amber-500 bg-amber-500/10",
+  severe: "border-orange-500/50 text-orange-500 bg-orange-500/10",
+  extreme: "border-red-500/50 text-red-500 bg-red-500/10",
+};
+
+export const SPACE_WEATHER_SEVERITY_TEXT_CLASSES: Record<string, string> = {
+  minor: "text-muted-foreground",
+  moderate: "text-yellow-500",
+  strong: "text-amber-500",
+  severe: "text-orange-500",
+  extreme: "text-red-500",
+};
+
+export const SPACE_WEATHER_NOTIFICATION_BADGES: Record<
+  SpaceWeatherNotificationType,
+  string
+> = {
+  all: "border-aurora-violet/40 text-aurora-violet bg-aurora-violet/10",
+  FLR: "border-aurora-violet/40 text-aurora-violet bg-aurora-violet/10",
+  CME: "border-aurora-violet/40 text-aurora-violet bg-aurora-violet/10",
+  GST: "border-aurora-violet/40 text-aurora-violet bg-aurora-violet/10",
+  IPS: "border-aurora-violet/40 text-aurora-violet bg-aurora-violet/10",
+  SEP: "border-aurora-violet/40 text-aurora-violet bg-aurora-violet/10",
+  other: "border-muted-foreground/40 text-muted-foreground bg-muted/10",
+};

@@ -19,6 +19,9 @@ import {
   SolarFlareEvent,
   CMEEvent,
   GSTEvent,
+  IPSEvent,
+  HSSEvent,
+  SEPEvent,
   SpaceWeatherSeverity,
 } from "@/lib/types";
 import {
@@ -30,6 +33,8 @@ import {
   DETAIL_ACCORDION_SURFACE_CLASS,
   DETAIL_CARD_SURFACE_CLASS,
   getSpaceWeatherDetailAccent,
+  SPACE_WEATHER_SEVERITY_BADGE_CLASSES,
+  SPACE_WEATHER_SEVERITY_TEXT_CLASSES,
   THEMES,
 } from "@/lib/theme";
 import {
@@ -50,23 +55,6 @@ import { cn } from "@/lib/utils";
 
 const theme = THEMES["space-weather"];
 
-// Severity color mapping
-const SEVERITY_COLORS: Record<SpaceWeatherSeverity, string> = {
-  minor: "border-muted-foreground/50 text-muted-foreground bg-muted/10",
-  moderate: "border-yellow-500/50 text-yellow-500 bg-yellow-500/10",
-  strong: "border-amber-500/50 text-amber-500 bg-amber-500/10",
-  severe: "border-orange-500/50 text-orange-500 bg-orange-500/10",
-  extreme: "border-red-500/50 text-red-500 bg-red-500/10",
-};
-
-const SEVERITY_TEXT_COLORS: Record<SpaceWeatherSeverity, string> = {
-  minor: "text-muted-foreground",
-  moderate: "text-yellow-500",
-  strong: "text-amber-500",
-  severe: "text-orange-500",
-  extreme: "text-red-500",
-};
-
 function getEventIcon(type: AnySpaceWeatherEvent["eventType"], className = "w-6 h-6") {
   switch (type) {
     case "FLR":
@@ -75,6 +63,12 @@ function getEventIcon(type: AnySpaceWeatherEvent["eventType"], className = "w-6 
       return <Cloud className={className} />;
     case "GST":
       return <Magnet className={className} />;
+    case "IPS":
+      return <Cloud className={className} />;
+    case "HSS":
+      return <Activity className={className} />;
+    case "SEP":
+      return <Zap className={className} />;
   }
 }
 
@@ -137,6 +131,21 @@ function getEventDescription(event: AnySpaceWeatherEvent): string {
     return `A geomagnetic storm reaching Kp ${gst.kpIndex} (${gScale}) was recorded on ${date}.`;
   }
 
+  if (event.eventType === "IPS") {
+    const ips = event as IPSEvent;
+    return `An interplanetary shock was detected on ${date}${ips.location ? ` near ${ips.location}` : ""}.`;
+  }
+
+  if (event.eventType === "HSS") {
+    const hss = event as HSSEvent;
+    return `A high-speed solar wind stream was recorded on ${date}${hss.instruments?.length ? ` with ${hss.instruments.length} instrument source(s)` : ""}.`;
+  }
+
+  if (event.eventType === "SEP") {
+    const sep = event as SEPEvent;
+    return `A solar energetic particle event was observed on ${date}${sep.instruments?.length ? ` by ${sep.instruments[0]}` : ""}.`;
+  }
+
   return `Space weather event detected on ${date}.`;
 }
 
@@ -162,6 +171,25 @@ function getKeyFacts(event: AnySpaceWeatherEvent, severity: SpaceWeatherSeverity
   } else if (event.eventType === "GST") {
     const gst = event as GSTEvent;
     facts.push({ label: "Max Kp Index", value: `Kp ${gst.kpIndex}` });
+  } else if (event.eventType === "IPS") {
+    const ips = event as IPSEvent;
+    facts.push({ label: "Location", value: ips.location || "Unknown" });
+    facts.push({
+      label: "Instruments",
+      value: ips.instruments?.length ? `${ips.instruments.length}` : "Unknown",
+    });
+  } else if (event.eventType === "HSS") {
+    const hss = event as HSSEvent;
+    facts.push({
+      label: "Instruments",
+      value: hss.instruments?.length ? `${hss.instruments.length}` : "Unknown",
+    });
+  } else if (event.eventType === "SEP") {
+    const sep = event as SEPEvent;
+    facts.push({
+      label: "Instruments",
+      value: sep.instruments?.length ? `${sep.instruments.length}` : "Unknown",
+    });
   }
 
   facts.push({
@@ -204,7 +232,7 @@ export function SpaceWeatherDetail({ event, compact }: SpaceWeatherDetailProps) 
             <Badge variant="outline" className={`font-mono ${theme.badge}`}>
               {event.eventType}
             </Badge>
-            <Badge variant="outline" className={SEVERITY_COLORS[severity]}>
+            <Badge variant="outline" className={SPACE_WEATHER_SEVERITY_BADGE_CLASSES[severity]}>
               {severity.charAt(0).toUpperCase() + severity.slice(1)}
             </Badge>
             {event.linkedEvents && event.linkedEvents.length > 0 && (
@@ -277,7 +305,7 @@ export function SpaceWeatherDetail({ event, compact }: SpaceWeatherDetailProps) 
                   {fact.label}
                 </p>
                 <p className={`text-base sm:text-xl font-mono nixie break-all ${
-                  fact.label === "Severity" ? SEVERITY_TEXT_COLORS[severity] :
+                  fact.label === "Severity" ? SPACE_WEATHER_SEVERITY_TEXT_CLASSES[severity] :
                   fact.label === "Flare Class" || fact.label === "Speed" || fact.label === "Max Kp Index"
                     ? accent.metricAccent : "text-foreground"
                 }`}>
@@ -482,7 +510,7 @@ export function SpaceWeatherDetail({ event, compact }: SpaceWeatherDetailProps) 
                               <td className="px-4 py-2 font-mono text-xs">
                                 {formatDateTime(reading.observedTime).time}
                               </td>
-                              <td className={`px-4 py-2 font-mono font-bold ${SEVERITY_TEXT_COLORS[getKpSeverityLocal(reading.kpIndex)]}`}>
+                              <td className={`px-4 py-2 font-mono font-bold ${SPACE_WEATHER_SEVERITY_TEXT_CLASSES[getKpSeverityLocal(reading.kpIndex)]}`}>
                                 {reading.kpIndex}
                               </td>
                               <td className="px-4 py-2 text-muted-foreground">{reading.source}</td>
@@ -491,6 +519,67 @@ export function SpaceWeatherDetail({ event, compact }: SpaceWeatherDetailProps) 
                         </tbody>
                       </table>
                     </div>
+                  </div>
+                )}
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+        )}
+
+        {(event.eventType === "IPS" ||
+          event.eventType === "HSS" ||
+          event.eventType === "SEP") && (
+          <AccordionItem
+            value="measurements"
+            className={DETAIL_ACCORDION_SURFACE_CLASS}
+          >
+            <AccordionTrigger className="font-display hover:no-underline">
+              <span className="flex items-center gap-2">
+                <Activity className="w-4 h-4" />
+                Solar Wind & Particle Properties
+              </span>
+            </AccordionTrigger>
+            <AccordionContent className="pb-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                {event.eventType === "IPS" && (
+                  <div className="min-w-0">
+                    <p className="text-xs text-muted-foreground">Location</p>
+                    <p className={`font-mono text-sm sm:text-lg ${theme.text}`}>
+                      {(event as IPSEvent).location || "Unknown"}
+                    </p>
+                  </div>
+                )}
+                {(event as IPSEvent | HSSEvent | SEPEvent).submissionTime && (
+                  <div className="min-w-0">
+                    <p className="text-xs text-muted-foreground">Submission Time</p>
+                    <p className="font-mono text-sm sm:text-lg break-all">
+                      {(event as IPSEvent | HSSEvent | SEPEvent).submissionTime}
+                    </p>
+                  </div>
+                )}
+                {(event as IPSEvent | HSSEvent | SEPEvent).instruments && (
+                  <div className="min-w-0 sm:col-span-2">
+                    <p className="text-xs text-muted-foreground mb-1">Instrument Sources</p>
+                    <div className="flex flex-wrap gap-2">
+                      {(event as IPSEvent | HSSEvent | SEPEvent).instruments!.map((instrument) => (
+                        <Badge key={instrument} variant="outline" className="border-border/50 text-xs">
+                          {instrument}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {(event as IPSEvent | HSSEvent | SEPEvent).sourceLink && (
+                  <div className="min-w-0 sm:col-span-2">
+                    <a
+                      href={(event as IPSEvent | HSSEvent | SEPEvent).sourceLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={`inline-flex items-center gap-1.5 text-sm ${theme.text} ${theme.hoverText} transition-colors`}
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      View DONKI record
+                    </a>
                   </div>
                 )}
               </div>
@@ -517,17 +606,15 @@ export function SpaceWeatherDetail({ event, compact }: SpaceWeatherDetailProps) 
               <div className="space-y-2">
                 {event.linkedEvents.map((linked, i) => {
                   const linkedType = parseEventType(linked.activityID);
-                  const linkedTypeLabel = linkedType ? getEventTypeLabel(linkedType) : "Event";
+                  const linkedTypeLabel = linkedType ? getEventTypeLabel(linkedType) : "DONKI Event";
+                  const linkedCardClass = cn(
+                    "flex items-center justify-between p-3 rounded-lg border border-border/50 transition-colors group",
+                    accent.linkedCardHover
+                  );
+                  const internalHref = `/space-weather/${encodeURIComponent(linked.activityID)}`;
 
-                  return (
-                    <Link
-                      key={i}
-                      href={`/space-weather/${encodeURIComponent(linked.activityID)}`}
-                      className={cn(
-                        "flex items-center justify-between p-3 rounded-lg border border-border/50 transition-colors group",
-                        accent.linkedCardHover
-                      )}
-                    >
+                  const cardContent = (
+                    <>
                       <div className="flex items-center gap-3">
                         {linkedType && (
                           <span
@@ -551,7 +638,32 @@ export function SpaceWeatherDetail({ event, compact }: SpaceWeatherDetailProps) 
                           accent.linkedIconHover
                         )}
                       />
-                    </Link>
+                    </>
+                  );
+
+                  if (linkedType) {
+                    return (
+                      <Link
+                        key={i}
+                        href={internalHref}
+                        className={linkedCardClass}
+                      >
+                        {cardContent}
+                      </Link>
+                    );
+                  }
+
+                  return (
+                    <a
+                      key={i}
+                      href={donkiSearchUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={linkedCardClass}
+                      title="Unsupported linked event type in-app. Open DONKI search."
+                    >
+                      {cardContent}
+                    </a>
                   );
                 })}
               </div>

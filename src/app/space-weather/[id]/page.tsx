@@ -8,9 +8,11 @@ import {
   getEventTypeLabel,
 } from "@/lib/nasa-donki";
 import {
-  SolarFlareEvent,
   CMEEvent,
   GSTEvent,
+  IPSEvent,
+  SEPEvent,
+  SolarFlareEvent,
 } from "@/lib/types";
 import { BASE_URL } from "@/lib/config";
 import { THEMES } from "@/lib/theme";
@@ -65,6 +67,11 @@ export async function generateMetadata({
     description = `Coronal mass ejection at ${(event as CMEEvent).speed} km/s on ${date}.`;
   } else if (event.eventType === "GST") {
     description = `Geomagnetic storm with Kp index ${(event as GSTEvent).kpIndex} on ${date}.`;
+  } else if (event.eventType === "IPS") {
+    description = `Interplanetary shock${(event as IPSEvent).location ? ` near ${(event as IPSEvent).location}` : ""} observed on ${date}.`;
+  } else if (event.eventType === "SEP") {
+    const sep = event as SEPEvent;
+    description = `Solar energetic particle event on ${date}${sep.instruments?.length ? ` observed by ${sep.instruments[0]}` : ""}.`;
   }
 
   return {
