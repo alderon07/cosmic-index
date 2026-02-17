@@ -1,22 +1,24 @@
 # AGENTS.md
 
-Last updated (UTC): 2026-02-13
-Version: 1.2
+Last updated (UTC): 2026-02-17
+Version: 1.4
 
 This file provides implementation-oriented guidance for agents working in this repo.
 
 ## Change Log
 
+- 2026-02-17: Space weather expanded to include `IPS`, `HSS`, `SEP`, a separate notifications endpoint (`GET /api/v1/space-weather/notifications`), and DONKI reliability hardening (retry/timeout/single-flight/cache updates).
+- 2026-02-17: Cleaned wording and removed duplicate policy statements.
 - 2026-02-13: Added explicit sections for project overview, build/test commands, code style, testing instructions, and security considerations.
 - 2026-02-13: Added mandatory policy to keep the OpenAPI spec updated whenever endpoints under `src/app/api/**` change.
 - 2026-02-13: Added top-level metadata header (`Last updated (UTC)`, `Version`).
 - 2026-02-13: OpenAPI canonical file moved to `src/lib/openapi/openapi.json`; docs/spec are internal-admin-only in production.
 
 ## General
-- When making a plan always ask your these questions
-  - are there are gotchas, caveats, edge cases I missed
-  - any performance improvements I can make that I missed
-  - any implementation details that I missed
+- When making a plan, explicitly check:
+  - gotchas, caveats, and edge cases
+  - performance improvements
+  - missing implementation details
 
 ## Project Overview
 
@@ -90,7 +92,6 @@ bun run lint
 
 - Always commit with a clear, descriptive message.
 - Never commit/push any code without explicit approval.
-- Never commit/push secrets or hardcode credentials; keep secrets in environment variables.
 
 ## Security Considerations
 
@@ -114,6 +115,10 @@ bun run lint
 
 - App Router pages live under `src/app`.
 - Versioned API routes are under `src/app/api/v1/*`.
+- Space weather API routes:
+  - `GET /api/v1/space-weather` (event stream with `FLR/CME/GST/IPS/HSS/SEP`)
+  - `GET /api/v1/space-weather/{id}` (detail by event ID)
+  - `GET /api/v1/space-weather/notifications` (separate DONKI notifications feed)
 - User/Stripe routes are under `src/app/api/user/*`, `src/app/api/stripe/*`, `src/app/api/webhooks/*`.
 - `next.config.ts` rewrites unversioned `/api/*` endpoints to `/api/v1/*` for backward compatibility.
 
@@ -132,7 +137,7 @@ bun run lint
 - Event feeds:
   - Close approaches: `src/lib/cneos-close-approach.ts`
   - Fireballs: `src/lib/cneos-fireball.ts`
-  - Space weather: `src/lib/nasa-donki.ts`
+  - Space weather events + notifications: `src/lib/nasa-donki.ts`
 
 ### Storage Roles
 
@@ -195,6 +200,7 @@ Notes:
 
 - Saved/catalog IDs use canonical prefixes: `exoplanet:...`, `star:...`, `small-body:...`.
 - Event-like saves use hashed canonical IDs (`fireball`, `close-approach`, `flr`, `cme`, `gst`).
+- Space weather save IDs currently remain limited to `flr/cme/gst`; `ips/hss/sep` save support is not yet wired.
 - Exoplanet detail IDs are URI-encoded names; saved-object link code includes compatibility for legacy slug-style IDs.
 
 ## Caching and Rate Limiting
@@ -203,6 +209,7 @@ Notes:
 
 - `src/lib/cache.ts` wraps Upstash with graceful fallback.
 - During build phase (`NEXT_PHASE=phase-production-build` or lifecycle `build`), Redis cache calls are disabled to avoid static prerender dynamic-fetch errors.
+- Space weather cache keys include per-type buckets (`sw:flr`, `sw:cme`, `sw:gst`, `sw:ips`, `sw:hss`, `sw:sep`) plus notifications (`sw:notifications`).
 
 ### Rate Limiting
 
@@ -242,6 +249,7 @@ Billing/Stripe:
 Data/API:
 
 - `NASA_API_KEY`
+- `DONKI_BASE_URL` (optional override; defaults to NASA DONKI gateway when `NASA_API_KEY` is configured, otherwise CCMC endpoint)
 - `COMPARE_DOMAINS`
 - `TRUST_CLOUDFLARE_HEADERS`
 - `TRUST_FLY_HEADERS`
@@ -253,6 +261,8 @@ Data/API:
 - Mock saved data is seeded once per process; restarting dev server resets seed data.
 - Exoplanet browse requires Turso index; detail pages may still work via NASA fetch path.
 - If compare state seems stale/weird, clear session storage key `cosmic-index:compare:v1`.
+- DONKI notifications endpoint has a 30-day max query window; requests beyond this are clamped and surfaced via warnings.
+- Linked space-weather events can include unsupported DONKI types (e.g. `RBE`/`MPC`); unsupported links should route to DONKI external references, not in-app detail routes.
 
 ## High-Value Files
 
