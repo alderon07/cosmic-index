@@ -93,11 +93,15 @@ export function CollectionDetailContent() {
   }, [limit, page]);
 
   const setPage = useCallback(
-    (nextPage: number) => {
-      const safePage = Math.max(1, nextPage);
+    (nextPageOrUpdater: number | ((currentPage: number) => number)) => {
+      const resolvedPage =
+        typeof nextPageOrUpdater === "function"
+          ? nextPageOrUpdater(page)
+          : nextPageOrUpdater;
+      const safePage = Math.max(1, resolvedPage);
       router.push(`/user/collections/${params.id}?page=${safePage}&limit=${limit}`);
     },
-    [limit, params.id, router]
+    [limit, page, params.id, router]
   );
 
   const loadCollection = useCallback(
@@ -202,7 +206,7 @@ export function CollectionDetailContent() {
         });
 
         if (data && data.items.length === 1 && page > 1) {
-          setPage(page - 1);
+          setPage((currentPage) => currentPage - 1);
         }
       } catch (error) {
         console.error(error);
@@ -402,7 +406,7 @@ export function CollectionDetailContent() {
               variant="outline"
               size="sm"
               disabled={page <= 1}
-              onClick={() => setPage(page - 1)}
+              onClick={() => setPage((currentPage) => currentPage - 1)}
               className="border-orange-300/30 bg-black/25 text-orange-100 hover:bg-orange-500/15"
             >
               Previous
@@ -413,7 +417,7 @@ export function CollectionDetailContent() {
               variant="outline"
               size="sm"
               disabled={!data.hasMore}
-              onClick={() => setPage(page + 1)}
+              onClick={() => setPage((currentPage) => currentPage + 1)}
               className="border-orange-300/30 bg-black/25 text-orange-100 hover:bg-orange-500/15"
             >
               Next

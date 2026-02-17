@@ -35,19 +35,26 @@ function ShortcutRow({
   description: string;
 }) {
   const keys = parseShortcut(shortcut);
+  const keyInstanceCounts = new Map<string, number>();
 
   return (
     <div className="flex items-center justify-between py-1.5">
       <span className="text-sm text-muted-foreground">{description}</span>
       <div className="flex items-center gap-1">
-        {keys.map((key, index) => (
-          <span key={index} className="flex items-center gap-1">
-            <Kbd>{formatKeyForDisplay(key)}</Kbd>
-            {index < keys.length - 1 && (
-              <span className="text-xs text-muted-foreground mx-0.5">then</span>
-            )}
-          </span>
-        ))}
+        {keys.map((key, index) => {
+          const count = (keyInstanceCounts.get(key) ?? 0) + 1;
+          keyInstanceCounts.set(key, count);
+          const keyId = `${shortcut}-${key}-${count}`;
+
+          return (
+            <span key={keyId} className="flex items-center gap-1">
+              <Kbd>{formatKeyForDisplay(key)}</Kbd>
+              {index < keys.length - 1 && (
+                <span className="text-xs text-muted-foreground mx-0.5">then</span>
+              )}
+            </span>
+          );
+        })}
       </div>
     </div>
   );

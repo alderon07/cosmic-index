@@ -154,11 +154,19 @@ export function StarsPageClient({
       : null;
 
   // Page change handler
-  const setPage = useCallback((newPage: number) => {
-    updateUrl({
-      page: newPage === 1 ? null : newPage.toString(),
-    });
-  }, [updateUrl]);
+  const setPage = useCallback(
+    (nextPageOrUpdater: number | ((currentPage: number) => number)) => {
+      const resolvedPage =
+        typeof nextPageOrUpdater === "function"
+          ? nextPageOrUpdater(page)
+          : nextPageOrUpdater;
+      const safePage = Math.max(1, resolvedPage);
+      updateUrl({
+        page: safePage === 1 ? null : safePage.toString(),
+      });
+    },
+    [page, updateUrl]
+  );
 
   // Clamp page when data loads
   useEffect(() => {
@@ -248,13 +256,13 @@ export function StarsPageClient({
   const nextPage = useCallback(() => {
     const totalPages = data?.total ? Math.ceil(data.total / limit) : 0;
     if (page < totalPages) {
-      setPage(page + 1);
+      setPage((currentPage) => currentPage + 1);
     }
   }, [data, limit, page, setPage]);
 
   const previousPage = useCallback(() => {
     if (page > 1) {
-      setPage(page - 1);
+      setPage((currentPage) => currentPage - 1);
     }
   }, [page, setPage]);
 

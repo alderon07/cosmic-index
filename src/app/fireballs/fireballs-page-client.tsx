@@ -336,10 +336,10 @@ export function FireballsPageClient({
 
         {/* Sort Controls */}
         <div className="flex items-center gap-3">
-          <label className="flex items-center gap-1.5 text-xs text-muted-foreground uppercase tracking-wider">
+          <p className="flex items-center gap-1.5 text-xs text-muted-foreground uppercase tracking-wider">
             <ArrowUpDown className={`w-3.5 h-3.5 ${theme.text}`} />
             Sort
-          </label>
+          </p>
           <Select
             value={sort}
             onValueChange={(value) => handleFilterChange("sort", value)}

@@ -358,10 +358,10 @@ export function CloseApproachesPageClient({
 
         {/* Sort Controls */}
         <div className="flex items-center gap-3">
-          <label className="flex items-center gap-1.5 text-xs text-muted-foreground uppercase tracking-wider">
+          <p className="flex items-center gap-1.5 text-xs text-muted-foreground uppercase tracking-wider">
             <ArrowUpDown className={`w-3.5 h-3.5 ${theme.text}`} />
             Sort
-          </label>
+          </p>
           <Select
             value={sort}
             onValueChange={(value) => handleFilterChange("sort", value)}
@@ -439,9 +439,9 @@ export function CloseApproachesPageClient({
             <AccordionContent className="pb-4 space-y-4">
               {/* Time Range */}
               <div>
-                <label className="text-xs text-muted-foreground uppercase tracking-wider block mb-2">
+                <p className="text-xs text-muted-foreground uppercase tracking-wider block mb-2">
                   Time Range
-                </label>
+                </p>
                 <div className="flex flex-wrap gap-2">
                   {TIME_RANGE_OPTIONS.map((option) => (
                     <Button
@@ -459,9 +459,9 @@ export function CloseApproachesPageClient({
 
               {/* Distance Threshold */}
               <div>
-                <label className="text-xs text-muted-foreground uppercase tracking-wider block mb-2">
+                <p className="text-xs text-muted-foreground uppercase tracking-wider block mb-2">
                   Maximum Distance
-                </label>
+                </p>
                 <div className="flex flex-wrap gap-2">
                   {DISTANCE_THRESHOLD_OPTIONS.map((option) => (
                     <Button
@@ -479,9 +479,9 @@ export function CloseApproachesPageClient({
 
               {/* PHA Filter */}
               <div>
-                <label className="text-xs text-muted-foreground uppercase tracking-wider block mb-2">
+                <p className="text-xs text-muted-foreground uppercase tracking-wider block mb-2">
                   Classification
-                </label>
+                </p>
                 <Button
                   variant={phaOnly ? "destructive" : "outline"}
                   size="sm"

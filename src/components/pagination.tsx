@@ -13,12 +13,14 @@ interface PaginationProps {
   theme?: ObjectTheme;
 }
 
+type PaginationItem = number | "ellipsis-left" | "ellipsis-right";
+
 function generatePagination(
   currentPage: number,
   totalPages: number,
   siblingsCount: number = 1
-): (number | "ellipsis")[] {
-  const pages: (number | "ellipsis")[] = [];
+): PaginationItem[] {
+  const pages: PaginationItem[] = [];
 
   // Always show first page
   pages.push(1);
@@ -29,7 +31,7 @@ function generatePagination(
 
   // Add ellipsis after first page if needed
   if (leftSibling > 2) {
-    pages.push("ellipsis");
+    pages.push("ellipsis-left");
   }
 
   // Add pages around current page
@@ -41,7 +43,7 @@ function generatePagination(
 
   // Add ellipsis before last page if needed
   if (rightSibling < totalPages - 1) {
-    pages.push("ellipsis");
+    pages.push("ellipsis-right");
   }
 
   // Always show last page if more than 1 page
@@ -95,11 +97,11 @@ export function Pagination({
 
           {/* Page Numbers */}
           <div className="flex items-center gap-1">
-            {pages.map((page, index) => {
-              if (page === "ellipsis") {
+            {pages.map((page) => {
+              if (page === "ellipsis-left" || page === "ellipsis-right") {
                 return (
                   <span
-                    key={`ellipsis-${index}`}
+                    key={page}
                     className="px-2 py-1 text-muted-foreground"
                   >
                     <MoreHorizontal className="w-4 h-4" />

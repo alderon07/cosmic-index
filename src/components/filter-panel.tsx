@@ -295,10 +295,10 @@ export function ExoplanetFilterPanel({
 
       {/* Sort Selector */}
       <div className="flex items-center gap-3">
-        <label className="flex items-center gap-1.5 text-xs text-muted-foreground uppercase tracking-wider">
+        <p className="flex items-center gap-1.5 text-xs text-muted-foreground uppercase tracking-wider">
           <ArrowUpDown className={`w-3.5 h-3.5 ${theme.text}`} />
           Sort
-        </label>
+        </p>
         <Select
           value={filters.sort || "discovered"}
           onValueChange={(value) =>
@@ -386,9 +386,9 @@ export function ExoplanetFilterPanel({
           <AccordionContent className="pb-4 space-y-4">
             {/* Planet Size Category */}
             <div>
-              <label className="text-xs text-muted-foreground uppercase tracking-wider block mb-2">
+              <p className="text-xs text-muted-foreground uppercase tracking-wider block mb-2">
                 Planet Size
-              </label>
+              </p>
               <div className="flex flex-wrap gap-2">
                 {(Object.keys(SIZE_CATEGORIES) as SizeCategory[]).map(
                   (category) => (
@@ -421,9 +421,9 @@ export function ExoplanetFilterPanel({
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* Discovery Facility */}
               <div>
-                <label className="text-xs text-muted-foreground uppercase tracking-wider block mb-2">
+                <p className="text-xs text-muted-foreground uppercase tracking-wider block mb-2">
                   Discovery Facility
-                </label>
+                </p>
                 <Select
                   value={filters.facility || "all"}
                   onValueChange={(value) =>
@@ -455,9 +455,9 @@ export function ExoplanetFilterPanel({
 
               {/* Discovery Year */}
               <div>
-                <label className="text-xs text-muted-foreground uppercase tracking-wider block mb-2">
+                <p className="text-xs text-muted-foreground uppercase tracking-wider block mb-2">
                   Discovery Year
-                </label>
+                </p>
                 <Select
                   value={filters.year?.toString() || "all"}
                   onValueChange={(value) =>
@@ -493,9 +493,9 @@ export function ExoplanetFilterPanel({
 
               {/* Max Distance from Earth */}
               <div>
-                <label className="text-xs text-muted-foreground uppercase tracking-wider block mb-2">
+                <p className="text-xs text-muted-foreground uppercase tracking-wider block mb-2">
                   Max Distance
-                </label>
+                </p>
                 <Select
                   value={filters.maxDistancePc?.toString() || "all"}
                   onValueChange={(value) =>
@@ -530,9 +530,9 @@ export function ExoplanetFilterPanel({
 
             {/* Discovery Method */}
             <div>
-              <label className="text-xs text-muted-foreground uppercase tracking-wider block mb-2">
+              <p className="text-xs text-muted-foreground uppercase tracking-wider block mb-2">
                 Discovery Method
-              </label>
+              </p>
               <div className="flex flex-wrap gap-2">
                 {DISCOVERY_METHODS.map((method) => (
                   <Button
@@ -557,9 +557,9 @@ export function ExoplanetFilterPanel({
 
             {/* Special Filters */}
             <div>
-              <label className="text-xs text-muted-foreground uppercase tracking-wider block mb-2">
+              <p className="text-xs text-muted-foreground uppercase tracking-wider block mb-2">
                 Special Filters
-              </label>
+              </p>
               <div className="flex flex-wrap gap-2">
                 <Button
                   variant={filters.habitable ? "default" : "outline"}
@@ -584,9 +584,9 @@ export function ExoplanetFilterPanel({
 
             {/* Data Availability */}
             <div>
-              <label className="text-xs text-muted-foreground uppercase tracking-wider block mb-2">
+              <p className="text-xs text-muted-foreground uppercase tracking-wider block mb-2">
                 Data Availability
-              </label>
+              </p>
               <div className="flex gap-2">
                 <Button
                   variant={filters.hasRadius ? "default" : "outline"}
@@ -777,9 +777,9 @@ export function SmallBodyFilterPanel({
           <AccordionContent className="pb-4 space-y-4">
             {/* Orbit Class */}
             <div>
-              <label className="text-xs text-muted-foreground uppercase tracking-wider block mb-2">
+              <p className="text-xs text-muted-foreground uppercase tracking-wider block mb-2">
                 Orbit Class
-              </label>
+              </p>
               <div className="flex flex-wrap gap-2">
                 {orbitClassOptions.map((option) => (
                   <Button
@@ -808,9 +808,9 @@ export function SmallBodyFilterPanel({
 
             {/* Classification Filters */}
             <div>
-              <label className="text-xs text-muted-foreground uppercase tracking-wider block mb-2">
+              <p className="text-xs text-muted-foreground uppercase tracking-wider block mb-2">
                 Classification
-              </label>
+              </p>
               <div className="flex flex-wrap gap-2">
                 <Button
                   variant={filters.neo ? "secondary" : "outline"}
