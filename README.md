@@ -1,6 +1,6 @@
 # 🌌 Cosmic Index
 
-A rweb encyclopedia for exploring cosmic objects beyond our solar system. Browse and search through thousands of confirmed exoplanets from NASA's Exoplanet Archive and over a million asteroids and comets from JPL's Small-Body Database.
+A web encyclopedia for exploring cosmic objects and events beyond Earth. Browse and search exoplanets, stars, small bodies, close approaches, fireballs, and space weather data from NASA/JPL sources.
 
 ![Next.js](https://img.shields.io/badge/Next.js-16.1-black?logo=next.js)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?logo=typescript)
@@ -23,6 +23,14 @@ A rweb encyclopedia for exploring cosmic objects beyond our solar system. Browse
 - Filter by type (asteroid/comet), Near-Earth Object (NEO) status, and Potentially Hazardous Asteroid (PHA) classification
 - Track orbit classifications: Amor, Apollo, Aten, Atira, Main Belt, Trans-Neptunian, and more
 - View physical properties including diameter and absolute magnitude
+
+### Space Weather
+
+- Space weather event feed from NASA DONKI
+- Event types: `FLR`, `CME`, `GST`, `IPS`, `HSS`, `SEP`
+- Separate DONKI notifications feed with API-backed pagination
+- Notifications window is constrained to DONKI's 30-day request limit
+- Full notification text supports markdown rendering in expanded view
 
 ### General Features
 
@@ -59,6 +67,12 @@ A rweb encyclopedia for exploring cosmic objects beyond our solar system. Browse
 - **Data**: Asteroids, comets, and other small solar system bodies
 - **Update Frequency**: Regular updates from JPL
 
+### NASA DONKI (Space Weather)
+
+- **API**: [NASA DONKI](https://api.nasa.gov/)
+- **Data**: Solar flares, CMEs, geomagnetic storms, interplanetary shocks, high-speed streams, SEP events, and notifications
+- **Note**: Notifications are limited by DONKI to a 30-day query range
+
 ## 🚀 Getting Started
 
 ### Prerequisites
@@ -93,6 +107,14 @@ Add your Upstash Redis credentials if you want to enable caching:
 ```env
 UPSTASH_REDIS_REST_URL=your_redis_url
 UPSTASH_REDIS_REST_TOKEN=your_redis_token
+```
+
+Optional NASA/DONKI configuration:
+
+```env
+NASA_API_KEY=your_nasa_api_key
+# Optional DONKI override. If omitted, app prefers api.nasa.gov when NASA_API_KEY is set.
+DONKI_BASE_URL=https://api.nasa.gov/DONKI
 ```
 
 4. Run the development server:
@@ -135,45 +157,6 @@ cosmic-index/
 └── public/                     # Static assets
 ```
 
-## 🔌 API Endpoints
-
-### Exoplanets
-
-- `GET /api/exoplanets` - List exoplanets with filtering and pagination
-
-  - Query parameters:
-    - `query` - Search by name
-    - `discoveryMethod` - Filter by discovery method
-    - `yearFrom` / `yearTo` - Filter by discovery year range
-    - `hasRadius` / `hasMass` - Filter by data availability
-    - `page` - Page number (default: 1)
-    - `limit` - Results per page (default: 20, max: 100)
-
-- `GET /api/exoplanets/[id]` - Get detailed exoplanet information
-
-### Small Bodies
-
-- `GET /api/small-bodies` - List small bodies with filtering and pagination
-
-  - Query parameters:
-    - `query` - Search by name or designation (regex pattern)
-    - `kind` - Filter by type: `asteroid` or `comet`
-    - `neo` - Filter Near-Earth Objects (boolean)
-    - `pha` - Filter Potentially Hazardous Asteroids (boolean)
-    - `page` - Page number (default: 1)
-    - `limit` - Results per page (default: 20, max: 100)
-
-- `GET /api/small-bodies/[id]` - Get detailed small body information
-
-### API Docs Access
-
-- Docs UI is available at `GET /api/docs`.
-- In production, docs/spec are restricted to internal admins.
-- Configure internal admin IDs with:
-  - `INTERNAL_ADMIN_IDS` (preferred, comma-separated Clerk user IDs)
-  - `PRO_ROLLOUT_ADMIN_IDS` (fallback for backward compatibility)
-- Legacy `GET /openapi.json` is not publicly available in production.
-
 ## 🎨 Design System
 
 The project features a custom retrofuturistic design system with:
@@ -207,21 +190,6 @@ Integration tests are available in `src/lib/__tests__/`:
 
 - `nasa-exoplanet.test.ts` - NASA Exoplanet Archive integration tests
 - `jpl-sbdb.integration.test.ts` - JPL Small-Body Database integration tests
-
-## 🚢 Deployment
-
-The easiest way to deploy is using [Vercel](https://vercel.com):
-
-1. Push your code to GitHub
-2. Import your repository in Vercel
-3. Add environment variables if using Redis caching
-4. Deploy!
-
-The project is optimized for Vercel's platform and works out of the box.
-
-## 📘 Rollout Docs
-
-- Pro rollout runbook (feature flags, waitlist gating, internal status): `docs/pro-rollout-runbook.md`
 
 ## 🙏 Acknowledgments
 
