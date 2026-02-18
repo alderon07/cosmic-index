@@ -1,6 +1,6 @@
 "use client";
 
-type PerfComponent = "compare-tray" | "object-visualizer" | "event-timeline";
+type PerfComponent = "compare-tray" | "event-timeline";
 
 interface PerfComponentState {
   samples: number[];

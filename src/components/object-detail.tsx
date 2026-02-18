@@ -28,7 +28,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { InfoTooltip, TOOLTIP_CONTENT } from "@/components/info-tooltip";
-import { ObjectVisualizerPanel } from "@/components/visualizers/object-visualizer-panel";
+import { computeFactViz } from "@/components/visualizers/compute-fact-viz";
+import { FactBar } from "@/components/visualizers/fact-bar";
 import { useCompare } from "@/components/compare/use-compare";
 import { SaveButton } from "@/components/save-button";
 import { createCompareItem, MAX_COMPARE_ITEMS } from "@/lib/compare-facts";
@@ -43,6 +44,8 @@ const NasaImageGallery = dynamic(
   () => import("./nasa-image-gallery").then((m) => m.NasaImageGallery),
   { ssr: false }
 );
+
+const COMPACT_FACT_LIMIT = 4;
 
 interface ObjectDetailProps {
   object: AnyCosmicObject;
@@ -77,6 +80,12 @@ export function ObjectDetail({
       ? "Already in compare"
       : `Add to compare (max ${MAX_COMPARE_ITEMS})`
     : "Compare is currently unavailable for this object type.";
+
+  const factViz = computeFactViz(object);
+  const visibleFacts = compact
+    ? object.keyFacts.slice(0, COMPACT_FACT_LIMIT)
+    : object.keyFacts;
+
   return (
     <div className="space-y-6 min-w-0">
       {/* Hero Section */}
@@ -206,10 +215,7 @@ export function ObjectDetail({
         </CardContent>
       </Card>
 
-      {/* Visualized metrics */}
-      <ObjectVisualizerPanel object={object} />
-
-      {/* Key Facts Grid */}
+      {/* Key Measurements (with inline micro-visualisations) */}
       <Card tone="neutral" className={DETAIL_CARD_SURFACE_CLASS}>
         <CardHeader>
           <CardTitle className="font-display flex items-center gap-2">
@@ -218,26 +224,50 @@ export function ObjectDetail({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
-            {object.keyFacts.map((fact) => (
-              <div
-                key={`${fact.label}:${fact.value}:${fact.unit ?? ""}`}
-                className="p-3 sm:p-4 bg-muted/30 rounded-lg border border-border/30 min-w-0"
-              >
-                <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1 truncate">
-                  {fact.label}
-                </p>
-                <p className="text-base sm:text-xl font-mono text-foreground nixie break-all">
-                  {fact.value}
-                </p>
-                {fact.unit && (
-                  <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                    {fact.unit}
+          <div
+            className={cn(
+              "grid gap-3 sm:gap-4",
+              compact
+                ? "grid-cols-2"
+                : "grid-cols-2 md:grid-cols-3 lg:grid-cols-4",
+            )}
+          >
+            {visibleFacts.map((fact) => {
+              const viz = factViz.get(fact.label);
+              return (
+                <div
+                  key={`${fact.label}:${fact.value}:${fact.unit ?? ""}`}
+                  className="p-3 sm:p-4 bg-muted/30 rounded-lg border border-border/30 min-w-0"
+                >
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1 truncate">
+                    {fact.label}
                   </p>
-                )}
-              </div>
-            ))}
+                  <p className="text-base sm:text-xl font-mono text-foreground nixie break-all">
+                    {fact.value}
+                  </p>
+                  {fact.unit && (
+                    <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                      {fact.unit}
+                    </p>
+                  )}
+                  {viz != null && (
+                    <FactBar
+                      percent={viz.percent}
+                      accentClass={accent.vizBar}
+                      minLabel={viz.minLabel}
+                      maxLabel={viz.maxLabel}
+                      thin={compact}
+                    />
+                  )}
+                </div>
+              );
+            })}
           </div>
+          {compact && object.keyFacts.length > COMPACT_FACT_LIMIT && (
+            <p className="text-xs text-muted-foreground mt-3 text-center">
+              Showing {COMPACT_FACT_LIMIT} of {object.keyFacts.length} measurements
+            </p>
+          )}
         </CardContent>
       </Card>
 
