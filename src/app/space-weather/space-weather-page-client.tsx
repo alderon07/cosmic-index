@@ -725,7 +725,7 @@ export function SpaceWeatherPageClient({
             className="w-full"
           >
             <AccordionItem value="notifications-panel" className="border-none">
-              <AccordionTrigger className="px-5 md:px-6 py-5 hover:no-underline">
+              <AccordionTrigger className="px-5 md:px-6 py-0 hover:no-underline">
                 <div className="w-full space-y-2 text-left">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <CardTitle className="font-display text-lg md:text-xl tracking-tight flex items-center gap-2.5">
