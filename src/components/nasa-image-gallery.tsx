@@ -250,7 +250,7 @@ export function NasaImageGallery({ object, compact }: NasaImageGalleryProps) {
                       (lightboxIndex - 1 + images.length) % images.length
                     )
                   }
-                  className="absolute left-4 z-10 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
+                  className="absolute left-4 top-1/2 z-10 -translate-y-1/2 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
                   aria-label="Previous image"
                 >
                   <ChevronLeft className="w-6 h-6" />
@@ -260,7 +260,7 @@ export function NasaImageGallery({ object, compact }: NasaImageGalleryProps) {
                   onClick={() =>
                     setLightboxIndex((lightboxIndex + 1) % images.length)
                   }
-                  className="absolute right-4 z-10 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
+                  className="absolute right-4 top-1/2 z-10 -translate-y-1/2 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
                   aria-label="Next image"
                 >
                   <ChevronRight className="w-6 h-6" />
