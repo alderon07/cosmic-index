@@ -225,6 +225,7 @@ export interface DetailAccentConfig {
   linkHover: string;
   compareOutline: string;
   compareActive: string;
+  vizBar: string;
 }
 
 export const DETAIL_THEME_ACCENTS: Record<DetailAccentTheme, DetailAccentConfig> = {
@@ -236,6 +237,7 @@ export const DETAIL_THEME_ACCENTS: Record<DetailAccentTheme, DetailAccentConfig>
     compareOutline:
       "border-primary/30 bg-primary/5 text-primary/85 hover:bg-primary/10 hover:text-primary",
     compareActive: "border-primary/55 bg-primary/15 text-primary hover:bg-primary/20",
+    vizBar: "bg-primary",
   },
   stars: {
     heroGlow: "bg-uranium-green/10",
@@ -246,6 +248,7 @@ export const DETAIL_THEME_ACCENTS: Record<DetailAccentTheme, DetailAccentConfig>
       "border-uranium-green/30 bg-uranium-green/5 text-uranium-green/85 hover:bg-uranium-green/10 hover:text-uranium-green",
     compareActive:
       "border-uranium-green/55 bg-uranium-green/15 text-uranium-green hover:bg-uranium-green/20",
+    vizBar: "bg-uranium-green",
   },
   "small-bodies": {
     heroGlow: "bg-secondary/10",
@@ -256,6 +259,7 @@ export const DETAIL_THEME_ACCENTS: Record<DetailAccentTheme, DetailAccentConfig>
       "border-secondary/30 bg-secondary/5 text-secondary/85 hover:bg-secondary/10 hover:text-secondary",
     compareActive:
       "border-secondary/55 bg-secondary/15 text-secondary hover:bg-secondary/20",
+    vizBar: "bg-secondary",
   },
   comet: {
     heroGlow: "bg-radium-teal/10",
@@ -266,6 +270,7 @@ export const DETAIL_THEME_ACCENTS: Record<DetailAccentTheme, DetailAccentConfig>
       "border-radium-teal/30 bg-radium-teal/5 text-radium-teal/85 hover:bg-radium-teal/10 hover:text-radium-teal",
     compareActive:
       "border-radium-teal/55 bg-radium-teal/15 text-radium-teal hover:bg-radium-teal/20",
+    vizBar: "bg-radium-teal",
   },
 };
 
