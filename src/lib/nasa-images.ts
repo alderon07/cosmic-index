@@ -13,6 +13,8 @@ export interface NasaImage {
   dateCreated?: string;
   keywords?: string[];
   credit?: string;
+  rightsNotice?: string;
+  hasThirdPartyRights?: boolean;
   thumbnailUrl: string;
   imageUrl: string;
 }
@@ -34,6 +36,7 @@ const NasaImageDataSchema = z.object({
   keywords: z.array(z.string()).optional(),
   secondary_creator: z.string().optional(),
   photographer: z.string().optional(),
+  copyright: z.string().optional(),
 });
 
 const NasaImageLinkSchema = z.object({
@@ -72,6 +75,16 @@ const TIMEOUT_MS = 10_000;
 const MAX_ATTEMPTS = 2;
 const BASE_DELAY_MS = 500;
 const MAX_IMAGES = 12;
+const PUBLIC_DOMAIN_RIGHTS_PATTERN = /\b(public domain|no known copyright restrictions)\b/i;
+
+function extractThirdPartyRightsNotice(
+  rawCopyright: string | undefined
+): string | undefined {
+  const normalized = rawCopyright?.trim();
+  if (!normalized) return undefined;
+  if (PUBLIC_DOMAIN_RIGHTS_PATTERN.test(normalized)) return undefined;
+  return normalized;
+}
 
 // ── Search parameters for object queries ───────────────────────────────────
 
@@ -306,6 +319,7 @@ async function resolveFullImageUrls(
 
     // Credit from secondary_creator or photographer
     const credit = data.secondary_creator || data.photographer;
+    const rightsNotice = extractThirdPartyRightsNotice(data.copyright);
 
     return {
       nasaId: data.nasa_id,
@@ -315,6 +329,8 @@ async function resolveFullImageUrls(
       dateCreated: data.date_created,
       keywords: data.keywords,
       credit,
+      rightsNotice,
+      hasThirdPartyRights: Boolean(rightsNotice),
       thumbnailUrl,
       imageUrl: imageUrl ?? thumbnailUrl, // Fall back to thumbnail if asset fails
     };

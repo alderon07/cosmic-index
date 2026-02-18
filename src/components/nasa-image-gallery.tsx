@@ -28,6 +28,8 @@ interface NasaImage {
   dateCreated?: string;
   keywords?: string[];
   credit?: string;
+  rightsNotice?: string;
+  hasThirdPartyRights?: boolean;
   thumbnailUrl: string;
   imageUrl: string;
 }
@@ -153,6 +155,7 @@ export function NasaImageGallery({ object, compact }: NasaImageGalleryProps) {
   }
 
   const currentImage = lightboxIndex !== null ? images[lightboxIndex] : null;
+  const hasRightsNotices = images.some((image) => image.hasThirdPartyRights);
 
   return (
     <>
@@ -213,6 +216,11 @@ export function NasaImageGallery({ object, compact }: NasaImageGalleryProps) {
               NASA Image and Video Library
             </a>
           </p>
+          {hasRightsNotices && (
+            <p className="text-xs text-muted-foreground/85 mt-1">
+              Some media includes third-party rights notices from NASA metadata.
+            </p>
+          )}
         </CardContent>
       </Card>
 
@@ -303,6 +311,11 @@ export function NasaImageGallery({ object, compact }: NasaImageGalleryProps) {
                     </span>
                   )}
                 </div>
+                {currentImage.hasThirdPartyRights && currentImage.rightsNotice && (
+                  <p className="text-xs text-amber-200/85">
+                    Rights: {currentImage.rightsNotice}
+                  </p>
+                )}
 
                 <a
                   href={`https://images.nasa.gov/details/${currentImage.nasaId}`}
