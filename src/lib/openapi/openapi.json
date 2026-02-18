@@ -3084,6 +3084,14 @@
           "credit": {
             "type": "string"
           },
+          "rightsNotice": {
+            "type": "string",
+            "description": "Non-public-domain rights text from NASA image metadata when provided."
+          },
+          "hasThirdPartyRights": {
+            "type": "boolean",
+            "description": "True when metadata indicates a third-party rights notice."
+          },
           "thumbnailUrl": {
             "type": "string",
             "format": "uri"

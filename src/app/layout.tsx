@@ -304,26 +304,31 @@ export default function RootLayout({
                     Cosmic Index
                   </span>
                 </div>
-                <p className="text-center text-xs text-orange-100/65 md:text-right">
-                  Data sourced from{" "}
-                  <Link
-                    href="https://exoplanetarchive.ipac.caltech.edu/"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-orange-300 hover:underline"
-                  >
-                    NASA Exoplanet Archive
-                  </Link>{" "}
-                  and{" "}
-                  <Link
-                    href="https://ssd.jpl.nasa.gov/tools/sbdb_lookup.html"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-orange-300 hover:underline"
-                  >
-                    JPL Small-Body Database
-                  </Link>
-                </p>
+                <div className="text-center md:text-right">
+                  <p className="text-xs text-orange-100/65">
+                    Data sourced from{" "}
+                    <Link
+                      href="https://exoplanetarchive.ipac.caltech.edu/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-orange-300 hover:underline"
+                    >
+                      NASA Exoplanet Archive
+                    </Link>{" "}
+                    and{" "}
+                    <Link
+                      href="https://ssd.jpl.nasa.gov/tools/sbdb_lookup.html"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-orange-300 hover:underline"
+                    >
+                      JPL Small-Body Database
+                    </Link>
+                  </p>
+                  <p className="mt-1 text-[11px] text-orange-100/45">
+                    Cosmic Index is not affiliated with, endorsed by, or sponsored by NASA or JPL.
+                  </p>
+                </div>
                 <div className="flex items-center gap-4">
                   <span className="hidden sm:flex items-center gap-1.5 text-xs text-orange-100/55">
                     <Keyboard className="w-3.5 h-3.5" />
