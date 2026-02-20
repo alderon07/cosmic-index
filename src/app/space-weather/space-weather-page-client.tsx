@@ -42,10 +42,9 @@ import {
   SPACE_WEATHER_NOTIFICATION_BADGES,
   THEMES,
 } from "@/lib/theme";
+import { SPACE_WEATHER_EVENT_ICONS } from "@/lib/space-weather-icons";
 import {
-  Sun,
-  Cloud,
-  Magnet,
+  CloudLightning,
   Filter,
   RotateCcw,
   X,
@@ -314,12 +313,12 @@ const EVENT_TYPE_INFO: Record<
   SpaceWeatherEventType,
   { label: string; icon: React.ReactNode }
 > = {
-  FLR: { label: SPACE_WEATHER_EVENT_LABELS.FLR, icon: <Sun className="w-3.5 h-3.5" /> },
-  CME: { label: SPACE_WEATHER_EVENT_LABELS.CME, icon: <Cloud className="w-3.5 h-3.5" /> },
-  GST: { label: SPACE_WEATHER_EVENT_LABELS.GST, icon: <Magnet className="w-3.5 h-3.5" /> },
-  IPS: { label: SPACE_WEATHER_EVENT_LABELS.IPS, icon: <Cloud className="w-3.5 h-3.5" /> },
-  HSS: { label: SPACE_WEATHER_EVENT_LABELS.HSS, icon: <CloudLightning className="w-3.5 h-3.5" /> },
-  SEP: { label: SPACE_WEATHER_EVENT_LABELS.SEP, icon: <Sun className="w-3.5 h-3.5" /> },
+  FLR: { label: SPACE_WEATHER_EVENT_LABELS.FLR, icon: <SPACE_WEATHER_EVENT_ICONS.FLR className="w-3.5 h-3.5" /> },
+  CME: { label: SPACE_WEATHER_EVENT_LABELS.CME, icon: <SPACE_WEATHER_EVENT_ICONS.CME className="w-3.5 h-3.5" /> },
+  GST: { label: SPACE_WEATHER_EVENT_LABELS.GST, icon: <SPACE_WEATHER_EVENT_ICONS.GST className="w-3.5 h-3.5" /> },
+  IPS: { label: SPACE_WEATHER_EVENT_LABELS.IPS, icon: <SPACE_WEATHER_EVENT_ICONS.IPS className="w-3.5 h-3.5" /> },
+  HSS: { label: SPACE_WEATHER_EVENT_LABELS.HSS, icon: <SPACE_WEATHER_EVENT_ICONS.HSS className="w-3.5 h-3.5" /> },
+  SEP: { label: SPACE_WEATHER_EVENT_LABELS.SEP, icon: <SPACE_WEATHER_EVENT_ICONS.SEP className="w-3.5 h-3.5" /> },
 };
 
 export interface SpaceWeatherPageClientProps {
@@ -589,10 +588,16 @@ export function SpaceWeatherPageClient({
             Space Weather
           </h1>
         </div>
-        <p className="text-[0.94rem] leading-relaxed text-muted-foreground mb-3 max-w-2xl">
-          Solar flares, coronal mass ejections, geomagnetic storms,
-          interplanetary shocks, high-speed streams, and SEP events from the
-          last 90 days.
+        <p className="text-[0.94rem] leading-relaxed text-muted-foreground mb-2">
+          Space weather describes changing conditions on the Sun and in the solar wind that can
+          affect satellites, radio communication, navigation, and power systems on Earth.
+        </p>
+        <p className="text-[0.9rem] leading-relaxed text-muted-foreground/85 mb-3">
+          This page shows a 90-day slice of NASA DONKI events: solar flares (FLR), coronal mass
+          ejections (CME), geomagnetic storms (GST), interplanetary shocks (IPS), high-speed streams
+          (HSS), and solar energetic particle events (SEP). Cards surface the most useful metric per
+          event type (for example flare class, CME speed, Kp index, shock location, or observing
+          instrument).
         </p>
         <div className="flex items-start gap-3 p-3.5 rounded-lg bg-muted/30 border border-muted-foreground/15">
           <AlertTriangle className="w-4 h-4 text-muted-foreground/60 mt-0.5 shrink-0" />

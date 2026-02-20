@@ -26,18 +26,21 @@ import {
   formatCMESpeed,
   formatKpIndex,
 } from "@/lib/nasa-donki";
+import { getIPSDisplayMetrics } from "@/lib/space-weather-display";
+import { SPACE_WEATHER_EVENT_ICONS } from "@/lib/space-weather-icons";
 import {
   SPACE_WEATHER_SEVERITY_BADGE_CLASSES,
   THEMES,
 } from "@/lib/theme";
 import {
-  Sun,
-  Cloud,
-  Magnet,
   Calendar,
-  Clock,
   MapPin,
   Gauge,
+  Flame,
+  Activity,
+  Satellite,
+  Compass,
+  Timer,
   Link2,
   ChevronRight,
   SquareArrowOutUpRight,
@@ -48,20 +51,8 @@ import { SaveEventButton } from "@/components/save-event-button";
 const theme = THEMES["space-weather"];
 
 function getEventIcon(type: AnySpaceWeatherEvent["eventType"]) {
-  switch (type) {
-    case "FLR":
-      return <Sun className="w-4 h-4" />;
-    case "CME":
-      return <Cloud className="w-4 h-4" />;
-    case "GST":
-      return <Magnet className="w-4 h-4" />;
-    case "IPS":
-      return <Cloud className="w-4 h-4" />;
-    case "HSS":
-      return <Gauge className="w-4 h-4" />;
-    case "SEP":
-      return <Sun className="w-4 h-4" />;
-  }
+  const Icon = SPACE_WEATHER_EVENT_ICONS[type];
+  return <Icon className="w-4 h-4" />;
 }
 
 function formatDateTime(isoString: string): { date: string; time: string } {
@@ -106,10 +97,130 @@ function getPrimaryMetricLabel(eventType: AnySpaceWeatherEvent["eventType"]): st
 
 function getSecondaryMetricLabel(eventType: AnySpaceWeatherEvent["eventType"]): string {
   if (eventType === "GST") return "Readings";
-  if (eventType === "IPS" || eventType === "HSS" || eventType === "SEP") {
-    return "Source";
-  }
+  if (eventType === "IPS" || eventType === "HSS" || eventType === "SEP") return "Instrument";
   return "Source";
+}
+
+function getPrimaryMetricIcon(
+  eventType: AnySpaceWeatherEvent["eventType"],
+  className = "w-3.5 h-3.5",
+) {
+  switch (eventType) {
+    case "FLR":
+      return <Flame className={className} />;
+    case "CME":
+      return <Gauge className={className} />;
+    case "GST":
+      return <Gauge className={className} />;
+    case "IPS":
+      return <MapPin className={className} />;
+    case "HSS":
+      return <Satellite className={className} />;
+    case "SEP":
+      return <Satellite className={className} />;
+  }
+}
+
+function getSecondaryMetricIcon(
+  eventType: AnySpaceWeatherEvent["eventType"],
+  className = "w-3.5 h-3.5",
+) {
+  switch (eventType) {
+    case "FLR":
+      return <MapPin className={className} />;
+    case "CME":
+      return <MapPin className={className} />;
+    case "GST":
+      return <Activity className={className} />;
+    case "IPS":
+      return <Satellite className={className} />;
+    case "HSS":
+      return <Satellite className={className} />;
+    case "SEP":
+      return <Satellite className={className} />;
+  }
+}
+
+function formatUtcTime(isoString?: string): string | undefined {
+  if (!isoString) return undefined;
+  const d = new Date(isoString);
+  if (Number.isNaN(d.getTime())) return undefined;
+  return `${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")}Z`;
+}
+
+function getTypeSpecificMetric(event: AnySpaceWeatherEvent): {
+  label: string;
+  value: string;
+  icon: React.ReactNode;
+} {
+  switch (event.eventType) {
+    case "FLR": {
+      const flr = event as SolarFlareEvent;
+      const peakUtc = formatUtcTime(flr.peakTime);
+      if (peakUtc) {
+        return { label: "Peak (UTC)", value: peakUtc, icon: <Timer className="w-3.5 h-3.5" /> };
+      }
+
+      return {
+        label: "Region",
+        value: flr.activeRegionNum ? `AR ${flr.activeRegionNum}` : "—",
+        icon: <Activity className="w-3.5 h-3.5" />,
+      };
+    }
+    case "CME": {
+      const cme = event as CMEEvent;
+      if (typeof cme.halfAngle === "number") {
+        return {
+          label: "Half Angle",
+          value: `${Math.round(cme.halfAngle)}°`,
+          icon: <Compass className="w-3.5 h-3.5" />,
+        };
+      }
+      if (cme.cmeType) {
+        return {
+          label: "CME Type",
+          value: cme.cmeType,
+          icon: <Compass className="w-3.5 h-3.5" />,
+        };
+      }
+      return { label: "Half Angle", value: "—", icon: <Compass className="w-3.5 h-3.5" /> };
+    }
+    case "GST": {
+      const gst = event as GSTEvent;
+      const sourceCount = new Set(
+        gst.allKpReadings.map((reading) => reading.source).filter((source) => source?.trim().length),
+      ).size;
+      return {
+        label: "Stations",
+        value: sourceCount > 0 ? `${sourceCount} sources` : "—",
+        icon: <Activity className="w-3.5 h-3.5" />,
+      };
+    }
+    case "IPS": {
+      const ips = event as IPSEvent;
+      return {
+        label: "Submitted",
+        value: formatUtcTime(ips.submissionTime) || "—",
+        icon: <Timer className="w-3.5 h-3.5" />,
+      };
+    }
+    case "HSS": {
+      const hss = event as HSSEvent;
+      return {
+        label: "Submitted",
+        value: formatUtcTime(hss.submissionTime) || "—",
+        icon: <Timer className="w-3.5 h-3.5" />,
+      };
+    }
+    case "SEP": {
+      const sep = event as SEPEvent;
+      return {
+        label: "Submitted",
+        value: formatUtcTime(sep.submissionTime) || "—",
+        icon: <Timer className="w-3.5 h-3.5" />,
+      };
+    }
+  }
 }
 
 function formatSeverity(severity: SpaceWeatherSeverity): string {
@@ -212,8 +323,9 @@ export function SpaceWeatherCard({ event, variant = "default", onModalOpen }: Sp
     }
     case "IPS": {
       const ips = event as IPSEvent;
-      primaryMetric = ips.location || "Unknown";
-      secondaryMetric = ips.instruments?.[0];
+      const ipsDisplay = getIPSDisplayMetrics(ips.location, ips.instruments?.[0]);
+      primaryMetric = ipsDisplay.location;
+      secondaryMetric = ipsDisplay.instrument;
       break;
     }
     case "HSS": {
@@ -236,6 +348,9 @@ export function SpaceWeatherCard({ event, variant = "default", onModalOpen }: Sp
 
   const linkedCount = event.linkedEvents?.length || 0;
   const linkedSummary = formatLinkedEvents(event.linkedEvents);
+  const primaryMetricIcon = getPrimaryMetricIcon(event.eventType);
+  const secondaryMetricIcon = getSecondaryMetricIcon(event.eventType);
+  const typeSpecificMetric = getTypeSpecificMetric(event);
 
   // Generate detail page URL
   const detailHref = `/space-weather/${encodeURIComponent(event.id)}`;
@@ -302,26 +417,18 @@ export function SpaceWeatherCard({ event, variant = "default", onModalOpen }: Sp
                       <Calendar className="w-3.5 h-3.5" />
                     </span>
                   </TooltipTrigger>
-                  <TooltipContent>Date</TooltipContent>
+                  <TooltipContent>Observed (UTC)</TooltipContent>
                 </Tooltip>
                 <p className="text-xs font-mono text-foreground truncate w-full text-center">{date}</p>
+                <p className="text-[11px] font-mono text-muted-foreground truncate w-full text-center">
+                  {time || "—"}
+                </p>
               </div>
               <div className="min-w-0 flex flex-col items-center gap-0.5 justify-start">
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <span className="text-muted-foreground cursor-help" aria-hidden="true">
-                      <Clock className="w-3.5 h-3.5" />
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent>Time (UTC)</TooltipContent>
-                </Tooltip>
-                <p className="text-xs font-mono text-foreground truncate w-full text-center">{time || "—"}</p>
-              </div>
-              <div className="min-w-0 flex flex-col items-center gap-0.5 justify-start">
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span className="text-muted-foreground cursor-help" aria-hidden="true">
-                      <Gauge className="w-3.5 h-3.5" />
+                      {primaryMetricIcon}
                     </span>
                   </TooltipTrigger>
                   <TooltipContent>{getPrimaryMetricLabel(event.eventType)}</TooltipContent>
@@ -332,12 +439,23 @@ export function SpaceWeatherCard({ event, variant = "default", onModalOpen }: Sp
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <span className="text-muted-foreground cursor-help" aria-hidden="true">
-                      <MapPin className="w-3.5 h-3.5" />
+                      {secondaryMetricIcon}
                     </span>
                   </TooltipTrigger>
                   <TooltipContent>{getSecondaryMetricLabel(event.eventType)}</TooltipContent>
                 </Tooltip>
                 <p className="text-xs font-mono text-foreground truncate w-full text-center">{secondaryMetric || "—"}</p>
+              </div>
+              <div className="min-w-0 flex flex-col items-center gap-0.5 justify-start">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="text-muted-foreground cursor-help" aria-hidden="true">
+                      {typeSpecificMetric.icon}
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>{typeSpecificMetric.label}</TooltipContent>
+                </Tooltip>
+                <p className="text-xs font-mono text-foreground truncate w-full text-center">{typeSpecificMetric.value}</p>
               </div>
             </div>
           </div>
@@ -421,30 +539,20 @@ export function SpaceWeatherCard({ event, variant = "default", onModalOpen }: Sp
       <CardContent className="pt-0 flex flex-col flex-1 min-h-0">
         {/* Key metrics */}
         <div className="grid grid-cols-2 gap-x-3 gap-y-2.5 pb-4">
-          {/* Date */}
+          {/* Observed */}
           <div className={theme.metricSurface}>
             <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-[0.08em] text-muted-foreground/85">
               <Calendar className="w-3.5 h-3.5" />
-              <span>Date</span>
+              <span>Observed (UTC)</span>
             </div>
             <p className="text-sm font-mono text-foreground mt-1">{date}</p>
-          </div>
-
-          {/* Time */}
-          <div className={theme.metricSurface}>
-            <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-[0.08em] text-muted-foreground/85">
-              <Clock className="w-3.5 h-3.5" />
-              <span>Time (UTC)</span>
-            </div>
-            <p className="text-sm font-mono text-foreground mt-0.5">
-              {time || "—"}
-            </p>
+            <p className="text-xs font-mono text-muted-foreground mt-0.5">{time || "—"}</p>
           </div>
 
           {/* Primary Metric */}
           <div className={theme.metricSurface}>
             <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-[0.08em] text-muted-foreground/85">
-              <Gauge className="w-3.5 h-3.5" />
+              {primaryMetricIcon}
               <span>{getPrimaryMetricLabel(event.eventType)}</span>
             </div>
             <p className={`text-sm font-mono mt-0.5 ${theme.text}`}>
@@ -455,16 +563,21 @@ export function SpaceWeatherCard({ event, variant = "default", onModalOpen }: Sp
           {/* Source Location / Secondary Metric */}
           <div className={theme.metricSurface}>
             <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-[0.08em] text-muted-foreground/85">
-              {event.eventType === "GST" ? (
-                <Gauge className="w-3.5 h-3.5" />
-              ) : (
-                <MapPin className="w-3.5 h-3.5" />
-              )}
+              {secondaryMetricIcon}
               <span>{getSecondaryMetricLabel(event.eventType)}</span>
             </div>
             <p className="text-sm font-mono text-foreground mt-0.5">
               {secondaryMetric || "—"}
             </p>
+          </div>
+
+          {/* Type-specific Metric */}
+          <div className={theme.metricSurface}>
+            <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-[0.08em] text-muted-foreground/85">
+              {typeSpecificMetric.icon}
+              <span>{typeSpecificMetric.label}</span>
+            </div>
+            <p className="text-sm font-mono text-foreground mt-0.5">{typeSpecificMetric.value}</p>
           </div>
         </div>
 

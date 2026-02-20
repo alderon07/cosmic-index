@@ -289,10 +289,15 @@ export function FireballsPageClient({
         <p className="text-muted-foreground mb-2">
           Reported atmospheric impact events from CNEOS
         </p>
+        <p className="text-sm text-muted-foreground/85 mb-2">
+          Fireballs are exceptionally bright meteors produced when a meteoroid enters
+          Earth&apos;s atmosphere at high speed, rapidly heats up, and often fragments.
+        </p>
         <p className="text-sm text-muted-foreground/80">
-          Data from NASA JPL&apos;s Center for Near Earth Object Studies. This
-          is a record of reported fireball events, not a real-time feed. Many
-          events have incomplete data (missing location, altitude, or velocity).
+          This dataset (NASA JPL CNEOS) is a catalog of reported events, not a real-time feed.
+          Each entry includes an event time and estimated energy; some also include a trajectory
+          estimate like peak altitude, velocity, and an approximate location. Missing fields are
+          common, so filters can narrow to events with specific measurements.
         </p>
       </div>
 

@@ -29,6 +29,7 @@ import {
   getEventTypeLabel,
   parseEventType,
 } from "@/lib/nasa-donki";
+import { SPACE_WEATHER_EVENT_ICONS } from "@/lib/space-weather-icons";
 import {
   DETAIL_ACCORDION_SURFACE_CLASS,
   DETAIL_CARD_SURFACE_CLASS,
@@ -38,9 +39,6 @@ import {
   THEMES,
 } from "@/lib/theme";
 import {
-  Sun,
-  Cloud,
-  Magnet,
   Calendar,
   Gauge,
   ExternalLink,
@@ -56,20 +54,8 @@ import { cn } from "@/lib/utils";
 const theme = THEMES["space-weather"];
 
 function getEventIcon(type: AnySpaceWeatherEvent["eventType"], className = "w-6 h-6") {
-  switch (type) {
-    case "FLR":
-      return <Sun className={className} />;
-    case "CME":
-      return <Cloud className={className} />;
-    case "GST":
-      return <Magnet className={className} />;
-    case "IPS":
-      return <Cloud className={className} />;
-    case "HSS":
-      return <Activity className={className} />;
-    case "SEP":
-      return <Zap className={className} />;
-  }
+  const Icon = SPACE_WEATHER_EVENT_ICONS[type];
+  return <Icon className={className} />;
 }
 
 function formatDateTime(isoString: string): { date: string; time: string } {

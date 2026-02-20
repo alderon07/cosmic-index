@@ -298,9 +298,14 @@ export function StarsPageClient({
         <p className="text-muted-foreground mb-2">
           Explore host stars of known exoplanets from NASA&apos;s Exoplanet Archive
         </p>
+        <p className="text-sm text-muted-foreground/85 mb-2">
+          This catalog focuses on stars confirmed to host one or more exoplanets.
+          Each entry includes key stellar properties when available, like spectral class, temperature,
+          brightness (V magnitude), and distance in parsecs.
+        </p>
         <p className="text-sm text-muted-foreground/80">
-          These are stars confirmed to host one or more exoplanets. Browse by spectral type,
-          number of planets, or distance from Earth.
+          Data is sourced from NASA&apos;s Exoplanet Archive and may be incomplete or updated over time.
+          Use filters to narrow results by spectral class, planet count, and distance.
         </p>
       </div>
 

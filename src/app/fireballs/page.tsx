@@ -14,7 +14,8 @@ interface FireballsPageProps {
 
 export const metadata: Metadata = {
   title: "Fireballs",
-  description: "View recent fireball events from NASA CNEOS datasets.",
+  description:
+    "Browse reported fireball events (bright meteors) from NASA JPL CNEOS, including timing, estimated energy, and sometimes location/altitude/velocity.",
 };
 
 function toSingleValueParams(

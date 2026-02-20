@@ -283,10 +283,16 @@ export function CloseApproachesPageClient({
         <p className="text-muted-foreground mb-2">
           Upcoming asteroid and comet flybys near Earth
         </p>
+        <p className="text-sm text-muted-foreground/85 mb-2">
+          A close approach is a predicted flyby where an object passes near Earth. This view focuses
+          on objects within 0.05 AU (about 7.5 million km), sourced from NASA JPL CNEOS.
+        </p>
         <p className="text-sm text-muted-foreground/80">
-          Data from NASA JPL&apos;s Center for Near Earth Object Studies (CNEOS). Close approaches
-          are defined as objects passing within 0.05 AU (~7.5 million km) of Earth. Distance is
-          measured in Lunar Distances (LD), where 1 LD = 384,400 km.
+          Distances are shown in Lunar Distances (LD), where 1 LD = 384,400 km. Relative velocity is
+          the encounter speed with respect to Earth, and the H value (absolute magnitude) is a proxy
+          for size and brightness. The PHA filter highlights “potentially hazardous asteroids” based
+          on NASA’s standard criteria; orbital solutions can improve over time, so encounter details
+          may be revised.
         </p>
       </div>
 

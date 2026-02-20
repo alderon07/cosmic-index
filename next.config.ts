@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  reactCompiler: true,
   // Rewrite unversioned /api/* to /api/v1/* for backward compatibility.
   // Explicit per-route — a wildcard /api/:path* would double-prefix /api/v1/ requests.
   async rewrites() {
