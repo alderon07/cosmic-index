@@ -12,7 +12,8 @@ interface StarsPageProps {
 
 export const metadata: Metadata = {
   title: "Stars",
-  description: "Explore host stars of known exoplanets from NASA data.",
+  description:
+    "Browse host stars of confirmed exoplanets from NASA's Exoplanet Archive. Filter by spectral class, distance, brightness, and planet count.",
 };
 
 function toSingleValueParams(

@@ -23,7 +23,8 @@ interface SpaceWeatherPageProps {
 
 export const metadata: Metadata = {
   title: "Space Weather",
-  description: "Monitor recent solar flares, CMEs, geomagnetic storms, and related alerts.",
+  description:
+    "Track NASA DONKI space weather events (FLR/CME/GST/IPS/HSS/SEP) from the last 90 days, plus recent notifications.",
 };
 
 function toSingleValueParams(

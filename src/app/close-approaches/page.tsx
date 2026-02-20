@@ -14,7 +14,8 @@ interface CloseApproachesPageProps {
 
 export const metadata: Metadata = {
   title: "Close Approaches",
-  description: "Track near-Earth asteroid close approaches and encounter details.",
+  description:
+    "Browse upcoming close approaches of asteroids and comets near Earth, including approach time, distance (LD), relative speed, and hazard flags (PHA).",
 };
 
 function toSingleValueParams(
