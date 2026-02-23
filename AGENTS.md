@@ -249,7 +249,6 @@ Billing/Stripe:
 Data/API:
 
 - `NASA_API_KEY`
-- `DONKI_BASE_URL` (optional override; defaults to NASA DONKI gateway when `NASA_API_KEY` is configured, otherwise CCMC endpoint)
 - `COMPARE_DOMAINS`
 - `TRUST_CLOUDFLARE_HEADERS`
 - `TRUST_FLY_HEADERS`

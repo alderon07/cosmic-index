@@ -36,6 +36,9 @@ mock.module("@/lib/nasa-donki", () => ({
     lastFetchParams = params;
     return mockFetchResult;
   },
+  fetchSpaceWeatherNotifications: async () => {
+    throw new Error("Not implemented in space-weather route test");
+  },
 }));
 
 mock.module("@/lib/api-middleware", () => ({
