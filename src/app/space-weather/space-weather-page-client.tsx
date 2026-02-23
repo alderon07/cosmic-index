@@ -5,6 +5,7 @@ import {
   useEffect,
   useCallback,
   useMemo,
+  useRef,
   startTransition,
 } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
@@ -50,6 +51,7 @@ import {
   X,
   AlertTriangle,
   ExternalLink,
+  Copy,
 } from "lucide-react";
 import { ViewToggle, ViewMode } from "@/components/view-toggle";
 import { Pagination, PaginationInfo } from "@/components/pagination";
@@ -101,6 +103,7 @@ const LIST_SKELETON_KEYS = [
   "sw-list-sk-7",
   "sw-list-sk-8",
 ] as const;
+const SPACE_WEATHER_TIMELINE_DAYS = 45;
 
 function getEventCompletenessScore(event: AnySpaceWeatherEvent): number {
   let score = 0;
@@ -446,6 +449,11 @@ export function SpaceWeatherPageClient({
   );
 
   const shouldUseInitialError = !initialData && !!initialError && currentFetchKey === initialFetchKey;
+  const timelineGateRef = useRef<HTMLDivElement | null>(null);
+  const [isTimelineRequested, setIsTimelineRequested] = useState(
+    () => typeof window !== "undefined" && typeof window.IntersectionObserver === "undefined"
+  );
+  const timelineEligible = !shouldUseInitialError && page === 1;
 
   const queryResult = useQuery({
     queryKey: queryKeys.spaceWeather(currentFetchKey),
@@ -459,10 +467,34 @@ export function SpaceWeatherPageClient({
     retry: 1,
   });
 
+  useEffect(() => {
+    if (!timelineEligible) return;
+
+    if (isTimelineRequested) return;
+
+    const target = timelineGateRef.current;
+    if (!target) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          setIsTimelineRequested(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: "240px 0px" }
+    );
+
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [timelineEligible, isTimelineRequested]);
+
   const timelineFetchKey = useMemo(
     () => buildSpaceWeatherFetchKey(eventTypes, SPACE_WEATHER_TIMELINE_LIMIT),
     [eventTypes]
   );
+
+  const shouldFetchTimeline = timelineEligible && isTimelineRequested;
 
   const timelineQueryResult = useQuery({
     queryKey: [...queryKeys.spaceWeather(timelineFetchKey), "timeline"],
@@ -470,7 +502,7 @@ export function SpaceWeatherPageClient({
       apiFetchEvents<AnySpaceWeatherEvent>(`/space-weather?${timelineFetchKey}`, {
         signal,
       }),
-    enabled: !shouldUseInitialError,
+    enabled: shouldFetchTimeline,
     staleTime: 30_000,
     retry: 1,
   });
@@ -561,7 +593,9 @@ export function SpaceWeatherPageClient({
     if (timelineEvents.length === 0) return [];
 
     const endDate = new Date();
-    const startDate = new Date(endDate.getTime() - 89 * 24 * 60 * 60 * 1000);
+    const startDate = new Date(
+      endDate.getTime() - (SPACE_WEATHER_TIMELINE_DAYS - 1) * 24 * 60 * 60 * 1000
+    );
 
     return buildTimelineBuckets({
       events: timelineEvents.map((event) => ({ timestamp: event.startTime })),
@@ -573,6 +607,10 @@ export function SpaceWeatherPageClient({
   const notifications = notificationsQueryResult.data?.objects ?? [];
   const notificationWarnings = (notificationsQueryResult.data?.meta?.warnings as string[] | undefined) ?? [];
   const notificationTotal = notificationsQueryResult.data?.total ?? notifications.length;
+  const copyNotificationId = useCallback((id: string) => {
+    if (typeof navigator === "undefined" || !navigator.clipboard) return;
+    void navigator.clipboard.writeText(id);
+  }, []);
 
   return (
     <div className="shell-container py-8">
@@ -747,7 +785,7 @@ export function SpaceWeatherPageClient({
                   </p>
                 </div>
               </AccordionTrigger>
-              <AccordionContent className="px-5 md:px-6 pb-6 space-y-4">
+              <AccordionContent className="px-4 md:px-5 pb-5 space-y-3">
                 {notificationsQueryResult.isPending && (
                   <p className="text-sm leading-relaxed text-muted-foreground/70">Loading notifications…</p>
                 )}
@@ -776,18 +814,22 @@ export function SpaceWeatherPageClient({
                   </p>
                 )}
 
-                <div className="space-y-3.5">
-                  {notifications.map((notification) => (
-                    <Card
-                      key={notification.id}
-                      tone="neutral"
-                      className="border-border/45 bg-black/20"
-                    >
-                      <CardContent className="p-4 md:p-6 space-y-4">
+                <div className="space-y-2.5">
+                  {notifications.map((notification) => {
+                    const previewBody = stripMarkdownForPreview(notification.body);
+                    const hasOverflowBody = previewBody.length > 200;
+
+                    return (
+                      <Card
+                        key={notification.id}
+                        tone="neutral"
+                        className="border-border/45 bg-black/20"
+                      >
+                        <CardContent className="p-3 md:p-4 space-y-2.5">
                         {/* Header: badge + metadata + source link */}
-                        <div className="flex flex-wrap items-start justify-between gap-3">
-                          <div className="space-y-1.5 min-w-0">
-                            <div className="flex flex-wrap items-center gap-2">
+                        <div className="grid grid-cols-[1fr_auto] items-start gap-2">
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-1.5">
                               <Badge
                                 variant="outline"
                                 className={SPACE_WEATHER_NOTIFICATION_BADGES[notification.type]}
@@ -801,48 +843,58 @@ export function SpaceWeatherPageClient({
                                 {formatNotificationIssueTime(notification.issuedAt)}
                               </time>
                             </div>
-                            <p className="font-mono text-[0.7rem] leading-none text-muted-foreground/45 break-all select-all">
-                              {notification.id}
-                            </p>
                           </div>
-                          {notification.url && (
-                            <a
-                              href={notification.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className={`inline-flex items-center gap-1.5 text-xs font-medium ${theme.text} ${theme.hoverText} transition-colors`}
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => copyNotificationId(notification.id)}
+                              title={notification.id}
+                              className="inline-flex items-center gap-1 rounded-md border border-border/40 px-1.5 py-1 text-[0.68rem] font-medium text-muted-foreground/80 hover:text-foreground hover:border-border/70 transition-colors"
+                              aria-label={`Copy notification ID ${notification.id}`}
                             >
-                              <ExternalLink className="w-3.5 h-3.5" />
-                              View source
-                            </a>
-                          )}
+                              <Copy className="w-3 h-3" />
+                              ID
+                            </button>
+                            {notification.url && (
+                              <a
+                                href={notification.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className={`inline-flex items-center gap-1 text-[0.68rem] font-medium ${theme.text} ${theme.hoverText} transition-colors`}
+                              >
+                                <ExternalLink className="w-3 h-3" />
+                                Source
+                              </a>
+                            )}
+                          </div>
                         </div>
 
                         {/* Body preview */}
-                        <p className="max-w-prose font-sans text-[0.9rem] leading-[1.7] text-foreground/85">
-                          {truncateText(stripMarkdownForPreview(notification.body), 280) || "No notification message body provided."}
+                        <p className="max-w-prose font-sans text-[0.84rem] leading-[1.55] text-foreground/85">
+                          {truncateText(previewBody, 200) || "No notification message body provided."}
                         </p>
 
                         {/* Expandable full body */}
-                        {stripMarkdownForPreview(notification.body).length > 280 && (
+                        {hasOverflowBody && (
                           <Accordion type="single" collapsible className="w-full">
                             <AccordionItem value="body" className="border-border/25">
-                              <AccordionTrigger className="py-2.5 text-[0.8rem] font-medium text-muted-foreground/70 hover:text-foreground transition-colors">
+                              <AccordionTrigger className="py-1.5 text-[0.75rem] font-medium text-muted-foreground/70 hover:text-foreground transition-colors">
                                 <span className="inline-flex items-center gap-1.5">
                                   Read full notification
                                 </span>
                               </AccordionTrigger>
-                              <AccordionContent className="pt-3 pb-1">
-                                <div className="rounded-lg border border-border/20 bg-black/15 px-5 py-4 md:px-6 md:py-5">
+                              <AccordionContent className="pt-2 pb-0">
+                                <div className="rounded-lg border border-border/20 bg-black/15 px-3.5 py-3 md:px-4 md:py-3.5">
                                   <NotificationMarkdown content={notification.body} />
                                 </div>
                               </AccordionContent>
                             </AccordionItem>
                           </Accordion>
                         )}
-                      </CardContent>
-                    </Card>
-                  ))}
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
                 </div>
               </AccordionContent>
             </AccordionItem>
@@ -887,7 +939,9 @@ export function SpaceWeatherPageClient({
         </div>
       )}
 
-      {!isLoading && timelineBuckets.length > 0 && (
+      <div ref={timelineGateRef} className="h-px w-full" aria-hidden />
+
+      {!isLoading && shouldFetchTimeline && timelineBuckets.length > 0 && (
         <EventTimeline
           title="Space Weather Timeline"
           pageType="space-weather"
@@ -903,10 +957,11 @@ export function SpaceWeatherPageClient({
           <p className="text-destructive">{error}</p>
           <button
             onClick={() => {
-              void Promise.all([
-                queryResult.refetch(),
-                timelineQueryResult.refetch(),
-              ]);
+              const requests = [queryResult.refetch()];
+              if (shouldFetchTimeline) {
+                requests.push(timelineQueryResult.refetch());
+              }
+              void Promise.all(requests);
             }}
             className={`mt-4 text-sm ${theme.text} hover:underline`}
           >

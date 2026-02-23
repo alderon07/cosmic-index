@@ -15,18 +15,29 @@ import {
   SpaceWeatherNotificationsListResponse,
   SpaceWeatherNotificationsQueryParams,
 } from "./types";
-import { withCache, CACHE_TTL, CACHE_KEYS } from "./cache";
+import { withCache, CACHE_TTL, CACHE_KEYS, getCached, setCached } from "./cache";
 
 const DONKI_CCMC_BASE_URL = "https://kauai.ccmc.gsfc.nasa.gov/DONKI/WS/get";
 const DONKI_NASA_BASE_URL = "https://api.nasa.gov/DONKI";
 
-const API_TIMEOUT_MS = 20000;
-const DEFAULT_DAYS_BACK = 90;
+const API_TIMEOUT_MS = 8000;
+const DEFAULT_DAYS_BACK = 45;
+const MAX_EVENT_WINDOW_DAYS = 60;
 const DEFAULT_NOTIFICATION_DAYS_BACK = 7;
 const NOTIFICATIONS_MAX_WINDOW_DAYS = 30;
-const RETRY_COUNT = 1;
+const RETRY_COUNT = 0;
 const RETRY_BASE_DELAY_MS = 300;
 const RETRY_JITTER_MS = 250;
+const STALE_EVENT_MAX_AGE_SECONDS = CACHE_TTL.SPACE_WEATHER * 4;
+const STALE_EVENT_MAX_AGE_MS = STALE_EVENT_MAX_AGE_SECONDS * 1000;
+const STALE_NOTIFICATION_MAX_AGE_SECONDS = CACHE_TTL.SPACE_WEATHER_NOTIFICATIONS * 6;
+const STALE_NOTIFICATION_MAX_AGE_MS = STALE_NOTIFICATION_MAX_AGE_SECONDS * 1000;
+const NOTIFICATIONS_TIMEOUT_MS = 6000;
+const NOTIFICATIONS_RETRY_COUNT = 0;
+const DONKI_BASE_COOLDOWN_SECONDS = 120;
+const DONKI_BASE_COOLDOWN_MS = DONKI_BASE_COOLDOWN_SECONDS * 1000;
+const SPACE_WEATHER_FETCH_CONCURRENCY = 4;
+const MAX_META_WARNINGS = 8;
 
 export const SPACE_WEATHER_MAX_TOTAL_RESULTS = 420;
 export const SPACE_WEATHER_NOTIFICATIONS_MAX_TOTAL_RESULTS = 300;
@@ -35,6 +46,9 @@ let hasWarnedMissingNasaApiKey = false;
 const CACHE_VERSION = 3;
 
 const SINGLE_FLIGHT = new Map<string, Promise<unknown>>();
+const STALE_EVENTS = new Map<string, StaleEventsEnvelope>();
+const STALE_NOTIFICATIONS = new Map<string, StaleNotificationsEnvelope>();
+const DONKI_BASE_COOLDOWNS = new Map<string, number>();
 
 export class DonkiUpstreamUnavailableError extends Error {
   constructor(message: string) {
@@ -48,6 +62,7 @@ interface DonkiTypeFetchResult {
   events: AnySpaceWeatherEvent[];
   failed: boolean;
   failureMessage?: string;
+  staleFallback?: boolean;
 }
 
 interface RawLinkedEvent {
@@ -152,9 +167,27 @@ interface NotificationWindow {
   warnings: string[];
 }
 
+interface EventWindow {
+  requestedStart: string;
+  requestedEnd: string;
+  effectiveStart: string;
+  effectiveEnd: string;
+  warnings: string[];
+}
+
 interface NotificationCacheValue {
   notifications: SpaceWeatherNotification[];
   sawUnknownType: boolean;
+}
+
+interface StaleEventsEnvelope {
+  cachedAt: number;
+  events: AnySpaceWeatherEvent[];
+}
+
+interface StaleNotificationsEnvelope {
+  cachedAt: number;
+  value: NotificationCacheValue;
 }
 
 function randomJitterMs(): number {
@@ -179,6 +212,183 @@ async function withSingleFlight<T>(key: string, fn: () => Promise<T>): Promise<T
   return pending;
 }
 
+function isEnvelopeExpired(cachedAt: number, maxAgeMs: number): boolean {
+  return Date.now() - cachedAt > maxAgeMs;
+}
+
+function readStaleEvents<T extends AnySpaceWeatherEvent>(key: string): T[] | null {
+  const cached = STALE_EVENTS.get(key);
+  if (!cached) return null;
+
+  if (isEnvelopeExpired(cached.cachedAt, STALE_EVENT_MAX_AGE_MS)) {
+    STALE_EVENTS.delete(key);
+    return null;
+  }
+
+  return cached.events as T[];
+}
+
+function writeStaleEvents<T extends AnySpaceWeatherEvent>(key: string, events: T[], cachedAt = Date.now()): void {
+  const now = Date.now();
+  for (const [cacheKey, cached] of STALE_EVENTS.entries()) {
+    if (now - cached.cachedAt > STALE_EVENT_MAX_AGE_MS) {
+      STALE_EVENTS.delete(cacheKey);
+    }
+  }
+
+  STALE_EVENTS.set(key, {
+    cachedAt,
+    events,
+  });
+}
+
+function toDistributedStaleCacheKey(key: string): string {
+  return `${key}:stale`;
+}
+
+function coerceStaleEventsEnvelope(
+  value: StaleEventsEnvelope | AnySpaceWeatherEvent[] | null,
+): StaleEventsEnvelope | null {
+  if (!value) return null;
+
+  if (Array.isArray(value)) {
+    return { cachedAt: Date.now(), events: value };
+  }
+
+  if (!Array.isArray(value.events) || typeof value.cachedAt !== "number") {
+    return null;
+  }
+
+  if (isEnvelopeExpired(value.cachedAt, STALE_EVENT_MAX_AGE_MS)) {
+    return null;
+  }
+
+  return value;
+}
+
+async function readDistributedStaleEventsEnvelope(key: string): Promise<StaleEventsEnvelope | null> {
+  const cached = await getCached<StaleEventsEnvelope | AnySpaceWeatherEvent[]>(toDistributedStaleCacheKey(key));
+  return coerceStaleEventsEnvelope(cached);
+}
+
+async function writeDistributedStaleEvents<T extends AnySpaceWeatherEvent>(
+  key: string,
+  events: T[],
+  cachedAt = Date.now(),
+): Promise<void> {
+  await setCached(
+    toDistributedStaleCacheKey(key),
+    { cachedAt, events } satisfies StaleEventsEnvelope,
+    STALE_EVENT_MAX_AGE_SECONDS,
+  );
+}
+
+async function getStaleFallback<T extends AnySpaceWeatherEvent>(key: string): Promise<T[] | null> {
+  const inMemory = readStaleEvents<T>(key);
+  if (inMemory) return inMemory;
+
+  const distributed = await readDistributedStaleEventsEnvelope(key);
+  if (distributed) {
+    writeStaleEvents(key, distributed.events as T[], distributed.cachedAt);
+    return distributed.events as T[];
+  }
+
+  return null;
+}
+
+function readStaleNotifications(key: string): NotificationCacheValue | null {
+  const cached = STALE_NOTIFICATIONS.get(key);
+  if (!cached) return null;
+
+  if (isEnvelopeExpired(cached.cachedAt, STALE_NOTIFICATION_MAX_AGE_MS)) {
+    STALE_NOTIFICATIONS.delete(key);
+    return null;
+  }
+
+  return cached.value;
+}
+
+function writeStaleNotifications(key: string, value: NotificationCacheValue, cachedAt = Date.now()): void {
+  const now = Date.now();
+  for (const [cacheKey, cached] of STALE_NOTIFICATIONS.entries()) {
+    if (now - cached.cachedAt > STALE_NOTIFICATION_MAX_AGE_MS) {
+      STALE_NOTIFICATIONS.delete(cacheKey);
+    }
+  }
+
+  STALE_NOTIFICATIONS.set(key, {
+    cachedAt,
+    value,
+  });
+}
+
+function coerceStaleNotificationsEnvelope(
+  value: StaleNotificationsEnvelope | NotificationCacheValue | null,
+): StaleNotificationsEnvelope | null {
+  if (!value) return null;
+
+  if (
+    "notifications" in value &&
+    Array.isArray(value.notifications) &&
+    typeof value.sawUnknownType === "boolean"
+  ) {
+    return {
+      cachedAt: Date.now(),
+      value: {
+        notifications: value.notifications,
+        sawUnknownType: value.sawUnknownType,
+      },
+    };
+  }
+
+  if (
+    !("value" in value) ||
+    typeof value.cachedAt !== "number" ||
+    !Array.isArray(value.value.notifications) ||
+    typeof value.value.sawUnknownType !== "boolean"
+  ) {
+    return null;
+  }
+
+  if (isEnvelopeExpired(value.cachedAt, STALE_NOTIFICATION_MAX_AGE_MS)) {
+    return null;
+  }
+
+  return value;
+}
+
+async function readDistributedStaleNotificationsEnvelope(key: string): Promise<StaleNotificationsEnvelope | null> {
+  const cached = await getCached<StaleNotificationsEnvelope | NotificationCacheValue>(
+    toDistributedStaleCacheKey(key),
+  );
+  return coerceStaleNotificationsEnvelope(cached);
+}
+
+async function writeDistributedStaleNotifications(
+  key: string,
+  value: NotificationCacheValue,
+  cachedAt = Date.now(),
+): Promise<void> {
+  await setCached(
+    toDistributedStaleCacheKey(key),
+    { cachedAt, value } satisfies StaleNotificationsEnvelope,
+    STALE_NOTIFICATION_MAX_AGE_SECONDS,
+  );
+}
+
+async function getStaleNotificationsFallback(key: string): Promise<NotificationCacheValue | null> {
+  const inMemory = readStaleNotifications(key);
+  if (inMemory) return inMemory;
+
+  const distributed = await readDistributedStaleNotificationsEnvelope(key);
+  if (distributed) {
+    writeStaleNotifications(key, distributed.value, distributed.cachedAt);
+    return distributed.value;
+  }
+
+  return null;
+}
+
 function toUtcDateString(date: Date): string {
   return date.toISOString().slice(0, 10);
 }
@@ -197,14 +407,6 @@ function getTodayUtcDate(): string {
   return toUtcDateString(new Date());
 }
 
-function getDefaultDateRange(): { start: string; end: string } {
-  const end = getTodayUtcDate();
-  return {
-    start: addDaysUtc(end, -DEFAULT_DAYS_BACK),
-    end,
-  };
-}
-
 function normalizeNullableArray<T>(value: T[] | null | undefined): T[] | undefined {
   if (!Array.isArray(value) || value.length === 0) return undefined;
   return value;
@@ -221,41 +423,116 @@ function warnMissingNasaApiKey(message: string): void {
   console.warn(message);
 }
 
-function getDonkiBaseUrl(): string {
-  const configured = process.env.DONKI_BASE_URL?.trim();
-  if (configured && configured.length > 0) {
-    if (configured.includes("api.nasa.gov") && !getNasaApiKey()) {
-      warnMissingNasaApiKey(
-        "[DONKI] DONKI_BASE_URL targets api.nasa.gov but NASA_API_KEY is missing in production.",
-      );
-    }
-    return configured;
-  }
-
+function getDonkiBaseCandidates(): string[] {
   if (getNasaApiKey()) {
-    return DONKI_NASA_BASE_URL;
+    return [DONKI_NASA_BASE_URL, DONKI_CCMC_BASE_URL];
   }
 
   warnMissingNasaApiKey(
-    "[DONKI] NASA_API_KEY is not configured in production; falling back to CCMC DONKI endpoint.",
+    "[DONKI] NASA_API_KEY is not configured in production; preferring CCMC DONKI endpoint.",
   );
-  return DONKI_CCMC_BASE_URL;
+  return [DONKI_CCMC_BASE_URL, DONKI_NASA_BASE_URL];
 }
 
 function getCacheContext(): string {
-  const base = getDonkiBaseUrl();
   const runtimeMode = process.env.COSMIC_USE_MOCK_AUTH ?? process.env.NEXT_PUBLIC_USE_MOCK_AUTH ?? "unset";
-  return `${process.env.NODE_ENV ?? "unknown"}:${runtimeMode}:${base}`;
+  return `${process.env.NODE_ENV ?? "unknown"}:${runtimeMode}:donki`;
 }
 
-function buildUrl(
+function getDonkiBaseId(baseUrl: string): "nasa" | "ccmc" {
+  return baseUrl.includes("api.nasa.gov") ? "nasa" : "ccmc";
+}
+
+function getDonkiCooldownKey(baseUrl: string, endpoint: string): string {
+  const normalizedEndpoint = endpoint.trim().toLowerCase();
+  return `sw:donki-cooldown:v1:${getDonkiBaseId(baseUrl)}:${normalizedEndpoint}`;
+}
+
+function setLocalCooldown(cooldownKey: string, expiresAt: number): void {
+  const now = Date.now();
+  for (const [key, localExpiresAt] of DONKI_BASE_COOLDOWNS.entries()) {
+    if (localExpiresAt <= now) {
+      DONKI_BASE_COOLDOWNS.delete(key);
+    }
+  }
+
+  DONKI_BASE_COOLDOWNS.set(cooldownKey, expiresAt);
+}
+
+async function isBaseInCooldown(cooldownKey: string): Promise<boolean> {
+  const local = DONKI_BASE_COOLDOWNS.get(cooldownKey);
+  if (typeof local === "number") {
+    if (local > Date.now()) {
+      return true;
+    }
+    DONKI_BASE_COOLDOWNS.delete(cooldownKey);
+  }
+
+  const distributed = await getCached<{ expiresAt?: number }>(cooldownKey);
+  const distributedExpiresAt = typeof distributed?.expiresAt === "number" ? distributed.expiresAt : undefined;
+  if (distributedExpiresAt && distributedExpiresAt > Date.now()) {
+    setLocalCooldown(cooldownKey, distributedExpiresAt);
+    return true;
+  }
+
+  return false;
+}
+
+async function setBaseCooldown(cooldownKey: string): Promise<void> {
+  const expiresAt = Date.now() + DONKI_BASE_COOLDOWN_MS;
+  setLocalCooldown(cooldownKey, expiresAt);
+  await setCached(cooldownKey, { expiresAt }, DONKI_BASE_COOLDOWN_SECONDS);
+}
+
+function finalizeWarnings(warnings: string[]): string[] | undefined {
+  if (warnings.length === 0) return undefined;
+
+  const seen = new Set<string>();
+  const normalized: string[] = [];
+  for (const warning of warnings) {
+    const value = warning.trim();
+    if (!value || seen.has(value)) continue;
+    seen.add(value);
+    normalized.push(value);
+    if (normalized.length >= MAX_META_WARNINGS) break;
+  }
+
+  return normalized.length > 0 ? normalized : undefined;
+}
+
+async function runWithConcurrencyLimit<T>(
+  tasks: Array<() => Promise<T>>,
+  concurrency: number,
+): Promise<T[]> {
+  if (tasks.length === 0) return [];
+
+  const maxConcurrency = Math.max(1, Math.min(concurrency, tasks.length));
+  const results = new Array<T>(tasks.length);
+  let nextIndex = 0;
+
+  async function worker(): Promise<void> {
+    while (true) {
+      const currentIndex = nextIndex;
+      nextIndex += 1;
+      if (currentIndex >= tasks.length) {
+        return;
+      }
+      results[currentIndex] = await tasks[currentIndex]();
+    }
+  }
+
+  await Promise.all(Array.from({ length: maxConcurrency }, () => worker()));
+  return results;
+}
+
+function buildUrlWithBase(
+  baseUrl: string,
   endpoint: string,
   startDate: string,
   endDate: string,
   extraParams?: Record<string, string>,
 ): string {
-  const donkiBaseUrl = getDonkiBaseUrl();
-  const url = new URL(`${donkiBaseUrl}/${endpoint}`);
+  const url = new URL(`${baseUrl}/${endpoint}`);
   url.searchParams.set("startDate", startDate);
   url.searchParams.set("endDate", endDate);
 
@@ -266,7 +543,7 @@ function buildUrl(
   }
 
   const nasaApiKey = getNasaApiKey();
-  if (donkiBaseUrl.includes("api.nasa.gov") && nasaApiKey) {
+  if (baseUrl.includes("api.nasa.gov") && nasaApiKey) {
     url.searchParams.set("api_key", nasaApiKey);
   }
 
@@ -381,9 +658,20 @@ function isRetryableError(error: unknown): boolean {
   return false;
 }
 
-async function fetchWithTimeout<T>(url: string): Promise<T> {
+interface FetchRetryOptions {
+  timeoutMs?: number;
+  retryCount?: number;
+}
+
+interface DonkiFetchWithSourceResult<T> {
+  data: T;
+  sourceBaseUrl: string;
+  usedFallbackBase: boolean;
+}
+
+async function fetchWithTimeout<T>(url: string, timeoutMs = API_TIMEOUT_MS): Promise<T> {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
     const response = await fetch(url, {
@@ -409,16 +697,18 @@ async function fetchWithTimeout<T>(url: string): Promise<T> {
   }
 }
 
-async function fetchWithRetry<T>(url: string): Promise<T> {
+async function fetchWithRetry<T>(url: string, options: FetchRetryOptions = {}): Promise<T> {
+  const retryCount = options.retryCount ?? RETRY_COUNT;
+  const timeoutMs = options.timeoutMs ?? API_TIMEOUT_MS;
   let attempt = 0;
   let lastError: unknown;
 
-  while (attempt <= RETRY_COUNT) {
+  while (attempt <= retryCount) {
     try {
-      return await fetchWithTimeout<T>(url);
+      return await fetchWithTimeout<T>(url, timeoutMs);
     } catch (error) {
       lastError = error;
-      if (attempt >= RETRY_COUNT || !isRetryableError(error)) {
+      if (attempt >= retryCount || !isRetryableError(error)) {
         throw error;
       }
 
@@ -426,6 +716,62 @@ async function fetchWithRetry<T>(url: string): Promise<T> {
       await sleep(delayMs);
       attempt += 1;
     }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error("DONKI request failed");
+}
+
+async function fetchDonkiWithBaseFailover<T>(
+  endpoint: string,
+  startDate: string,
+  endDate: string,
+  extraParams: Record<string, string> | undefined,
+  options: FetchRetryOptions = {},
+): Promise<DonkiFetchWithSourceResult<T>> {
+  const baseCandidates = getDonkiBaseCandidates();
+  let lastError: unknown;
+  let attemptedBaseCount = 0;
+
+  for (let index = 0; index < baseCandidates.length; index += 1) {
+    const baseUrl = baseCandidates[index];
+    const cooldownKey = getDonkiCooldownKey(baseUrl, endpoint);
+    if (await isBaseInCooldown(cooldownKey)) {
+      console.warn(`[DONKI] Skipping ${endpoint} on ${baseUrl} due to active cooldown.`);
+      continue;
+    }
+
+    attemptedBaseCount += 1;
+    const url = buildUrlWithBase(baseUrl, endpoint, startDate, endDate, extraParams);
+
+    try {
+      const data = await fetchWithRetry<T>(url, options);
+      return {
+        data,
+        sourceBaseUrl: baseUrl,
+        usedFallbackBase: index > 0,
+      };
+    } catch (error) {
+      lastError = error;
+      if (!isRetryableError(error)) {
+        throw error;
+      }
+
+      const hasFallback = index < baseCandidates.length - 1;
+      if (hasFallback) {
+        await setBaseCooldown(cooldownKey);
+      }
+      if (!hasFallback) {
+        continue;
+      }
+
+      console.warn(
+        `[DONKI] Base failover for ${endpoint}: primary ${baseUrl} failed (${getFetchFailureMessage(error)}).`,
+      );
+    }
+  }
+
+  if (attemptedBaseCount === 0) {
+    throw new Error(`DONKI ${endpoint} requests skipped while all base endpoints are cooling down.`);
   }
 
   throw lastError instanceof Error ? lastError : new Error("DONKI request failed");
@@ -467,8 +813,16 @@ async function fetchSolarFlaresRaw(startDate: string, endDate: string): Promise<
       cacheKey,
       async () =>
         withCache(cacheKey, CACHE_TTL.SPACE_WEATHER, async () => {
-          const url = buildUrl("FLR", startDate, endDate);
-          const data = await fetchWithRetry<RawFLR[]>(url);
+          const fetched = await fetchDonkiWithBaseFailover<RawFLR[]>(
+            "FLR",
+            startDate,
+            endDate,
+            undefined,
+          );
+          const data = fetched.data;
+          if (fetched.usedFallbackBase) {
+            console.warn(`[DONKI] FLR served from fallback base ${fetched.sourceBaseUrl}.`);
+          }
 
           if (!Array.isArray(data)) {
             console.warn("[DONKI] FLR endpoint returned non-array:", typeof data);
@@ -489,9 +843,18 @@ async function fetchSolarFlaresRaw(startDate: string, endDate: string): Promise<
         }),
     );
 
+    const cachedAt = Date.now();
+    writeStaleEvents(cacheKey, events, cachedAt);
+    void writeDistributedStaleEvents(cacheKey, events, cachedAt);
     logSourceFetch("FLR", startedAt, events.length);
     return { type: "FLR", events, failed: false };
   } catch (error) {
+    const staleEvents = await getStaleFallback<SolarFlareEvent>(cacheKey);
+    if (staleEvents) {
+      console.warn("[DONKI] Using stale FLR cache after upstream failure.");
+      return { type: "FLR", events: staleEvents, failed: false, staleFallback: true };
+    }
+
     console.error("[DONKI] Failed to fetch solar flares:", error);
     return {
       type: "FLR",
@@ -511,8 +874,16 @@ async function fetchCMEsRaw(startDate: string, endDate: string): Promise<DonkiTy
       cacheKey,
       async () =>
         withCache(cacheKey, CACHE_TTL.SPACE_WEATHER, async () => {
-          const url = buildUrl("CME", startDate, endDate);
-          const data = await fetchWithRetry<RawCME[]>(url);
+          const fetched = await fetchDonkiWithBaseFailover<RawCME[]>(
+            "CME",
+            startDate,
+            endDate,
+            undefined,
+          );
+          const data = fetched.data;
+          if (fetched.usedFallbackBase) {
+            console.warn(`[DONKI] CME served from fallback base ${fetched.sourceBaseUrl}.`);
+          }
 
           if (!Array.isArray(data)) {
             console.warn("[DONKI] CME endpoint returned non-array:", typeof data);
@@ -538,9 +909,18 @@ async function fetchCMEsRaw(startDate: string, endDate: string): Promise<DonkiTy
         }),
     );
 
+    const cachedAt = Date.now();
+    writeStaleEvents(cacheKey, events, cachedAt);
+    void writeDistributedStaleEvents(cacheKey, events, cachedAt);
     logSourceFetch("CME", startedAt, events.length);
     return { type: "CME", events, failed: false };
   } catch (error) {
+    const staleEvents = await getStaleFallback<CMEEvent>(cacheKey);
+    if (staleEvents) {
+      console.warn("[DONKI] Using stale CME cache after upstream failure.");
+      return { type: "CME", events: staleEvents, failed: false, staleFallback: true };
+    }
+
     console.error("[DONKI] Failed to fetch CMEs:", error);
     return {
       type: "CME",
@@ -560,8 +940,16 @@ async function fetchGSTsRaw(startDate: string, endDate: string): Promise<DonkiTy
       cacheKey,
       async () =>
         withCache(cacheKey, CACHE_TTL.SPACE_WEATHER, async () => {
-          const url = buildUrl("GST", startDate, endDate);
-          const data = await fetchWithRetry<RawGST[]>(url);
+          const fetched = await fetchDonkiWithBaseFailover<RawGST[]>(
+            "GST",
+            startDate,
+            endDate,
+            undefined,
+          );
+          const data = fetched.data;
+          if (fetched.usedFallbackBase) {
+            console.warn(`[DONKI] GST served from fallback base ${fetched.sourceBaseUrl}.`);
+          }
 
           if (!Array.isArray(data)) {
             console.warn("[DONKI] GST endpoint returned non-array:", typeof data);
@@ -591,9 +979,18 @@ async function fetchGSTsRaw(startDate: string, endDate: string): Promise<DonkiTy
         }),
     );
 
+    const cachedAt = Date.now();
+    writeStaleEvents(cacheKey, events, cachedAt);
+    void writeDistributedStaleEvents(cacheKey, events, cachedAt);
     logSourceFetch("GST", startedAt, events.length);
     return { type: "GST", events, failed: false };
   } catch (error) {
+    const staleEvents = await getStaleFallback<GSTEvent>(cacheKey);
+    if (staleEvents) {
+      console.warn("[DONKI] Using stale GST cache after upstream failure.");
+      return { type: "GST", events: staleEvents, failed: false, staleFallback: true };
+    }
+
     console.error("[DONKI] Failed to fetch geomagnetic storms:", error);
     return {
       type: "GST",
@@ -613,8 +1010,16 @@ async function fetchIPSRaw(startDate: string, endDate: string): Promise<DonkiTyp
       cacheKey,
       async () =>
         withCache(cacheKey, CACHE_TTL.SPACE_WEATHER, async () => {
-          const url = buildUrl("IPS", startDate, endDate);
-          const data = await fetchWithRetry<RawIPS[]>(url);
+          const fetched = await fetchDonkiWithBaseFailover<RawIPS[]>(
+            "IPS",
+            startDate,
+            endDate,
+            undefined,
+          );
+          const data = fetched.data;
+          if (fetched.usedFallbackBase) {
+            console.warn(`[DONKI] IPS served from fallback base ${fetched.sourceBaseUrl}.`);
+          }
 
           if (!Array.isArray(data)) {
             console.warn("[DONKI] IPS endpoint returned non-array:", typeof data);
@@ -634,9 +1039,18 @@ async function fetchIPSRaw(startDate: string, endDate: string): Promise<DonkiTyp
         }),
     );
 
+    const cachedAt = Date.now();
+    writeStaleEvents(cacheKey, events, cachedAt);
+    void writeDistributedStaleEvents(cacheKey, events, cachedAt);
     logSourceFetch("IPS", startedAt, events.length);
     return { type: "IPS", events, failed: false };
   } catch (error) {
+    const staleEvents = await getStaleFallback<IPSEvent>(cacheKey);
+    if (staleEvents) {
+      console.warn("[DONKI] Using stale IPS cache after upstream failure.");
+      return { type: "IPS", events: staleEvents, failed: false, staleFallback: true };
+    }
+
     console.error("[DONKI] Failed to fetch interplanetary shocks:", error);
     return {
       type: "IPS",
@@ -656,8 +1070,16 @@ async function fetchHSSRaw(startDate: string, endDate: string): Promise<DonkiTyp
       cacheKey,
       async () =>
         withCache(cacheKey, CACHE_TTL.SPACE_WEATHER, async () => {
-          const url = buildUrl("HSS", startDate, endDate);
-          const data = await fetchWithRetry<RawHSS[]>(url);
+          const fetched = await fetchDonkiWithBaseFailover<RawHSS[]>(
+            "HSS",
+            startDate,
+            endDate,
+            undefined,
+          );
+          const data = fetched.data;
+          if (fetched.usedFallbackBase) {
+            console.warn(`[DONKI] HSS served from fallback base ${fetched.sourceBaseUrl}.`);
+          }
 
           if (!Array.isArray(data)) {
             console.warn("[DONKI] HSS endpoint returned non-array:", typeof data);
@@ -676,9 +1098,18 @@ async function fetchHSSRaw(startDate: string, endDate: string): Promise<DonkiTyp
         }),
     );
 
+    const cachedAt = Date.now();
+    writeStaleEvents(cacheKey, events, cachedAt);
+    void writeDistributedStaleEvents(cacheKey, events, cachedAt);
     logSourceFetch("HSS", startedAt, events.length);
     return { type: "HSS", events, failed: false };
   } catch (error) {
+    const staleEvents = await getStaleFallback<HSSEvent>(cacheKey);
+    if (staleEvents) {
+      console.warn("[DONKI] Using stale HSS cache after upstream failure.");
+      return { type: "HSS", events: staleEvents, failed: false, staleFallback: true };
+    }
+
     console.error("[DONKI] Failed to fetch high-speed streams:", error);
     return {
       type: "HSS",
@@ -698,8 +1129,16 @@ async function fetchSEPRaw(startDate: string, endDate: string): Promise<DonkiTyp
       cacheKey,
       async () =>
         withCache(cacheKey, CACHE_TTL.SPACE_WEATHER, async () => {
-          const url = buildUrl("SEP", startDate, endDate);
-          const data = await fetchWithRetry<RawSEP[]>(url);
+          const fetched = await fetchDonkiWithBaseFailover<RawSEP[]>(
+            "SEP",
+            startDate,
+            endDate,
+            undefined,
+          );
+          const data = fetched.data;
+          if (fetched.usedFallbackBase) {
+            console.warn(`[DONKI] SEP served from fallback base ${fetched.sourceBaseUrl}.`);
+          }
 
           if (!Array.isArray(data)) {
             console.warn("[DONKI] SEP endpoint returned non-array:", typeof data);
@@ -718,9 +1157,18 @@ async function fetchSEPRaw(startDate: string, endDate: string): Promise<DonkiTyp
         }),
     );
 
+    const cachedAt = Date.now();
+    writeStaleEvents(cacheKey, events, cachedAt);
+    void writeDistributedStaleEvents(cacheKey, events, cachedAt);
     logSourceFetch("SEP", startedAt, events.length);
     return { type: "SEP", events, failed: false };
   } catch (error) {
+    const staleEvents = await getStaleFallback<SEPEvent>(cacheKey);
+    if (staleEvents) {
+      console.warn("[DONKI] Using stale SEP cache after upstream failure.");
+      return { type: "SEP", events: staleEvents, failed: false, staleFallback: true };
+    }
+
     console.error("[DONKI] Failed to fetch solar energetic particle events:", error);
     return {
       type: "SEP",
@@ -731,31 +1179,74 @@ async function fetchSEPRaw(startDate: string, endDate: string): Promise<DonkiTyp
   }
 }
 
-function resolveNotificationWindow(startDate?: string, endDate?: string): NotificationWindow {
-  const requestedEnd = endDate ?? getTodayUtcDate();
-  const defaultStart = addDaysUtc(requestedEnd, -DEFAULT_NOTIFICATION_DAYS_BACK);
-  const requestedStart = startDate ?? defaultStart;
+function resolveEventWindow(startDate?: string, endDate?: string): EventWindow {
+  const today = getTodayUtcDate();
+  const requestedEnd = endDate ?? today;
+  const requestedStart = startDate ?? addDaysUtc(requestedEnd, -DEFAULT_DAYS_BACK);
 
   const warnings: string[] = [];
-  const maxStart = addDaysUtc(requestedEnd, -NOTIFICATIONS_MAX_WINDOW_DAYS);
 
+  let effectiveEnd = requestedEnd;
+  if (requestedEnd > today) {
+    effectiveEnd = today;
+    warnings.push(`End date cannot be in the future; using ${effectiveEnd}.`);
+  }
+
+  const maxStart = addDaysUtc(effectiveEnd, -MAX_EVENT_WINDOW_DAYS);
   let effectiveStart = requestedStart;
   if (requestedStart < maxStart) {
     effectiveStart = maxStart;
     warnings.push(
-      `Notifications are limited to ${NOTIFICATIONS_MAX_WINDOW_DAYS} days; using ${effectiveStart} to ${requestedEnd}.`,
+      `Space weather requests are limited to ${MAX_EVENT_WINDOW_DAYS} days; using ${effectiveStart} to ${effectiveEnd}.`,
     );
   }
 
-  if (effectiveStart > requestedEnd) {
-    effectiveStart = requestedEnd;
+  if (effectiveStart > effectiveEnd) {
+    effectiveStart = effectiveEnd;
+    warnings.push(`Start date exceeded end date after normalization; using ${effectiveStart}.`);
   }
 
   return {
     requestedStart,
     requestedEnd,
     effectiveStart,
-    effectiveEnd: requestedEnd,
+    effectiveEnd,
+    warnings,
+  };
+}
+
+function resolveNotificationWindow(startDate?: string, endDate?: string): NotificationWindow {
+  const today = getTodayUtcDate();
+  const requestedEnd = endDate ?? today;
+  const defaultStart = addDaysUtc(requestedEnd, -DEFAULT_NOTIFICATION_DAYS_BACK);
+  const requestedStart = startDate ?? defaultStart;
+
+  const warnings: string[] = [];
+  let effectiveEnd = requestedEnd;
+  if (requestedEnd > today) {
+    effectiveEnd = today;
+    warnings.push(`End date cannot be in the future; using ${effectiveEnd}.`);
+  }
+
+  const maxStart = addDaysUtc(effectiveEnd, -NOTIFICATIONS_MAX_WINDOW_DAYS);
+
+  let effectiveStart = requestedStart;
+  if (requestedStart < maxStart) {
+    effectiveStart = maxStart;
+    warnings.push(
+      `Notifications are limited to ${NOTIFICATIONS_MAX_WINDOW_DAYS} days; using ${effectiveStart} to ${effectiveEnd}.`,
+    );
+  }
+
+  if (effectiveStart > effectiveEnd) {
+    effectiveStart = effectiveEnd;
+  }
+
+  return {
+    requestedStart,
+    requestedEnd,
+    effectiveStart,
+    effectiveEnd,
     warnings,
   };
 }
@@ -798,17 +1289,31 @@ export async function fetchSpaceWeatherNotifications(
   const cacheKey = `${CACHE_KEYS.SPACE_WEATHER_NOTIFICATIONS}:v${CACHE_VERSION}:${getCacheContext()}:${window.effectiveStart}:${window.effectiveEnd}:${type}`;
 
   let cachedResult: NotificationCacheValue;
+  let usedStaleFallback = false;
   try {
     cachedResult = await withSingleFlight(
       cacheKey,
       async () =>
         withCache(cacheKey, CACHE_TTL.SPACE_WEATHER_NOTIFICATIONS, async (): Promise<NotificationCacheValue> => {
-          const url = buildUrl("notifications", window.effectiveStart, window.effectiveEnd, {
-            type,
-          });
-
           const startedAt = Date.now();
-          const data = await fetchWithRetry<RawNotification[]>(url);
+          const fetched = await fetchDonkiWithBaseFailover<RawNotification[]>(
+            "notifications",
+            window.effectiveStart,
+            window.effectiveEnd,
+            { type },
+            {
+              timeoutMs: NOTIFICATIONS_TIMEOUT_MS,
+              retryCount: NOTIFICATIONS_RETRY_COUNT,
+            },
+          );
+
+          const data = fetched.data;
+          if (fetched.usedFallbackBase) {
+            console.warn(
+              `[DONKI] notifications served from fallback base ${fetched.sourceBaseUrl}.`,
+            );
+          }
+          const dataSource = fetched.sourceBaseUrl.includes("api.nasa.gov") ? "nasa" : "ccmc";
 
           if (!Array.isArray(data)) {
             console.warn("[DONKI] notifications endpoint returned non-array:", typeof data);
@@ -840,22 +1345,38 @@ export async function fetchSpaceWeatherNotifications(
 
           const latencyMs = Date.now() - startedAt;
           console.info(
-            `[DONKI] source=notifications status=ok latency_ms=${latencyMs} rows=${notifications.length} type=${type}`,
+            `[DONKI] source=notifications status=ok latency_ms=${latencyMs} rows=${notifications.length} type=${type} base=${dataSource}`,
           );
 
           return { notifications, sawUnknownType };
         }),
     );
+    const cachedAt = Date.now();
+    writeStaleNotifications(cacheKey, cachedResult, cachedAt);
+    void writeDistributedStaleNotifications(cacheKey, cachedResult, cachedAt);
   } catch (error) {
-    console.error("[DONKI] Failed to fetch notifications:", error);
-    throw new DonkiUpstreamUnavailableError(
-      `DONKI notifications request failed (${getFetchFailureMessage(error)}).`,
-    );
+    const staleResult = await getStaleNotificationsFallback(cacheKey);
+    if (staleResult) {
+      usedStaleFallback = true;
+      cachedResult = staleResult;
+      console.warn("[DONKI] Using stale notifications cache after upstream failure.");
+    } else {
+      console.error("[DONKI] Failed to fetch notifications:", error);
+      throw new DonkiUpstreamUnavailableError(
+        `DONKI notifications request failed (${getFetchFailureMessage(error)}).`,
+      );
+    }
+  }
+
+  if (usedStaleFallback) {
+    warnings.push("Notifications are using stale cached data due to DONKI unavailability.");
   }
 
   if (cachedResult.sawUnknownType) {
     warnings.push("Some notification types were returned as 'other' because they are not enabled in this MVP.");
   }
+
+  const normalizedWarnings = finalizeWarnings(warnings);
 
   const sorted = [...cachedResult.notifications].sort((a, b) => {
     const tsDiff = Date.parse(b.issuedAt) - Date.parse(a.issuedAt);
@@ -885,7 +1406,7 @@ export async function fetchSpaceWeatherNotifications(
         effectiveEnd: window.effectiveEnd,
       },
       typeIncluded: type,
-      warnings: warnings.length > 0 ? warnings : undefined,
+      warnings: normalizedWarnings,
       totalCapApplied,
       totalCap: SPACE_WEATHER_NOTIFICATIONS_MAX_TOTAL_RESULTS,
     },
@@ -964,30 +1485,40 @@ export function formatKpIndex(kp: number): string {
 export async function fetchSpaceWeather(
   params: SpaceWeatherQueryParams = {},
 ): Promise<SpaceWeatherListResponse> {
-  const defaultRange = getDefaultDateRange();
-  const startDate = params.startDate || defaultRange.start;
-  const endDate = params.endDate || defaultRange.end;
+  const window = resolveEventWindow(params.startDate, params.endDate);
+  const startDate = window.effectiveStart;
+  const endDate = window.effectiveEnd;
   const limit = params.limit ?? 100;
   const page = params.page;
 
-  const requestedTypes: SpaceWeatherEventType[] = params.eventTypes?.length
+  const requestedTypesSource = params.eventTypes?.length
     ? params.eventTypes
     : [...SPACE_WEATHER_EVENT_TYPES];
+  const requestedTypeSet = new Set<SpaceWeatherEventType>(requestedTypesSource);
+  const requestedTypes = SPACE_WEATHER_EVENT_TYPES.filter((type) => requestedTypeSet.has(type));
 
-  const warnings: string[] = [];
+  const warnings: string[] = [...window.warnings];
   const typesIncluded: SpaceWeatherEventType[] = [];
   let allEvents: AnySpaceWeatherEvent[] = [];
 
-  const fetchPromises: Promise<DonkiTypeFetchResult>[] = [];
+  const fetchTasks: Array<() => Promise<DonkiTypeFetchResult>> = requestedTypes.map((type) => {
+    switch (type) {
+      case "FLR":
+        return () => fetchSolarFlaresRaw(startDate, endDate);
+      case "CME":
+        return () => fetchCMEsRaw(startDate, endDate);
+      case "GST":
+        return () => fetchGSTsRaw(startDate, endDate);
+      case "IPS":
+        return () => fetchIPSRaw(startDate, endDate);
+      case "HSS":
+        return () => fetchHSSRaw(startDate, endDate);
+      case "SEP":
+        return () => fetchSEPRaw(startDate, endDate);
+    }
+  });
 
-  if (requestedTypes.includes("FLR")) fetchPromises.push(fetchSolarFlaresRaw(startDate, endDate));
-  if (requestedTypes.includes("CME")) fetchPromises.push(fetchCMEsRaw(startDate, endDate));
-  if (requestedTypes.includes("GST")) fetchPromises.push(fetchGSTsRaw(startDate, endDate));
-  if (requestedTypes.includes("IPS")) fetchPromises.push(fetchIPSRaw(startDate, endDate));
-  if (requestedTypes.includes("HSS")) fetchPromises.push(fetchHSSRaw(startDate, endDate));
-  if (requestedTypes.includes("SEP")) fetchPromises.push(fetchSEPRaw(startDate, endDate));
-
-  const results = await Promise.all(fetchPromises);
+  const results = await runWithConcurrencyLimit(fetchTasks, SPACE_WEATHER_FETCH_CONCURRENCY);
   let failedTypeCount = 0;
 
   for (const result of results) {
@@ -998,6 +1529,9 @@ export async function fetchSpaceWeather(
     }
 
     typesIncluded.push(result.type);
+    if (result.staleFallback) {
+      warnings.push(`${getEventTypeLabel(result.type)} is using stale cached data due to DONKI unavailability.`);
+    }
     if (result.events.length > 0) {
       allEvents = allEvents.concat(result.events);
     }
@@ -1016,6 +1550,8 @@ export async function fetchSpaceWeather(
     );
   }
 
+  const normalizedWarnings = finalizeWarnings(warnings);
+
   return {
     events: normalizedResult.events,
     count: normalizedResult.events.length,
@@ -1025,11 +1561,19 @@ export async function fetchSpaceWeather(
     meta: {
       dateRange: { start: startDate, end: endDate },
       typesIncluded,
-      warnings: warnings.length > 0 ? warnings : undefined,
+      warnings: normalizedWarnings,
       totalCapApplied: normalizedResult.totalCapApplied,
       totalCap: SPACE_WEATHER_MAX_TOTAL_RESULTS,
     },
   };
+}
+
+export function __resetDonkiTransientStateForTests(): void {
+  SINGLE_FLIGHT.clear();
+  STALE_EVENTS.clear();
+  STALE_NOTIFICATIONS.clear();
+  DONKI_BASE_COOLDOWNS.clear();
+  hasWarnedMissingNasaApiKey = false;
 }
 
 export function parseEventType(eventId: string): SpaceWeatherEventType | null {

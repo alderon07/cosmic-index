@@ -43,6 +43,9 @@ function buildMockResult(
 }
 
 mock.module("@/lib/nasa-donki", () => ({
+  fetchSpaceWeather: async () => {
+    throw new Error("Not implemented in notifications route test");
+  },
   fetchSpaceWeatherNotifications: async (
     params: SpaceWeatherNotificationsQueryParams,
   ) => {

@@ -113,8 +113,6 @@ Optional NASA/DONKI configuration:
 
 ```env
 NASA_API_KEY=your_nasa_api_key
-# Optional DONKI override. If omitted, app prefers api.nasa.gov when NASA_API_KEY is set.
-DONKI_BASE_URL=https://api.nasa.gov/DONKI
 ```
 
 4. Run the development server:
