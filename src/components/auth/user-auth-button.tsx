@@ -5,6 +5,7 @@ import { SignedIn, SignedOut, SignInButton, UserButton } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import { User, FolderHeart, Bookmark, Layers } from "lucide-react";
 import { useAppAuth } from "./app-auth-provider";
+import { clerkAppearance } from "@/components/auth/clerk-appearance";
 
 /**
  * User Authentication Button
@@ -67,13 +68,7 @@ export function UserAuthButton() {
       </SignedOut>
       <SignedIn>
         <UserButton
-          appearance={{
-            elements: {
-              avatarBox: "w-8 h-8",
-              userButtonTrigger:
-                "focus:shadow-none focus-visible:ring-2 focus-visible:ring-primary/50 rounded-full",
-            },
-          }}
+          appearance={clerkAppearance}
           afterSignOutUrl="/"
         >
           <UserButton.MenuItems>

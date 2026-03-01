@@ -957,7 +957,7 @@ export function SpaceWeatherPageClient({
           <p className="text-destructive">{error}</p>
           <button
             onClick={() => {
-              const requests = [queryResult.refetch()];
+              const requests: Promise<unknown>[] = [queryResult.refetch()];
               if (shouldFetchTimeline) {
                 requests.push(timelineQueryResult.refetch());
               }
