@@ -2,7 +2,16 @@ import type { Metadata } from "next";
 import { Audiowide, Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import Link from "next/link";
-import { Circle, Star, CircleDot, Crosshair, Flame, CloudLightning, Keyboard } from "lucide-react";
+import {
+  Circle,
+  Star,
+  CircleDot,
+  Crosshair,
+  Flame,
+  CloudLightning,
+  Keyboard,
+  BellRing,
+} from "lucide-react";
 import { THEMES } from "@/lib/theme";
 import { Analytics } from "@vercel/analytics/react";
 import { KeyboardShortcutsProvider } from "@/components/keyboard-shortcuts/keyboard-shortcuts-provider";
@@ -19,6 +28,7 @@ import {
   NavigationMenuList,
   NavigationMenuTrigger,
 } from "@/components/ui/navigation-menu";
+import { getWaitlistEnabled } from "@/lib/runtime-mode";
 
 const audiowide = Audiowide({
   variable: "--font-display",
@@ -149,6 +159,8 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const waitlistEnabled = getWaitlistEnabled();
+
   return (
     <html lang="en" className="dark">
       <head>
@@ -283,6 +295,17 @@ export default function RootLayout({
                   <CloudLightning className="w-5 h-5 sm:hidden" />
                   <span className="hidden sm:inline">Weather</span>
                 </Link>
+                {waitlistEnabled ? (
+                  <Link
+                    href="/waitlist"
+                    className="inline-flex items-center gap-1.5 rounded-full border border-uranium-green/30 bg-uranium-green/10 px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.12em] text-uranium-green transition-colors hover:bg-uranium-green/20"
+                    title="Pro Waitlist"
+                  >
+                    <span className="h-1.5 w-1.5 rounded-full bg-uranium-green animate-pulse" />
+                    <BellRing className="h-3.5 w-3.5 sm:hidden" />
+                    <span className="hidden sm:inline">Waitlist</span>
+                  </Link>
+                ) : null}
                 {/* Auth separator and button */}
                 <div className="h-4 w-px bg-border/50 mx-1 hidden sm:block" />
                 <UserAuthButton />

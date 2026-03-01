@@ -57,9 +57,11 @@ export async function upsertWaitlistSignup(params: {
       SELECT id, status, user_id
       FROM pro_waitlist
       WHERE email_normalized = ?
+         OR (user_id IS NOT NULL AND user_id = ?)
+      ORDER BY CASE WHEN user_id = ? THEN 0 ELSE 1 END
       LIMIT 1
     `,
-    args: [emailNormalized],
+    args: [emailNormalized, params.userId, params.userId],
   });
 
   if (existing.rows.length === 0) {
@@ -83,10 +85,10 @@ export async function upsertWaitlistSignup(params: {
     await params.db.execute({
       sql: `
         UPDATE pro_waitlist
-        SET source = ?, user_id = ?, updated_at = ?
+        SET email_normalized = ?, email_raw = ?, source = ?, user_id = ?, updated_at = ?
         WHERE id = ?
       `,
-      args: [params.source, nextUserId, now, row.id as number],
+      args: [emailNormalized, params.emailRaw.trim(), params.source, nextUserId, now, row.id as number],
     });
     return "already_joined";
   }
@@ -94,10 +96,15 @@ export async function upsertWaitlistSignup(params: {
   await params.db.execute({
     sql: `
       UPDATE pro_waitlist
-      SET status = 'active', source = ?, user_id = ?, updated_at = ?
+      SET status = 'active',
+          email_normalized = ?,
+          email_raw = ?,
+          source = ?,
+          user_id = ?,
+          updated_at = ?
       WHERE id = ?
     `,
-    args: [params.source, nextUserId, now, row.id as number],
+    args: [emailNormalized, params.emailRaw.trim(), params.source, nextUserId, now, row.id as number],
   });
   return "reactivated";
 }
