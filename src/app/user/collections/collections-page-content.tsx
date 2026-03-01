@@ -4,6 +4,7 @@ import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "re
 import Link from "next/link";
 import {
   ArrowUpRight,
+  Bookmark,
   FolderHeart,
   Layers,
   Loader2,
@@ -266,20 +267,33 @@ export function CollectionsPageContent() {
                 {stats.totalCollections} total • {stats.totalItems} objects tracked
               </p>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={refreshCollections}
-              disabled={isLoading}
-              className="gap-1.5 border-orange-300/30 bg-black/25 text-orange-100 hover:bg-orange-500/15 sm:w-auto"
-            >
-              {isLoading ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <RefreshCw className="h-3.5 w-3.5" />
-              )}
-              {isLoading ? "Refreshing..." : "Refresh"}
-            </Button>
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+              <Button
+                asChild
+                variant="outline"
+                size="sm"
+                className="gap-1.5 border-orange-300/30 bg-black/25 text-orange-100 hover:bg-orange-500/15"
+              >
+                <Link href="/user/saved-objects">
+                  <Bookmark className="h-3.5 w-3.5" />
+                  Saved Objects
+                </Link>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={refreshCollections}
+                disabled={isLoading}
+                className="gap-1.5 border-orange-300/30 bg-black/25 text-orange-100 hover:bg-orange-500/15 sm:w-auto"
+              >
+                {isLoading ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-3.5 w-3.5" />
+                )}
+                {isLoading ? "Refreshing..." : "Refresh"}
+              </Button>
+            </div>
           </div>
 
           {isLoading ? (

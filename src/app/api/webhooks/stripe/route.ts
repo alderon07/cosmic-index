@@ -7,15 +7,15 @@ import { Client } from "@libsql/client";
 /**
  * POST /api/webhooks/stripe
  *
- * Stripe webhook handler with idempotent event processing.
+ * Stripe webhook handler with signature verification and duplicate suppression.
  *
- * CRITICAL: Uses insert-as-lock pattern for idempotency.
+ * Flow:
  * 1. Verify webhook signature
- * 2. INSERT event ID into stripe_events table (atomic lock acquisition)
- * 3. If INSERT succeeds, we own the lock - process the event
- * 4. If INSERT fails (duplicate), event was already processed - skip
+ * 2. Check if event ID has already been recorded; skip if so
+ * 3. Process event
+ * 4. Record event ID for future duplicate suppression
  *
- * This ensures that even if Stripe retries a webhook, we only process it once.
+ * We record after successful processing so transient processing failures can be retried.
  */
 export async function POST(request: NextRequest) {
   const stripe = requireStripe();
@@ -49,24 +49,17 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }
 
-  // 2. ATOMIC idempotency - insert-as-lock pattern
-  // INSERT first; if it fails (duplicate), we already processed this event
-  try {
-    await db.execute({
-      sql: "INSERT INTO stripe_events (id, event_type) VALUES (?, ?)",
-      args: [event.id, event.type],
-    });
-  } catch (error) {
-    // Constraint violation = duplicate event
-    if (String(error).includes("UNIQUE constraint") || String(error).includes("PRIMARY KEY")) {
-      console.log(`Stripe webhook: Skipping duplicate event ${event.id}`);
-      return NextResponse.json({ received: true, skipped: "duplicate" });
-    }
-    // Re-throw other errors
-    throw error;
+  // 2. Skip events already recorded as processed
+  const existingEvent = await db.execute({
+    sql: "SELECT id FROM stripe_events WHERE id = ? LIMIT 1",
+    args: [event.id],
+  });
+  if (existingEvent.rows.length > 0) {
+    console.log(`Stripe webhook: Skipping duplicate event ${event.id}`);
+    return NextResponse.json({ received: true, skipped: "duplicate" });
   }
 
-  // 3. Process event AFTER successful insert (we own the lock)
+  // 3. Process event
   try {
     await processStripeEvent(event, db);
     console.log(`Stripe webhook: Processed event ${event.id} (${event.type})`);
@@ -75,6 +68,25 @@ export async function POST(request: NextRequest) {
     // Note: Event is recorded but processing failed
     // In production, you might want to add a "processed_at" column to track incomplete processing
     return NextResponse.json({ error: "Processing failed" }, { status: 500 });
+  }
+
+  // 4. Record event after successful processing to suppress future duplicates.
+  try {
+    await db.execute({
+      sql: "INSERT INTO stripe_events (id, event_type) VALUES (?, ?)",
+      args: [event.id, event.type],
+    });
+  } catch (error) {
+    // Another in-flight delivery may have already recorded this event.
+    if (String(error).includes("UNIQUE constraint") || String(error).includes("PRIMARY KEY")) {
+      console.log(`Stripe webhook: Event already recorded ${event.id}`);
+      return NextResponse.json({ received: true, skipped: "duplicate" });
+    }
+
+    // Event processing succeeded; do not fail the webhook response because
+    // retries would re-run processing and can create unnecessary churn.
+    console.error(`Stripe webhook: Processed event ${event.id} but failed to record idempotency marker`, error);
+    return NextResponse.json({ received: true, warning: "event_record_not_persisted" });
   }
 
   return NextResponse.json({ received: true });

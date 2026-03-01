@@ -9,6 +9,13 @@ import {
 } from "@/lib/runtime-mode";
 import { setMockUserTier, setMockStripeCustomer } from "@/lib/mock-user-store";
 
+function buildCheckoutIdempotencyKey(userId: string): string {
+  // Coalesce rapid retries/double-clicks into one Checkout Session while
+  // still allowing users to start a fresh session shortly after.
+  const windowBucket = Math.floor(Date.now() / 30_000);
+  return `checkout:${userId}:${windowBucket}`;
+}
+
 /**
  * POST /api/stripe/checkout
  *
@@ -42,6 +49,7 @@ export async function POST() {
 
     const stripe = requireStripe();
     const db = getUserDb();
+    const idempotencyKey = buildCheckoutIdempotencyKey(user.userId);
 
     if (!STRIPE_PRICES.PRO_MONTHLY) {
       return NextResponse.json(
@@ -63,7 +71,6 @@ export async function POST() {
     // Create checkout session
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
-      payment_method_types: ["card"],
       line_items: [
         {
           price: STRIPE_PRICES.PRO_MONTHLY,
@@ -85,6 +92,8 @@ export async function POST() {
       cancel_url: `${APP_URL}/settings/billing?canceled=true`,
       // Allow promotion codes
       allow_promotion_codes: true,
+    }, {
+      idempotencyKey,
     });
 
     return NextResponse.json({ url: session.url });
