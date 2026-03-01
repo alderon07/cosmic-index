@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Loader2 } from "lucide-react";
+import { SignInButton } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAppAuth } from "@/components/auth/app-auth-provider";
@@ -21,6 +22,12 @@ export function WaitlistCta({ source, className, compact = false }: WaitlistCtaP
   const [statusText, setStatusText] = useState<string | null>(null);
   const [statusTone, setStatusTone] = useState<"muted" | "error" | "success">("muted");
 
+  useEffect(() => {
+    if (!email && auth.email) {
+      setEmail(auth.email);
+    }
+  }, [auth.email, email]);
+
   const buttonLabel = useMemo(() => {
     if (isSubmitting) return "Joining...";
     return "Join Waitlist";
@@ -34,17 +41,36 @@ export function WaitlistCta({ source, className, compact = false }: WaitlistCtaP
     setIsSubmitting(true);
 
     try {
+      const accountEmail = (auth.email ?? email).trim();
       const response = await fetch("/api/waitlist", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, source }),
+        body: JSON.stringify({ email: accountEmail, source }),
       });
 
       const payload = await response.json().catch(() => null);
       if (!response.ok) {
+        if (response.status === 401) {
+          setStatusTone("error");
+          setStatusText("Sign in to join the waitlist.");
+          return;
+        }
+
         if (response.status === 429 && payload?.retryAfterSec) {
           setStatusTone("error");
           setStatusText(`Rate limited. Try again in ${payload.retryAfterSec}s.`);
+          return;
+        }
+
+        if (response.status === 403 && payload?.error === "email_mismatch") {
+          setStatusTone("error");
+          setStatusText("Waitlist joins must use your signed-in account email.");
+          return;
+        }
+
+        if (response.status === 400 && payload?.error === "account_email_unavailable") {
+          setStatusTone("error");
+          setStatusText("Your account email is unavailable. Update your profile email and try again.");
           return;
         }
 
@@ -75,6 +101,23 @@ export function WaitlistCta({ source, className, compact = false }: WaitlistCtaP
     }
   };
 
+  if (!auth.isSignedIn) {
+    return (
+      <div className={cn("space-y-2", className)}>
+        <p className="text-sm text-muted-foreground">Sign in to join the Pro waitlist.</p>
+        {auth.mode === "clerk" ? (
+          <SignInButton mode="modal">
+            <Button type="button">Sign In to Join</Button>
+          </SignInButton>
+        ) : (
+          <Button type="button" disabled>
+            Sign In to Join
+          </Button>
+        )}
+      </div>
+    );
+  }
+
   return (
     <form
       className={cn("space-y-2", className)}
@@ -87,12 +130,11 @@ export function WaitlistCta({ source, className, compact = false }: WaitlistCtaP
           type="email"
           inputMode="email"
           autoComplete="email"
-          required
-          placeholder="you@example.com"
-          value={email}
-          onChange={(event) => setEmail(event.target.value)}
+          readOnly
+          aria-readonly
+          value={auth.email ?? email}
           className="min-w-0 flex-1"
-          disabled={isSubmitting}
+          disabled
         />
         <Button type="submit" disabled={isSubmitting}>
           {isSubmitting ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : null}
@@ -100,7 +142,7 @@ export function WaitlistCta({ source, className, compact = false }: WaitlistCtaP
         </Button>
       </div>
       <p className="text-xs text-muted-foreground">
-        We store your email to notify you about Pro availability. Unsubscribe anytime.
+        We use your signed-in account email to notify you about Pro availability. Unsubscribe anytime.
       </p>
       {statusText ? (
         <p

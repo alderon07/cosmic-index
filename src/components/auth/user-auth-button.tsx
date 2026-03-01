@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { SignedIn, SignedOut, SignInButton, UserButton } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
-import { User, FolderHeart } from "lucide-react";
+import { User, FolderHeart, Bookmark, Layers } from "lucide-react";
 import { useAppAuth } from "./app-auth-provider";
 
 /**
@@ -75,7 +75,20 @@ export function UserAuthButton() {
             },
           }}
           afterSignOutUrl="/"
-        />
+        >
+          <UserButton.MenuItems>
+            <UserButton.Link
+              href="/user/saved-objects"
+              label="Saved Objects"
+              labelIcon={<Bookmark className="h-4 w-4" />}
+            />
+            <UserButton.Link
+              href="/user/collections"
+              label="Collections"
+              labelIcon={<Layers className="h-4 w-4" />}
+            />
+          </UserButton.MenuItems>
+        </UserButton>
       </SignedIn>
     </>
   );

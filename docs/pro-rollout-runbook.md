@@ -64,6 +64,7 @@ This migration adds:
 
 ### Waitlist
 - `POST /api/waitlist`
+  - requires authenticated user
   - body: `{ email, source }`
   - sources: `billing | limit_saved_objects | limit_saved_searches | limit_exports | pro_badge`
   - responses: `joined | already_joined | reactivated`
