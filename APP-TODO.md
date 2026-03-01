@@ -1,7 +1,7 @@
 
 # Progress Tracker 
 
-> **Last updated:** 2026-02-09
+> **Last updated:** 2026-03-01
 
 ## ✅ Completed
 
@@ -26,7 +26,9 @@
 | Compare Analytics | Added `compare_action_result`, `compare_tray_open`, `compare_dialog_open`, blocked reason codes, and storage reset/parse metrics |
 | Saved Objects UX | `/user/saved-objects` has export button, refresh indicator, canonical detail-link resolution, and backward-compatible exoplanet ID handling |
 | Saved Searches UI | Saved search controls integrated into exoplanets, stars, and small bodies browse pages |
+| Saved Search Modal UX | Replaced browser `prompt()` with themed in-app dialog for naming saved searches |
 | Save Controls | Save buttons active on object + event cards/details, with consistent heart icon treatment across objects, weather, and fireballs |
+| Free Export Guardrail | Free tier export requests limited to **1 per hour** (`EXPORT_REQUESTS_PER_HOUR`) |
 | **Pro Tier Backend** | Full implementation - see details below |
 
 ### Pro Tier Implementation (Code Complete)
