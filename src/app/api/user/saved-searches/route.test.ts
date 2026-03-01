@@ -45,7 +45,7 @@ mock.module("@/lib/mock-user-store", () => ({
     lastExecutedAt: new Date().toISOString(),
     createdAt: new Date().toISOString(),
   }),
-  countSavedSearches: () => 50,
+  countSavedSearches: () => 100,
   hasSavedSearchByHash: () => false,
   listCollectionsForSavedObject: () => null,
 }));

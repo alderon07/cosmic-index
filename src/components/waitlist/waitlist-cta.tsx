@@ -1,10 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { SignInButton } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { useAppAuth } from "@/components/auth/app-auth-provider";
 import { cn } from "@/lib/utils";
 import type { WaitlistSource } from "@/lib/waitlist";
@@ -17,21 +16,16 @@ interface WaitlistCtaProps {
 
 export function WaitlistCta({ source, className, compact = false }: WaitlistCtaProps) {
   const auth = useAppAuth();
-  const [email, setEmail] = useState(auth.email ?? "");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [statusText, setStatusText] = useState<string | null>(null);
   const [statusTone, setStatusTone] = useState<"muted" | "error" | "success">("muted");
-
-  useEffect(() => {
-    if (!email && auth.email) {
-      setEmail(auth.email);
-    }
-  }, [auth.email, email]);
 
   const buttonLabel = useMemo(() => {
     if (isSubmitting) return "Joining...";
     return "Join Waitlist";
   }, [isSubmitting]);
+  const accountEmail = auth.email.trim();
+  const hasAccountEmail = accountEmail.length > 0;
 
   const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -41,11 +35,15 @@ export function WaitlistCta({ source, className, compact = false }: WaitlistCtaP
     setIsSubmitting(true);
 
     try {
-      const accountEmail = (auth.email ?? email).trim();
+      const body: { source: WaitlistSource; email?: string } = { source };
+      if (hasAccountEmail) {
+        body.email = accountEmail;
+      }
+
       const response = await fetch("/api/waitlist", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: accountEmail, source }),
+        body: JSON.stringify(body),
       });
 
       const payload = await response.json().catch(() => null);
@@ -125,17 +123,33 @@ export function WaitlistCta({ source, className, compact = false }: WaitlistCtaP
         void onSubmit(event);
       }}
     >
-      <div className={cn("flex gap-2", compact ? "flex-col sm:flex-row" : "flex-col sm:flex-row")}>
-        <Input
-          type="email"
-          inputMode="email"
-          autoComplete="email"
-          readOnly
-          aria-readonly
-          value={auth.email ?? email}
-          className="min-w-0 flex-1"
-          disabled
-        />
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <div
+          className={cn("min-w-0 flex-1 rounded-md border border-border/70 bg-muted/15", {
+            "px-3 py-2": !compact,
+            "px-2.5 py-2": compact,
+          })}
+        >
+          <p
+            className={cn("uppercase tracking-[0.16em] text-muted-foreground/85", {
+              "text-[10px]": !compact,
+              "text-[9px]": compact,
+            })}
+          >
+            Waitlist Email
+          </p>
+          <p
+            className={cn("truncate text-sm", {
+              "text-foreground": hasAccountEmail,
+              "text-muted-foreground": !hasAccountEmail,
+              "text-xs": compact,
+            })}
+          >
+            {hasAccountEmail
+              ? accountEmail
+              : "Your signed-in account email will be used automatically."}
+          </p>
+        </div>
         <Button type="submit" disabled={isSubmitting}>
           {isSubmitting ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : null}
           {buttonLabel}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAppAuth } from "@/components/auth/app-auth-provider";
@@ -17,6 +17,90 @@ interface SaveEventButtonProps {
   className?: string;
 }
 
+const savedEventStatusCache = new Map<string, number | null>();
+const savedEventStatusListeners = new Map<string, Set<(savedObjectId: number | null) => void>>();
+const pendingSavedEventLookupIds = new Set<string>();
+let isSavedEventLookupScheduled = false;
+let isSavedEventLookupInFlight = false;
+
+function broadcastSavedEventStatus(canonicalId: string, savedObjectId: number | null) {
+  savedEventStatusCache.set(canonicalId, savedObjectId);
+  const listeners = savedEventStatusListeners.get(canonicalId);
+  if (!listeners || listeners.size === 0) return;
+
+  for (const listener of listeners) {
+    listener(savedObjectId);
+  }
+}
+
+function subscribeSavedEventStatus(
+  canonicalId: string,
+  listener: (savedObjectId: number | null) => void
+) {
+  const listeners = savedEventStatusListeners.get(canonicalId) ?? new Set();
+  listeners.add(listener);
+  savedEventStatusListeners.set(canonicalId, listeners);
+
+  return () => {
+    const current = savedEventStatusListeners.get(canonicalId);
+    if (!current) return;
+    current.delete(listener);
+    if (current.size === 0) {
+      savedEventStatusListeners.delete(canonicalId);
+    }
+  };
+}
+
+async function flushSavedEventStatusLookups() {
+  if (isSavedEventLookupInFlight || pendingSavedEventLookupIds.size === 0) return;
+  isSavedEventLookupInFlight = true;
+
+  const canonicalIds = Array.from(pendingSavedEventLookupIds);
+  pendingSavedEventLookupIds.clear();
+
+  try {
+    const response = await fetch("/api/user/saved-objects/check", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ canonicalIds }),
+    });
+
+    if (!response.ok) return;
+
+    const payload = (await response.json().catch(() => null)) as
+      | { saved?: Record<string, number | null> }
+      | null;
+    const saved = payload?.saved ?? {};
+
+    for (const id of canonicalIds) {
+      const savedObjectId = saved[id];
+      broadcastSavedEventStatus(id, typeof savedObjectId === "number" ? savedObjectId : null);
+    }
+  } catch {
+    // Ignore lookup failures; manual save/unsave still updates local state.
+  } finally {
+    isSavedEventLookupInFlight = false;
+    if (pendingSavedEventLookupIds.size > 0) {
+      queueSavedEventStatusLookupFlush();
+    }
+  }
+}
+
+function queueSavedEventStatusLookupFlush() {
+  if (isSavedEventLookupScheduled) return;
+  isSavedEventLookupScheduled = true;
+  queueMicrotask(() => {
+    isSavedEventLookupScheduled = false;
+    void flushSavedEventStatusLookups();
+  });
+}
+
+function queueSavedEventStatusLookup(canonicalId: string) {
+  if (savedEventStatusCache.has(canonicalId)) return;
+  pendingSavedEventLookupIds.add(canonicalId);
+  queueSavedEventStatusLookupFlush();
+}
+
 export function SaveEventButton({
   canonicalId,
   displayName,
@@ -27,6 +111,26 @@ export function SaveEventButton({
   const [isSaved, setIsSaved] = useState(false);
   const [savedObjectId, setSavedObjectId] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (!isLoaded || !isSignedIn) return;
+
+    const cached = savedEventStatusCache.get(canonicalId);
+    if (cached !== undefined) {
+      setSavedObjectId(cached);
+      setIsSaved(cached !== null);
+      return;
+    }
+
+    const unsubscribe = subscribeSavedEventStatus(canonicalId, (nextSavedObjectId) => {
+      setSavedObjectId(nextSavedObjectId);
+      setIsSaved(nextSavedObjectId !== null);
+    });
+
+    queueSavedEventStatusLookup(canonicalId);
+
+    return unsubscribe;
+  }, [canonicalId, isLoaded, isSignedIn]);
 
   const handleToggle = useCallback(async () => {
     if (!isSignedIn || isLoading) return;
@@ -46,6 +150,7 @@ export function SaveEventButton({
         }
 
         setSavedObjectId(null);
+        broadcastSavedEventStatus(canonicalId, null);
       } else {
         const response = await fetch("/api/user/saved-objects", {
           method: "POST",
@@ -63,6 +168,7 @@ export function SaveEventButton({
 
         const data = await response.json();
         setSavedObjectId(data.id);
+        broadcastSavedEventStatus(canonicalId, data.id as number);
       }
     } catch {
       setIsSaved(previous);
