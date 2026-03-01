@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, ArrowUpRight, FolderHeart, Loader2, RefreshCw, Trash2 } from "lucide-react";
@@ -17,6 +18,7 @@ import {
 } from "@/lib/saved-object-ui";
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { ExportButton } from "@/components/export-button";
+import { queryKeys } from "@/lib/query-keys";
 
 interface CollectionMetadata {
   id: number;
@@ -47,6 +49,22 @@ interface CollectionDetailResponse {
   hasMore: boolean;
 }
 
+interface CollectionSummaryCache {
+  id: number;
+  itemCount?: number;
+  updatedAt: string;
+}
+
+class CollectionDetailError extends Error {
+  status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.status = status;
+    this.name = "CollectionDetailError";
+  }
+}
+
 const DEFAULT_LIMIT = 24;
 const TYPE_ACCENTS: Record<string, string> = {
   exoplanet: "hsl(179 70% 55%)",
@@ -60,11 +78,39 @@ const TYPE_ACCENTS: Record<string, string> = {
   unknown: "hsl(35 10% 65%)",
 };
 
+async function fetchCollectionDetail(
+  collectionId: number,
+  page: number,
+  limit: number
+): Promise<CollectionDetailResponse> {
+  const query = new URLSearchParams();
+  query.set("page", String(page));
+  query.set("limit", String(limit));
+
+  const response = await fetch(`/api/user/collections/${collectionId}?${query.toString()}`);
+
+  if (response.status === 404) {
+    throw new CollectionDetailError("Resource not found.", 404);
+  }
+
+  if (response.status === 401) {
+    throw new CollectionDetailError("Session expired. Please sign in again.", 401);
+  }
+
+  if (!response.ok) {
+    const body = (await response.json().catch(() => null)) as { message?: string } | null;
+    throw new CollectionDetailError(body?.message || "Failed to load collection.", response.status);
+  }
+
+  return (await response.json()) as CollectionDetailResponse;
+}
+
 export function CollectionDetailContent() {
   const auth = useAppAuth();
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const queryClient = useQueryClient();
 
   const collectionId = Number.parseInt(params.id, 10);
   const parsedPage = Number.parseInt(searchParams.get("page") || "1", 10);
@@ -78,19 +124,30 @@ export function CollectionDetailContent() {
       ? Math.min(100, parsedLimit)
       : DEFAULT_LIMIT;
 
-  const [data, setData] = useState<CollectionDetailResponse | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [isNotFound, setIsNotFound] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [pendingRemoveId, setPendingRemoveId] = useState<number | null>(null);
+  const [mutationError, setMutationError] = useState<string | null>(null);
 
-  const queryString = useMemo(() => {
-    const query = new URLSearchParams();
-    query.set("page", String(page));
-    query.set("limit", String(limit));
-    return query.toString();
-  }, [limit, page]);
+  const collectionDetailQueryKey = queryKeys.collectionDetail(collectionId, page, limit);
+
+  const collectionQuery = useQuery({
+    queryKey: collectionDetailQueryKey,
+    queryFn: () => fetchCollectionDetail(collectionId, page, limit),
+    enabled: auth.isSignedIn && Number.isFinite(collectionId),
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
+  });
+
+  useEffect(() => {
+    if (!auth.isSignedIn) return;
+    if (!Number.isFinite(collectionId)) return;
+    if (!collectionQuery.data?.hasMore) return;
+
+    void queryClient.prefetchQuery({
+      queryKey: queryKeys.collectionDetail(collectionId, page + 1, limit),
+      queryFn: () => fetchCollectionDetail(collectionId, page + 1, limit),
+      staleTime: 60_000,
+    });
+  }, [auth.isSignedIn, collectionId, collectionQuery.data?.hasMore, limit, page, queryClient]);
 
   const setPage = useCallback(
     (nextPageOrUpdater: number | ((currentPage: number) => number)) => {
@@ -104,65 +161,96 @@ export function CollectionDetailContent() {
     [limit, page, params.id, router]
   );
 
-  const loadCollection = useCallback(
-    async (isManualRefresh = false) => {
-      if (isManualRefresh) {
-        setIsRefreshing(true);
-      } else {
-        setIsLoading(true);
-      }
-      setErrorMessage(null);
-      setIsNotFound(false);
+  const removeItemMutation = useMutation({
+    mutationFn: async (savedObjectId: number) => {
+      const response = await fetch(`/api/user/collections/${params.id}/items`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ savedObjectId }),
+      });
 
-      try {
-        const response = await fetch(`/api/user/collections/${params.id}?${queryString}`);
-
-        if (response.status === 404) {
-          setIsNotFound(true);
-          setData(null);
-          return;
-        }
-
-        if (response.status === 401) {
-          setErrorMessage("Session expired. Please sign in again.");
-          setData(null);
-          return;
-        }
-
-        if (!response.ok) {
-          const body = (await response.json().catch(() => null)) as { message?: string } | null;
-          throw new Error(body?.message || "Failed to load collection.");
-        }
-
-        const payload = (await response.json()) as CollectionDetailResponse;
-        setData(payload);
-      } catch (error) {
-        console.error(error);
-        setErrorMessage(
-          error instanceof Error ? error.message : "Could not load this collection right now."
-        );
-        setData(null);
-      } finally {
-        setIsLoading(false);
-        setIsRefreshing(false);
+      if (!response.ok && response.status !== 404) {
+        const body = (await response.json().catch(() => null)) as { message?: string } | null;
+        throw new Error(body?.message || "Failed to remove item from collection.");
       }
     },
-    [params.id, queryString]
-  );
+    onMutate: async (savedObjectId) => {
+      await queryClient.cancelQueries({ queryKey: collectionDetailQueryKey });
 
-  useEffect(() => {
-    if (!Number.isFinite(collectionId)) {
-      setIsNotFound(true);
-      setIsLoading(false);
-      return;
-    }
-    void loadCollection();
-  }, [collectionId, loadCollection]);
+      const previousDetail = queryClient.getQueryData<CollectionDetailResponse>(collectionDetailQueryKey);
+      const previousCollections = queryClient.getQueryData<CollectionSummaryCache[]>(queryKeys.collections());
+
+      const removedCount = previousDetail?.items.some((item) => item.id === savedObjectId) ? 1 : 0;
+      const nextPageBecomesEmpty = Boolean(previousDetail && removedCount === 1 && previousDetail.items.length === 1 && page > 1);
+
+      if (previousDetail) {
+        queryClient.setQueryData<CollectionDetailResponse>(collectionDetailQueryKey, {
+          ...previousDetail,
+          items: previousDetail.items.filter((item) => item.id !== savedObjectId),
+          itemCount: Math.max(0, previousDetail.itemCount - removedCount),
+        });
+      }
+
+      if (previousCollections) {
+        const now = new Date().toISOString();
+        queryClient.setQueryData<CollectionSummaryCache[]>(
+          queryKeys.collections(),
+          previousCollections.map((collection) =>
+            collection.id === collectionId
+              ? {
+                  ...collection,
+                  itemCount: Math.max(0, (collection.itemCount ?? 0) - removedCount),
+                  updatedAt: now,
+                }
+              : collection
+          )
+        );
+      }
+
+      return { previousDetail, previousCollections, nextPageBecomesEmpty };
+    },
+    onError: (error, _savedObjectId, context) => {
+      if (context?.previousDetail) {
+        queryClient.setQueryData(collectionDetailQueryKey, context.previousDetail);
+      }
+      if (context?.previousCollections) {
+        queryClient.setQueryData(queryKeys.collections(), context.previousCollections);
+      }
+      setMutationError(
+        error instanceof Error ? error.message : "Could not remove this item right now."
+      );
+    },
+    onSuccess: (_data, _savedObjectId, context) => {
+      if (context?.nextPageBecomesEmpty) {
+        setPage((currentPage) => currentPage - 1);
+      }
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ["user", "collection-detail", collectionId] });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.collections() });
+    },
+  });
+
+  const data = collectionQuery.data ?? null;
+  const isLoading = collectionQuery.isLoading;
+  const isRefreshing = collectionQuery.isFetching && !collectionQuery.isLoading;
+
+  const isNotFound = !Number.isFinite(collectionId)
+    || (collectionQuery.error instanceof CollectionDetailError
+      && collectionQuery.error.status === 404);
+
+  const queryErrorMessage =
+    collectionQuery.error instanceof CollectionDetailError && collectionQuery.error.status !== 404
+      ? collectionQuery.error.message
+      : null;
+
+  const errorMessage = mutationError ?? queryErrorMessage;
 
   const refreshCollection = useCallback(() => {
     if (isRefreshing) return;
-    void loadCollection(true);
-  }, [isRefreshing, loadCollection]);
+    setMutationError(null);
+    void collectionQuery.refetch();
+  }, [collectionQuery, isRefreshing]);
 
   const pageShortcuts = useMemo(
     () => [{ key: "r", handler: refreshCollection, description: "Refresh collection" }],
@@ -179,45 +267,15 @@ export function CollectionDetailContent() {
       if (!confirmed || pendingRemoveId) return;
 
       setPendingRemoveId(savedObjectId);
-      setErrorMessage(null);
+      setMutationError(null);
 
       try {
-        const response = await fetch(`/api/user/collections/${params.id}/items`, {
-          method: "DELETE",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ savedObjectId }),
-        });
-
-        if (!response.ok && response.status !== 404) {
-          const body = (await response.json().catch(() => null)) as { message?: string } | null;
-          throw new Error(body?.message || "Failed to remove item from collection.");
-        }
-
-        setData((previous) => {
-          if (!previous) return previous;
-          const removedCount = previous.items.some((item) => item.id === savedObjectId) ? 1 : 0;
-          const nextItems = previous.items.filter((item) => item.id !== savedObjectId);
-          const nextCount = Math.max(0, previous.itemCount - removedCount);
-          return {
-            ...previous,
-            items: nextItems,
-            itemCount: nextCount,
-          };
-        });
-
-        if (data && data.items.length === 1 && page > 1) {
-          setPage((currentPage) => currentPage - 1);
-        }
-      } catch (error) {
-        console.error(error);
-        setErrorMessage(
-          error instanceof Error ? error.message : "Could not remove this item right now."
-        );
+        await removeItemMutation.mutateAsync(savedObjectId);
       } finally {
         setPendingRemoveId(null);
       }
     },
-    [data, page, params.id, pendingRemoveId, setPage]
+    [pendingRemoveId, removeItemMutation]
   );
 
   if (!auth.isSignedIn) {

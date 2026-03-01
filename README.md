@@ -189,6 +189,12 @@ Integration tests are available in `src/lib/__tests__/`:
 - `nasa-exoplanet.test.ts` - NASA Exoplanet Archive integration tests
 - `jpl-sbdb.integration.test.ts` - JPL Small-Body Database integration tests
 
+## 📚 Docs
+
+- [Performance strategies](docs/performance-strategies.md) - Implemented optimizations and prioritized next performance work
+- [Pro rollout runbook](docs/pro-rollout-runbook.md) - Operational rollout checklist for Pro surfaces
+- [Migration runbook (2026-03-01)](docs/migration-runbook-2026-03-01.md) - Turso migration execution and verification steps
+
 ## 🙏 Acknowledgments
 
 - [NASA Exoplanet Archive](https://exoplanetarchive.ipac.caltech.edu/) for exoplanet data

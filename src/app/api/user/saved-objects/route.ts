@@ -14,6 +14,7 @@ import {
 import { getTierLimits, getUpgradePayload } from "@/lib/tier-limits";
 import { resolveLimitMode, toLimitPolicyMetadata } from "@/lib/feature-policy";
 import { recordLimitHitWithDedup } from "@/lib/waitlist";
+import { ServerTiming } from "@/lib/server-timing";
 
 const ROLLING_DAY_SECONDS = 24 * 60 * 60;
 const ROLLING_DAY_MS = ROLLING_DAY_SECONDS * 1000;
@@ -32,23 +33,30 @@ function getSaveLimitHeaders(limit: number, used: number): Record<string, string
  * Returns objects sorted by creation date (most recent first).
  */
 export async function GET(request: NextRequest) {
+  const timing = new ServerTiming();
   try {
-    const user = await requireAuth();
+    const user = await timing.measure("auth", () => requireAuth());
     const limits = getTierLimits(user.tier);
     const searchParams = request.nextUrl.searchParams;
-    const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
-    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "24", 10)));
+    const page = timing.measureSync("parse_page", () =>
+      Math.max(1, parseInt(searchParams.get("page") || "1", 10))
+    );
+    const limit = timing.measureSync("parse_limit", () =>
+      Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "24", 10)))
+    );
     const useMockStore = isMockUserStoreEnabled();
-    const db = useMockStore ? null : requireUserDb();
-    const limitMode = await resolveLimitMode({ db });
+    const db = timing.measureSync("resolve_db", () => (useMockStore ? null : requireUserDb()));
+    const limitMode = await timing.measure("limit_mode", () => resolveLimitMode({ db }));
 
     if (useMockStore) {
-      const result = listSavedObjects(user.userId, page, limit);
-      const total = countSavedObjects(user.userId);
+      const result = timing.measureSync("mock_list", () => listSavedObjects(user.userId, page, limit));
+      const total = timing.measureSync("mock_count_total", () => countSavedObjects(user.userId));
       const sinceIso = new Date(Date.now() - ROLLING_DAY_MS).toISOString();
-      const dailyUsed = countSavedObjectsSince(user.userId, sinceIso);
+      const dailyUsed = timing.measureSync("mock_count_daily", () =>
+        countSavedObjectsSince(user.userId, sinceIso)
+      );
 
-      return NextResponse.json({
+      return timing.json({
         objects: result.objects,
         total: result.total,
         page,
@@ -70,46 +78,54 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    const ensuredDb = db ?? requireUserDb();
+    const ensuredDb = timing.measureSync("ensure_db", () => db ?? requireUserDb());
     const offset = (page - 1) * limit;
 
-    const countResult = await ensuredDb.execute({
-      sql: "SELECT COUNT(*) as total FROM saved_objects WHERE user_id = ?",
-      args: [user.userId],
-    });
+    const countResult = await timing.measure("db_count_total", () =>
+      ensuredDb.execute({
+        sql: "SELECT COUNT(*) as total FROM saved_objects WHERE user_id = ?",
+        args: [user.userId],
+      })
+    );
     const total = Number(countResult.rows[0]?.total ?? 0);
 
-    const dailyResult = await ensuredDb.execute({
-      sql: `
+    const dailyResult = await timing.measure("db_count_daily", () =>
+      ensuredDb.execute({
+        sql: `
         SELECT COUNT(*) as total
         FROM saved_objects
         WHERE user_id = ? AND created_at >= datetime('now', '-1 day')
       `,
-      args: [user.userId],
-    });
+        args: [user.userId],
+      })
+    );
     const dailyUsed = Number(dailyResult.rows[0]?.total ?? 0);
 
-    const result = await ensuredDb.execute({
-      sql: `
+    const result = await timing.measure("db_list_saved", () =>
+      ensuredDb.execute({
+        sql: `
         SELECT id, canonical_id, display_name, notes, event_payload, created_at
         FROM saved_objects
         WHERE user_id = ?
         ORDER BY created_at DESC
         LIMIT ? OFFSET ?
       `,
-      args: [user.userId, limit, offset],
-    });
+        args: [user.userId, limit, offset],
+      })
+    );
 
-    const objects: SavedObject[] = result.rows.map((row) => ({
-      id: row.id as number,
-      canonicalId: row.canonical_id as string,
-      displayName: row.display_name as string,
-      notes: row.notes as string | null,
-      eventPayload: row.event_payload ? JSON.parse(row.event_payload as string) : null,
-      createdAt: row.created_at as string,
-    }));
+    const objects: SavedObject[] = timing.measureSync("serialize_rows", () =>
+      result.rows.map((row) => ({
+        id: row.id as number,
+        canonicalId: row.canonical_id as string,
+        displayName: row.display_name as string,
+        notes: row.notes as string | null,
+        eventPayload: row.event_payload ? JSON.parse(row.event_payload as string) : null,
+        createdAt: row.created_at as string,
+      }))
+    );
 
-    return NextResponse.json({
+    return timing.json({
       objects,
       total,
       page,
@@ -130,7 +146,9 @@ export async function GET(request: NextRequest) {
       limitPolicy: toLimitPolicyMetadata(limitMode, false),
     });
   } catch (error) {
-    return authErrorResponse(error);
+    const response = authErrorResponse(error);
+    response.headers.set("Server-Timing", timing.toHeaderValue());
+    return response;
   }
 }
 
