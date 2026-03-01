@@ -14,6 +14,7 @@ import {
   isClerkClientConfigured,
   isMockAuthClientEnabled,
 } from "@/lib/runtime-mode";
+import { clerkAppearance } from "@/components/auth/clerk-appearance";
 
 export type AppAuthMode = "clerk" | "mock" | "none";
 
@@ -78,7 +79,7 @@ export function AppAuthProvider({ children }: { children: ReactNode }) {
 
   if (isClerkClientConfigured()) {
     return (
-      <ClerkProvider>
+      <ClerkProvider appearance={clerkAppearance}>
         <ClerkAuthBridge>{children}</ClerkAuthBridge>
       </ClerkProvider>
     );
