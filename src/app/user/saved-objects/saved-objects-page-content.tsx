@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowUpRight, Bookmark, Trash2, FolderHeart, Loader2, RefreshCw } from "lucide-react";
+import { ArrowUpRight, Bookmark, Trash2, FolderHeart, Layers, Loader2, RefreshCw } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -196,6 +196,17 @@ export function SavedObjectsPageContent() {
         </p>
       </div>
       <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center sm:justify-end">
+        <Button
+          asChild
+          variant="outline"
+          size="sm"
+          className="gap-1.5 border-orange-300/30 bg-black/25 text-orange-100 hover:bg-orange-500/15"
+        >
+          <Link href="/user/collections">
+            <Layers className="h-3.5 w-3.5" />
+            Collections
+          </Link>
+        </Button>
         <Button
           variant="outline"
           size="sm"
