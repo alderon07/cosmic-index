@@ -3,6 +3,15 @@
 import { useCallback, useEffect, useState } from "react";
 import { BookmarkPlus, Loader2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -39,6 +48,8 @@ export function SavedSearchControls({
   const [selectedId, setSelectedId] = useState<string>("none");
   const [isSaving, setIsSaving] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
+  const [saveName, setSaveName] = useState("");
   const [refreshNotice, setRefreshNotice] = useState<string | null>(null);
 
   const loadSearches = useCallback(async (): Promise<boolean> => {
@@ -73,10 +84,7 @@ export function SavedSearchControls({
   const handleSave = async () => {
     if (isSaving || isRefreshing) return;
 
-    const rawName = window.prompt("Name this saved search:");
-    if (!rawName) return;
-
-    const name = rawName.trim();
+    const name = saveName.trim();
     if (!name) return;
 
     setIsSaving(true);
@@ -97,6 +105,8 @@ export function SavedSearchControls({
 
       await loadSearches();
       setRefreshNotice("Saved and updated");
+      setIsSaveDialogOpen(false);
+      setSaveName("");
     } catch (error) {
       console.error("Save search failed", error);
       setRefreshNotice("Save failed");
@@ -136,6 +146,12 @@ export function SavedSearchControls({
     onApply(selected.queryParams);
   };
 
+  const handleOpenSaveDialog = () => {
+    if (isSaving || isRefreshing) return;
+    setSaveName("");
+    setIsSaveDialogOpen(true);
+  };
+
   return (
     <div className="flex w-full flex-wrap items-center gap-2">
       <Select value={selectedId} onValueChange={handleSelect}>
@@ -168,7 +184,7 @@ export function SavedSearchControls({
         variant="outline"
         className={cn("h-8 gap-1.5 whitespace-nowrap", theme.sortSelect, theme.text)}
         onClick={() => {
-          void handleSave();
+          handleOpenSaveDialog();
         }}
         disabled={isSaving || isRefreshing}
       >
@@ -198,6 +214,69 @@ export function SavedSearchControls({
           {refreshNotice}
         </span>
       ) : null}
+
+      <Dialog
+        open={isSaveDialogOpen}
+        onOpenChange={(nextOpen) => {
+          if (!isSaving) {
+            setIsSaveDialogOpen(nextOpen);
+          }
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              void handleSave();
+            }}
+          >
+            <DialogHeader>
+              <DialogTitle className={cn("font-display text-xl", theme.text)}>Save Search</DialogTitle>
+              <DialogDescription>
+                Give this {category.replace("-", " ")} search a name so you can restore it later.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="mt-4 space-y-2">
+              <label
+                htmlFor="saved-search-name"
+                className={cn("text-[11px] uppercase tracking-[0.16em]", theme.text)}
+              >
+                Search Name
+              </label>
+              <Input
+                id="saved-search-name"
+                value={saveName}
+                onChange={(event) => setSaveName(event.target.value)}
+                placeholder="Habitable super-Earths"
+                maxLength={100}
+                autoFocus
+                className={cn("h-9", theme.sortSelect)}
+              />
+            </div>
+            <DialogFooter className="mt-5">
+              <Button
+                type="button"
+                variant="outline"
+                className={cn(theme.sortSelect, "text-muted-foreground", theme.hoverText)}
+                onClick={() => {
+                  setIsSaveDialogOpen(false);
+                }}
+                disabled={isSaving}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                className={cn("gap-1.5", theme.selectedButton || "bg-primary text-background")}
+                disabled={isSaving || !saveName.trim()}
+              >
+                {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <BookmarkPlus className="h-3.5 w-3.5" />}
+                {isSaving ? "Saving..." : "Save Search"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

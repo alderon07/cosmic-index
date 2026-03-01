@@ -1,8 +1,8 @@
-import { NextResponse } from "next/server";
 import { requireAuth, authErrorResponse } from "@/lib/auth";
 import { requireUserDb } from "@/lib/user-db";
 import { isMockUserStoreEnabled } from "@/lib/runtime-mode";
 import { listCollectionsForSavedObject } from "@/lib/mock-user-store";
+import { ServerTiming } from "@/lib/server-timing";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -14,49 +14,55 @@ interface RouteParams {
  * List all user collections with membership status for a specific saved object.
  */
 export async function GET(request: Request, { params }: RouteParams) {
+  const timing = new ServerTiming();
   try {
-    const user = await requireAuth();
-    const { id } = await params;
+    const user = await timing.measure("auth", () => requireAuth());
+    const { id } = await timing.measure("resolve_params", () => params);
 
     const savedObjectId = Number.parseInt(id, 10);
     if (!Number.isFinite(savedObjectId)) {
-      return NextResponse.json(
+      return timing.json(
         { error: "invalid_id", message: "Invalid ID." },
         { status: 400 }
       );
     }
 
     if (isMockUserStoreEnabled()) {
-      const collections = listCollectionsForSavedObject(user.userId, savedObjectId);
+      const collections = timing.measureSync("mock_list_membership", () =>
+        listCollectionsForSavedObject(user.userId, savedObjectId)
+      );
       if (!collections) {
-        return NextResponse.json(
+        return timing.json(
           { error: "resource_not_found", message: "Resource not found." },
           { status: 404 }
         );
       }
 
-      return NextResponse.json({
+      return timing.json({
         savedObjectId,
         collections,
       });
     }
 
-    const db = requireUserDb();
+    const db = timing.measureSync("resolve_db", () => requireUserDb());
 
-    const objectResult = await db.execute({
-      sql: "SELECT id FROM saved_objects WHERE id = ? AND user_id = ?",
-      args: [savedObjectId, user.userId],
-    });
+    const objectResult = await timing.measure("db_get_saved_object", () =>
+      db.execute({
+        sql: "SELECT id FROM saved_objects WHERE id = ? AND user_id = ?",
+        args: [savedObjectId, user.userId],
+      })
+    );
 
     if (objectResult.rows.length === 0) {
-      return NextResponse.json(
+      return timing.json(
         { error: "resource_not_found", message: "Resource not found." },
         { status: 404 }
       );
     }
 
-    const result = await db.execute({
-      sql: `
+    const result = await timing.measure("db_list_membership", () =>
+      db.execute({
+        sql: `
         SELECT
           c.id,
           c.name,
@@ -69,20 +75,25 @@ export async function GET(request: Request, { params }: RouteParams) {
         GROUP BY c.id
         ORDER BY c.updated_at DESC, c.id DESC
       `,
-      args: [savedObjectId, user.userId],
-    });
+        args: [savedObjectId, user.userId],
+      })
+    );
 
-    return NextResponse.json({
+    return timing.json({
       savedObjectId,
-      collections: result.rows.map((row) => ({
-        id: row.id as number,
-        name: row.name as string,
-        itemCount: Number(row.item_count ?? 0),
-        isMember: Boolean(Number(row.is_member ?? 0)),
-        updatedAt: row.updated_at as string,
-      })),
+      collections: timing.measureSync("serialize_rows", () =>
+        result.rows.map((row) => ({
+          id: row.id as number,
+          name: row.name as string,
+          itemCount: Number(row.item_count ?? 0),
+          isMember: Boolean(Number(row.is_member ?? 0)),
+          updatedAt: row.updated_at as string,
+        }))
+      ),
     });
   } catch (error) {
-    return authErrorResponse(error);
+    const response = authErrorResponse(error);
+    response.headers.set("Server-Timing", timing.toHeaderValue());
+    return response;
   }
 }

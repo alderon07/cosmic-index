@@ -71,6 +71,16 @@
 - [ ] Test Stripe webhook idempotency: Replay event → Verify no duplicate processing
 - [ ] Test tier downgrade: Cancel subscription → Verify features locked
 
+## Performance
+
+- [ ] Review and execute prioritized items from:
+  - `docs/performance-strategies.md`
+- [ ] Start with P0 items:
+  - cursor pagination for large user datasets
+  - conditional GET (`ETag` / `If-None-Match`)
+  - targeted DB index audit with query-plan validation
+- [ ] Add baseline and post-change measurements (P50/P95 + client interaction latency) for user routes before and after each P0 change
+
 ## Polish
 
 - [ ] Add loading states to all async operations

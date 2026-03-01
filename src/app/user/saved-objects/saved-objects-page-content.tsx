@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { ArrowUpRight, Bookmark, Trash2, FolderHeart, Layers, Loader2, RefreshCw } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -20,6 +21,7 @@ import {
   SAVED_OBJECT_TYPE_ORDER,
   type SavedObjectUiType,
 } from "@/lib/saved-object-ui";
+import { queryKeys } from "@/lib/query-keys";
 
 interface SavedObjectItem {
   id: number;
@@ -27,6 +29,25 @@ interface SavedObjectItem {
   displayName: string;
   notes: string | null;
   createdAt: string;
+}
+
+interface SavedObjectsResponse {
+  objects: SavedObjectItem[];
+}
+
+interface CollectionsPrefetchResponse {
+  collections: CollectionPrefetchItem[];
+}
+
+interface CollectionPrefetchItem {
+  id: number;
+  name: string;
+  description: string | null;
+  color: string;
+  icon: string;
+  isPublic: boolean;
+  itemCount?: number;
+  updatedAt: string;
 }
 
 type SavedObjectType = SavedObjectUiType;
@@ -49,33 +70,98 @@ const TYPE_ACCENTS: Record<SavedObjectType, string> = {
   unknown: "hsl(35 10% 65%)",
 };
 
+const SAVED_OBJECTS_PAGE = 1;
+const SAVED_OBJECTS_LIMIT = 100;
+const GRID_ROW_ESTIMATE_PX = 256;
+const GRID_OVERSCAN_ROWS = 2;
+const GRID_VIRTUALIZATION_THRESHOLD = 24;
+
+function getSavedObjectsGridColumns(width: number): number {
+  if (width >= 1024) return 3;
+  if (width >= 768) return 2;
+  return 1;
+}
+
+async function fetchSavedObjects(page: number, limit: number): Promise<SavedObjectItem[]> {
+  const response = await fetch(`/api/user/saved-objects?page=${page}&limit=${limit}`);
+  if (!response.ok) {
+    throw new Error("Failed to load saved objects");
+  }
+
+  const data = (await response.json()) as SavedObjectsResponse;
+  return Array.isArray(data.objects) ? data.objects : [];
+}
+
+async function prefetchCollections(): Promise<CollectionPrefetchItem[]> {
+  const response = await fetch("/api/user/collections");
+  if (!response.ok) {
+    throw new Error("Failed to prefetch collections");
+  }
+  const data = (await response.json()) as CollectionsPrefetchResponse;
+  return Array.isArray(data.collections) ? data.collections : [];
+}
+
 export function SavedObjectsPageContent() {
   const auth = useAppAuth();
-  const [items, setItems] = useState<SavedObjectItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [selectedType, setSelectedType] = useState<SavedObjectFilter>("all");
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const [scrollTop, setScrollTop] = useState(0);
+  const [viewportHeight, setViewportHeight] = useState(0);
+  const [containerWidth, setContainerWidth] = useState(0);
+  const savedObjectsQueryKey = queryKeys.savedObjects(SAVED_OBJECTS_PAGE, SAVED_OBJECTS_LIMIT);
 
-  const loadItems = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const response = await fetch("/api/user/saved-objects?page=1&limit=100");
-      if (!response.ok) {
-        throw new Error("Failed to load saved objects");
-      }
-
-      const data = await response.json();
-      setItems(Array.isArray(data.objects) ? data.objects : []);
-    } catch (error) {
-      console.error(error);
-      setItems([]);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+  const {
+    data: items = [],
+    isLoading,
+    refetch: refetchSavedObjects,
+  } = useQuery({
+    queryKey: savedObjectsQueryKey,
+    queryFn: () => fetchSavedObjects(SAVED_OBJECTS_PAGE, SAVED_OBJECTS_LIMIT),
+    enabled: auth.isSignedIn,
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
+  });
 
   useEffect(() => {
-    void loadItems();
-  }, [loadItems]);
+    if (!auth.isSignedIn) return;
+    void queryClient.prefetchQuery({
+      queryKey: queryKeys.collections(),
+      queryFn: prefetchCollections,
+      staleTime: 60_000,
+    });
+  }, [auth.isSignedIn, queryClient]);
+
+  const deleteSavedObjectMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const response = await fetch(`/api/user/saved-objects/${id}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to remove saved object");
+      }
+    },
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: savedObjectsQueryKey });
+      const previousItems = queryClient.getQueryData<SavedObjectItem[]>(savedObjectsQueryKey) ?? [];
+      queryClient.setQueryData<SavedObjectItem[]>(
+        savedObjectsQueryKey,
+        previousItems.filter((item) => item.id !== id)
+      );
+      return { previousItems };
+    },
+    onError: (error, _id, context) => {
+      console.error(error);
+      if (context?.previousItems) {
+        queryClient.setQueryData(savedObjectsQueryKey, context.previousItems);
+      }
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: savedObjectsQueryKey });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.collections() });
+    },
+  });
 
   const hasItems = items.length > 0;
 
@@ -93,12 +179,82 @@ export function SavedObjectsPageContent() {
     return counts;
   }, [sortedItems]);
 
+  const effectiveSelectedType = useMemo<SavedObjectFilter>(() => {
+    if (selectedType === "all") return "all";
+    if (typeCounts[selectedType] > 0) return selectedType;
+    return "all";
+  }, [selectedType, typeCounts]);
+
   const filteredItems = useMemo(() => {
-    if (selectedType === "all") return sortedItems;
+    if (effectiveSelectedType === "all") return sortedItems;
     return sortedItems.filter(
-      (item) => getSavedObjectType(item.canonicalId) === selectedType
+      (item) => getSavedObjectType(item.canonicalId) === effectiveSelectedType
     );
-  }, [selectedType, sortedItems]);
+  }, [effectiveSelectedType, sortedItems]);
+
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    const handleScroll = () => {
+      setScrollTop(container.scrollTop);
+    };
+
+    const updateMetrics = () => {
+      setViewportHeight(container.clientHeight);
+      setContainerWidth(container.clientWidth);
+    };
+
+    updateMetrics();
+    container.addEventListener("scroll", handleScroll, { passive: true });
+
+    const resizeObserver = new ResizeObserver(() => {
+      updateMetrics();
+    });
+    resizeObserver.observe(container);
+
+    return () => {
+      container.removeEventListener("scroll", handleScroll);
+      resizeObserver.disconnect();
+    };
+  }, [filteredItems.length]);
+
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    container.scrollTo({ top: 0 });
+  }, [effectiveSelectedType]);
+
+  const virtualizedGrid = useMemo(() => {
+    const totalItems = filteredItems.length;
+    const columns = getSavedObjectsGridColumns(containerWidth);
+    const shouldVirtualize = totalItems > GRID_VIRTUALIZATION_THRESHOLD && viewportHeight > 0;
+
+    if (!shouldVirtualize) {
+      return {
+        columns,
+        visibleItems: filteredItems,
+        topSpacerHeight: 0,
+        bottomSpacerHeight: 0,
+      };
+    }
+
+    const totalRows = Math.ceil(totalItems / columns);
+    const startRow = Math.max(0, Math.floor(scrollTop / GRID_ROW_ESTIMATE_PX) - GRID_OVERSCAN_ROWS);
+    const endRow = Math.min(
+      totalRows,
+      Math.ceil((scrollTop + viewportHeight) / GRID_ROW_ESTIMATE_PX) + GRID_OVERSCAN_ROWS
+    );
+    const startIndex = startRow * columns;
+    const endIndex = Math.min(totalItems, endRow * columns);
+
+    return {
+      columns,
+      visibleItems: filteredItems.slice(startIndex, endIndex),
+      topSpacerHeight: startRow * GRID_ROW_ESTIMATE_PX,
+      bottomSpacerHeight: Math.max(0, (totalRows - endRow) * GRID_ROW_ESTIMATE_PX),
+    };
+  }, [containerWidth, filteredItems, scrollTop, viewportHeight]);
 
   const filterOptions = useMemo<SavedObjectFilterOption[]>(() => {
     return [
@@ -110,12 +266,6 @@ export function SavedObjectsPageContent() {
       })),
     ];
   }, [sortedItems.length, typeCounts]);
-
-  useEffect(() => {
-    if (selectedType === "all") return;
-    if (typeCounts[selectedType] > 0) return;
-    setSelectedType("all");
-  }, [selectedType, typeCounts]);
 
   const cycleFilter = useCallback(() => {
     setSelectedType((previous) => {
@@ -130,8 +280,8 @@ export function SavedObjectsPageContent() {
 
   const refreshItems = useCallback(() => {
     if (isLoading) return;
-    void loadItems();
-  }, [isLoading, loadItems]);
+    void refetchSavedObjects();
+  }, [isLoading, refetchSavedObjects]);
 
   const pageShortcuts = useMemo(
     () => [
@@ -150,21 +300,9 @@ export function SavedObjectsPageContent() {
       const confirmed = window.confirm("Remove this item from saved objects?");
       if (!confirmed) return;
 
-      try {
-        const response = await fetch(`/api/user/saved-objects/${id}`, {
-          method: "DELETE",
-        });
-
-        if (!response.ok) {
-          throw new Error("Failed to remove saved object");
-        }
-
-        setItems((previous) => previous.filter((item) => item.id !== id));
-      } catch (error) {
-        console.error(error);
-      }
+      await deleteSavedObjectMutation.mutateAsync(id);
     },
-    []
+    [deleteSavedObjectMutation]
   );
 
   if (!auth.isSignedIn) {
@@ -269,7 +407,7 @@ export function SavedObjectsPageContent() {
 
               <div className="flex flex-wrap gap-2">
                 {filterOptions.map((option) => {
-                  const isActive = selectedType === option.value;
+                  const isActive = effectiveSelectedType === option.value;
                   return (
                     <Button
                       key={option.value}
@@ -316,10 +454,13 @@ export function SavedObjectsPageContent() {
             {headingContent}
 
             {filteredItems.length > 0 ? (
-              <div className="max-h-[64dvh] overflow-y-auto pr-1 overscroll-contain md:max-h-[68dvh]">
+              <div
+                ref={scrollContainerRef}
+                className="max-h-[64dvh] overflow-y-auto pr-1 overscroll-contain md:max-h-[68dvh]"
+              >
                 <div className="mb-3 flex items-center gap-2">
                   <span className="text-xs uppercase tracking-[0.16em] text-muted-foreground/90">
-                    {selectedType === "all" ? "All saved objects" : SAVED_OBJECT_TYPE_LABELS[selectedType]}
+                    {effectiveSelectedType === "all" ? "All saved objects" : SAVED_OBJECT_TYPE_LABELS[effectiveSelectedType]}
                   </span>
                   <Badge
                     variant="outline"
@@ -329,8 +470,12 @@ export function SavedObjectsPageContent() {
                   </Badge>
                 </div>
 
+                {virtualizedGrid.topSpacerHeight > 0 ? (
+                  <div style={{ height: virtualizedGrid.topSpacerHeight }} aria-hidden />
+                ) : null}
+
                 <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-                  {filteredItems.map((item) => {
+                  {virtualizedGrid.visibleItems.map((item) => {
                     const itemType = getSavedObjectType(item.canonicalId);
                     const href = resolveSavedObjectHref(item.canonicalId);
                     const accent = TYPE_ACCENTS[itemType];
@@ -399,12 +544,19 @@ export function SavedObjectsPageContent() {
                           <AddToCollectionDialog
                             savedObjectId={item.id}
                             savedObjectName={item.displayName}
+                            onMembershipChange={() => {
+                              void queryClient.invalidateQueries({ queryKey: queryKeys.collections() });
+                            }}
                           />
                         </div>
                       </div>
                     );
                   })}
                 </div>
+
+                {virtualizedGrid.bottomSpacerHeight > 0 ? (
+                  <div style={{ height: virtualizedGrid.bottomSpacerHeight }} aria-hidden />
+                ) : null}
               </div>
             ) : (
               <Card tone={ACCOUNT_CARD_TONE} className="border-orange-300/20 bg-[#17100d]/80">

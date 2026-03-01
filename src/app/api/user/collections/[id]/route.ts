@@ -8,6 +8,7 @@ import {
   getCollectionWithItems,
   updateCollection,
 } from "@/lib/mock-user-store";
+import { ServerTiming } from "@/lib/server-timing";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -19,9 +20,10 @@ interface RouteParams {
  * Get a collection with its items (saved objects).
  */
 export async function GET(request: NextRequest, { params }: RouteParams) {
+  const timing = new ServerTiming();
   try {
-    const user = await requireAuth();
-    const { id } = await params;
+    const user = await timing.measure("auth", () => requireAuth());
+    const { id } = await timing.measure("resolve_params", () => params);
     const searchParams = request.nextUrl.searchParams;
     const parsedPage = Number.parseInt(searchParams.get("page") || "1", 10);
     const parsedLimit = Number.parseInt(searchParams.get("limit") || "24", 10);
@@ -34,30 +36,34 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     const collectionId = parseInt(id, 10);
     if (isNaN(collectionId)) {
-      return NextResponse.json(
+      return timing.json(
         { error: "invalid_id", message: "Invalid ID." },
         { status: 400 }
       );
     }
 
     if (isMockUserStoreEnabled()) {
-      const result = getCollectionWithItems(user.userId, collectionId);
+      const result = timing.measureSync("mock_get_collection", () =>
+        getCollectionWithItems(user.userId, collectionId)
+      );
       if (!result) {
-        return NextResponse.json(
+        return timing.json(
           { error: "resource_not_found", message: "Resource not found." },
           { status: 404 }
         );
       }
 
-      const paginatedItems = result.items.slice(offset, offset + limit).map((item) => ({
-        id: item.id,
-        canonicalId: item.canonicalId,
-        displayName: item.displayName,
-        notes: item.notes,
-        createdAt: item.createdAt,
-        position: item.position,
-      }));
-      return NextResponse.json({
+      const paginatedItems = timing.measureSync("mock_paginate_items", () =>
+        result.items.slice(offset, offset + limit).map((item) => ({
+          id: item.id,
+          canonicalId: item.canonicalId,
+          displayName: item.displayName,
+          notes: item.notes,
+          createdAt: item.createdAt,
+          position: item.position,
+        }))
+      );
+      return timing.json({
         collection: result.collection,
         items: paginatedItems,
         itemCount: result.items.length,
@@ -67,20 +73,22 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       });
     }
 
-    const db = requireUserDb();
+    const db = timing.measureSync("resolve_db", () => requireUserDb());
 
     // Get collection
-    const collectionResult = await db.execute({
-      sql: `
+    const collectionResult = await timing.measure("db_get_collection", () =>
+      db.execute({
+        sql: `
         SELECT id, name, description, color, icon, is_public, created_at, updated_at
         FROM collections
         WHERE id = ? AND user_id = ?
       `,
-      args: [collectionId, user.userId],
-    });
+        args: [collectionId, user.userId],
+      })
+    );
 
     if (collectionResult.rows.length === 0) {
-      return NextResponse.json(
+      return timing.json(
         { error: "resource_not_found", message: "Resource not found." },
         { status: 404 }
       );
@@ -98,15 +106,18 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       updatedAt: row.updated_at as string,
     };
 
-    const countResult = await db.execute({
-      sql: "SELECT COUNT(*) as total FROM collection_items WHERE collection_id = ?",
-      args: [collectionId],
-    });
+    const countResult = await timing.measure("db_count_items", () =>
+      db.execute({
+        sql: "SELECT COUNT(*) as total FROM collection_items WHERE collection_id = ?",
+        args: [collectionId],
+      })
+    );
     const itemCount = Number(countResult.rows[0]?.total ?? 0);
 
     // Get items in collection
-    const itemsResult = await db.execute({
-      sql: `
+    const itemsResult = await timing.measure("db_list_items", () =>
+      db.execute({
+        sql: `
         SELECT
           so.id,
           so.canonical_id,
@@ -120,19 +131,22 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         ORDER BY ci.position ASC, ci.added_at DESC
         LIMIT ? OFFSET ?
       `,
-      args: [collectionId, limit, offset],
-    });
+        args: [collectionId, limit, offset],
+      })
+    );
 
-    const items = itemsResult.rows.map((row) => ({
+    const items = timing.measureSync("serialize_items", () =>
+      itemsResult.rows.map((row) => ({
         id: row.id as number,
         canonicalId: row.canonical_id as string,
         displayName: row.display_name as string,
         notes: row.notes as string | null,
         createdAt: row.created_at as string,
         position: row.position as number,
-      }));
+      }))
+    );
 
-    return NextResponse.json({
+    return timing.json({
       collection,
       items,
       itemCount,
@@ -141,7 +155,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       hasMore: page * limit < itemCount,
     });
   } catch (error) {
-    return authErrorResponse(error);
+    const response = authErrorResponse(error);
+    response.headers.set("Server-Timing", timing.toHeaderValue());
+    return response;
   }
 }
 

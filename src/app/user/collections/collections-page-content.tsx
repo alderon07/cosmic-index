@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import {
   ArrowUpRight,
@@ -19,6 +20,7 @@ import { Badge } from "@/components/ui/badge";
 import { useAppAuth } from "@/components/auth/app-auth-provider";
 import { ACCOUNT_CARD_TONE } from "@/lib/theme";
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
+import { queryKeys } from "@/lib/query-keys";
 
 interface CollectionItem {
   id: number;
@@ -29,6 +31,22 @@ interface CollectionItem {
   isPublic: boolean;
   itemCount?: number;
   updatedAt: string;
+}
+
+interface CollectionsResponse {
+  collections: CollectionItem[];
+}
+
+interface SavedObjectsPrefetchResponse {
+  objects: SavedObjectPrefetchItem[];
+}
+
+interface SavedObjectPrefetchItem {
+  id: number;
+  canonicalId: string;
+  displayName: string;
+  notes: string | null;
+  createdAt: string;
 }
 
 const FALLBACK_ACCENTS = [
@@ -44,41 +62,157 @@ function resolveCollectionAccent(rawColor: string | null | undefined, index: num
   return FALLBACK_ACCENTS[index % FALLBACK_ACCENTS.length];
 }
 
+async function fetchCollections(): Promise<CollectionItem[]> {
+  const response = await fetch("/api/user/collections");
+  if (!response.ok) {
+    throw new Error("Failed to load collections");
+  }
+
+  const data = (await response.json()) as CollectionsResponse;
+  return Array.isArray(data.collections) ? data.collections : [];
+}
+
+async function prefetchSavedObjects(): Promise<SavedObjectPrefetchItem[]> {
+  const response = await fetch("/api/user/saved-objects?page=1&limit=100");
+  if (!response.ok) {
+    throw new Error("Failed to prefetch saved objects");
+  }
+  const data = (await response.json()) as SavedObjectsPrefetchResponse;
+  return Array.isArray(data.objects) ? data.objects : [];
+}
+
 export function CollectionsPageContent() {
   const auth = useAppAuth();
-  const [collections, setCollections] = useState<CollectionItem[]>([]);
+  const queryClient = useQueryClient();
+  const collectionsQueryKey = queryKeys.collections();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
   const nameInputRef = useRef<HTMLInputElement | null>(null);
 
-  const loadCollections = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const response = await fetch("/api/user/collections");
-      if (!response.ok) {
-        throw new Error("Failed to load collections");
-      }
-
-      const data = await response.json();
-      setCollections(Array.isArray(data.collections) ? data.collections : []);
-    } catch (error) {
-      console.error(error);
-      setCollections([]);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+  const {
+    data: collections = [],
+    isLoading,
+    refetch: refetchCollections,
+  } = useQuery({
+    queryKey: collectionsQueryKey,
+    queryFn: fetchCollections,
+    enabled: auth.isSignedIn,
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
+  });
 
   useEffect(() => {
-    void loadCollections();
-  }, [loadCollections]);
+    if (!auth.isSignedIn) return;
+    void queryClient.prefetchQuery({
+      queryKey: queryKeys.savedObjects(1, 100),
+      queryFn: prefetchSavedObjects,
+      staleTime: 60_000,
+    });
+  }, [auth.isSignedIn, queryClient]);
+
+  const createCollectionMutation = useMutation({
+    mutationFn: async (input: { name: string; description?: string }) => {
+      const response = await fetch("/api/user/collections", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: input.name,
+          description: input.description || undefined,
+        }),
+      });
+
+      if (!response.ok) {
+        const body = (await response.json().catch(() => null)) as { message?: string } | null;
+        throw new Error(body?.message || "Failed to create collection");
+      }
+
+      return (await response.json()) as CollectionItem;
+    },
+    onMutate: async (input) => {
+      await queryClient.cancelQueries({ queryKey: collectionsQueryKey });
+      const previousCollections = queryClient.getQueryData<CollectionItem[]>(collectionsQueryKey) ?? [];
+      const tempId = -Date.now();
+      const now = new Date().toISOString();
+
+      const optimisticCollection: CollectionItem = {
+        id: tempId,
+        name: input.name,
+        description: input.description ?? null,
+        color: "#f97316",
+        icon: "folder",
+        isPublic: false,
+        itemCount: 0,
+        updatedAt: now,
+      };
+
+      queryClient.setQueryData<CollectionItem[]>(
+        collectionsQueryKey,
+        [optimisticCollection, ...previousCollections]
+      );
+
+      return { previousCollections, tempId };
+    },
+    onError: (error, _input, context) => {
+      console.error(error);
+      if (context?.previousCollections) {
+        queryClient.setQueryData(collectionsQueryKey, context.previousCollections);
+      }
+    },
+    onSuccess: (createdCollection, _input, context) => {
+      queryClient.setQueryData<CollectionItem[]>(
+        collectionsQueryKey,
+        (current) => {
+          const existing = current ?? [];
+          const replaced = existing.map((collection) =>
+            collection.id === context?.tempId ? createdCollection : collection
+          );
+          if (replaced.some((collection) => collection.id === createdCollection.id)) {
+            return replaced;
+          }
+          return [createdCollection, ...replaced];
+        }
+      );
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: collectionsQueryKey });
+    },
+  });
+
+  const deleteCollectionMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const response = await fetch(`/api/user/collections/${id}`, {
+        method: "DELETE",
+      });
+      if (!response.ok) {
+        const body = (await response.json().catch(() => null)) as { message?: string } | null;
+        throw new Error(body?.message || "Failed to delete collection");
+      }
+    },
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: collectionsQueryKey });
+      const previousCollections = queryClient.getQueryData<CollectionItem[]>(collectionsQueryKey) ?? [];
+      queryClient.setQueryData<CollectionItem[]>(
+        collectionsQueryKey,
+        previousCollections.filter((collection) => collection.id !== id)
+      );
+      return { previousCollections };
+    },
+    onError: (error, _id, context) => {
+      console.error(error);
+      if (context?.previousCollections) {
+        queryClient.setQueryData(collectionsQueryKey, context.previousCollections);
+      }
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: collectionsQueryKey });
+    },
+  });
 
   const refreshCollections = useCallback(() => {
     if (isLoading) return;
-    void loadCollections();
-  }, [isLoading, loadCollections]);
+    void refetchCollections();
+  }, [isLoading, refetchCollections]);
 
   const focusCollectionNameInput = useCallback(() => {
     nameInputRef.current?.focus();
@@ -117,22 +251,10 @@ export function CollectionsPageContent() {
 
     setIsCreating(true);
     try {
-      const response = await fetch("/api/user/collections", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: trimmedName,
-          description: description.trim() || undefined,
-        }),
+      await createCollectionMutation.mutateAsync({
+        name: trimmedName,
+        description: description.trim() || undefined,
       });
-
-      if (!response.ok) {
-        const body = (await response.json().catch(() => null)) as { message?: string } | null;
-        throw new Error(body?.message || "Failed to create collection");
-      }
-
-      const created = await response.json();
-      setCollections((previous) => [created, ...previous]);
       setName("");
       setDescription("");
     } catch (error) {
@@ -147,15 +269,7 @@ export function CollectionsPageContent() {
     if (!confirmed) return;
 
     try {
-      const response = await fetch(`/api/user/collections/${id}`, {
-        method: "DELETE",
-      });
-      if (!response.ok) {
-        const body = (await response.json().catch(() => null)) as { message?: string } | null;
-        throw new Error(body?.message || "Failed to delete collection");
-      }
-
-      setCollections((previous) => previous.filter((collection) => collection.id !== id));
+      await deleteCollectionMutation.mutateAsync(id);
     } catch (error) {
       console.error(error);
     }

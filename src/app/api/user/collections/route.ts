@@ -4,6 +4,7 @@ import { requireUserDb } from "@/lib/user-db";
 import { CreateCollectionSchema, Collection } from "@/lib/types";
 import { isMockUserStoreEnabled } from "@/lib/runtime-mode";
 import { createCollection, listCollections } from "@/lib/mock-user-store";
+import { ServerTiming } from "@/lib/server-timing";
 
 /**
  * GET /api/user/collections
@@ -12,17 +13,22 @@ import { createCollection, listCollections } from "@/lib/mock-user-store";
  * Includes item count for each collection.
  */
 export async function GET() {
+  const timing = new ServerTiming();
   try {
-    const user = await requireAuth();
+    const user = await timing.measure("auth", () => requireAuth());
 
     if (isMockUserStoreEnabled()) {
-      return NextResponse.json({ collections: listCollections(user.userId) });
+      const collections = timing.measureSync("mock_list_collections", () =>
+        listCollections(user.userId)
+      );
+      return timing.json({ collections });
     }
 
-    const db = requireUserDb();
+    const db = timing.measureSync("resolve_db", () => requireUserDb());
 
-    const result = await db.execute({
-      sql: `
+    const result = await timing.measure("db_list_collections", () =>
+      db.execute({
+        sql: `
         SELECT
           c.id,
           c.name,
@@ -39,24 +45,29 @@ export async function GET() {
         GROUP BY c.id
         ORDER BY c.updated_at DESC, c.id DESC
       `,
-      args: [user.userId],
-    });
+        args: [user.userId],
+      })
+    );
 
-    const collections: Collection[] = result.rows.map((row) => ({
-      id: row.id as number,
-      name: row.name as string,
-      description: row.description as string | null,
-      color: row.color as string,
-      icon: row.icon as string,
-      isPublic: Boolean(row.is_public),
-      itemCount: Number(row.item_count),
-      createdAt: row.created_at as string,
-      updatedAt: row.updated_at as string,
-    }));
+    const collections: Collection[] = timing.measureSync("serialize_rows", () =>
+      result.rows.map((row) => ({
+        id: row.id as number,
+        name: row.name as string,
+        description: row.description as string | null,
+        color: row.color as string,
+        icon: row.icon as string,
+        isPublic: Boolean(row.is_public),
+        itemCount: Number(row.item_count),
+        createdAt: row.created_at as string,
+        updatedAt: row.updated_at as string,
+      }))
+    );
 
-    return NextResponse.json({ collections });
+    return timing.json({ collections });
   } catch (error) {
-    return authErrorResponse(error);
+    const response = authErrorResponse(error);
+    response.headers.set("Server-Timing", timing.toHeaderValue());
+    return response;
   }
 }
 

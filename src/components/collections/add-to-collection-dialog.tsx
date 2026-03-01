@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, FolderPlus, Loader2 } from "lucide-react";
 import {
   Dialog,
@@ -15,8 +16,12 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { queryKeys } from "@/lib/query-keys";
 
 const HIGH_COLLECTION_WARNING_THRESHOLD = 50;
+const MEMBERSHIP_ROW_ESTIMATE_PX = 54;
+const MEMBERSHIP_OVERSCAN_ROWS = 6;
+const MEMBERSHIP_VIRTUALIZATION_THRESHOLD = 30;
 
 interface CollectionMembership {
   id: number;
@@ -37,14 +42,38 @@ interface AddToCollectionDialogProps {
   onMembershipChange?: () => void;
 }
 
+class MembershipError extends Error {
+  status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.status = status;
+    this.name = "MembershipError";
+  }
+}
+
+async function fetchMemberships(savedObjectId: number): Promise<CollectionMembership[]> {
+  const response = await fetch(`/api/user/saved-objects/${savedObjectId}/collections`);
+
+  if (response.status === 401) {
+    throw new MembershipError("Session expired. Please sign in again.", 401);
+  }
+
+  if (!response.ok) {
+    throw new MembershipError("Could not load collections right now.", response.status);
+  }
+
+  const data = (await response.json()) as MembershipResponse;
+  return Array.isArray(data.collections) ? data.collections : [];
+}
+
 export function AddToCollectionDialog({
   savedObjectId,
   savedObjectName,
   onMembershipChange,
 }: AddToCollectionDialogProps) {
+  const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [collections, setCollections] = useState<CollectionMembership[]>([]);
   const [query, setQuery] = useState("");
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -52,32 +81,25 @@ export function AddToCollectionDialog({
   const [newCollectionName, setNewCollectionName] = useState("");
   const [newCollectionDescription, setNewCollectionDescription] = useState("");
   const [isCreatingCollection, setIsCreatingCollection] = useState(false);
+  const listContainerRef = useRef<HTMLDivElement | null>(null);
+  const [listScrollTop, setListScrollTop] = useState(0);
+  const [listViewportHeight, setListViewportHeight] = useState(0);
 
-  const loadCollections = useCallback(async () => {
-    setIsLoading(true);
-    setErrorMessage(null);
+  const membershipsQueryKey = queryKeys.savedObjectCollections(savedObjectId);
 
-    try {
-      const response = await fetch(`/api/user/saved-objects/${savedObjectId}/collections`);
-      if (response.status === 401) {
-        setOpen(false);
-        setErrorMessage("Session expired. Please sign in again.");
-        return;
-      }
-      if (!response.ok) {
-        throw new Error("Failed to load collections");
-      }
+  const membershipsQuery = useQuery({
+    queryKey: membershipsQueryKey,
+    queryFn: () => fetchMemberships(savedObjectId),
+    enabled: open,
+    staleTime: 30_000,
+    gcTime: 5 * 60_000,
+  });
 
-      const data = (await response.json()) as MembershipResponse;
-      setCollections(Array.isArray(data.collections) ? data.collections : []);
-    } catch (error) {
-      console.error(error);
-      setErrorMessage("Could not load collections right now.");
-      setCollections([]);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [savedObjectId]);
+  const collections = useMemo(
+    () => membershipsQuery.data ?? [],
+    [membershipsQuery.data]
+  );
+  const isLoading = membershipsQuery.isLoading;
 
   useEffect(() => {
     if (!open) {
@@ -87,8 +109,23 @@ export function AddToCollectionDialog({
       setPendingByCollectionId({});
       return;
     }
-    void loadCollections();
-  }, [loadCollections, open]);
+
+    setStatusMessage(null);
+    setErrorMessage(null);
+  }, [open]);
+
+  useEffect(() => {
+    const error = membershipsQuery.error;
+    if (!(error instanceof MembershipError)) return;
+
+    if (error.status === 401) {
+      setOpen(false);
+      setErrorMessage("Session expired. Please sign in again.");
+      return;
+    }
+
+    setErrorMessage(error.message);
+  }, [membershipsQuery.error]);
 
   const filteredCollections = useMemo(() => {
     const trimmedQuery = query.trim().toLowerCase();
@@ -97,6 +134,71 @@ export function AddToCollectionDialog({
       collection.name.toLowerCase().includes(trimmedQuery)
     );
   }, [collections, query]);
+
+  useEffect(() => {
+    if (!open) return;
+    const container = listContainerRef.current;
+    if (!container) return;
+
+    const handleScroll = () => {
+      setListScrollTop(container.scrollTop);
+    };
+
+    const updateMetrics = () => {
+      setListViewportHeight(container.clientHeight);
+    };
+
+    updateMetrics();
+    container.addEventListener("scroll", handleScroll, { passive: true });
+
+    const resizeObserver = new ResizeObserver(() => {
+      updateMetrics();
+    });
+    resizeObserver.observe(container);
+
+    return () => {
+      container.removeEventListener("scroll", handleScroll);
+      resizeObserver.disconnect();
+    };
+  }, [open, filteredCollections.length]);
+
+  useEffect(() => {
+    if (!open) return;
+    const container = listContainerRef.current;
+    if (!container) return;
+    container.scrollTo({ top: 0 });
+    setListScrollTop(0);
+  }, [open, query]);
+
+  const virtualizedMembershipList = useMemo(() => {
+    const total = filteredCollections.length;
+    const shouldVirtualize =
+      total > MEMBERSHIP_VIRTUALIZATION_THRESHOLD && listViewportHeight > 0;
+
+    if (!shouldVirtualize) {
+      return {
+        visibleCollections: filteredCollections,
+        topSpacerHeight: 0,
+        bottomSpacerHeight: 0,
+      };
+    }
+
+    const startRow = Math.max(
+      0,
+      Math.floor(listScrollTop / MEMBERSHIP_ROW_ESTIMATE_PX) - MEMBERSHIP_OVERSCAN_ROWS
+    );
+    const endRow = Math.min(
+      total,
+      Math.ceil((listScrollTop + listViewportHeight) / MEMBERSHIP_ROW_ESTIMATE_PX) +
+        MEMBERSHIP_OVERSCAN_ROWS
+    );
+
+    return {
+      visibleCollections: filteredCollections.slice(startRow, endRow),
+      topSpacerHeight: startRow * MEMBERSHIP_ROW_ESTIMATE_PX,
+      bottomSpacerHeight: Math.max(0, (total - endRow) * MEMBERSHIP_ROW_ESTIMATE_PX),
+    };
+  }, [filteredCollections, listScrollTop, listViewportHeight]);
 
   const applyMembershipUpdate = useCallback(
     async (collectionId: number, shouldAdd: boolean) => {
@@ -139,13 +241,18 @@ export function AddToCollectionDialog({
       const shouldAdd = !collection.isMember;
 
       setPendingByCollectionId((previous) => ({ ...previous, [collection.id]: true }));
-      setCollections((previous) =>
-        previous.map((entry) =>
+
+      const previousCollections = queryClient.getQueryData<CollectionMembership[]>(membershipsQueryKey) ?? [];
+
+      queryClient.setQueryData<CollectionMembership[]>(
+        membershipsQueryKey,
+        previousCollections.map((entry) =>
           entry.id === collection.id
             ? {
                 ...entry,
                 isMember: shouldAdd,
                 itemCount: Math.max(0, entry.itemCount + (shouldAdd ? 1 : -1)),
+                updatedAt: new Date().toISOString(),
               }
             : entry
         )
@@ -153,24 +260,21 @@ export function AddToCollectionDialog({
 
       try {
         await applyMembershipUpdate(collection.id, shouldAdd);
+
         setStatusMessage(
           shouldAdd
             ? `"${savedObjectName}" added to "${collection.name}".`
             : `"${savedObjectName}" removed from "${collection.name}".`
         );
+
         onMembershipChange?.();
+
+        void queryClient.invalidateQueries({ queryKey: membershipsQueryKey });
+        void queryClient.invalidateQueries({ queryKey: queryKeys.collections() });
+        void queryClient.invalidateQueries({ queryKey: queryKeys.savedObjects(1, 100) });
+        void queryClient.invalidateQueries({ queryKey: ["user", "collection-detail", collection.id] });
       } catch (error) {
-        setCollections((previous) =>
-          previous.map((entry) =>
-            entry.id === collection.id
-              ? {
-                  ...entry,
-                  isMember: collection.isMember,
-                  itemCount: collection.itemCount,
-                }
-              : entry
-          )
-        );
+        queryClient.setQueryData(membershipsQueryKey, previousCollections);
 
         setErrorMessage(
           error instanceof Error ? error.message : "Could not update collection membership."
@@ -179,7 +283,7 @@ export function AddToCollectionDialog({
         setPendingByCollectionId((previous) => ({ ...previous, [collection.id]: false }));
       }
     },
-    [applyMembershipUpdate, onMembershipChange, pendingByCollectionId, savedObjectName]
+    [applyMembershipUpdate, membershipsQueryKey, onMembershipChange, pendingByCollectionId, queryClient, savedObjectName]
   );
 
   const handleCreateCollection = useCallback(async () => {
@@ -213,11 +317,30 @@ export function AddToCollectionDialog({
       const created = (await createResponse.json()) as { id: number; name: string };
       await applyMembershipUpdate(created.id, true);
 
+      const now = new Date().toISOString();
+      queryClient.setQueryData<CollectionMembership[]>(
+        membershipsQueryKey,
+        (previous = []) => [
+          {
+            id: created.id,
+            name: created.name,
+            itemCount: 1,
+            isMember: true,
+            updatedAt: now,
+          },
+          ...previous,
+        ]
+      );
+
       setNewCollectionName("");
       setNewCollectionDescription("");
-      await loadCollections();
       setStatusMessage(`Created "${created.name}" and added "${savedObjectName}".`);
       onMembershipChange?.();
+
+      void queryClient.invalidateQueries({ queryKey: queryKeys.collections() });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.savedObjects(1, 100) });
+      void queryClient.invalidateQueries({ queryKey: membershipsQueryKey });
+      void queryClient.invalidateQueries({ queryKey: ["user", "collection-detail", created.id] });
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Could not create collection.");
     } finally {
@@ -226,10 +349,11 @@ export function AddToCollectionDialog({
   }, [
     applyMembershipUpdate,
     isCreatingCollection,
-    loadCollections,
+    membershipsQueryKey,
     newCollectionDescription,
     newCollectionName,
     onMembershipChange,
+    queryClient,
     savedObjectName,
   ]);
 
@@ -269,7 +393,7 @@ export function AddToCollectionDialog({
             placeholder="Search collections..."
           />
 
-          <div className="max-h-[38dvh] space-y-2 overflow-y-auto pr-1">
+          <div ref={listContainerRef} className="max-h-[38dvh] space-y-2 overflow-y-auto pr-1">
             {isLoading ? (
               <>
                 <Skeleton className="h-12 w-full rounded-md" />
@@ -277,7 +401,11 @@ export function AddToCollectionDialog({
                 <Skeleton className="h-12 w-full rounded-md" />
               </>
             ) : filteredCollections.length > 0 ? (
-              filteredCollections.map((collection) => {
+              <>
+                {virtualizedMembershipList.topSpacerHeight > 0 ? (
+                  <div style={{ height: virtualizedMembershipList.topSpacerHeight }} aria-hidden />
+                ) : null}
+                {virtualizedMembershipList.visibleCollections.map((collection) => {
                 const isPending = pendingByCollectionId[collection.id] === true;
                 return (
                   <label
@@ -313,7 +441,11 @@ export function AddToCollectionDialog({
                     </div>
                   </label>
                 );
-              })
+              })}
+                {virtualizedMembershipList.bottomSpacerHeight > 0 ? (
+                  <div style={{ height: virtualizedMembershipList.bottomSpacerHeight }} aria-hidden />
+                ) : null}
+              </>
             ) : (
               <p className="rounded-md border border-dashed border-border/65 px-3 py-4 text-center text-sm text-muted-foreground">
                 {collections.length === 0
