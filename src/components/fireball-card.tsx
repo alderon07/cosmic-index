@@ -24,8 +24,6 @@ import {
   Mountain,
   AlertCircle,
 } from "lucide-react";
-import { eventObjectId } from "@/lib/canonical-id";
-import { SaveEventButton } from "@/components/save-event-button";
 
 const theme = THEMES["fireballs"];
 
@@ -40,14 +38,6 @@ export function FireballCard({
   fireball,
   variant = "default",
 }: FireballCardProps) {
-  const canonicalId = eventObjectId("fireball", {
-    date: fireball.date,
-    lat: fireball.latitude ?? null,
-    lon: fireball.longitude ?? null,
-    energy: fireball.radiatedEnergyJ ?? fireball.impactEnergyKt ?? null,
-  });
-
-  const displayName = `Fireball ${fireball.date}`;
   const sizeCategory = getEnergySizeCategory(
     fireball.impactEnergyKt,
     fireball.radiatedEnergyJ
@@ -138,7 +128,6 @@ export function FireballCard({
 
           {/* Block 3: Badges (right on md+) */}
           <div className="flex items-center gap-1.5 shrink-0 justify-end min-w-0">
-            <SaveEventButton canonicalId={canonicalId} displayName={displayName} eventPayload={fireball} />
             {!fireball.isComplete && (
               <Badge
                 variant="outline"
@@ -256,8 +245,7 @@ export function FireballCard({
         {/* Size category */}
         <div className={`mt-auto ${theme.footerSurface}`}>
           <div className="flex items-center justify-end gap-1.5">
-          <SaveEventButton canonicalId={canonicalId} displayName={displayName} eventPayload={fireball} />
-          {!fireball.isComplete && (
+            {!fireball.isComplete && (
               <Badge
                 variant="outline"
                 className="text-xs border-muted-foreground/30 text-muted-foreground"

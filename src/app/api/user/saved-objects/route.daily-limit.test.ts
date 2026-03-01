@@ -40,7 +40,7 @@ mock.module("@/lib/mock-user-store", () => ({
     createdAt: new Date().toISOString(),
   }),
   countSavedObjects: () => 0,
-  countSavedObjectsSince: () => 10,
+  countSavedObjectsSince: () => 25,
   getSavedObjectByCanonicalId: () => null,
   listSavedSearches: () => [],
   createSavedSearch: () => null,
@@ -64,7 +64,7 @@ describe("/api/user/saved-objects POST daily limits", () => {
 
     const res = await POST(req as unknown as NextRequest);
     expect(res.status).toBe(429);
-    expect(res.headers.get("X-RateLimit-Saves-Limit")).toBe("10");
+    expect(res.headers.get("X-RateLimit-Saves-Limit")).toBe("25");
     const body = await res.json();
     expect(body.error).toBe("daily_save_limit_reached");
   });

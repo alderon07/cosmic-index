@@ -119,24 +119,24 @@ export async function resolveLimitMode(params?: {
   if (count === null) {
     return {
       configuredMode,
-      effectiveMode: "warn",
+      effectiveMode: "enforce",
       reason: "waitlist_status_unavailable",
       waitlistEnabled,
       threshold,
       waitlistCount: null,
-      reached: false,
+      reached: true,
     };
   }
 
   const reached = count >= threshold;
   return {
     configuredMode,
-    effectiveMode: reached ? "enforce" : "warn",
+    effectiveMode: "enforce",
     reason: reached ? "threshold_reached" : "threshold_not_reached",
     waitlistEnabled,
     threshold,
     waitlistCount: count,
-    reached,
+    reached: true,
   };
 }
 

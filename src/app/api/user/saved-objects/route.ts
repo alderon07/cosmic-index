@@ -164,6 +164,12 @@ export async function POST(request: NextRequest) {
     if (!parsed) {
       return NextResponse.json({ error: "Invalid canonical ID format" }, { status: 400 });
     }
+    if (parsed.type === "fireball") {
+      return NextResponse.json(
+        { error: "unsupported_object_type", message: "Saving fireballs is not supported." },
+        { status: 400 }
+      );
+    }
 
     let wouldBlock = false;
 

@@ -26,7 +26,11 @@ mock.module("@/lib/user-db", () => ({
 }));
 
 mock.module("@/lib/canonical-id", () => ({
-  parseCanonicalId: () => ({ type: "exoplanet", id: "kepler-22-b" }),
+  parseCanonicalId: (canonicalId: string) => {
+    const [type, id] = canonicalId.split(":", 2);
+    if (!type || !id) return null;
+    return { type, id };
+  },
 }));
 
 mock.module("@/lib/mock-user-store", () => ({
@@ -39,7 +43,7 @@ mock.module("@/lib/mock-user-store", () => ({
     eventPayload: null,
     createdAt: new Date().toISOString(),
   }),
-  countSavedObjects: () => 50,
+  countSavedObjects: () => 150,
   countSavedObjectsSince: () => 0,
   getSavedObjectByCanonicalId: () => null,
   listSavedSearches: () => [],
@@ -52,6 +56,22 @@ mock.module("@/lib/mock-user-store", () => ({
 const { POST } = await import("@/app/api/user/saved-objects/route");
 
 describe("/api/user/saved-objects POST", () => {
+  it("returns 400 when attempting to save a fireball object", async () => {
+    const req = new Request("http://localhost/api/user/saved-objects", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        canonicalId: "fireball:abc123def456abc123def456",
+        displayName: "Fireball Test",
+      }),
+    });
+
+    const res = await POST(req as unknown as NextRequest);
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toBe("unsupported_object_type");
+  });
+
   it("returns 403 when free-tier total saved objects limit is reached", async () => {
     const req = new Request("http://localhost/api/user/saved-objects", {
       method: "POST",

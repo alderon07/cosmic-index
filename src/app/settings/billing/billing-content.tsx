@@ -7,8 +7,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { ProBadge } from "@/components/pro-badge";
 import { WaitlistCta } from "@/components/waitlist/waitlist-cta";
 import { ACCOUNT_CARD_TONE } from "@/lib/theme";
-import { Check, Loader2, ExternalLink, Sparkles, Database, Download, Bell, FolderHeart } from "lucide-react";
+import { Check, Loader2, ExternalLink, Sparkles } from "lucide-react";
 import { TIER_LIMITS } from "@/lib/tier-limits";
+import { PRO_FEATURES } from "@/lib/pro-features";
 
 /**
  * Billing Content (Client Component)
@@ -27,22 +28,44 @@ interface BillingContentProps {
   waitlistEnabled: boolean;
 }
 
-const PRO_FEATURES = [
-  { icon: FolderHeart, label: "Unlimited saved objects & collections" },
-  { icon: Database, label: "Save custom searches" },
-  { icon: Download, label: "Export data to CSV/JSON" },
-  { icon: Bell, label: "Custom alerts for cosmic events" },
-];
-
 const freeLimits = TIER_LIMITS.free;
-const FREE_PLAN_LIMITS = [
-  { label: "Saved objects", value: freeLimits.MAX_SAVED_OBJECTS.toLocaleString() },
-  { label: "Saves per rolling 24h", value: freeLimits.SAVES_PER_DAY.toLocaleString() },
-  { label: "Saved searches", value: freeLimits.MAX_SAVED_SEARCHES.toLocaleString() },
-  { label: "Export requests / hour", value: freeLimits.EXPORT_REQUESTS_PER_HOUR.toLocaleString() },
-  { label: "Export rows / hour", value: freeLimits.EXPORT_ROWS_PER_HOUR.toLocaleString() },
-  { label: "Max rows per export", value: freeLimits.MAX_EXPORT_ROWS.toLocaleString() },
-  { label: "CSV export max rows", value: freeLimits.CSV_MAX_ROWS.toLocaleString() },
+const proLimits = TIER_LIMITS.pro;
+const PLAN_LIMIT_COMPARISON = [
+  {
+    label: "Saved objects",
+    free: freeLimits.MAX_SAVED_OBJECTS.toLocaleString(),
+    pro: proLimits.MAX_SAVED_OBJECTS.toLocaleString(),
+  },
+  {
+    label: "Saves per rolling 24h",
+    free: freeLimits.SAVES_PER_DAY.toLocaleString(),
+    pro: proLimits.SAVES_PER_DAY.toLocaleString(),
+  },
+  {
+    label: "Saved searches",
+    free: freeLimits.MAX_SAVED_SEARCHES.toLocaleString(),
+    pro: proLimits.MAX_SAVED_SEARCHES.toLocaleString(),
+  },
+  {
+    label: "Export requests / hour",
+    free: freeLimits.EXPORT_REQUESTS_PER_HOUR.toLocaleString(),
+    pro: proLimits.EXPORT_REQUESTS_PER_HOUR.toLocaleString(),
+  },
+  {
+    label: "Export rows / hour",
+    free: freeLimits.EXPORT_ROWS_PER_HOUR.toLocaleString(),
+    pro: proLimits.EXPORT_ROWS_PER_HOUR.toLocaleString(),
+  },
+  {
+    label: "Max rows per export",
+    free: freeLimits.MAX_EXPORT_ROWS.toLocaleString(),
+    pro: proLimits.MAX_EXPORT_ROWS.toLocaleString(),
+  },
+  {
+    label: "CSV export max rows",
+    free: freeLimits.CSV_MAX_ROWS.toLocaleString(),
+    pro: proLimits.CSV_MAX_ROWS.toLocaleString(),
+  },
 ];
 
 export function BillingContent({
@@ -229,23 +252,44 @@ export function BillingContent({
         </CardContent>
       </Card>
 
-      {/* Free Tier Limits Card */}
+      {/* Tier Limits Card */}
       <Card tone={ACCOUNT_CARD_TONE}>
         <CardHeader>
-          <CardTitle className="text-lg">Free Plan Limits</CardTitle>
+          <CardTitle className="text-lg">Tier Limits</CardTitle>
           <CardDescription>
-            Current usage caps for the free tier
+            Current enforced limits for signed-in users
           </CardDescription>
+          <p className="text-xs text-muted-foreground">Last updated: March 1, 2026 (UTC)</p>
         </CardHeader>
         <CardContent>
-          <ul className="space-y-2">
-            {FREE_PLAN_LIMITS.map((limit) => (
-              <li key={limit.label} className="flex items-center justify-between gap-3 text-sm">
-                <span className="text-muted-foreground">{limit.label}</span>
-                <span className="font-medium text-foreground">{limit.value}</span>
-              </li>
-            ))}
-          </ul>
+          <div className="overflow-x-auto">
+            <table className="w-full table-fixed text-sm">
+              <colgroup>
+                <col className="w-[58%]" />
+                <col className="w-[21%]" />
+                <col className="w-[21%]" />
+              </colgroup>
+              <thead>
+                <tr className="text-xs uppercase tracking-[0.12em] text-muted-foreground/80">
+                  <th className="py-1 text-left font-medium">Capability</th>
+                  <th className="py-1 text-right font-medium">Free</th>
+                  <th className="py-1 text-right font-medium">Pro</th>
+                </tr>
+              </thead>
+              <tbody>
+                {PLAN_LIMIT_COMPARISON.map((limit) => (
+                  <tr key={limit.label}>
+                    <td className="py-1.5 text-muted-foreground">{limit.label}</td>
+                    <td className="py-1.5 text-right font-medium tabular-nums text-foreground">{limit.free}</td>
+                    <td className="py-1.5 text-right font-medium tabular-nums text-uranium-green">{limit.pro}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="mt-4 text-xs text-muted-foreground">
+            Note: saves and exports require sign-in. Fireball events are not savable.
+          </p>
         </CardContent>
       </Card>
     </div>

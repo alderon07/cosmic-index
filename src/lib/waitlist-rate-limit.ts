@@ -1,9 +1,6 @@
 import crypto from "node:crypto";
 import { Redis } from "@upstash/redis";
-import { getClientIdentifier } from "@/lib/rate-limit";
 
-const WAITLIST_IP_LIMIT = 5;
-const WAITLIST_IP_WINDOW_SEC = 15 * 60;
 const WAITLIST_USER_LIMIT = 10;
 const WAITLIST_USER_WINDOW_SEC = 24 * 60 * 60;
 const WAITLIST_EMAIL_LIMIT = 3;
@@ -68,27 +65,10 @@ export async function checkWaitlistRateLimit(params: {
   }
 
   const env = process.env.NODE_ENV ?? "development";
-  const identity = getClientIdentifier(params.request);
-  const ipKey = `waitlist:ip:${env}:${identity.id}`;
   const userKey = `waitlist:user:${env}:${sha256(params.userId)}`;
   const emailKey = `waitlist:email:${env}:${sha256(params.emailNormalized)}`;
 
   try {
-    const ipWindow = await checkWindow({
-      client,
-      key: ipKey,
-      limit: WAITLIST_IP_LIMIT,
-      windowSec: WAITLIST_IP_WINDOW_SEC,
-    });
-
-    if (!ipWindow.allowed) {
-      return {
-        allowed: false,
-        retryAfterSec: ipWindow.retryAfterSec,
-        unavailable: false,
-      };
-    }
-
     const userWindow = await checkWindow({
       client,
       key: userKey,

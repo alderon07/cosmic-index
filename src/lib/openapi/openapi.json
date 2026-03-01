@@ -1547,6 +1547,89 @@
         }
       }
     },
+    "/user/saved-objects": {
+      "get": {
+        "operationId": "listSavedObjects",
+        "summary": "List saved objects",
+        "description": "List saved objects for the signed-in user.",
+        "tags": [
+          "User"
+        ],
+        "responses": {
+          "200": {
+            "description": "Saved objects list"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      },
+      "post": {
+        "operationId": "createSavedObject",
+        "summary": "Save an object",
+        "description": "Save a catalog object or supported event for the signed-in user. Fireball saves are not supported and return HTTP 400.",
+        "tags": [
+          "User"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "canonicalId",
+                  "displayName"
+                ],
+                "properties": {
+                  "canonicalId": {
+                    "type": "string",
+                    "description": "Canonical object ID (for example: exoplanet:Kepler-22b)."
+                  },
+                  "displayName": {
+                    "type": "string",
+                    "maxLength": 200
+                  },
+                  "notes": {
+                    "type": "string",
+                    "maxLength": 1000
+                  },
+                  "eventPayload": {
+                    "description": "Optional event snapshot payload.",
+                    "oneOf": [
+                      {
+                        "type": "object",
+                        "additionalProperties": true
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Saved object created or refreshed"
+          },
+          "400": {
+            "description": "Invalid request, invalid canonical ID, or unsupported object type (including fireball)."
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Saved-objects tier limit reached"
+          },
+          "429": {
+            "description": "Rolling daily save limit reached"
+          }
+        }
+      }
+    },
     "/user/export": {
       "post": {
         "operationId": "exportUserData",
@@ -1654,7 +1737,7 @@
                 },
                 "examples": {
                   "small_export": {
-                    "summary": "CSV export (<= 1000 rows)",
+                    "summary": "CSV export (tier-capped rows)",
                     "value": "Planet Name,Host Star,Discovery Method\nKepler-22b,Kepler-22,Transit"
                   }
                 }
