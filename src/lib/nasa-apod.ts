@@ -1,5 +1,6 @@
 import { APODData } from "./types";
 import { withCache, CACHE_TTL, CACHE_KEYS } from "./cache";
+import { deriveApodVideoThumbnail } from "./apod-media";
 
 const APOD_API_URL = "https://api.nasa.gov/planetary/apod";
 const API_TIMEOUT_MS = 15000;
@@ -36,6 +37,10 @@ interface APODRawResponse {
 
 // Transform raw API response to our internal format
 function transformAPODResponse(raw: APODRawResponse): APODData {
+  const thumbnailUrl =
+    raw.thumbnail_url ??
+    (raw.media_type === "video" ? deriveApodVideoThumbnail(raw.url) : undefined);
+
   return {
     date: raw.date,
     title: raw.title,
@@ -44,7 +49,7 @@ function transformAPODResponse(raw: APODRawResponse): APODData {
     imageUrlHd: raw.hdurl,
     mediaType: raw.media_type,
     copyright: raw.copyright,
-    thumbnailUrl: raw.thumbnail_url,
+    thumbnailUrl,
   };
 }
 

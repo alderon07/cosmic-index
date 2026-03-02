@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { APODData } from "@/lib/types";
 import { apiFetch } from "@/lib/api-client";
+import { deriveApodVideoThumbnail, getApodVideoSource } from "@/lib/apod-media";
 import { Calendar, ExternalLink, ChevronDown, ChevronUp, Play, ImageIcon } from "lucide-react";
 
 interface APODCardProps {
@@ -64,8 +65,15 @@ export function APODCard({ className, initialApod = null, initialError = null }:
     : apod.explanation.slice(0, maxLength).trim() + "...";
 
   // Determine image source (use thumbnail for videos)
-  const imageSrc = apod.mediaType === "video" ? apod.thumbnailUrl : apod.imageUrl;
   const isVideo = apod.mediaType === "video";
+  const videoSource = isVideo ? getApodVideoSource(apod.imageUrl) : null;
+  const isLikelyImageUrl = (url: string): boolean =>
+    /\.(avif|webp|png|jpe?g|gif|bmp|svg)(?:[?#].*)?$/i.test(url);
+  const imageSrc = isVideo
+    ? apod.thumbnailUrl ??
+      deriveApodVideoThumbnail(apod.imageUrl) ??
+      (isLikelyImageUrl(apod.imageUrl) ? apod.imageUrl : undefined)
+    : apod.imageUrl;
 
   return (
     <Card
@@ -74,7 +82,29 @@ export function APODCard({ className, initialApod = null, initialError = null }:
       <div className="grid md:grid-cols-2 gap-0">
         {/* Image Section */}
         <div className="relative aspect-video md:aspect-auto md:min-h-[320px] bg-[#0d0907]">
-          {imageSrc ? (
+          {isVideo && videoSource ? (
+            videoSource.kind === "iframe" ? (
+              <iframe
+                src={videoSource.src}
+                title={apod.title}
+                className="absolute inset-0 h-full w-full border-0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                referrerPolicy="strict-origin-when-cross-origin"
+                allowFullScreen
+              />
+            ) : (
+              <video
+                className="absolute inset-0 h-full w-full object-cover"
+                controls
+                playsInline
+                preload="metadata"
+                poster={imageSrc}
+              >
+                <source src={videoSource.src} />
+                Your browser does not support the video tag.
+              </video>
+            )
+          ) : imageSrc ? (
             <>
               <Image
                 src={imageSrc}
@@ -95,6 +125,22 @@ export function APODCard({ className, initialApod = null, initialError = null }:
               {/* Gradient overlay for text readability on mobile */}
               <div className="absolute inset-0 bg-gradient-to-t from-[#0f0b08]/85 via-transparent to-transparent md:hidden" />
             </>
+          ) : isVideo ? (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-void-black/70 p-6 text-center">
+              <div className="w-16 h-16 rounded-full border border-orange-200/35 bg-orange-400/85 flex items-center justify-center">
+                <Play className="w-8 h-8 text-black ml-1" />
+              </div>
+              <p className="text-sm text-orange-100/80">Video preview unavailable</p>
+              <a
+                href={apod.imageUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 rounded-md border border-orange-300/45 bg-orange-500/15 px-3 py-1.5 text-xs text-orange-100 transition-colors hover:bg-orange-500/25"
+              >
+                Open video
+                <ExternalLink className="w-3 h-3" />
+              </a>
+            </div>
           ) : (
             <div className="absolute inset-0 flex items-center justify-center bg-void-black/50">
               <ImageIcon className="w-12 h-12 text-muted-foreground" />
