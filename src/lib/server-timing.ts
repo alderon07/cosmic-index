@@ -63,7 +63,10 @@ export class ServerTiming {
     body: unknown,
     init?: number | ResponseInit
   ): NextResponse {
-    const response = NextResponse.json(body, init);
+    const response = NextResponse.json(
+      body,
+      typeof init === "number" ? { status: init } : init,
+    );
     response.headers.set("Server-Timing", this.toHeaderValue());
     return response;
   }

@@ -1,7 +1,27 @@
 import type { NextConfig } from "next";
+import { createRequire } from "node:module";
+
+const require = createRequire(import.meta.url);
+
+function isReactCompilerAvailable(): boolean {
+  try {
+    require.resolve("babel-plugin-react-compiler/package.json");
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+const reactCompilerEnabled = isReactCompilerAvailable();
+
+if (!reactCompilerEnabled) {
+  console.warn(
+    "[next.config] React Compiler disabled because babel-plugin-react-compiler is not installed.",
+  );
+}
 
 const nextConfig: NextConfig = {
-  reactCompiler: true,
+  reactCompiler: reactCompilerEnabled,
   // Rewrite unversioned /api/* to /api/v1/* for backward compatibility.
   // Explicit per-route — a wildcard /api/:path* would double-prefix /api/v1/ requests.
   async rewrites() {
