@@ -1,12 +1,13 @@
 # AGENTS.md
 
-Last updated (UTC): 2026-02-17
-Version: 1.4
+Last updated (UTC): 2026-03-03
+Version: 1.5
 
 This file provides implementation-oriented guidance for agents working in this repo.
 
 ## Change Log
 
+- 2026-03-03: Documented completed DB migration status (`001`-`004`) and updated Stripe billing behavior notes (always-available manage/cancel path plus portal customer fallback recovery).
 - 2026-02-17: Space weather expanded to include `IPS`, `HSS`, `SEP`, a separate notifications endpoint (`GET /api/v1/space-weather/notifications`), and DONKI reliability hardening (retry/timeout/single-flight/cache updates).
 - 2026-02-17: Cleaned wording and removed duplicate policy statements.
 - 2026-02-13: Added explicit sections for project overview, build/test commands, code style, testing instructions, and security considerations.
@@ -60,6 +61,7 @@ bun run lint
 bun run build
 bun test
 bun test src/lib/__tests__/compare-facts.test.ts
+bun test src/app/api/stripe/portal/route.test.ts
 mise run cli-test
 ```
 
@@ -143,6 +145,7 @@ bun run lint
 - Turso (`TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`):
   - Star/exoplanet index tables
   - User/Pro feature tables
+  - Core Pro migrations `001_pro_features.sql`, `002_export_history_audit.sql`, `003_tier_limit_indexes.sql`, and `004_waitlist_interest.sql` are now applied
 - Upstash Redis (`UPSTASH_REDIS_*`):
   - Cache (`src/lib/cache.ts`)
   - Rate limiting (`src/lib/rate-limit.ts`)
@@ -218,6 +221,8 @@ Notes:
 
 - `src/proxy.ts` is used instead of a legacy `middleware.ts` naming pattern.
 - Exoplanet browse requires Turso index; detail pages may still work via NASA fetch path.
+- Billing status can lag immediately after Stripe Checkout until webhook sync completes; billing UI exposes Manage/Cancel during this window.
+- Stripe portal route includes customer recovery fallback via `stripe_subscription_id` and email lookup when `stripe_customer_id` linkage is missing.
 - If compare state seems stale/weird, clear session storage key `cosmic-index:compare:v1`.
 - DONKI notifications endpoint has a 30-day max query window; requests beyond this are clamped and surfaced via warnings.
 - Linked space-weather events can include unsupported DONKI types (e.g. `RBE`/`MPC`); unsupported links should route to DONKI external references, not in-app detail routes.

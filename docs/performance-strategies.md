@@ -1,10 +1,12 @@
 # Cosmic Index Performance Strategies
 
-Updated (UTC): 2026-03-01
+Updated (UTC): 2026-03-03
 
 ## Goal
 
 Make user-facing data flows feel instant while staying within Turso/Vercel limits and keeping behavior predictable.
+
+Prerequisite status: core DB migrations (`001`-`004`) are applied, so index/query tuning work can proceed without schema blockers.
 
 ## Implemented Now
 

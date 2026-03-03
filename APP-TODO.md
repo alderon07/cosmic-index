@@ -31,6 +31,7 @@
 | Free Export Guardrail | Free tier export requests limited to **1 per hour** (`EXPORT_REQUESTS_PER_HOUR`) |
 | Database Migrations | Applied all current migrations (`001_pro_features.sql`, `002_export_history_audit.sql`, `003_tier_limit_indexes.sql`, `004_waitlist_interest.sql`) |
 | Stripe Billing UX | Added Billing nav entry in user menu, in-page API error messaging, and explicit **Manage or Cancel** actions on billing |
+| Stripe Billing Sync UX | Billing page now handles post-checkout sync lag explicitly (shows sync state and keeps **Manage or Cancel** available) |
 | Stripe Portal Reliability | Added customer resolution fallbacks (`stripe_subscription_id`, email-based lookup) and route tests for portal recovery paths |
 | **Pro Tier Backend** | Full implementation - see details below |
 
@@ -54,8 +55,8 @@
 
 | Task | Description |
 |------|-------------|
-| **Clerk Setup** | Create Clerk app, add env vars (`NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`) |
-| **Stripe Setup** | Create product/price, configure webhook, add env vars (`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRO_PRICE_ID`) |
+| **Clerk Production Setup** | Validate deployed Clerk app config and production env vars (`NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`) |
+| **Stripe Production Setup** | Validate live product/price, webhook endpoint, and production env vars (`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRO_PRICE_ID`) |
 
 ## 📋 Up Next (Priority Order)
 

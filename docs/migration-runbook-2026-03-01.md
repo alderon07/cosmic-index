@@ -1,132 +1,59 @@
-# Deferred Migration Runbook (Turso Reset Window)
+# Migration Runbook (Executed 2026-03-01)
+
+Last updated (UTC): 2026-03-03
 
 ## Status
 
-- `Current date`: February 8, 2026
-- `Constraint`: Turso write quota exhausted
-- `Action`: Do **not** run migrations before reset
-- `Earliest execution date`: March 1, 2026 (after quota reset)
+- Migration window executed on **March 1, 2026**.
+- Core Pro + rollout migrations are applied in this environment:
+  1. `db/migrations/001_pro_features.sql`
+  2. `db/migrations/002_export_history_audit.sql`
+  3. `db/migrations/003_tier_limit_indexes.sql`
+  4. `db/migrations/004_waitlist_interest.sql`
+- There are no pending migrations in this sequence.
 
-## Scope
+## Execution Record
 
-This runbook covers these migration files:
+| Migration | Outcome | Notes |
+|----------|---------|-------|
+| `001_pro_features.sql` | Applied | Base Pro tables/indexes (`users`, `saved_objects`, `saved_searches`, `stripe_events`, etc.) |
+| `002_export_history_audit.sql` | Applied | Extended `export_history` audit columns + indexes |
+| `003_tier_limit_indexes.sql` | Applied | Tier/rate-limit support indexes |
+| `004_waitlist_interest.sql` | Applied | Waitlist + interest tracking tables |
 
-1. `db/migrations/001_pro_features.sql`
-2. `db/migrations/002_export_history_audit.sql`
-3. `db/migrations/003_tier_limit_indexes.sql`
+## Verification Commands
 
-## Why this runbook exists
-
-- `001` is mostly idempotent (`CREATE TABLE IF NOT EXISTS`, `CREATE INDEX IF NOT EXISTS`).
-- `002` is **not** idempotent because `ALTER TABLE ... ADD COLUMN` fails if a column already exists.
-- `003` is idempotent (`CREATE INDEX IF NOT EXISTS`).
-
-Because current DB state may be partially migrated, run schema checks first and apply only missing changes.
-
-## Pre-Reset Guardrails (Before March 1, 2026)
-
-- Do not execute migration SQL before quota reset.
-- Keep migration-dependent paths behind existing auth/feature controls in production.
-- Treat these endpoints as migration-dependent:
-  - `/api/user/export` (depends on extended `export_history` audit columns and indexes)
-  - `/api/user/saved-objects` (depends on tier-aware usage/index assumptions)
-  - `/api/user/saved-searches` (depends on tier-aware usage/index assumptions)
-
-## Preflight (Read-only checks)
-
-Run these checks first:
+Use these read-only checks when validating another environment:
 
 ```bash
 turso db shell cosmic-index "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name;"
-```
-
-```bash
 turso db shell cosmic-index "PRAGMA table_info(export_history);"
-```
-
-```bash
-turso db shell cosmic-index "PRAGMA table_info(saved_objects);"
-```
-
-```bash
 turso db shell cosmic-index "SELECT name FROM sqlite_master WHERE type='index' ORDER BY name;"
 ```
 
-## Execution Order (March 1+)
-
-### 1) Apply `001` only if base tables are missing
-
-If `users`, `saved_objects`, `saved_searches`, or `export_history` are missing:
+Recommended focused check for key indexes:
 
 ```bash
-turso db shell cosmic-index < db/migrations/001_pro_features.sql
+turso db shell cosmic-index "SELECT name FROM sqlite_master WHERE type='index' AND name IN ('idx_export_user_started','idx_export_status','idx_export_rate_limit','idx_saved_daily','idx_saved_total','idx_searches_user','idx_users_stripe_customer') ORDER BY name;"
 ```
 
-If those tables already exist, skip `001`.
+## Idempotent Re-Run Guidance
 
-### 2) Apply `002` column additions safely
+- `001`, `003`, and `004` are safe to re-run because they use `IF NOT EXISTS` patterns.
+- `002` contains `ALTER TABLE ... ADD COLUMN` statements and is not fully idempotent.
+- If re-running `002`, compare `PRAGMA table_info(export_history)` first and execute only missing `ADD COLUMN` statements.
 
-Check `PRAGMA table_info(export_history)` output.
-Only run `ADD COLUMN` statements for columns that are missing.
+## Rollback and Recovery Notes
 
-Commands from `002`:
+- This migration set does not provide down-migrations.
+- If rollback is required, restore from backup/snapshot and redeploy app code aligned to that schema.
+- For partial failures, complete the remaining statements after resolving the specific failing step; do not restart from scratch blindly.
 
-```sql
-ALTER TABLE export_history ADD COLUMN request_id TEXT;
-ALTER TABLE export_history ADD COLUMN format TEXT;
-ALTER TABLE export_history ADD COLUMN status TEXT;
-ALTER TABLE export_history ADD COLUMN exported_count INTEGER;
-ALTER TABLE export_history ADD COLUMN started_at INTEGER;
-ALTER TABLE export_history ADD COLUMN completed_at INTEGER;
-ALTER TABLE export_history ADD COLUMN duration_ms INTEGER;
-ALTER TABLE export_history ADD COLUMN filters_hash TEXT;
-ALTER TABLE export_history ADD COLUMN error_code TEXT;
-ALTER TABLE export_history ADD COLUMN budget_check_skipped BOOLEAN DEFAULT FALSE;
-```
+## Next Time Checklist
 
-Then run indexes from `002` (safe to re-run):
+For future schema waves:
 
-```bash
-turso db shell cosmic-index "CREATE INDEX IF NOT EXISTS idx_export_user_started ON export_history(user_id, started_at);"
-turso db shell cosmic-index "CREATE INDEX IF NOT EXISTS idx_export_status ON export_history(status);"
-```
-
-### 3) Apply `003` indexes
-
-```bash
-turso db shell cosmic-index < db/migrations/003_tier_limit_indexes.sql
-```
-
-## Post-Apply Verification
-
-Verify expected columns:
-
-```bash
-turso db shell cosmic-index "PRAGMA table_info(export_history);"
-```
-
-Expected audit columns:
-
-- `request_id`
-- `format`
-- `status`
-- `exported_count`
-- `started_at`
-- `completed_at`
-- `duration_ms`
-- `filters_hash`
-- `error_code`
-- `budget_check_skipped`
-
-Verify expected indexes:
-
-```bash
-turso db shell cosmic-index "SELECT name FROM sqlite_master WHERE type='index' AND name IN ('idx_export_user_started','idx_export_status','idx_export_rate_limit','idx_saved_daily','idx_saved_total','idx_searches_user') ORDER BY name;"
-```
-
-## Rollout Notes
-
-- Run during low-traffic window on March 1, 2026.
-- Keep all migration commands and output in deployment notes.
-- If any `ALTER TABLE` fails due to duplicate column, skip that statement and continue.
-- After successful verification, mark DB migration tasks complete in `docs/pro-tier-todos.md`.
+1. Run migration commands in a low-traffic window.
+2. Capture command output in deployment notes.
+3. Run verification queries immediately after apply.
+4. Update `APP-TODO.md`, `AGENTS.md`, and relevant docs with completion status.
