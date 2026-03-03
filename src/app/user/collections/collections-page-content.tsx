@@ -396,7 +396,7 @@ export function CollectionsPageContent() {
   }
 
   return (
-    <div className="shell-container py-8">
+    <div className="shell-container overflow-x-clip py-8">
       <div className="grid gap-6 lg:grid-cols-[minmax(0,280px)_1fr] lg:items-start">
         <Card
           tone={ACCOUNT_CARD_TONE}
@@ -473,7 +473,7 @@ export function CollectionsPageContent() {
           </CardContent>
         </Card>
 
-        <section className="space-y-4">
+        <section className="min-w-0 space-y-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <h1 className="font-display text-3xl text-foreground sm:text-4xl">Collections</h1>

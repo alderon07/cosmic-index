@@ -180,41 +180,41 @@ export default function RootLayout({
         <div className="relative vignette flex min-h-screen flex-1 flex-col">
           {/* Navigation */}
           <header className="sticky top-0 z-50 border-b border-orange-200/20 bg-[#120d0a]/90 backdrop-blur-md">
-            <nav className="shell-container h-16 flex items-center justify-between">
+            <nav className="shell-container flex h-16 min-w-0 items-center justify-between">
               <Link href="/" className="flex items-center gap-2 group">
                 <div className="h-8 w-8 rounded-full border border-orange-300/35 reactor-gradient pulse-glow" />
-                <span className="hidden sm:inline font-display text-xl tracking-wider text-orange-100 transition-colors group-hover:text-orange-300">
+                <span className="hidden lg:inline font-display text-xl tracking-wider text-orange-100 transition-colors group-hover:text-orange-300">
                   Cosmic Index
                 </span>
               </Link>
-              <div className="flex min-w-0 items-center gap-1.5 sm:gap-6">
+              <div className="flex min-w-0 items-center gap-1.5 sm:gap-3 lg:gap-6">
                 <Link
                   href="/exoplanets"
                   className={`font-display text-sm tracking-wide text-orange-100/75 transition-colors ${THEMES.exoplanets.hoverText}`}
                   title="Exoplanets"
                 >
-                  <Circle className="w-5 h-5 sm:hidden" />
-                  <span className="hidden sm:inline">Exoplanets</span>
+                  <Circle className="w-5 h-5 lg:hidden" />
+                  <span className="hidden lg:inline">Exoplanets</span>
                 </Link>
                 <Link
                   href="/stars"
                   className={`font-display text-sm tracking-wide text-orange-100/75 transition-colors ${THEMES.stars.hoverText}`}
                   title="Stars"
                 >
-                  <Star className="w-5 h-5 sm:hidden" />
-                  <span className="hidden sm:inline">Stars</span>
+                  <Star className="w-5 h-5 lg:hidden" />
+                  <span className="hidden lg:inline">Stars</span>
                 </Link>
                 <Link
                   href="/small-bodies"
-                  className={`font-display text-sm tracking-wide text-orange-100/75 transition-colors sm:hidden ${THEMES["small-bodies"].hoverText}`}
+                  className={`font-display text-sm tracking-wide text-orange-100/75 transition-colors lg:hidden ${THEMES["small-bodies"].hoverText}`}
                   title="Small Bodies"
                 >
                   <CircleDot className="w-5 h-5" />
-                  <span className="hidden sm:inline">Small-Bodies</span>
+                  <span className="hidden lg:inline">Small-Bodies</span>
                 </Link>
                 <NavigationMenu
                   viewport={false}
-                  className="hidden sm:flex"
+                  className="hidden lg:flex"
                 >
                   <NavigationMenuList>
                     <NavigationMenuItem>
@@ -274,27 +274,27 @@ export default function RootLayout({
                   </NavigationMenu>
                 <Link
                   href="/close-approaches"
-                  className={`font-display text-sm tracking-wide text-orange-100/75 transition-colors sm:hidden ${THEMES["close-approaches"].hoverText}`}
+                  className={`font-display text-sm tracking-wide text-orange-100/75 transition-colors lg:hidden ${THEMES["close-approaches"].hoverText}`}
                   title="Close Approaches"
                 >
                   <Crosshair className="w-5 h-5" />
-                  <span className="hidden sm:inline">Close-Approaches</span>
+                  <span className="hidden lg:inline">Close-Approaches</span>
                 </Link>
                 <Link
                   href="/fireballs"
                   className={`font-display text-sm tracking-wide text-orange-100/75 transition-colors ${THEMES.fireballs.hoverText}`}
                   title="Fireballs"
                 >
-                  <Flame className="w-5 h-5 sm:hidden" />
-                  <span className="hidden sm:inline">Fireballs</span>
+                  <Flame className="w-5 h-5 lg:hidden" />
+                  <span className="hidden lg:inline">Fireballs</span>
                 </Link>
                 <Link
                   href="/space-weather"
                   className={`font-display text-sm tracking-wide transition-colors ${THEMES["space-weather"].hoverText}`}
                   title="Space Weather"
                 >
-                  <CloudLightning className="w-5 h-5 sm:hidden" />
-                  <span className="hidden sm:inline">Weather</span>
+                  <CloudLightning className="w-5 h-5 lg:hidden" />
+                  <span className="hidden lg:inline">Weather</span>
                 </Link>
                 {waitlistEnabled ? (
                   <Link
@@ -303,12 +303,12 @@ export default function RootLayout({
                     title="Pro Waitlist"
                   >
                     <span className="h-1.5 w-1.5 rounded-full bg-uranium-green animate-pulse" />
-                    <BellRing className="h-3.5 w-3.5 sm:hidden" />
-                    <span className="hidden sm:inline">Waitlist</span>
+                    <BellRing className="h-3.5 w-3.5 lg:hidden" />
+                    <span className="hidden lg:inline">Waitlist</span>
                   </Link>
                 ) : null}
                 {/* Auth separator and button */}
-                <div className="h-4 w-px bg-border/50 mx-1 hidden sm:block" />
+                <div className="mx-1 hidden h-4 w-px bg-border/50 lg:block" />
                 <UserAuthButton />
               </div>
             </nav>
