@@ -30,7 +30,7 @@ export function UserAuthButton() {
         title="Authentication is not configured"
       >
         <User className="w-4 h-4" />
-        <span className="hidden sm:inline">Auth Off</span>
+        <span className="hidden lg:inline">Auth Off</span>
       </Button>
     );
   }
@@ -45,7 +45,7 @@ export function UserAuthButton() {
             className="gap-1.5 text-muted-foreground hover:text-foreground"
           >
             <User className="w-4 h-4" />
-            <span className="hidden sm:inline">Sign In</span>
+            <span className="hidden lg:inline">Sign In</span>
           </Button>
         </SignInButton>
       </SignedOut>
