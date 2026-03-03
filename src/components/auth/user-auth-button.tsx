@@ -2,7 +2,7 @@
 
 import { SignedIn, SignedOut, SignInButton, UserButton } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
-import { User, Bookmark, Layers } from "lucide-react";
+import { User, Bookmark, Layers, CreditCard } from "lucide-react";
 import { useAppAuth } from "./app-auth-provider";
 import { clerkAppearance } from "@/components/auth/clerk-appearance";
 
@@ -64,6 +64,11 @@ export function UserAuthButton() {
               href="/user/collections"
               label="Collections"
               labelIcon={<Layers className="h-4 w-4" />}
+            />
+            <UserButton.Link
+              href="/settings/billing"
+              label="Billing"
+              labelIcon={<CreditCard className="h-4 w-4" />}
             />
           </UserButton.MenuItems>
         </UserButton>
