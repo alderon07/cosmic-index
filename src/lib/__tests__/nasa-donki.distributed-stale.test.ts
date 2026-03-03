@@ -19,9 +19,8 @@ mock.module("@upstash/redis", () => ({
 }));
 
 function buildFlrStaleKey(startDate: string, endDate: string): string {
-  const runtimeMode =
-    process.env.COSMIC_USE_MOCK_AUTH ?? process.env.NEXT_PUBLIC_USE_MOCK_AUTH ?? "unset";
-  const context = `${process.env.NODE_ENV ?? "unknown"}:${runtimeMode}:donki`;
+  const env = process.env.NODE_ENV || "unknown";
+  const context = `${env}:donki`;
   return `sw:flr:v3:${context}:${startDate}:${endDate}:stale`;
 }
 

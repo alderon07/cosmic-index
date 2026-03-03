@@ -2,12 +2,7 @@ import { NextResponse } from "next/server";
 import { requireAuth, authErrorResponse } from "@/lib/auth";
 import { requireStripe, APP_URL } from "@/lib/stripe";
 import { requireUserDb } from "@/lib/user-db";
-import {
-  getProBillingEnabled,
-  isMockStripeEnabled,
-  isMockUserStoreEnabled,
-} from "@/lib/runtime-mode";
-import { setMockUserTier } from "@/lib/mock-user-store";
+import { getProBillingEnabled } from "@/lib/runtime-mode";
 
 /**
  * POST /api/stripe/portal
@@ -25,15 +20,6 @@ export async function POST() {
         { error: "feature_disabled", feature: "billing" },
         { status: 403 }
       );
-    }
-
-    if (isMockStripeEnabled()) {
-      if (isMockUserStoreEnabled()) {
-        setMockUserTier(user.userId, "free");
-      }
-      return NextResponse.json({
-        url: `${APP_URL}/settings/billing?canceled=true&mock=1`,
-      });
     }
 
     const stripe = requireStripe();

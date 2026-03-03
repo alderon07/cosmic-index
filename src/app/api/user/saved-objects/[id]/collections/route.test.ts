@@ -1,42 +1,42 @@
 import { describe, expect, it, mock } from "bun:test";
 
+const db = {
+  execute: async ({ sql, args }: { sql: string; args?: unknown[] }) => {
+    if (sql.includes("SELECT id FROM saved_objects WHERE id = ? AND user_id = ?")) {
+      const id = Number(args?.[0]);
+      if (id === 42) return { rows: [{ id: 42 }] };
+      return { rows: [] };
+    }
+
+    if (sql.includes("FROM collections c") && sql.includes("MAX(CASE WHEN ci.saved_object_id")) {
+      return {
+        rows: [
+          {
+            id: 1,
+            name: "Weekly Watchlist",
+            item_count: 2,
+            is_member: 1,
+            updated_at: "2026-02-10T00:00:00.000Z",
+          },
+        ],
+      };
+    }
+
+    return { rows: [] };
+  },
+};
+
 mock.module("@/lib/auth", () => ({
-  requireAuth: async () => ({ userId: "user-1", tier: "free" }),
+  getAuthUser: async () => ({ userId: "user-1", tier: "free", isPro: false, email: "user@example.com" }),
+  requireAuth: async () => ({ userId: "user-1", tier: "free", isPro: false, email: "user@example.com" }),
+  requirePro: async () => ({ userId: "user-1", tier: "pro", isPro: true, email: "user@example.com" }),
   authErrorResponse: (error: unknown) =>
     new Response(JSON.stringify({ error: String(error) }), { status: 401 }),
 }));
 
-mock.module("@/lib/runtime-mode", () => ({
-  isMockUserStoreEnabled: () => true,
-  getConfiguredLimitMode: () => "enforce",
-  getForceEnforce: () => false,
-  getWaitlistEnabled: () => false,
-  getWaitlistEnforceThreshold: () => 125,
-  getProSurfacesEnabled: () => false,
-  getProBillingEnabled: () => false,
-  getProRolloutAdminIds: () => [],
-}));
-
 mock.module("@/lib/user-db", () => ({
-  requireUserDb: () => {
-    throw new Error("db should not be called in mock mode");
-  },
-}));
-
-mock.module("@/lib/mock-user-store", () => ({
-  listCollectionsForSavedObject: (userId: string, savedObjectId: number) => {
-    if (userId !== "user-1") return null;
-    if (savedObjectId !== 42) return null;
-    return [
-      {
-        id: 1,
-        name: "Weekly Watchlist",
-        itemCount: 2,
-        isMember: true,
-        updatedAt: "2026-02-10T00:00:00.000Z",
-      },
-    ];
-  },
+  getUserDb: () => db,
+  requireUserDb: () => db,
 }));
 
 const { GET } = await import("@/app/api/user/saved-objects/[id]/collections/route");

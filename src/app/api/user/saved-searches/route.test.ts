@@ -1,14 +1,27 @@
 import { describe, it, expect, mock } from "bun:test";
 import type { NextRequest } from "next/server";
 
+const db = {
+  execute: async ({ sql }: { sql: string; args?: unknown[] }) => {
+    if (sql.includes("WHERE user_id = ? AND category = ? AND params_hash = ?")) {
+      return { rows: [] };
+    }
+    if (sql.includes("SELECT COUNT(*) as total FROM saved_searches WHERE user_id = ?")) {
+      return { rows: [{ total: 100 }] };
+    }
+    return { rows: [] };
+  },
+};
+
 mock.module("@/lib/auth", () => ({
-  requireAuth: async () => ({ userId: "user-1", tier: "free" }),
+  getAuthUser: async () => ({ userId: "user-1", tier: "free", isPro: false, email: "user@example.com" }),
+  requireAuth: async () => ({ userId: "user-1", tier: "free", isPro: false, email: "user@example.com" }),
+  requirePro: async () => ({ userId: "user-1", tier: "pro", isPro: true, email: "user@example.com" }),
   authErrorResponse: (error: unknown) =>
     new Response(JSON.stringify({ error: String(error) }), { status: 401 }),
 }));
 
 mock.module("@/lib/runtime-mode", () => ({
-  isMockUserStoreEnabled: () => true,
   getConfiguredLimitMode: () => "enforce",
   getForceEnforce: () => false,
   getWaitlistEnabled: () => false,
@@ -19,35 +32,12 @@ mock.module("@/lib/runtime-mode", () => ({
 }));
 
 mock.module("@/lib/user-db", () => ({
-  requireUserDb: () => {
-    throw new Error("db should not be called in mock mode");
-  },
-  getUserDb: () => null,
+  getUserDb: () => db,
+  requireUserDb: () => db,
 }));
 
 mock.module("@/lib/saved-searches", () => ({
   canonicalizeAndHash: () => ({ canonical: JSON.stringify({ query: "kepler" }), hash: "abc123" }),
-}));
-
-mock.module("@/lib/mock-user-store", () => ({
-  listSavedObjects: () => ({ objects: [] }),
-  saveObject: () => null,
-  countSavedObjects: () => 0,
-  countSavedObjectsSince: () => 0,
-  getSavedObjectByCanonicalId: () => null,
-  listSavedSearches: () => [],
-  createSavedSearch: () => ({
-    id: 1,
-    name: "Kepler",
-    category: "exoplanets",
-    queryParams: { query: "kepler" },
-    resultCount: null,
-    lastExecutedAt: new Date().toISOString(),
-    createdAt: new Date().toISOString(),
-  }),
-  countSavedSearches: () => 100,
-  hasSavedSearchByHash: () => false,
-  listCollectionsForSavedObject: () => null,
 }));
 
 const { POST } = await import("@/app/api/user/saved-searches/route");

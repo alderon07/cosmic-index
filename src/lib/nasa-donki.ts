@@ -435,8 +435,8 @@ function getDonkiBaseCandidates(): string[] {
 }
 
 function getCacheContext(): string {
-  const runtimeMode = process.env.COSMIC_USE_MOCK_AUTH ?? process.env.NEXT_PUBLIC_USE_MOCK_AUTH ?? "unset";
-  return `${process.env.NODE_ENV ?? "unknown"}:${runtimeMode}:donki`;
+  const env = process.env.NODE_ENV || "unknown";
+  return `${env}:donki`;
 }
 
 function getDonkiBaseId(baseUrl: string): "nasa" | "ccmc" {

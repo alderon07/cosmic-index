@@ -4,8 +4,6 @@ import crypto from "node:crypto";
 
 import { requireAuth, authErrorResponse } from "@/lib/auth";
 import { getUserDb } from "@/lib/user-db";
-import { isMockUserStoreEnabled } from "@/lib/runtime-mode";
-import { getCollectionWithItems, listSavedObjects } from "@/lib/mock-user-store";
 import { searchExoplanets } from "@/lib/exoplanet-index";
 import { searchStars } from "@/lib/star-index";
 import { fetchSmallBodies } from "@/lib/jpl-sbdb";
@@ -42,7 +40,6 @@ const EXPORT_CHUNK_SIZE = 1000;
 const EXPORT_TIMEOUT_MS = 45_000;
 const CURSOR_EXPIRY_MS = 24 * 60 * 60 * 1000;
 const WINDOW_SECONDS = 60 * 60;
-const WINDOW_MS = WINDOW_SECONDS * 1000;
 
 const EXPORT_FORMATS = ["csv", "json", "ndjson"] as const;
 const EXPORT_CATEGORIES = ["exoplanets", "stars", "small-bodies", "saved-objects"] as const;
@@ -270,8 +267,6 @@ const EXPORTABLE_FILTERS: Record<string, string[]> = {
   ],
   "small-bodies": ["query", "kind", "neo", "pha", "orbitClass"],
 };
-
-const mockExportUsage = new Map<string, { requestTimestamps: number[]; rowEvents: Array<{ at: number; rows: number }> }>();
 
 function getCSVHeader(
   category: ExportCategory,
@@ -908,84 +903,25 @@ function getLimitPolicyHeaders(params: {
   };
 }
 
-function getMockUsage(userId: string, now: number) {
-  const usage = mockExportUsage.get(userId) ?? { requestTimestamps: [], rowEvents: [] };
-  usage.requestTimestamps = usage.requestTimestamps.filter((ts) => ts > now - WINDOW_MS);
-  usage.rowEvents = usage.rowEvents.filter((event) => event.at > now - WINDOW_MS);
-  mockExportUsage.set(userId, usage);
-  const requestCount = usage.requestTimestamps.length;
-  const rowsUsed = usage.rowEvents.reduce((sum, event) => sum + event.rows, 0);
-  return { usage, requestCount, rowsUsed };
-}
-
-async function getDbUsage(userId: string, now: number) {
-  const db = getUserDb();
-  if (!db) return null;
-
-  const startedAfter = now - WINDOW_MS;
-  const requestResult = await db.execute({
-    sql: `
-      SELECT COUNT(*) as request_count
-      FROM export_history
-      WHERE user_id = ? AND started_at >= ?
-    `,
-    args: [userId, startedAfter],
-  });
-  const requestCount = Number(requestResult.rows[0]?.request_count ?? 0);
-
-  const rowResult = await db.execute({
-    sql: `
-      SELECT COALESCE(SUM(exported_count), 0) as rows_used
-      FROM export_history
-      WHERE user_id = ?
-        AND started_at >= ?
-        AND status IN ('complete', 'partial_budget', 'partial_timeout')
-    `,
-    args: [userId, startedAfter],
-  });
-  const rowsUsed = Number(rowResult.rows[0]?.rows_used ?? 0);
-
-  return { requestCount, rowsUsed };
-}
-
 async function enforceExportLimits(params: {
   userId: string;
   requestLimit: number;
   rowLimit: number;
   estimatedRows: number;
-  useMockStore: boolean;
 }) {
   const now = Date.now();
 
-  if (!params.useMockStore) {
-    const dbUsage = await getDbUsage(params.userId, now);
-    if (!dbUsage) {
-      throw new Error("LIMIT_BACKEND_UNAVAILABLE");
-    }
-
-    const requestRemaining = params.requestLimit - dbUsage.requestCount - 1;
-    const rowRemaining = params.rowLimit - dbUsage.rowsUsed - params.estimatedRows;
-
-    if (requestRemaining < 0 || rowRemaining < 0) {
-      throw new Error("RATE_LIMIT_EXCEEDED");
-    }
-
-    return {
-      requestRemaining,
-      rowRemaining,
-    };
+  const dbUsage = await getDbUsage(params.userId, now);
+  if (!dbUsage) {
+    throw new Error("LIMIT_BACKEND_UNAVAILABLE");
   }
 
-  const { usage, requestCount, rowsUsed } = getMockUsage(params.userId, now);
-  const requestRemaining = params.requestLimit - requestCount - 1;
-  const rowRemaining = params.rowLimit - rowsUsed - params.estimatedRows;
+  const requestRemaining = params.requestLimit - dbUsage.requestCount - 1;
+  const rowRemaining = params.rowLimit - dbUsage.rowsUsed - params.estimatedRows;
 
   if (requestRemaining < 0 || rowRemaining < 0) {
     throw new Error("RATE_LIMIT_EXCEEDED");
   }
-
-  usage.requestTimestamps.push(now);
-  usage.rowEvents.push({ at: now, rows: params.estimatedRows });
 
   return {
     requestRemaining,
@@ -1000,8 +936,7 @@ export async function POST(request: NextRequest) {
   try {
     const user = await requireAuth();
     const tierLimits = getTierLimits(user.tier);
-    const useMockStore = isMockUserStoreEnabled();
-    const userDb = useMockStore ? null : getUserDb();
+    const userDb = getUserDb();
     const limitMode = await resolveLimitMode({ db: userDb });
     const withLimitPolicy = (wouldBlock: boolean) =>
       toLimitPolicyMetadata(limitMode, wouldBlock);
@@ -1319,51 +1254,50 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (category === "saved-objects" && savedObjectsCollectionId !== undefined) {
-      if (useMockStore) {
-        const result = getCollectionWithItems(user.userId, savedObjectsCollectionId);
-        if (!result) {
-          return Response.json(
-            {
-              error: "resource_not_found",
-              message: "Resource not found.",
-              limitPolicy: withLimitPolicy(false),
-            },
-            {
-              status: 404,
-              headers: {
-                ...baseHeaders,
-                ...getLimitPolicyHeaders(withLimitPolicy(false)),
-              },
-            }
-          );
+    if (category === "saved-objects" && !userDb) {
+      return Response.json(
+        {
+          error: "service_unavailable",
+          message: "Saved-object export requires user database configuration.",
+          retryAfter: 60,
+          limitPolicy: withLimitPolicy(false),
+        },
+        {
+          status: 503,
+          headers: {
+            ...baseHeaders,
+            "Retry-After": "60",
+            ...getLimitPolicyHeaders(withLimitPolicy(false)),
+          },
         }
-      } else if (userDb) {
-        const collectionCheck = await userDb.execute({
-          sql: `
+      );
+    }
+
+    if (category === "saved-objects" && savedObjectsCollectionId !== undefined) {
+      const collectionCheck = await userDb.execute({
+        sql: `
             SELECT id
             FROM collections
             WHERE id = ? AND user_id = ?
             LIMIT 1
           `,
-          args: [savedObjectsCollectionId, user.userId],
-        });
-        if (collectionCheck.rows.length === 0) {
-          return Response.json(
-            {
-              error: "resource_not_found",
-              message: "Resource not found.",
-              limitPolicy: withLimitPolicy(false),
+        args: [savedObjectsCollectionId, user.userId],
+      });
+      if (collectionCheck.rows.length === 0) {
+        return Response.json(
+          {
+            error: "resource_not_found",
+            message: "Resource not found.",
+            limitPolicy: withLimitPolicy(false),
+          },
+          {
+            status: 404,
+            headers: {
+              ...baseHeaders,
+              ...getLimitPolicyHeaders(withLimitPolicy(false)),
             },
-            {
-              status: 404,
-              headers: {
-                ...baseHeaders,
-                ...getLimitPolicyHeaders(withLimitPolicy(false)),
-              },
-            }
-          );
-        }
+          }
+        );
       }
     }
 
@@ -1457,7 +1391,6 @@ export async function POST(request: NextRequest) {
         requestLimit: tierLimits.EXPORT_REQUESTS_PER_HOUR,
         rowLimit: tierLimits.EXPORT_ROWS_PER_HOUR,
         estimatedRows,
-        useMockStore,
       });
       rateLimitHeaders = getExportRateHeaders({
         requestLimit: tierLimits.EXPORT_REQUESTS_PER_HOUR,
@@ -1548,7 +1481,7 @@ export async function POST(request: NextRequest) {
     const startedAt = Date.now();
     let exportId: number | null = null;
 
-    if (!useMockStore && db) {
+    if (db) {
       try {
         const result = await db.execute({
           sql: `
@@ -1579,7 +1512,7 @@ export async function POST(request: NextRequest) {
       finalized = true;
       clearTimeout(timeout);
 
-      if (!useMockStore && db && exportId !== null) {
+      if (db && exportId !== null) {
         const completedAt = Date.now();
         const durationMs = completedAt - startedAt;
         try {
@@ -1674,29 +1607,12 @@ export async function POST(request: NextRequest) {
               createdAt: string;
             }> = [];
 
-            if (useMockStore || !db) {
-              const saved =
-                savedObjectsCollectionId !== undefined
-                  ? (getCollectionWithItems(user.userId, savedObjectsCollectionId)?.items ?? [])
-                  : listSavedObjects(user.userId, 1, limit).objects;
-              for (const item of saved) {
-                if (timeoutFired) break;
-                const candidate = {
-                  id: item.id ?? null,
-                  canonicalId: item.canonicalId,
-                  displayName: item.displayName,
-                  notes: item.notes ?? null,
-                  eventPayload: item.eventPayload ?? null,
-                  createdAt: item.createdAt,
-                };
-                if (!matchesSavedObjectFilters(candidate, savedObjectFilters)) continue;
-                savedRows.push(candidate);
-                exportedCount += 1;
-                if (exportedCount >= limit) break;
-              }
-            } else {
-              let offset = 0;
-              while (exportedCount < limit && !timeoutFired) {
+            if (!db) {
+              throw new Error("DB_UNAVAILABLE");
+            }
+
+            let offset = 0;
+            while (exportedCount < limit && !timeoutFired) {
                 const batchLimit = Math.min(EXPORT_CHUNK_SIZE, limit - exportedCount);
                 const result =
                   savedObjectsCollectionId === undefined
@@ -1744,7 +1660,6 @@ export async function POST(request: NextRequest) {
                 offset += rows.length;
                 if (rows.length < batchLimit) break;
               }
-            }
 
             if (exportLayout === "relational") {
               const objectRows: Record<string, unknown>[] = [];

@@ -1,14 +1,33 @@
 import { describe, it, expect, mock } from "bun:test";
 import type { NextRequest } from "next/server";
 
+const db = {
+  execute: async ({ sql }: { sql: string; args?: unknown[] }) => {
+    if (sql.includes("WHERE user_id = ? AND canonical_id = ?")) {
+      return { rows: [] };
+    }
+    if (sql.includes("SELECT COUNT(*) as total FROM saved_objects WHERE user_id = ?")) {
+      return { rows: [{ total: 0 }] };
+    }
+    if (sql.includes("created_at >= datetime('now', '-1 day')")) {
+      return { rows: [{ total: 25 }] };
+    }
+    if (sql.includes("MIN(strftime('%s', created_at)) as earliest_epoch")) {
+      return { rows: [{ earliest_epoch: 1700000000 }] };
+    }
+    return { rows: [] };
+  },
+};
+
 mock.module("@/lib/auth", () => ({
-  requireAuth: async () => ({ userId: "user-1", tier: "free" }),
+  getAuthUser: async () => ({ userId: "user-1", tier: "free", isPro: false, email: "user@example.com" }),
+  requireAuth: async () => ({ userId: "user-1", tier: "free", isPro: false, email: "user@example.com" }),
+  requirePro: async () => ({ userId: "user-1", tier: "pro", isPro: true, email: "user@example.com" }),
   authErrorResponse: (error: unknown) =>
     new Response(JSON.stringify({ error: String(error) }), { status: 401 }),
 }));
 
 mock.module("@/lib/runtime-mode", () => ({
-  isMockUserStoreEnabled: () => true,
   getConfiguredLimitMode: () => "enforce",
   getForceEnforce: () => false,
   getWaitlistEnabled: () => false,
@@ -19,34 +38,12 @@ mock.module("@/lib/runtime-mode", () => ({
 }));
 
 mock.module("@/lib/user-db", () => ({
-  requireUserDb: () => {
-    throw new Error("db should not be called in mock mode");
-  },
-  getUserDb: () => null,
+  getUserDb: () => db,
+  requireUserDb: () => db,
 }));
 
 mock.module("@/lib/canonical-id", () => ({
   parseCanonicalId: () => ({ type: "exoplanet", id: "kepler-22-b" }),
-}));
-
-mock.module("@/lib/mock-user-store", () => ({
-  listSavedObjects: () => ({ objects: [], total: 0, hasMore: false }),
-  saveObject: () => ({
-    id: 1,
-    canonicalId: "exoplanet:kepler-22-b",
-    displayName: "Kepler-22b",
-    notes: null,
-    eventPayload: null,
-    createdAt: new Date().toISOString(),
-  }),
-  countSavedObjects: () => 0,
-  countSavedObjectsSince: () => 25,
-  getSavedObjectByCanonicalId: () => null,
-  listSavedSearches: () => [],
-  createSavedSearch: () => null,
-  countSavedSearches: () => 0,
-  hasSavedSearchByHash: () => false,
-  listCollectionsForSavedObject: () => null,
 }));
 
 const { POST } = await import("@/app/api/user/saved-objects/route");

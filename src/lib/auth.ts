@@ -1,12 +1,5 @@
 import { getUserDb } from "./user-db";
-import {
-  getMockUserEmail,
-  getMockUserId,
-  getMockUserTier,
-  isMockAuthEnabled,
-  isMockProEnabled,
-  isClerkServerConfigured,
-} from "./runtime-mode";
+import { isClerkServerConfigured } from "./runtime-mode";
 
 /**
  * Authentication Utilities
@@ -74,16 +67,6 @@ async function getClerkUserSnapshot(): Promise<ClerkUserSnapshot> {
   };
 }
 
-function buildMockUser(): AuthUser {
-  const tier = getMockUserTier();
-  return {
-    userId: getMockUserId(),
-    email: getMockUserEmail(),
-    tier,
-    isPro: tier === "pro",
-  };
-}
-
 /**
  * Get the current authenticated user with tier information.
  * Returns null if not signed in.
@@ -96,10 +79,6 @@ function buildMockUser(): AuthUser {
  * Write optimization: Most requests = 1 read, 0 writes.
  */
 export async function getAuthUser(): Promise<AuthUser | null> {
-  if (isMockAuthEnabled()) {
-    return buildMockUser();
-  }
-
   const clerk = await getClerkUserSnapshot();
   if (!clerk.userId) {
     return null;
@@ -179,13 +158,6 @@ export async function requireAuth(): Promise<AuthUser> {
  */
 export async function requirePro(): Promise<AuthUser> {
   const user = await requireAuth();
-  if (isMockAuthEnabled()) {
-    if (!isMockProEnabled()) {
-      throw new AuthError("Pro subscription required", 403, "PRO_REQUIRED");
-    }
-    return user;
-  }
-
   if (!user.isPro) {
     throw new AuthError("Pro subscription required", 403, "PRO_REQUIRED");
   }

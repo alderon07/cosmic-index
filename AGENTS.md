@@ -126,7 +126,6 @@ bun run lint
 
 - `src/proxy.ts` handles route protection behavior.
 - Protected page prefixes: `/settings*`, `/user/*`.
-- In mock mode, proxy allows requests through without redirects.
 
 ### Data Sources and Indexes
 
@@ -159,14 +158,11 @@ Primary files:
 Supported auth modes:
 
 - `clerk`: when Clerk keys are configured
-- `mock`: default when Clerk is not configured (unless explicitly disabled)
 - `none`: unauthenticated fallback
 
 Important behavior:
 
-- `isMockAuthEnabled()` defaults to `true` if Clerk is not configured.
 - Server authorization decisions use DB-backed tier state, not JWT tier claims.
-- Mock store is process-memory seeded in `src/lib/mock-user-store.ts`.
 
 ## Compare System (Current)
 
@@ -194,7 +190,6 @@ Primary files:
 
 - `src/lib/canonical-id.ts`
 - `src/app/user/saved-objects/saved-objects-page-content.tsx`
-- `src/lib/mock-user-store.ts`
 
 Notes:
 
@@ -219,45 +214,9 @@ Notes:
   - Confidence-scaled client identity (`ip`, `fingerprint`, `unknown`)
 - `src/lib/api-middleware.ts` enforces per-type and global caps.
 
-## Environment Variables
-
-Core:
-
-- `TURSO_DATABASE_URL`
-- `TURSO_AUTH_TOKEN`
-- `UPSTASH_REDIS_REST_URL` (optional but recommended)
-- `UPSTASH_REDIS_REST_TOKEN` (optional but recommended)
-- `NEXT_PUBLIC_APP_URL` (Stripe redirect base, canonical URL use)
-
-Auth/runtime:
-
-- `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`
-- `CLERK_SECRET_KEY`
-- `COSMIC_USE_MOCK_AUTH`
-- `NEXT_PUBLIC_USE_MOCK_AUTH`
-- `COSMIC_MOCK_USER_ID`
-- `COSMIC_MOCK_USER_EMAIL`
-- `COSMIC_MOCK_USER_TIER`
-
-Billing/Stripe:
-
-- `STRIPE_SECRET_KEY`
-- `STRIPE_WEBHOOK_SECRET`
-- `STRIPE_PRO_PRICE_ID`
-- `COSMIC_USE_MOCK_STRIPE`
-
-Data/API:
-
-- `NASA_API_KEY`
-- `COMPARE_DOMAINS`
-- `TRUST_CLOUDFLARE_HEADERS`
-- `TRUST_FLY_HEADERS`
-- `DEBUG_API`
-
 ## Common Gotchas
 
 - `src/proxy.ts` is used instead of a legacy `middleware.ts` naming pattern.
-- Mock saved data is seeded once per process; restarting dev server resets seed data.
 - Exoplanet browse requires Turso index; detail pages may still work via NASA fetch path.
 - If compare state seems stale/weird, clear session storage key `cosmic-index:compare:v1`.
 - DONKI notifications endpoint has a 30-day max query window; requests beyond this are clamped and surfaced via warnings.

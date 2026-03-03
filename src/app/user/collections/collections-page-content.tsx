@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { InfiniteData, useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import {
   ArrowUpRight,
@@ -35,10 +35,18 @@ interface CollectionItem {
 
 interface CollectionsResponse {
   collections: CollectionItem[];
+  total: number;
+  limit: number;
+  hasMore: boolean;
+  nextCursor: string | null;
 }
 
 interface SavedObjectsPrefetchResponse {
   objects: SavedObjectPrefetchItem[];
+  total: number;
+  limit: number;
+  hasMore: boolean;
+  nextCursor: string | null;
 }
 
 interface SavedObjectPrefetchItem {
@@ -62,28 +70,57 @@ function resolveCollectionAccent(rawColor: string | null | undefined, index: num
   return FALLBACK_ACCENTS[index % FALLBACK_ACCENTS.length];
 }
 
-async function fetchCollections(): Promise<CollectionItem[]> {
-  const response = await fetch("/api/user/collections");
+async function fetchCollections(
+  limit: number,
+  cursor: string | null
+): Promise<CollectionsResponse> {
+  const query = new URLSearchParams();
+  query.set("limit", String(limit));
+  if (cursor) {
+    query.set("cursor", cursor);
+  }
+  const response = await fetch(`/api/user/collections?${query.toString()}`);
   if (!response.ok) {
     throw new Error("Failed to load collections");
   }
 
   const data = (await response.json()) as CollectionsResponse;
-  return Array.isArray(data.collections) ? data.collections : [];
+  return {
+    collections: Array.isArray(data.collections) ? data.collections : [],
+    total: Number.isFinite(data.total) ? data.total : 0,
+    limit: Number.isFinite(data.limit) ? data.limit : limit,
+    hasMore: Boolean(data.hasMore),
+    nextCursor: typeof data.nextCursor === "string" ? data.nextCursor : null,
+  };
 }
 
-async function prefetchSavedObjects(): Promise<SavedObjectPrefetchItem[]> {
-  const response = await fetch("/api/user/saved-objects?page=1&limit=100");
+async function prefetchSavedObjects(
+  limit: number,
+  cursor: string | null
+): Promise<SavedObjectsPrefetchResponse> {
+  const query = new URLSearchParams();
+  query.set("limit", String(limit));
+  if (cursor) {
+    query.set("cursor", cursor);
+  }
+  const response = await fetch(`/api/user/saved-objects?${query.toString()}`);
   if (!response.ok) {
     throw new Error("Failed to prefetch saved objects");
   }
   const data = (await response.json()) as SavedObjectsPrefetchResponse;
-  return Array.isArray(data.objects) ? data.objects : [];
+  return {
+    objects: Array.isArray(data.objects) ? data.objects : [],
+    total: Number.isFinite(data.total) ? data.total : 0,
+    limit: Number.isFinite(data.limit) ? data.limit : limit,
+    hasMore: Boolean(data.hasMore),
+    nextCursor: typeof data.nextCursor === "string" ? data.nextCursor : null,
+  };
 }
 
 export function CollectionsPageContent() {
   const auth = useAppAuth();
   const queryClient = useQueryClient();
+  const collectionsLimit = 48;
   const collectionsQueryKey = queryKeys.collections();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -91,22 +128,37 @@ export function CollectionsPageContent() {
   const nameInputRef = useRef<HTMLInputElement | null>(null);
 
   const {
-    data: collections = [],
+    data,
     isLoading,
+    isFetchingNextPage,
+    hasNextPage,
+    fetchNextPage,
     refetch: refetchCollections,
-  } = useQuery({
+  } = useInfiniteQuery({
     queryKey: collectionsQueryKey,
-    queryFn: fetchCollections,
+    queryFn: ({ pageParam }) => fetchCollections(collectionsLimit, pageParam),
+    initialPageParam: null as string | null,
+    getNextPageParam: (lastPage) =>
+      lastPage.hasMore && lastPage.nextCursor ? lastPage.nextCursor : undefined,
     enabled: auth.isSignedIn,
     staleTime: 60_000,
     gcTime: 5 * 60_000,
   });
+  const collections = useMemo(
+    () => data?.pages.flatMap((page) => page.collections) ?? [],
+    [data]
+  );
+  const totalCollectionsCount = data?.pages[0]?.total ?? collections.length;
 
   useEffect(() => {
     if (!auth.isSignedIn) return;
-    void queryClient.prefetchQuery({
-      queryKey: queryKeys.savedObjects(1, 100),
-      queryFn: prefetchSavedObjects,
+    void queryClient.prefetchInfiniteQuery({
+      queryKey: queryKeys.savedObjects(100),
+      queryFn: ({ pageParam }: { pageParam: string | null }) =>
+        prefetchSavedObjects(100, pageParam),
+      initialPageParam: null as string | null,
+      getNextPageParam: (lastPage: SavedObjectsPrefetchResponse) =>
+        lastPage.hasMore && lastPage.nextCursor ? lastPage.nextCursor : undefined,
       staleTime: 60_000,
     });
   }, [auth.isSignedIn, queryClient]);
@@ -131,7 +183,9 @@ export function CollectionsPageContent() {
     },
     onMutate: async (input) => {
       await queryClient.cancelQueries({ queryKey: collectionsQueryKey });
-      const previousCollections = queryClient.getQueryData<CollectionItem[]>(collectionsQueryKey) ?? [];
+      const previousCollections = queryClient.getQueryData<InfiniteData<CollectionsResponse>>(
+        collectionsQueryKey
+      );
       const tempId = -Date.now();
       const now = new Date().toISOString();
 
@@ -146,9 +200,36 @@ export function CollectionsPageContent() {
         updatedAt: now,
       };
 
-      queryClient.setQueryData<CollectionItem[]>(
+      queryClient.setQueryData<InfiniteData<CollectionsResponse>>(
         collectionsQueryKey,
-        [optimisticCollection, ...previousCollections]
+        (current) => {
+          if (!current) {
+            return {
+              pages: [
+                {
+                  collections: [optimisticCollection],
+                  total: 1,
+                  limit: collectionsLimit,
+                  hasMore: false,
+                  nextCursor: null,
+                },
+              ],
+              pageParams: [null],
+            };
+          }
+
+          if (current.pages.length === 0) return current;
+          const [firstPage, ...restPages] = current.pages;
+          const nextFirstPage: CollectionsResponse = {
+            ...firstPage,
+            collections: [optimisticCollection, ...firstPage.collections],
+            total: firstPage.total + 1,
+          };
+          return {
+            ...current,
+            pages: [nextFirstPage, ...restPages],
+          };
+        }
       );
 
       return { previousCollections, tempId };
@@ -160,17 +241,29 @@ export function CollectionsPageContent() {
       }
     },
     onSuccess: (createdCollection, _input, context) => {
-      queryClient.setQueryData<CollectionItem[]>(
+      queryClient.setQueryData<InfiniteData<CollectionsResponse>>(
         collectionsQueryKey,
         (current) => {
-          const existing = current ?? [];
-          const replaced = existing.map((collection) =>
+          if (!current || current.pages.length === 0) return current;
+
+          const [firstPage, ...restPages] = current.pages;
+          const replacedCollections = firstPage.collections.map((collection) =>
             collection.id === context?.tempId ? createdCollection : collection
           );
-          if (replaced.some((collection) => collection.id === createdCollection.id)) {
-            return replaced;
+          if (!replacedCollections.some((collection) => collection.id === createdCollection.id)) {
+            replacedCollections.unshift(createdCollection);
           }
-          return [createdCollection, ...replaced];
+
+          return {
+            ...current,
+            pages: [
+              {
+                ...firstPage,
+                collections: replacedCollections,
+              },
+              ...restPages,
+            ],
+          };
         }
       );
     },
@@ -191,10 +284,20 @@ export function CollectionsPageContent() {
     },
     onMutate: async (id) => {
       await queryClient.cancelQueries({ queryKey: collectionsQueryKey });
-      const previousCollections = queryClient.getQueryData<CollectionItem[]>(collectionsQueryKey) ?? [];
-      queryClient.setQueryData<CollectionItem[]>(
+      const previousCollections = queryClient.getQueryData<InfiniteData<CollectionsResponse>>(
+        collectionsQueryKey
+      );
+      queryClient.setQueryData<InfiniteData<CollectionsResponse>>(
         collectionsQueryKey,
-        previousCollections.filter((collection) => collection.id !== id)
+        (current) => {
+          if (!current) return current;
+          const nextPages = current.pages.map((page, pageIndex) => ({
+            ...page,
+            collections: page.collections.filter((collection) => collection.id !== id),
+            total: pageIndex === 0 ? Math.max(0, page.total - 1) : page.total,
+          }));
+          return { ...current, pages: nextPages };
+        }
       );
       return { previousCollections };
     },
@@ -210,9 +313,9 @@ export function CollectionsPageContent() {
   });
 
   const refreshCollections = useCallback(() => {
-    if (isLoading) return;
+    if (isLoading || isFetchingNextPage) return;
     void refetchCollections();
-  }, [isLoading, refetchCollections]);
+  }, [isFetchingNextPage, isLoading, refetchCollections]);
 
   const focusCollectionNameInput = useCallback(() => {
     nameInputRef.current?.focus();
@@ -238,10 +341,10 @@ export function CollectionsPageContent() {
     );
 
     return {
-      totalCollections,
+      totalCollections: Math.max(totalCollections, totalCollectionsCount),
       totalItems,
     };
-  }, [collections]);
+  }, [collections, totalCollectionsCount]);
 
   const handleCreate = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -397,15 +500,15 @@ export function CollectionsPageContent() {
                 variant="outline"
                 size="sm"
                 onClick={refreshCollections}
-                disabled={isLoading}
+                disabled={isLoading || isFetchingNextPage}
                 className="gap-1.5 border-orange-300/30 bg-black/25 text-orange-100 hover:bg-orange-500/15 sm:w-auto"
               >
-                {isLoading ? (
+                {isLoading || isFetchingNextPage ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 ) : (
                   <RefreshCw className="h-3.5 w-3.5" />
                 )}
-                {isLoading ? "Refreshing..." : "Refresh"}
+                {isLoading || isFetchingNextPage ? "Refreshing..." : "Refresh"}
               </Button>
             </div>
           </div>
@@ -535,6 +638,30 @@ export function CollectionsPageContent() {
                   );
                 })}
               </div>
+
+              {hasNextPage ? (
+                <div className="pt-2 text-center">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      void fetchNextPage();
+                    }}
+                    disabled={isFetchingNextPage}
+                    className="gap-1.5 border-orange-300/30 bg-black/25 text-orange-100 hover:bg-orange-500/15"
+                  >
+                    {isFetchingNextPage ? (
+                      <>
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        Loading...
+                      </>
+                    ) : (
+                      "Load more"
+                    )}
+                  </Button>
+                </div>
+              ) : null}
             </>
           )}
         </section>

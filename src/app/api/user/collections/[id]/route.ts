@@ -2,13 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAuth, authErrorResponse } from "@/lib/auth";
 import { requireUserDb } from "@/lib/user-db";
 import { UpdateCollectionSchema, Collection } from "@/lib/types";
-import { isMockUserStoreEnabled } from "@/lib/runtime-mode";
-import {
-  deleteCollection,
-  getCollectionWithItems,
-  updateCollection,
-} from "@/lib/mock-user-store";
 import { ServerTiming } from "@/lib/server-timing";
+import {
+  decodeCollectionItemsCursor,
+  encodeCollectionItemsCursor,
+  parsePaginationLimit,
+} from "@/lib/user-pagination";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -25,14 +24,16 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const user = await timing.measure("auth", () => requireAuth());
     const { id } = await timing.measure("resolve_params", () => params);
     const searchParams = request.nextUrl.searchParams;
-    const parsedPage = Number.parseInt(searchParams.get("page") || "1", 10);
-    const parsedLimit = Number.parseInt(searchParams.get("limit") || "24", 10);
-    const page = Number.isFinite(parsedPage) && parsedPage > 0 ? parsedPage : 1;
-    const limit =
-      Number.isFinite(parsedLimit) && parsedLimit > 0
-        ? Math.min(100, parsedLimit)
-        : 24;
-    const offset = (page - 1) * limit;
+    const limit = parsePaginationLimit(searchParams.get("limit"), 24, 100);
+    const rawCursor = searchParams.get("cursor");
+    const cursor = rawCursor ? decodeCollectionItemsCursor(rawCursor) : null;
+
+    if (rawCursor && !cursor) {
+      return timing.json(
+        { error: "invalid_cursor", message: "Invalid cursor format." },
+        { status: 400 }
+      );
+    }
 
     const collectionId = parseInt(id, 10);
     if (isNaN(collectionId)) {
@@ -40,37 +41,6 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         { error: "invalid_id", message: "Invalid ID." },
         { status: 400 }
       );
-    }
-
-    if (isMockUserStoreEnabled()) {
-      const result = timing.measureSync("mock_get_collection", () =>
-        getCollectionWithItems(user.userId, collectionId)
-      );
-      if (!result) {
-        return timing.json(
-          { error: "resource_not_found", message: "Resource not found." },
-          { status: 404 }
-        );
-      }
-
-      const paginatedItems = timing.measureSync("mock_paginate_items", () =>
-        result.items.slice(offset, offset + limit).map((item) => ({
-          id: item.id,
-          canonicalId: item.canonicalId,
-          displayName: item.displayName,
-          notes: item.notes,
-          createdAt: item.createdAt,
-          position: item.position,
-        }))
-      );
-      return timing.json({
-        collection: result.collection,
-        items: paginatedItems,
-        itemCount: result.items.length,
-        page,
-        limit,
-        hasMore: page * limit < result.items.length,
-      });
     }
 
     const db = timing.measureSync("resolve_db", () => requireUserDb());
@@ -114,6 +84,14 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     );
     const itemCount = Number(countResult.rows[0]?.total ?? 0);
 
+    const itemArgs: (number | string)[] = [collectionId];
+    let cursorClause = "";
+    if (cursor) {
+      cursorClause = "AND (ci.position > ? OR (ci.position = ? AND so.id > ?))";
+      itemArgs.push(cursor.position, cursor.position, cursor.id);
+    }
+    itemArgs.push(limit + 1);
+
     // Get items in collection
     const itemsResult = await timing.measure("db_list_items", () =>
       db.execute({
@@ -128,14 +106,15 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         FROM collection_items ci
         JOIN saved_objects so ON so.id = ci.saved_object_id
         WHERE ci.collection_id = ?
-        ORDER BY ci.position ASC, ci.added_at DESC
-        LIMIT ? OFFSET ?
+        ${cursorClause}
+        ORDER BY ci.position ASC, so.id ASC
+        LIMIT ?
       `,
-        args: [collectionId, limit, offset],
+        args: itemArgs,
       })
     );
 
-    const items = timing.measureSync("serialize_items", () =>
+    const mappedItems = timing.measureSync("serialize_items", () =>
       itemsResult.rows.map((row) => ({
         id: row.id as number,
         canonicalId: row.canonical_id as string,
@@ -145,14 +124,23 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         position: row.position as number,
       }))
     );
+    const hasMore = mappedItems.length > limit;
+    const items = hasMore ? mappedItems.slice(0, limit) : mappedItems;
+    const nextCursor =
+      hasMore && items.length > 0
+        ? encodeCollectionItemsCursor({
+            position: items[items.length - 1].position,
+            id: items[items.length - 1].id,
+          })
+        : null;
 
     return timing.json({
       collection,
       items,
       itemCount,
-      page,
       limit,
-      hasMore: page * limit < itemCount,
+      hasMore,
+      nextCursor,
     });
   } catch (error) {
     const response = authErrorResponse(error);
@@ -190,27 +178,6 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     }
 
     const updates = parseResult.data;
-
-    if (isMockUserStoreEnabled()) {
-      const updated = updateCollection(user.userId, collectionId, updates);
-      if (!updated) {
-        return NextResponse.json(
-          { error: "resource_not_found", message: "Resource not found." },
-          { status: 404 }
-        );
-      }
-      if (updated === "DUPLICATE") {
-        return NextResponse.json(
-          {
-            error: "duplicate_collection_name",
-            message: "A collection with this name already exists",
-          },
-          { status: 409 }
-        );
-      }
-      return NextResponse.json(updated);
-    }
-
     const db = requireUserDb();
 
     // Build dynamic UPDATE query
@@ -324,17 +291,6 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
         { error: "invalid_id", message: "Invalid ID." },
         { status: 400 }
       );
-    }
-
-    if (isMockUserStoreEnabled()) {
-      const deleted = deleteCollection(user.userId, collectionId);
-      if (!deleted) {
-        return NextResponse.json(
-          { error: "resource_not_found", message: "Resource not found." },
-          { status: 404 }
-        );
-      }
-      return NextResponse.json({ success: true });
     }
 
     const db = requireUserDb();

@@ -1,22 +1,11 @@
 "use client";
 
-import {
-  createContext,
-  ReactNode,
-  useContext,
-  useMemo,
-} from "react";
+import { createContext, ReactNode, useContext, useMemo } from "react";
 import { ClerkProvider, useAuth as useClerkAuth } from "@clerk/nextjs";
-import {
-  getMockUserEmail,
-  getMockUserId,
-  getMockUserTier,
-  isClerkClientConfigured,
-  isMockAuthClientEnabled,
-} from "@/lib/runtime-mode";
+import { isClerkClientConfigured } from "@/lib/runtime-mode";
 import { clerkAppearance } from "@/components/auth/clerk-appearance";
 
-export type AppAuthMode = "clerk" | "mock" | "none";
+export type AppAuthMode = "clerk" | "none";
 
 export interface AppAuthState {
   mode: AppAuthMode;
@@ -60,23 +49,6 @@ function ClerkAuthBridge({ children }: { children: ReactNode }) {
 }
 
 export function AppAuthProvider({ children }: { children: ReactNode }) {
-  const useMock = isMockAuthClientEnabled();
-
-  if (useMock) {
-    const tier = getMockUserTier();
-    const state: AppAuthState = {
-      mode: "mock",
-      isLoaded: true,
-      isSignedIn: true,
-      userId: getMockUserId(),
-      email: getMockUserEmail(),
-      tier,
-      isPro: tier === "pro",
-    };
-
-    return <AppAuthContext.Provider value={state}>{children}</AppAuthContext.Provider>;
-  }
-
   if (isClerkClientConfigured()) {
     return (
       <ClerkProvider appearance={clerkAppearance}>

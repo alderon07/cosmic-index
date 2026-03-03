@@ -6,12 +6,30 @@ let mockUser: MockAuthUser = null;
 let mockInternalAdminConfigured = true;
 let mockIsInternalAdmin = false;
 let mockClerkConfigured = true;
-let mockMockAuthEnabled = false;
 
 const ORIGINAL_NODE_ENV = process.env.NODE_ENV;
 
 mock.module("@/lib/auth", () => ({
   getAuthUser: async () => mockUser,
+  requireAuth: async () => {
+    if (!mockUser) {
+      const error = new Error("Authentication required");
+      error.name = "AuthError";
+      throw error;
+    }
+    return { ...mockUser, tier: "free", isPro: false, email: "" };
+  },
+  requirePro: async () => ({
+    userId: "user_admin",
+    email: "admin@example.com",
+    tier: "pro" as const,
+    isPro: true,
+  }),
+  authErrorResponse: (error: unknown) =>
+    new Response(
+      JSON.stringify({ error: error instanceof Error ? error.message : String(error) }),
+      { status: 401 }
+    ),
 }));
 
 mock.module("@/lib/admin-access", () => ({
@@ -21,7 +39,15 @@ mock.module("@/lib/admin-access", () => ({
 
 mock.module("@/lib/runtime-mode", () => ({
   isClerkServerConfigured: () => mockClerkConfigured,
-  isMockAuthEnabled: () => mockMockAuthEnabled,
+  isClerkClientConfigured: () => mockClerkConfigured,
+  getConfiguredLimitMode: () => "shadow",
+  getForceEnforce: () => false,
+  getWaitlistEnabled: () => true,
+  getWaitlistEnforceThreshold: () => 125,
+  getProSurfacesEnabled: () => false,
+  getProBillingEnabled: () => false,
+  getInternalAdminIds: () => [],
+  getProRolloutAdminIds: () => [],
 }));
 
 const { GET } = await import("@/app/api/internal/openapi/route");
@@ -31,7 +57,6 @@ function resetMocks() {
   mockInternalAdminConfigured = true;
   mockIsInternalAdmin = false;
   mockClerkConfigured = true;
-  mockMockAuthEnabled = false;
 }
 
 beforeEach(() => {
@@ -100,15 +125,6 @@ describe("GET /api/internal/openapi", () => {
   it("returns 404 in production when Clerk is not configured", async () => {
     process.env.NODE_ENV = "production";
     mockClerkConfigured = false;
-
-    const response = await GET();
-    expect(response.status).toBe(404);
-    expect(await response.json()).toEqual({ error: "not_found" });
-  });
-
-  it("returns 404 in production when mock auth is enabled", async () => {
-    process.env.NODE_ENV = "production";
-    mockMockAuthEnabled = true;
 
     const response = await GET();
     expect(response.status).toBe(404);

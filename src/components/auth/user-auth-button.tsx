@@ -1,9 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { SignedIn, SignedOut, SignInButton, UserButton } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
-import { User, FolderHeart, Bookmark, Layers } from "lucide-react";
+import { User, Bookmark, Layers } from "lucide-react";
 import { useAppAuth } from "./app-auth-provider";
 import { clerkAppearance } from "@/components/auth/clerk-appearance";
 
@@ -20,22 +19,6 @@ import { clerkAppearance } from "@/components/auth/clerk-appearance";
  */
 export function UserAuthButton() {
   const auth = useAppAuth();
-
-  if (auth.mode === "mock") {
-    return (
-      <Button
-        asChild
-        variant="ghost"
-        size="sm"
-        className="gap-1.5 text-muted-foreground hover:text-foreground"
-      >
-        <Link href="/user/saved-objects">
-          <FolderHeart className="w-4 h-4" />
-          <span className="hidden sm:inline">Mock User</span>
-        </Link>
-      </Button>
-    );
-  }
 
   if (auth.mode === "none") {
     return (

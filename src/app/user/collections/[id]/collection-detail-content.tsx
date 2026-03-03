@@ -1,9 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useCallback, useMemo, useState } from "react";
+import { InfiniteData, useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useParams } from "next/navigation";
 import { ArrowLeft, ArrowUpRight, FolderHeart, Loader2, RefreshCw, Trash2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -44,15 +44,23 @@ interface CollectionDetailResponse {
   collection: CollectionMetadata;
   items: CollectionItem[];
   itemCount: number;
-  page: number;
   limit: number;
   hasMore: boolean;
+  nextCursor: string | null;
 }
 
 interface CollectionSummaryCache {
   id: number;
   itemCount?: number;
   updatedAt: string;
+}
+
+interface CollectionsCachePage {
+  collections: CollectionSummaryCache[];
+  total: number;
+  limit: number;
+  hasMore: boolean;
+  nextCursor: string | null;
 }
 
 class CollectionDetailError extends Error {
@@ -80,12 +88,14 @@ const TYPE_ACCENTS: Record<string, string> = {
 
 async function fetchCollectionDetail(
   collectionId: number,
-  page: number,
-  limit: number
+  limit: number,
+  cursor: string | null
 ): Promise<CollectionDetailResponse> {
   const query = new URLSearchParams();
-  query.set("page", String(page));
   query.set("limit", String(limit));
+  if (cursor) {
+    query.set("cursor", cursor);
+  }
 
   const response = await fetch(`/api/user/collections/${collectionId}?${query.toString()}`);
 
@@ -108,58 +118,26 @@ async function fetchCollectionDetail(
 export function CollectionDetailContent() {
   const auth = useAppAuth();
   const params = useParams<{ id: string }>();
-  const router = useRouter();
-  const searchParams = useSearchParams();
   const queryClient = useQueryClient();
 
   const collectionId = Number.parseInt(params.id, 10);
-  const parsedPage = Number.parseInt(searchParams.get("page") || "1", 10);
-  const parsedLimit = Number.parseInt(
-    searchParams.get("limit") || String(DEFAULT_LIMIT),
-    10
-  );
-  const page = Number.isFinite(parsedPage) && parsedPage > 0 ? parsedPage : 1;
-  const limit =
-    Number.isFinite(parsedLimit) && parsedLimit > 0
-      ? Math.min(100, parsedLimit)
-      : DEFAULT_LIMIT;
+  const limit = DEFAULT_LIMIT;
 
   const [pendingRemoveId, setPendingRemoveId] = useState<number | null>(null);
   const [mutationError, setMutationError] = useState<string | null>(null);
 
-  const collectionDetailQueryKey = queryKeys.collectionDetail(collectionId, page, limit);
+  const collectionDetailQueryKey = queryKeys.collectionDetail(collectionId, limit);
 
-  const collectionQuery = useQuery({
+  const collectionQuery = useInfiniteQuery({
     queryKey: collectionDetailQueryKey,
-    queryFn: () => fetchCollectionDetail(collectionId, page, limit),
+    queryFn: ({ pageParam }) => fetchCollectionDetail(collectionId, limit, pageParam),
+    initialPageParam: null as string | null,
+    getNextPageParam: (lastPage) =>
+      lastPage.hasMore && lastPage.nextCursor ? lastPage.nextCursor : undefined,
     enabled: auth.isSignedIn && Number.isFinite(collectionId),
     staleTime: 60_000,
     gcTime: 5 * 60_000,
   });
-
-  useEffect(() => {
-    if (!auth.isSignedIn) return;
-    if (!Number.isFinite(collectionId)) return;
-    if (!collectionQuery.data?.hasMore) return;
-
-    void queryClient.prefetchQuery({
-      queryKey: queryKeys.collectionDetail(collectionId, page + 1, limit),
-      queryFn: () => fetchCollectionDetail(collectionId, page + 1, limit),
-      staleTime: 60_000,
-    });
-  }, [auth.isSignedIn, collectionId, collectionQuery.data?.hasMore, limit, page, queryClient]);
-
-  const setPage = useCallback(
-    (nextPageOrUpdater: number | ((currentPage: number) => number)) => {
-      const resolvedPage =
-        typeof nextPageOrUpdater === "function"
-          ? nextPageOrUpdater(page)
-          : nextPageOrUpdater;
-      const safePage = Math.max(1, resolvedPage);
-      router.push(`/user/collections/${params.id}?page=${safePage}&limit=${limit}`);
-    },
-    [limit, page, params.id, router]
-  );
 
   const removeItemMutation = useMutation({
     mutationFn: async (savedObjectId: number) => {
@@ -177,37 +155,52 @@ export function CollectionDetailContent() {
     onMutate: async (savedObjectId) => {
       await queryClient.cancelQueries({ queryKey: collectionDetailQueryKey });
 
-      const previousDetail = queryClient.getQueryData<CollectionDetailResponse>(collectionDetailQueryKey);
-      const previousCollections = queryClient.getQueryData<CollectionSummaryCache[]>(queryKeys.collections());
-
-      const removedCount = previousDetail?.items.some((item) => item.id === savedObjectId) ? 1 : 0;
-      const nextPageBecomesEmpty = Boolean(previousDetail && removedCount === 1 && previousDetail.items.length === 1 && page > 1);
+      const previousDetail = queryClient.getQueryData<InfiniteData<CollectionDetailResponse>>(collectionDetailQueryKey);
+      const previousCollections = queryClient.getQueryData<InfiniteData<CollectionsCachePage>>(
+        queryKeys.collections()
+      );
 
       if (previousDetail) {
-        queryClient.setQueryData<CollectionDetailResponse>(collectionDetailQueryKey, {
-          ...previousDetail,
-          items: previousDetail.items.filter((item) => item.id !== savedObjectId),
-          itemCount: Math.max(0, previousDetail.itemCount - removedCount),
-        });
-      }
-
-      if (previousCollections) {
-        const now = new Date().toISOString();
-        queryClient.setQueryData<CollectionSummaryCache[]>(
-          queryKeys.collections(),
-          previousCollections.map((collection) =>
-            collection.id === collectionId
-              ? {
-                  ...collection,
-                  itemCount: Math.max(0, (collection.itemCount ?? 0) - removedCount),
-                  updatedAt: now,
-                }
-              : collection
-          )
+        const hadItem = previousDetail.pages.some((detailPage) =>
+          detailPage.items.some((item) => item.id === savedObjectId)
         );
+        const removedCount = hadItem ? 1 : 0;
+        queryClient.setQueryData<InfiniteData<CollectionDetailResponse>>(collectionDetailQueryKey, {
+          ...previousDetail,
+          pages: previousDetail.pages.map((detailPage, pageIndex) => ({
+            ...detailPage,
+            items: detailPage.items.filter((item) => item.id !== savedObjectId),
+            itemCount:
+              pageIndex === 0
+                ? Math.max(0, detailPage.itemCount - removedCount)
+                : detailPage.itemCount,
+          })),
+        });
+
+        if (previousCollections) {
+          const now = new Date().toISOString();
+          queryClient.setQueryData<InfiniteData<CollectionsCachePage>>(
+            queryKeys.collections(),
+            {
+              ...previousCollections,
+              pages: previousCollections.pages.map((page) => ({
+                ...page,
+                collections: page.collections.map((collection) =>
+                  collection.id === collectionId
+                    ? {
+                        ...collection,
+                        itemCount: Math.max(0, (collection.itemCount ?? 0) - removedCount),
+                        updatedAt: now,
+                      }
+                    : collection
+                ),
+              })),
+            }
+          );
+        }
       }
 
-      return { previousDetail, previousCollections, nextPageBecomesEmpty };
+      return { previousDetail, previousCollections };
     },
     onError: (error, _savedObjectId, context) => {
       if (context?.previousDetail) {
@@ -220,20 +213,18 @@ export function CollectionDetailContent() {
         error instanceof Error ? error.message : "Could not remove this item right now."
       );
     },
-    onSuccess: (_data, _savedObjectId, context) => {
-      if (context?.nextPageBecomesEmpty) {
-        setPage((currentPage) => currentPage - 1);
-      }
-    },
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: ["user", "collection-detail", collectionId] });
       void queryClient.invalidateQueries({ queryKey: queryKeys.collections() });
     },
   });
 
-  const data = collectionQuery.data ?? null;
+  const firstPage = collectionQuery.data?.pages[0] ?? null;
+  const flattenedItems = collectionQuery.data?.pages.flatMap((pageData) => pageData.items) ?? [];
   const isLoading = collectionQuery.isLoading;
   const isRefreshing = collectionQuery.isFetching && !collectionQuery.isLoading;
+  const isFetchingNextPage = collectionQuery.isFetchingNextPage;
+  const hasNextPage = collectionQuery.hasNextPage;
 
   const isNotFound = !Number.isFinite(collectionId)
     || (collectionQuery.error instanceof CollectionDetailError
@@ -326,15 +317,15 @@ export function CollectionDetailContent() {
             Back to collections
           </Link>
           <h1 className="mt-2 truncate font-display text-3xl text-foreground sm:text-4xl">
-            {data?.collection.name || "Collection"}
+            {firstPage?.collection.name || "Collection"}
           </h1>
-          {data?.collection.description ? (
-            <p className="mt-1 max-w-3xl text-sm text-muted-foreground">{data.collection.description}</p>
+          {firstPage?.collection.description ? (
+            <p className="mt-1 max-w-3xl text-sm text-muted-foreground">{firstPage.collection.description}</p>
           ) : null}
-          {data ? (
+          {firstPage ? (
             <p className="mt-2 text-xs uppercase tracking-[0.16em] text-muted-foreground/90">
-              {data.itemCount} {data.itemCount === 1 ? "item" : "items"} • Updated{" "}
-              {new Date(data.collection.updatedAt).toLocaleString()}
+              {firstPage.itemCount} {firstPage.itemCount === 1 ? "item" : "items"} • Updated{" "}
+              {new Date(firstPage.collection.updatedAt).toLocaleString()}
             </p>
           ) : null}
         </div>
@@ -343,7 +334,7 @@ export function CollectionDetailContent() {
             <ExportButton
               category="saved-objects"
               queryParams={{ collectionId }}
-              fileLabel={data?.collection.name || `collection-${collectionId}`}
+              fileLabel={firstPage?.collection.name || `collection-${collectionId}`}
             />
           ) : null}
           <Button
@@ -351,7 +342,7 @@ export function CollectionDetailContent() {
             variant="outline"
             size="sm"
             onClick={refreshCollection}
-            disabled={isLoading || isRefreshing}
+            disabled={isLoading || isRefreshing || isFetchingNextPage}
             className="gap-1.5 border-orange-300/30 bg-black/25 text-orange-100 hover:bg-orange-500/15"
           >
             {isRefreshing ? (
@@ -378,10 +369,10 @@ export function CollectionDetailContent() {
             <Skeleton className="h-24 w-full rounded-lg" />
           </CardContent>
         </Card>
-      ) : data && data.items.length > 0 ? (
+      ) : firstPage && flattenedItems.length > 0 ? (
         <div className="flex min-h-[52dvh] flex-col">
           <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-            {data.items.map((item) => {
+            {flattenedItems.map((item) => {
               const href = resolveSavedObjectHref(item.canonicalId);
               const type = getSavedObjectType(item.canonicalId);
               const accent = TYPE_ACCENTS[type];
@@ -459,27 +450,29 @@ export function CollectionDetailContent() {
           </div>
 
           <div className="mt-auto flex items-center justify-end gap-2 pt-4">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={page <= 1}
-              onClick={() => setPage((currentPage) => currentPage - 1)}
-              className="border-orange-300/30 bg-black/25 text-orange-100 hover:bg-orange-500/15"
-            >
-              Previous
-            </Button>
-            <span className="text-xs text-muted-foreground">Page {page}</span>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={!data.hasMore}
-              onClick={() => setPage((currentPage) => currentPage + 1)}
-              className="border-orange-300/30 bg-black/25 text-orange-100 hover:bg-orange-500/15"
-            >
-              Next
-            </Button>
+            {hasNextPage ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={isFetchingNextPage}
+                onClick={() => {
+                  void collectionQuery.fetchNextPage();
+                }}
+                className="border-orange-300/30 bg-black/25 text-orange-100 hover:bg-orange-500/15"
+              >
+                {isFetchingNextPage ? (
+                  <>
+                    <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                    Loading...
+                  </>
+                ) : (
+                  "Load more"
+                )}
+              </Button>
+            ) : (
+              <span className="text-xs text-muted-foreground">All items loaded</span>
+            )}
           </div>
         </div>
       ) : (
