@@ -75,43 +75,70 @@ export function BillingContent({
   waitlistEnabled,
 }: BillingContentProps) {
   const [isLoading, setIsLoading] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
   const searchParams = useSearchParams();
 
   const success = searchParams.get("success") === "true";
   const canceled = searchParams.get("canceled") === "true";
 
   const handleUpgrade = async () => {
+    setActionError(null);
     setIsLoading(true);
     try {
       const response = await fetch("/api/stripe/checkout", { method: "POST" });
       const data = await response.json();
 
+      if (!response.ok) {
+        setActionError(
+          typeof data?.error === "string"
+            ? data.error
+            : "Could not start checkout right now."
+        );
+        setIsLoading(false);
+        return;
+      }
+
       if (data.url) {
         window.location.href = data.url;
       } else {
         console.error("No checkout URL returned");
+        setActionError("No checkout URL was returned.");
         setIsLoading(false);
       }
     } catch (error) {
       console.error("Failed to create checkout session:", error);
+      setActionError("Failed to create checkout session.");
       setIsLoading(false);
     }
   };
 
   const handleManageSubscription = async () => {
+    setActionError(null);
     setIsLoading(true);
     try {
       const response = await fetch("/api/stripe/portal", { method: "POST" });
       const data = await response.json();
 
+      if (!response.ok) {
+        setActionError(
+          typeof data?.error === "string"
+            ? data.error
+            : "Could not open the billing portal."
+        );
+        setIsLoading(false);
+        return;
+      }
+
       if (data.url) {
         window.location.href = data.url;
       } else {
         console.error("No portal URL returned");
+        setActionError("No billing portal URL was returned.");
         setIsLoading(false);
       }
     } catch (error) {
       console.error("Failed to create portal session:", error);
+      setActionError("Failed to create billing portal session.");
       setIsLoading(false);
     }
   };
@@ -133,6 +160,12 @@ export function BillingContent({
           <p className="text-sm">
             Checkout was canceled. You can upgrade anytime when you&apos;re ready.
           </p>
+        </div>
+      )}
+
+      {actionError && (
+        <div className="p-4 rounded-lg border border-destructive/50 bg-destructive/10 text-destructive">
+          <p className="text-sm">{actionError}</p>
         </div>
       )}
 
@@ -203,6 +236,17 @@ export function BillingContent({
                   <p className="text-sm text-muted-foreground">
                     Pro billing is coming soon.
                   </p>
+                  {process.env.NODE_ENV !== "production" ? (
+                    <p className="text-xs text-muted-foreground">
+                      To enable checkout locally, set{" "}
+                      <code className="font-mono">PRO_BILLING_ENABLED=true</code>{" "}
+                      and{" "}
+                      <code className="font-mono">
+                        NEXT_PUBLIC_PRO_BILLING_ENABLED=true
+                      </code>
+                      .
+                    </p>
+                  ) : null}
                   {waitlistEnabled ? (
                     <WaitlistCta source="billing" compact />
                   ) : null}
