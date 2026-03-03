@@ -1,90 +1,42 @@
-# Pro Tier Implementation - Remaining TODOs
+# Pro Tier TODOs (Current)
 
-## Environment Setup
+Last updated (UTC): 2026-03-03
 
-- [ ] Add Clerk environment variables to `.env.local`:
-  ```
-  NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_...
-  CLERK_SECRET_KEY=sk_...
-  NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
-  NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up
-  ```
+This file tracks only remaining rollout work to avoid repeating status already covered in `APP-TODO.md`.
 
-- [ ] Add Stripe environment variables to `.env.local`:
-  ```
-  STRIPE_SECRET_KEY=sk_...
-  STRIPE_WEBHOOK_SECRET=whsec_...
-  STRIPE_PRO_PRICE_ID=price_...
-  NEXT_PUBLIC_APP_URL=https://cosmicindex.com
-  ```
+## Completed Baseline
 
-## Database
+- [x] Auth foundation (`src/proxy.ts`, auth utilities, app auth provider)
+- [x] Core Pro schema migrations applied (`001`-`004`)
+- [x] Saved objects, collections, saved searches, alerts, and export APIs/UI
+- [x] Stripe checkout, webhook handling, and billing settings page
+- [x] Stripe portal fallback recovery + manage/cancel billing UX
 
-- [ ] Defer DB migrations until Turso write quota resets on **March 1, 2026**
-- [ ] On/after March 1, execute the runbook:
-  - `docs/migration-runbook-2026-03-01.md`
-- [ ] Apply pending migrations per runbook:
-  - `db/migrations/001_pro_features.sql` (only if base tables are missing)
-  - `db/migrations/002_export_history_audit.sql` (apply missing `export_history` columns safely)
-  - `db/migrations/003_tier_limit_indexes.sql`
+## Remaining Work
 
-- [ ] Verify schema after migration run:
-  ```bash
-  turso db shell cosmic-index "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name;"
-  turso db shell cosmic-index "PRAGMA table_info(export_history);"
-  turso db shell cosmic-index "SELECT name FROM sqlite_master WHERE type='index' ORDER BY name;"
-  ```
+### Production Cutover
 
-## UI Integration
+- [ ] Validate deployed Clerk configuration and production keys
+- [ ] Configure Stripe live product/price and webhook endpoint
+- [ ] Verify Stripe Customer Portal branding/config in live mode
+- [ ] Run production checkout -> webhook -> cancel lifecycle verification
 
-- [ ] Integrate `SaveButton` into `ObjectCard` component (hover overlay in top-right)
-- [ ] Add `SaveButton` to detail pages (exoplanet, star, small-body)
-- [ ] Add `SaveButton` to event cards (fireballs, close approaches, space weather)
-- [ ] Create saved objects list page (`/user/saved-objects`)
-- [ ] Create collections management page (`/user/collections`)
-- [ ] Create saved searches dropdown for filter panels
-- [ ] Add export button to browse pages (exoplanets, stars)
+### Alerts Delivery
 
-## Stripe Setup
+- [ ] Add scheduled alert runner (`/api/cron/check-alerts`)
+- [ ] Integrate outbound email provider (Resend or SendGrid)
+- [ ] Add alert email templates and manual verification checklist
 
-- [ ] Create Stripe product and price for Pro subscription
-- [ ] Configure Stripe webhook endpoint in dashboard
-- [ ] Set up Stripe Customer Portal branding
-- [ ] Test checkout flow end-to-end
-- [ ] Test subscription cancellation flow
+### Performance Follow-Through
 
-## Alerts System
-
-- [ ] Create alert configuration UI component
-- [ ] Create Vercel Cron job for checking alerts (`/api/cron/check-alerts`)
-- [ ] Set up email sending (Resend or SendGrid)
-- [ ] Create email templates for different alert types
-- [ ] Test alert trigger deduplication
-
-## Testing & Verification
-
-- [ ] Test auth flow: Sign up → Sign in → See UserButton
-- [ ] Test save object: Click save → Verify no duplicates → See in saved list
-- [ ] Test collections: Create → Add items → Verify ordering
-- [ ] Test saved search: Save filters → Try duplicate (should update) → Load from dropdown
-- [ ] Test export: Download 5000+ rows → Verify streaming works
-- [ ] Test Stripe webhook idempotency: Replay event → Verify no duplicate processing
-- [ ] Test tier downgrade: Cancel subscription → Verify features locked
-
-## Performance
-
-- [ ] Review and execute prioritized items from:
-  - `docs/performance-strategies.md`
-- [ ] Start with P0 items:
+- [ ] Execute P0 items from `docs/performance-strategies.md`:
   - cursor pagination for large user datasets
   - conditional GET (`ETag` / `If-None-Match`)
   - targeted DB index audit with query-plan validation
-- [ ] Add baseline and post-change measurements (P50/P95 + client interaction latency) for user routes before and after each P0 change
+- [ ] Capture pre/post metrics (P50/P95 + client interaction latency) for user routes
 
-## Polish
+### Product Polish
 
-- [ ] Add loading states to all async operations
-- [ ] Add error toasts for failed operations
-- [ ] Add upgrade prompts when free users hit Pro features
+- [ ] Add clearer upgrade prompts when free users hit Pro limits
 - [ ] Add onboarding flow for new Pro subscribers
-- [ ] Review and update keyboard shortcuts for new features
+- [ ] Audit loading/error states for remaining async paths

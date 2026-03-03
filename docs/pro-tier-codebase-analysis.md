@@ -1,5 +1,7 @@
 # Cosmic Index Project Structure - Pro Tier Implementation Analysis
 
+Last updated (UTC): 2026-03-03
+
 This document provides a comprehensive analysis of the Cosmic Index codebase patterns for implementing Pro tier features.
 
 ---
@@ -20,11 +22,11 @@ The root layout uses a single context provider pattern:
 ```
 
 **Key insights:**
-- No existing authentication context or middleware
+- Auth stack is now in place (`src/proxy.ts`, `src/lib/auth.ts`, `src/components/auth/app-auth-provider.tsx`)
 - KeyboardShortcutsProvider is "use client" and wraps entire tree
 - Header/nav is INSIDE provider (has access to context)
 - Simple, additive pattern: stack additional providers without nesting complexity
-- For Pro tier: Add `<ClerkProvider>` as outermost wrapper
+- Clerk provider pattern is already implemented in `src/app/layout.tsx`
 
 ---
 
@@ -193,18 +195,19 @@ export const CACHE_KEYS = {
 | File | Purpose |
 |------|---------|
 | `src/app/layout.tsx` | Layout structure, provider placement |
+| `src/proxy.ts` | Route protection behavior |
 | `src/components/keyboard-shortcuts/keyboard-shortcuts-provider.tsx` | Provider template |
 | `src/lib/star-index.ts` | Database patterns |
 | `src/app/api/stars/route.ts` | API template |
 | `src/components/object-card.tsx` | Component integration |
 | `src/lib/types.ts` | Types |
-| `db/schema.sql` | DB schema |
+| `db/migrations/001_pro_features.sql` | Pro feature schema baseline |
 
 ---
 
 ## 10. Environment Variables
 
-Already configured:
+Already configured (environment-dependent):
 ```
 TURSO_DATABASE_URL=libsql://cosmic-index-xxx.turso.io
 TURSO_AUTH_TOKEN=eyJ...
@@ -212,7 +215,7 @@ UPSTASH_REDIS_REST_URL=https://...
 UPSTASH_REDIS_REST_TOKEN=...
 ```
 
-New variables needed for Pro tier:
+Variables to validate for production:
 ```
 # Clerk
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_...
@@ -233,15 +236,6 @@ NEXT_PUBLIC_APP_URL=https://cosmicindex.com
 
 ## Summary
 
-**Architecture is highly compatible with Pro tier features:**
+**Architecture remains compatible with ongoing Pro tier work.**
 
-1. **Provider**: Add `<ClerkProvider>` following existing provider pattern
-2. **Database**: Add Pro tier tables following existing schema conventions
-3. **API routes**: Create `/api/user/*` routes using existing patterns
-4. **Components**: Add save button to ObjectCard following badge placement pattern
-5. **State**: Use context hook from auth provider for subscription/saved state
-6. **Caching**: Use existing Redis wrapper with appropriate TTLs
-7. **Rate limiting**: Extend existing rate limit config for save/delete operations
-8. **Types**: Extend types and add Pro tier interfaces
-
-**No breaking changes needed** - all patterns are additive and follow established conventions.
+Most baseline Pro integration is complete (auth, user routes, billing routes, schema, save/export surfaces). Use this document as architectural reference, and use `APP-TODO.md` for current execution status.

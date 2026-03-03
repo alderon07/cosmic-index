@@ -1,6 +1,8 @@
 # SEO Implementation
 
-This document describes the SEO setup for Cosmic Index, a Next.js 15 space encyclopedia with 5,000+ exoplanets and 1,000,000+ small bodies.
+Last updated (UTC): 2026-03-03
+
+This document describes the SEO setup for Cosmic Index, a Next.js 16 space encyclopedia with 5,000+ exoplanets and 1,000,000+ small bodies.
 
 ## Overview
 

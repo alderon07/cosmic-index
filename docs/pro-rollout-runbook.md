@@ -1,6 +1,6 @@
 # Pro Rollout Runbook (Feature-Flagged)
 
-Last updated: 2026-02-10
+Last updated: 2026-03-03
 
 This document describes the implemented Pro rollout system:
 - feature-flagged Pro surfaces/billing
@@ -33,6 +33,8 @@ LIMIT_MODE=shadow
 LIMIT_MODE_FORCE_ENFORCE=false
 
 # Admin access (comma-separated user IDs)
+INTERNAL_ADMIN_IDS=user_abc,user_def
+# Fallback (legacy)
 PRO_ROLLOUT_ADMIN_IDS=user_abc,user_def
 ```
 
@@ -49,13 +51,14 @@ PRO_ROLLOUT_ADMIN_IDS=user_abc,user_def
 
 ## 3) Database Migration
 
-Apply the waitlist/interest schema:
+Migration status is complete for the current rollout schema:
 
-```bash
-turso db shell cosmic-index < db/migrations/004_waitlist_interest.sql
-```
+- `001_pro_features.sql`
+- `002_export_history_audit.sql`
+- `003_tier_limit_indexes.sql`
+- `004_waitlist_interest.sql`
 
-This migration adds:
+`004_waitlist_interest.sql` added:
 - `pro_waitlist`
 - `pro_interest_daily`
 - `pro_interest_dedup`
@@ -77,7 +80,7 @@ This migration adds:
 - `GET /api/internal/pro-rollout-status`
   - admin-only
   - returns waitlist status, today/7d interest aggregates, mode status
-  - returns `404` if `PRO_ROLLOUT_ADMIN_IDS` is empty
+  - returns `404` if both `INTERNAL_ADMIN_IDS` and fallback `PRO_ROLLOUT_ADMIN_IDS` are empty
   - returns `X-Robots-Tag: noindex, nofollow`
 
 ## 5) UIs Added/Updated
@@ -85,6 +88,7 @@ This migration adds:
 - Billing page (`/settings/billing`)
   - honors `PRO_BILLING_ENABLED`
   - shows waitlist CTA when billing is disabled
+  - shows **Manage or Cancel** controls with explicit post-checkout sync messaging
 - Internal status page (`/settings/internal/pro-rollout`)
   - admin-only, noindex
 
@@ -103,6 +107,7 @@ In `enforce`, existing block behavior is preserved.
 - Stripe routes (`/api/stripe/checkout`, `/api/stripe/portal`) return:
   - `403 { error: "feature_disabled", feature: "billing" }`
   when billing flag is off.
+- Portal route supports customer-recovery fallback (`stripe_subscription_id`, then email lookup) when `stripe_customer_id` is missing.
 - Alerts routes are gated by `PRO_SURFACES_ENABLED`.
 
 ## 8) Rate Limits and Free-Tier Safety
@@ -125,7 +130,7 @@ Limit-hit counters are best-effort and non-fatal to user requests.
 ## 10) Operational Checks
 
 1. Verify migration ran successfully.
-2. Verify `PRO_ROLLOUT_ADMIN_IDS` is set for your admin user.
+2. Verify `INTERNAL_ADMIN_IDS` is set for your admin user (or fallback `PRO_ROLLOUT_ADMIN_IDS`).
 3. Check `GET /api/waitlist/status`.
 4. Open `/settings/internal/pro-rollout` as admin.
 5. Exercise billing page behavior with `PRO_BILLING_ENABLED` on/off.
@@ -136,6 +141,7 @@ Limit-hit counters are best-effort and non-fatal to user requests.
 
 ## 11) Known Caveats
 
-- If `PRO_ROLLOUT_ADMIN_IDS` is unset, internal status endpoint/page is intentionally hidden (`404`).
+- If admin IDs are unset (`INTERNAL_ADMIN_IDS` and fallback `PRO_ROLLOUT_ADMIN_IDS`), internal status endpoint/page is intentionally hidden (`404`).
 - Waitlist writes require both Turso and Upstash availability in current fail-closed policy.
+- Billing tier can lag immediately after checkout until webhook sync completes; Billing UI keeps Manage/Cancel accessible during this window.
 - In `enforce` mode with waitlist enabled, low waitlist volume can keep effective mode at `warn` unless force-enforced.

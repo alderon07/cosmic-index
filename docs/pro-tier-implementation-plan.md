@@ -1,8 +1,12 @@
 # Pro Tier Features Implementation Plan
 
+Last updated (UTC): 2026-03-03
+
 ## Overview
 
 Implement Pro tier features for Cosmic Index: saved objects, collections, saved searches, alerts, and CSV/JSON exports. Uses Clerk for authentication and Stripe for billing.
+
+Status note: this document is the implementation blueprint/record. For current progress and remaining tasks, use `APP-TODO.md` (single source of truth) to avoid duplicated status tracking.
 
 **Key Design Decisions:**
 - **DB is source of truth for tier** - Don't rely on JWT claims; always check user row
@@ -19,8 +23,8 @@ Implement Pro tier features for Cosmic Index: saved objects, collections, saved 
 bun add @clerk/nextjs stripe
 ```
 
-### 1.2 Create Middleware
-**File:** `src/middleware.ts`
+### 1.2 Create Proxy Route Guard
+**File:** `src/proxy.ts`
 
 **Middleware protects PAGES only, not API routes**
 
@@ -153,12 +157,11 @@ export async function requireAuth(): Promise<AuthUser> {
 
 ## Phase 2: Database Schema
 
-### 2.0 Execution Status (Deferred)
+### 2.0 Execution Status (Completed)
 
-- `Updated`: February 8, 2026
-- `Constraint`: Turso write quota exhausted in current billing window
-- `DB migrations`: Deferred until quota reset on **March 1, 2026**
-- `Runbook`: `docs/migration-runbook-2026-03-01.md`
+- `Updated`: March 3, 2026
+- `DB migrations`: Applied (`001`, `002`, `003`, `004`)
+- `Runbook`: `docs/migration-runbook-2026-03-01.md` now records completion and verification guidance
 
 ### 2.1 Canonical Object ID Format
 
@@ -637,7 +640,7 @@ async function resolveUserId(customerId: string, metadataUserId: string | undefi
 
 - Show current tier (from DB, not Clerk)
 - Upgrade button (for free users)
-- Manage subscription button (for Pro users, links to Stripe portal)
+- Manage/Cancel access via Stripe portal, including post-checkout sync-lag recovery path
 
 ---
 
@@ -728,7 +731,7 @@ Check conditions against latest data, trigger email via Resend/SendGrid.
 
 | Week | Focus | Key Deliverables |
 |------|-------|------------------|
-| 1 | Auth Foundation | Clerk setup, middleware, auth UI in header |
+| 1 | Auth Foundation | Clerk setup, proxy auth guard, auth UI in header |
 | 2 | Database & Core API | Migration, saved objects API, SaveButton |
 | 3 | Collections | Collections API, dialog, integration |
 | 4 | Saved Searches | API, dropdown, filter panel integration |
