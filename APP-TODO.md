@@ -1,7 +1,7 @@
 
 # Progress Tracker 
 
-> **Last updated:** 2026-03-01
+> **Last updated:** 2026-03-03
 
 ## ✅ Completed
 
@@ -29,13 +29,16 @@
 | Saved Search Modal UX | Replaced browser `prompt()` with themed in-app dialog for naming saved searches |
 | Save Controls | Save buttons active on object + event cards/details, with consistent heart icon treatment across objects, weather, and fireballs |
 | Free Export Guardrail | Free tier export requests limited to **1 per hour** (`EXPORT_REQUESTS_PER_HOUR`) |
+| Database Migrations | Applied all current migrations (`001_pro_features.sql`, `002_export_history_audit.sql`, `003_tier_limit_indexes.sql`, `004_waitlist_interest.sql`) |
+| Stripe Billing UX | Added Billing nav entry in user menu, in-page API error messaging, and explicit **Manage or Cancel** actions on billing |
+| Stripe Portal Reliability | Added customer resolution fallbacks (`stripe_subscription_id`, email-based lookup) and route tests for portal recovery paths |
 | **Pro Tier Backend** | Full implementation - see details below |
 
 ### Pro Tier Implementation (Code Complete)
 
 | Component | Files |
 |-----------|-------|
-| Authentication | `src/middleware.ts`, `src/lib/auth.ts`, `src/lib/user-db.ts`, `src/components/auth/` |
+| Authentication | `src/proxy.ts`, `src/lib/auth.ts`, `src/lib/user-db.ts`, `src/components/auth/` |
 | Database Schema | `db/migrations/001_pro_features.sql` (users, saved_objects, collections, saved_searches, alerts, stripe_events) |
 | Saved Objects API | `src/app/api/user/saved-objects/` (GET, POST, PATCH, DELETE, check) |
 | Collections API | `src/app/api/user/collections/` (CRUD + items) |
@@ -53,13 +56,12 @@
 |------|-------------|
 | **Clerk Setup** | Create Clerk app, add env vars (`NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`) |
 | **Stripe Setup** | Create product/price, configure webhook, add env vars (`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRO_PRICE_ID`) |
-| **Run Migration** | `turso db shell cosmic-index < db/migrations/001_pro_features.sql` |
 
 ## 📋 Up Next (Priority Order)
 
 1. **Production Auth Cutover** - Enable Clerk in deployed environments and validate auth-gated flows end-to-end.
 2. **Production Billing Cutover** - Configure live Stripe product/price + webhook signing and verify upgrade/downgrade lifecycle.
-3. **Database Migration Runbook** - Apply `db/migrations/001_pro_features.sql` to production Turso and document rollback/checks.
+3. **Post-Migration Verification** - Document completed production Turso migration checks, rollback notes, and validation queries.
 4. **Compare UX QA Sweep** - Validate card/tray/dialog theming and behavior on all domains, including mobile viewport fit and conflict recovery.
 5. **Saved Objects Link QA** - Verify `Open details` routing with real (non-mock) saved data for all canonical ID types.
 
