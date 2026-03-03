@@ -277,12 +277,22 @@ function getCSVHeader(
   return fields.map((f) => f.header).join(",");
 }
 
+const CSV_FORMULA_PREFIX = /^[=+\-@]/;
+
+function neutralizeCsvFormula(value: string): string {
+  const trimmed = value.trimStart();
+  if (!trimmed) return value;
+  return CSV_FORMULA_PREFIX.test(trimmed) ? `'${value}` : value;
+}
+
 function escapeCSV(value: unknown): string {
   if (value === null || value === undefined) return "";
-  const str = String(value);
-  if (str.includes(",") || str.includes('"') || str.includes("\n")) {
+
+  const str = neutralizeCsvFormula(String(value));
+  if (str.includes(",") || str.includes('"') || str.includes("\n") || str.includes("\r")) {
     return `"${str.replace(/"/g, '""')}"`;
   }
+
   return str;
 }
 
@@ -903,6 +913,42 @@ function getLimitPolicyHeaders(params: {
   };
 }
 
+interface ExportWindowUsage {
+  requestCount: number;
+  rowsUsed: number;
+}
+
+function toSafeNonNegativeNumber(value: unknown): number {
+  const parsed = Number(value ?? 0);
+  return Number.isFinite(parsed) ? Math.max(0, Math.floor(parsed)) : 0;
+}
+
+async function getDbUsage(userId: string, nowMs: number): Promise<ExportWindowUsage | null> {
+  const db = getUserDb();
+  if (!db) return null;
+
+  const windowStartMs = nowMs - WINDOW_SECONDS * 1000;
+
+  try {
+    const result = await db.execute({
+      sql:
+        "SELECT COUNT(*) AS request_count, " +
+        "COALESCE(SUM(COALESCE(exported_count, 0)), 0) AS rows_used " +
+        "FROM export_history WHERE user_id = ? AND started_at >= ?",
+      args: [userId, windowStartMs],
+    });
+
+    const row = result.rows[0] ?? {};
+    return {
+      requestCount: toSafeNonNegativeNumber((row as Record<string, unknown>).request_count),
+      rowsUsed: toSafeNonNegativeNumber((row as Record<string, unknown>).rows_used),
+    };
+  } catch (error) {
+    console.error("[export] usage window query failed", error);
+    return null;
+  }
+}
+
 async function enforceExportLimits(params: {
   userId: string;
   requestLimit: number;
@@ -1274,6 +1320,25 @@ export async function POST(request: NextRequest) {
     }
 
     if (category === "saved-objects" && savedObjectsCollectionId !== undefined) {
+      if (!userDb) {
+        return Response.json(
+          {
+            error: "service_unavailable",
+            message: "Saved-object export requires user database configuration.",
+            retryAfter: 60,
+            limitPolicy: withLimitPolicy(false),
+          },
+          {
+            status: 503,
+            headers: {
+              ...baseHeaders,
+              "Retry-After": "60",
+              ...getLimitPolicyHeaders(withLimitPolicy(false)),
+            },
+          }
+        );
+      }
+
       const collectionCheck = await userDb.execute({
         sql: `
             SELECT id

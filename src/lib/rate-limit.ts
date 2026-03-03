@@ -58,6 +58,10 @@ const TRUST_PROVIDER_HEADERS = {
   fly: () => process.env.TRUST_FLY_HEADERS === "true",
 };
 
+function trustProxyHeaders(): boolean {
+  return process.env.TRUST_PROXY_HEADERS === "true";
+}
+
 /** DJB2 hash — fast, good distribution for bucketing (not cryptographic) */
 function djb2Hash(str: string): string {
   let hash = 5381;
@@ -88,16 +92,17 @@ export function getClientIdentifier(request: Request): ClientIdentity {
     if (ip) return { id: ip, confidence: "ip" };
   }
 
-  // 3. x-forwarded-for (first hop, validated)
-  const forwarded = request.headers.get("x-forwarded-for");
-  if (forwarded) {
-    const ip = extractValidIp(forwarded.split(",")[0]);
-    if (ip) return { id: ip, confidence: "ip" };
-  }
+  // 3-4. Generic proxy headers (opt-in only; otherwise client-controlled spoofable)
+  if (trustProxyHeaders()) {
+    const forwarded = request.headers.get("x-forwarded-for");
+    if (forwarded) {
+      const ip = extractValidIp(forwarded.split(",")[0]);
+      if (ip) return { id: ip, confidence: "ip" };
+    }
 
-  // 4. x-real-ip (validated)
-  const realIp = extractValidIp(request.headers.get("x-real-ip"));
-  if (realIp) return { id: realIp, confidence: "ip" };
+    const realIp = extractValidIp(request.headers.get("x-real-ip"));
+    if (realIp) return { id: realIp, confidence: "ip" };
+  }
 
   // 5. Fingerprint from User-Agent + Accept-Language + Sec-CH-UA
   const ua = request.headers.get("user-agent") ?? "";

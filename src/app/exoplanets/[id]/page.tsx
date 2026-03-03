@@ -7,6 +7,7 @@ import { fetchExoplanetBySlug } from "@/lib/nasa-exoplanet";
 import { ExoplanetData } from "@/lib/types";
 import { BASE_URL } from "@/lib/config";
 import { THEMES } from "@/lib/theme";
+import { serializeJsonLd } from "@/lib/safe-json-ld";
 
 interface ExoplanetDetailPageProps {
   params: Promise<{ id: string }>;
@@ -163,7 +164,7 @@ export default async function ExoplanetDetailPage({
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }}
       />
       <div className="shell-container py-8">
         <Breadcrumbs

@@ -29,6 +29,7 @@ import {
   NavigationMenuTrigger,
 } from "@/components/ui/navigation-menu";
 import { getWaitlistEnabled } from "@/lib/runtime-mode";
+import { serializeJsonLd } from "@/lib/safe-json-ld";
 
 const audiowide = Audiowide({
   variable: "--font-display",
@@ -166,7 +167,7 @@ export default function RootLayout({
       <head>
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
+          dangerouslySetInnerHTML={{ __html: serializeJsonLd(websiteJsonLd) }}
         />
       </head>
       <body
