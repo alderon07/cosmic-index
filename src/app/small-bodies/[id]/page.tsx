@@ -7,6 +7,7 @@ import { THEMES } from "@/lib/theme";
 import { fetchSmallBodyBySlug } from "@/lib/jpl-sbdb";
 import { SmallBodyData } from "@/lib/types";
 import { BASE_URL } from "@/lib/config";
+import { serializeJsonLd } from "@/lib/safe-json-ld";
 
 interface SmallBodyDetailPageProps {
   params: Promise<{ id: string }>;
@@ -152,7 +153,7 @@ export default async function SmallBodyDetailPage({
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }}
       />
       <div className="shell-container py-8">
         <Breadcrumbs items={breadcrumbItems} className="mb-6" linkHoverClassName={THEMES["small-bodies"].hoverText} />

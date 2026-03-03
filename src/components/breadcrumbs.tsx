@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ChevronRight, Home } from "lucide-react";
 import { getCategoryFromPath, getListUrl } from "@/lib/list-url-store";
 import { BASE_URL } from "@/lib/config";
+import { serializeJsonLd } from "@/lib/safe-json-ld";
 
 export interface BreadcrumbItem {
   label: string;
@@ -73,7 +74,7 @@ export function Breadcrumbs({
       <script
         type="application/ld+json"
         // Safe: jsonLd is generated from static labels/hrefs, JSON.stringify escapes special chars
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }}
       />
       <nav
         aria-label="Breadcrumb"

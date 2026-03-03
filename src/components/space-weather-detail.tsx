@@ -50,6 +50,7 @@ import {
   Thermometer,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { sanitizeExternalHttpUrl } from "@/lib/safe-url";
 
 const theme = THEMES["space-weather"];
 
@@ -208,6 +209,9 @@ export function SpaceWeatherDetail({ event, compact }: SpaceWeatherDetailProps) 
   const accent = getSpaceWeatherDetailAccent(event.eventType);
 
   const donkiSearchUrl = "https://kauai.ccmc.gsfc.nasa.gov/DONKI/search/";
+  const externalSourceLink = sanitizeExternalHttpUrl(
+    (event as IPSEvent | HSSEvent | SEPEvent).sourceLink
+  );
 
   return (
     <div className="space-y-6 min-w-0">
@@ -558,10 +562,10 @@ export function SpaceWeatherDetail({ event, compact }: SpaceWeatherDetailProps) 
                     </div>
                   </div>
                 )}
-                {(event as IPSEvent | HSSEvent | SEPEvent).sourceLink && (
+                {externalSourceLink && (
                   <div className="min-w-0 sm:col-span-2">
                     <a
-                      href={(event as IPSEvent | HSSEvent | SEPEvent).sourceLink}
+                      href={externalSourceLink}
                       target="_blank"
                       rel="noopener noreferrer"
                       className={`inline-flex items-center gap-1.5 text-sm ${theme.text} ${theme.hoverText} transition-colors`}

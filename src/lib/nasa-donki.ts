@@ -16,6 +16,7 @@ import {
   SpaceWeatherNotificationsQueryParams,
 } from "./types";
 import { withCache, CACHE_TTL, CACHE_KEYS, getCached, setCached } from "./cache";
+import { sanitizeExternalHttpUrl } from "./safe-url";
 
 const DONKI_CCMC_BASE_URL = "https://kauai.ccmc.gsfc.nasa.gov/DONKI/WS/get";
 const DONKI_NASA_BASE_URL = "https://api.nasa.gov/DONKI";
@@ -1033,7 +1034,7 @@ async function fetchIPSRaw(startDate: string, endDate: string): Promise<DonkiTyp
             location: ips.location,
             submissionTime: ips.submissionTime,
             instruments: normalizeInstruments(ips.instruments),
-            sourceLink: ips.link,
+            sourceLink: sanitizeExternalHttpUrl(ips.link),
             linkedEvents: normalizeNullableArray(ips.linkedEvents),
           }));
         }),
@@ -1092,7 +1093,7 @@ async function fetchHSSRaw(startDate: string, endDate: string): Promise<DonkiTyp
             startTime: hss.eventTime,
             submissionTime: hss.submissionTime,
             instruments: normalizeInstruments(hss.instruments),
-            sourceLink: hss.link,
+            sourceLink: sanitizeExternalHttpUrl(hss.link),
             linkedEvents: normalizeNullableArray(hss.linkedEvents),
           }));
         }),
@@ -1151,7 +1152,7 @@ async function fetchSEPRaw(startDate: string, endDate: string): Promise<DonkiTyp
             startTime: sep.eventTime,
             submissionTime: sep.submissionTime,
             instruments: normalizeInstruments(sep.instruments),
-            sourceLink: sep.link,
+            sourceLink: sanitizeExternalHttpUrl(sep.link),
             linkedEvents: normalizeNullableArray(sep.linkedEvents),
           }));
         }),
@@ -1337,7 +1338,7 @@ export async function fetchSpaceWeatherNotifications(
               id: messageID,
               type: normalizedType,
               issuedAt: entry.messageIssueTime ?? "",
-              url: entry.messageURL,
+              url: sanitizeExternalHttpUrl(entry.messageURL),
               body,
               activityIDs: extractActivityIDs(body),
             });

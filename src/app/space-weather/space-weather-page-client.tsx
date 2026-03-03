@@ -44,6 +44,7 @@ import {
   THEMES,
 } from "@/lib/theme";
 import { SPACE_WEATHER_EVENT_ICONS } from "@/lib/space-weather-icons";
+import { sanitizeExternalHttpUrl } from "@/lib/safe-url";
 import {
   CloudLightning,
   Filter,
@@ -249,16 +250,23 @@ function NotificationMarkdown({ content }: { content: string }) {
               {children}
             </pre>
           ),
-          a: ({ children, href }) => (
-            <a
-              href={href}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={`${theme.text} ${theme.hoverText} underline underline-offset-2 decoration-aurora-violet/40 hover:decoration-aurora-violet/70 transition-colors`}
-            >
-              {children}
-            </a>
-          ),
+          a: ({ children, href }) => {
+            const safeHref = sanitizeExternalHttpUrl(href);
+            if (!safeHref) {
+              return <span className="text-foreground/80">{children}</span>;
+            }
+
+            return (
+              <a
+                href={safeHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-foreground/90 hover:text-foreground underline underline-offset-2 decoration-aurora-violet/40 hover:decoration-aurora-violet/70 transition-colors"
+              >
+                {children}
+              </a>
+            );
+          },
           blockquote: ({ children }) => (
             <blockquote className="my-4 border-l-2 border-aurora-violet/30 pl-4 text-foreground/65 italic [&>p]:mb-2">
               {children}
@@ -818,6 +826,7 @@ export function SpaceWeatherPageClient({
                   {notifications.map((notification) => {
                     const previewBody = stripMarkdownForPreview(notification.body);
                     const hasOverflowBody = previewBody.length > 200;
+                    const safeNotificationUrl = sanitizeExternalHttpUrl(notification.url);
 
                     return (
                       <Card
@@ -855,9 +864,9 @@ export function SpaceWeatherPageClient({
                               <Copy className="w-3 h-3" />
                               ID
                             </button>
-                            {notification.url && (
+                            {safeNotificationUrl && (
                               <a
-                                href={notification.url}
+                                href={safeNotificationUrl}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className={`inline-flex items-center gap-1 text-[0.68rem] font-medium ${theme.text} ${theme.hoverText} transition-colors`}
