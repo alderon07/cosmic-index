@@ -146,11 +146,20 @@ export function BillingContent({
   return (
     <div className="space-y-6">
       {/* Success/Cancel Messages */}
-      {success && (
+      {success && tier === "pro" && (
         <div className="p-4 rounded-lg border border-uranium-green/50 bg-uranium-green/10 text-uranium-green">
           <p className="font-medium">Welcome to Pro!</p>
           <p className="text-sm opacity-80">
             Your subscription is now active. Enjoy all the premium features!
+          </p>
+        </div>
+      )}
+
+      {success && tier !== "pro" && (
+        <div className="p-4 rounded-lg border border-amber-400/50 bg-amber-500/10 text-amber-300">
+          <p className="font-medium">Checkout completed</p>
+          <p className="text-sm opacity-90">
+            We are still syncing your subscription status. You can manage or cancel now.
           </p>
         </div>
       )}
@@ -200,37 +209,65 @@ export function BillingContent({
                 <p className="text-sm text-muted-foreground">
                   Billing controls are temporarily unavailable.
                 </p>
-              ) : hasStripeCustomer ? (
-                <Button
-                  onClick={handleManageSubscription}
-                  disabled={isLoading}
-                  variant="outline"
-                  className="gap-2"
-                >
-                  {isLoading ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <ExternalLink className="w-4 h-4" />
-                  )}
-                  Manage Subscription
-                </Button>
+              ) : null}
+              {proBillingEnabled ? (
+                <div className="space-y-2">
+                  <Button
+                    onClick={handleManageSubscription}
+                    disabled={isLoading}
+                    variant="outline"
+                    className="gap-2"
+                  >
+                    {isLoading ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <ExternalLink className="w-4 h-4" />
+                    )}
+                    Manage or Cancel Subscription
+                  </Button>
+                  {!hasStripeCustomer ? (
+                    <p className="text-xs text-muted-foreground">
+                      Billing portal access may take a moment right after checkout.
+                    </p>
+                  ) : null}
+                </div>
               ) : null}
             </div>
           ) : (
             <div className="space-y-4">
               {proBillingEnabled ? (
-                <Button
-                  onClick={handleUpgrade}
-                  disabled={isLoading}
-                  className="gap-2 bg-primary hover:bg-primary/85 text-primary-foreground"
-                >
-                  {isLoading ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Sparkles className="w-4 h-4" />
-                  )}
-                  Upgrade to Pro
-                </Button>
+                <div className="space-y-2">
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      onClick={handleUpgrade}
+                      disabled={isLoading}
+                      className="gap-2 bg-primary hover:bg-primary/85 text-primary-foreground"
+                    >
+                      {isLoading ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Sparkles className="w-4 h-4" />
+                      )}
+                      Upgrade to Pro
+                    </Button>
+                    <Button
+                      onClick={handleManageSubscription}
+                      disabled={isLoading}
+                      variant="outline"
+                      className="gap-2"
+                    >
+                      {isLoading ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <ExternalLink className="w-4 h-4" />
+                      )}
+                      Manage or Cancel
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Already subscribed? Use Manage or Cancel while status sync completes.
+                  </p>
+                </div>
               ) : (
                 <div className="space-y-2">
                   <p className="text-sm text-muted-foreground">

@@ -25,13 +25,73 @@ export async function POST() {
     const stripe = requireStripe();
     const db = requireUserDb();
 
-    // Get user's Stripe customer ID
+    // Get user's Stripe linkage from DB.
     const result = await db.execute({
-      sql: "SELECT stripe_customer_id FROM users WHERE id = ?",
+      sql: "SELECT stripe_customer_id, stripe_subscription_id FROM users WHERE id = ?",
       args: [user.userId],
     });
 
-    const customerId = result.rows[0]?.stripe_customer_id as string | undefined;
+    const dbCustomerId = result.rows[0]?.stripe_customer_id as string | undefined;
+    const dbSubscriptionId = result.rows[0]?.stripe_subscription_id as string | undefined;
+    let customerId: string | undefined = dbCustomerId;
+
+    // Fallback 1: resolve customer from known subscription ID.
+    if (!customerId && dbSubscriptionId) {
+      try {
+        const subscription = await stripe.subscriptions.retrieve(dbSubscriptionId);
+        customerId =
+          typeof subscription.customer === "string"
+            ? subscription.customer
+            : subscription.customer?.id;
+      } catch (error) {
+        console.warn("Stripe portal: subscription lookup failed", error);
+      }
+    }
+
+    // Fallback 2: resolve customer by account email and active-ish subscriptions.
+    if (!customerId && user.email) {
+      try {
+        const customers = await stripe.customers.list({
+          email: user.email,
+          limit: 5,
+        });
+
+        for (const candidate of customers.data) {
+          if ("deleted" in candidate && candidate.deleted) continue;
+
+          const subscriptions = await stripe.subscriptions.list({
+            customer: candidate.id,
+            status: "all",
+            limit: 5,
+          });
+
+          const hasManageableSubscription = subscriptions.data.some(
+            (subscription) =>
+              subscription.status !== "canceled" &&
+              subscription.status !== "incomplete_expired"
+          );
+
+          if (hasManageableSubscription) {
+            customerId = candidate.id;
+            break;
+          }
+        }
+      } catch (error) {
+        console.warn("Stripe portal: customer email lookup failed", error);
+      }
+    }
+
+    // Persist recovered customer linkage for future requests.
+    if (customerId && customerId !== dbCustomerId) {
+      await db.execute({
+        sql: `
+          UPDATE users
+          SET stripe_customer_id = ?, updated_at = datetime('now')
+          WHERE id = ?
+        `,
+        args: [customerId, user.userId],
+      });
+    }
 
     if (!customerId) {
       return NextResponse.json(
