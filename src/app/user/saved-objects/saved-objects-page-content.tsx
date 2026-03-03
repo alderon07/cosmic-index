@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { InfiniteData, useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { ArrowUpRight, Bookmark, Trash2, FolderHeart, Layers, Loader2, RefreshCw } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -33,10 +33,18 @@ interface SavedObjectItem {
 
 interface SavedObjectsResponse {
   objects: SavedObjectItem[];
+  total: number;
+  limit: number;
+  hasMore: boolean;
+  nextCursor: string | null;
 }
 
 interface CollectionsPrefetchResponse {
   collections: CollectionPrefetchItem[];
+  total: number;
+  limit: number;
+  hasMore: boolean;
+  nextCursor: string | null;
 }
 
 interface CollectionPrefetchItem {
@@ -70,7 +78,6 @@ const TYPE_ACCENTS: Record<SavedObjectType, string> = {
   unknown: "hsl(35 10% 65%)",
 };
 
-const SAVED_OBJECTS_PAGE = 1;
 const SAVED_OBJECTS_LIMIT = 100;
 const GRID_ROW_ESTIMATE_PX = 256;
 const GRID_OVERSCAN_ROWS = 2;
@@ -82,23 +89,52 @@ function getSavedObjectsGridColumns(width: number): number {
   return 1;
 }
 
-async function fetchSavedObjects(page: number, limit: number): Promise<SavedObjectItem[]> {
-  const response = await fetch(`/api/user/saved-objects?page=${page}&limit=${limit}`);
+async function fetchSavedObjects(
+  limit: number,
+  cursor: string | null
+): Promise<SavedObjectsResponse> {
+  const query = new URLSearchParams();
+  query.set("limit", String(limit));
+  if (cursor) {
+    query.set("cursor", cursor);
+  }
+
+  const response = await fetch(`/api/user/saved-objects?${query.toString()}`);
   if (!response.ok) {
     throw new Error("Failed to load saved objects");
   }
 
   const data = (await response.json()) as SavedObjectsResponse;
-  return Array.isArray(data.objects) ? data.objects : [];
+  return {
+    objects: Array.isArray(data.objects) ? data.objects : [],
+    total: Number.isFinite(data.total) ? data.total : 0,
+    limit: Number.isFinite(data.limit) ? data.limit : limit,
+    hasMore: Boolean(data.hasMore),
+    nextCursor: typeof data.nextCursor === "string" ? data.nextCursor : null,
+  };
 }
 
-async function prefetchCollections(): Promise<CollectionPrefetchItem[]> {
-  const response = await fetch("/api/user/collections");
+async function prefetchCollections(
+  limit: number,
+  cursor: string | null
+): Promise<CollectionsPrefetchResponse> {
+  const query = new URLSearchParams();
+  query.set("limit", String(limit));
+  if (cursor) {
+    query.set("cursor", cursor);
+  }
+  const response = await fetch(`/api/user/collections?${query.toString()}`);
   if (!response.ok) {
     throw new Error("Failed to prefetch collections");
   }
   const data = (await response.json()) as CollectionsPrefetchResponse;
-  return Array.isArray(data.collections) ? data.collections : [];
+  return {
+    collections: Array.isArray(data.collections) ? data.collections : [],
+    total: Number.isFinite(data.total) ? data.total : 0,
+    limit: Number.isFinite(data.limit) ? data.limit : limit,
+    hasMore: Boolean(data.hasMore),
+    nextCursor: typeof data.nextCursor === "string" ? data.nextCursor : null,
+  };
 }
 
 export function SavedObjectsPageContent() {
@@ -109,25 +145,41 @@ export function SavedObjectsPageContent() {
   const [scrollTop, setScrollTop] = useState(0);
   const [viewportHeight, setViewportHeight] = useState(0);
   const [containerWidth, setContainerWidth] = useState(0);
-  const savedObjectsQueryKey = queryKeys.savedObjects(SAVED_OBJECTS_PAGE, SAVED_OBJECTS_LIMIT);
+  const savedObjectsQueryKey = queryKeys.savedObjects(SAVED_OBJECTS_LIMIT);
 
   const {
-    data: items = [],
+    data,
     isLoading,
+    isFetchingNextPage,
+    hasNextPage,
+    fetchNextPage,
     refetch: refetchSavedObjects,
-  } = useQuery({
+  } = useInfiniteQuery({
     queryKey: savedObjectsQueryKey,
-    queryFn: () => fetchSavedObjects(SAVED_OBJECTS_PAGE, SAVED_OBJECTS_LIMIT),
+    queryFn: ({ pageParam }) => fetchSavedObjects(SAVED_OBJECTS_LIMIT, pageParam),
+    initialPageParam: null as string | null,
+    getNextPageParam: (lastPage) =>
+      lastPage.hasMore && lastPage.nextCursor ? lastPage.nextCursor : undefined,
     enabled: auth.isSignedIn,
     staleTime: 60_000,
     gcTime: 5 * 60_000,
   });
 
+  const items = useMemo(
+    () => data?.pages.flatMap((page) => page.objects) ?? [],
+    [data]
+  );
+  const totalSavedCount = data?.pages[0]?.total ?? items.length;
+
   useEffect(() => {
     if (!auth.isSignedIn) return;
-    void queryClient.prefetchQuery({
+    void queryClient.prefetchInfiniteQuery({
       queryKey: queryKeys.collections(),
-      queryFn: prefetchCollections,
+      queryFn: ({ pageParam }: { pageParam: string | null }) =>
+        prefetchCollections(48, pageParam),
+      initialPageParam: null as string | null,
+      getNextPageParam: (lastPage: CollectionsPrefetchResponse) =>
+        lastPage.hasMore && lastPage.nextCursor ? lastPage.nextCursor : undefined,
       staleTime: 60_000,
     });
   }, [auth.isSignedIn, queryClient]);
@@ -144,10 +196,20 @@ export function SavedObjectsPageContent() {
     },
     onMutate: async (id) => {
       await queryClient.cancelQueries({ queryKey: savedObjectsQueryKey });
-      const previousItems = queryClient.getQueryData<SavedObjectItem[]>(savedObjectsQueryKey) ?? [];
-      queryClient.setQueryData<SavedObjectItem[]>(
+      const previousItems = queryClient.getQueryData<InfiniteData<SavedObjectsResponse>>(
         savedObjectsQueryKey,
-        previousItems.filter((item) => item.id !== id)
+      );
+      queryClient.setQueryData<InfiniteData<SavedObjectsResponse>>(
+        savedObjectsQueryKey,
+        (current) => {
+          if (!current) return current;
+          const nextPages = current.pages.map((page, pageIndex) => ({
+            ...page,
+            objects: page.objects.filter((item) => item.id !== id),
+            total: pageIndex === 0 ? Math.max(0, page.total - 1) : page.total,
+          }));
+          return { ...current, pages: nextPages };
+        }
       );
       return { previousItems };
     },
@@ -330,7 +392,7 @@ export function SavedObjectsPageContent() {
           Catalog objects and events you&apos;ve bookmarked
         </p>
         <p className="mt-2 text-xs uppercase tracking-[0.16em] text-muted-foreground/85">
-          {sortedItems.length} total saved
+          {totalSavedCount} total saved
         </p>
       </div>
       <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center sm:justify-end">
@@ -350,15 +412,15 @@ export function SavedObjectsPageContent() {
           size="sm"
           className="gap-1.5 border-orange-300/30 bg-black/25 text-orange-100 hover:bg-orange-500/15"
           onClick={refreshItems}
-          disabled={isLoading}
-          aria-busy={isLoading}
+          disabled={isLoading || isFetchingNextPage}
+          aria-busy={isLoading || isFetchingNextPage}
         >
-          {isLoading ? (
+          {isLoading || isFetchingNextPage ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
           ) : (
             <RefreshCw className="h-3.5 w-3.5" />
           )}
-          {isLoading ? "Refreshing..." : "Refresh"}
+          {isLoading || isFetchingNextPage ? "Refreshing..." : "Refresh"}
         </Button>
         <ExportButton category="saved-objects" />
       </div>
@@ -556,6 +618,30 @@ export function SavedObjectsPageContent() {
 
                 {virtualizedGrid.bottomSpacerHeight > 0 ? (
                   <div style={{ height: virtualizedGrid.bottomSpacerHeight }} aria-hidden />
+                ) : null}
+
+                {hasNextPage ? (
+                  <div className="py-4 text-center">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        void fetchNextPage();
+                      }}
+                      disabled={isFetchingNextPage}
+                      className="gap-1.5 border-orange-300/30 bg-black/25 text-orange-100 hover:bg-orange-500/15"
+                    >
+                      {isFetchingNextPage ? (
+                        <>
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          Loading...
+                        </>
+                      ) : (
+                        "Load more"
+                      )}
+                    </Button>
+                  </div>
                 ) : null}
               </div>
             ) : (

@@ -3,12 +3,7 @@ import { Suspense } from "react";
 import { getUserDb } from "@/lib/user-db";
 import { BillingContent } from "./billing-content";
 import { getAuthUser } from "@/lib/auth";
-import {
-  getProBillingEnabled,
-  getWaitlistEnabled,
-  isMockUserStoreEnabled,
-} from "@/lib/runtime-mode";
-import { getMockUserRecord } from "@/lib/mock-user-store";
+import { getProBillingEnabled, getWaitlistEnabled } from "@/lib/runtime-mode";
 
 export const metadata: Metadata = {
   title: "Billing",
@@ -24,7 +19,7 @@ export const revalidate = 0;
  *
  * Server component that:
  * 1. Checks authentication (redirects if not signed in)
- * 2. Fetches user tier from database or mock store
+ * 2. Fetches user tier from database
  * 3. Renders client component with tier info
  */
 export default async function BillingPage() {
@@ -44,22 +39,16 @@ export default async function BillingPage() {
   let tier: "free" | "pro" = user.tier;
   let hasStripeCustomer = false;
 
-  if (isMockUserStoreEnabled()) {
-    const mockUser = getMockUserRecord(user.userId);
-    tier = mockUser.tier;
-    hasStripeCustomer = Boolean(mockUser.stripeCustomerId);
-  } else {
-    const db = getUserDb();
-    if (db) {
-      const result = await db.execute({
-        sql: "SELECT tier, stripe_customer_id FROM users WHERE id = ?",
-        args: [user.userId],
-      });
+  const db = getUserDb();
+  if (db) {
+    const result = await db.execute({
+      sql: "SELECT tier, stripe_customer_id FROM users WHERE id = ?",
+      args: [user.userId],
+    });
 
-      if (result.rows.length > 0) {
-        tier = (result.rows[0].tier as "free" | "pro") ?? "free";
-        hasStripeCustomer = !!result.rows[0].stripe_customer_id;
-      }
+    if (result.rows.length > 0) {
+      tier = (result.rows[0].tier as "free" | "pro") ?? "free";
+      hasStripeCustomer = !!result.rows[0].stripe_customer_id;
     }
   }
 

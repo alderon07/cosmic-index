@@ -271,7 +271,7 @@ export function AddToCollectionDialog({
 
         void queryClient.invalidateQueries({ queryKey: membershipsQueryKey });
         void queryClient.invalidateQueries({ queryKey: queryKeys.collections() });
-        void queryClient.invalidateQueries({ queryKey: queryKeys.savedObjects(1, 100) });
+        void queryClient.invalidateQueries({ queryKey: queryKeys.savedObjects(100) });
         void queryClient.invalidateQueries({ queryKey: ["user", "collection-detail", collection.id] });
       } catch (error) {
         queryClient.setQueryData(membershipsQueryKey, previousCollections);
@@ -338,7 +338,7 @@ export function AddToCollectionDialog({
       onMembershipChange?.();
 
       void queryClient.invalidateQueries({ queryKey: queryKeys.collections() });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.savedObjects(1, 100) });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.savedObjects(100) });
       void queryClient.invalidateQueries({ queryKey: membershipsQueryKey });
       void queryClient.invalidateQueries({ queryKey: ["user", "collection-detail", created.id] });
     } catch (error) {

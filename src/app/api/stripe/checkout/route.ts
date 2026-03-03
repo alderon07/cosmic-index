@@ -2,12 +2,7 @@ import { NextResponse } from "next/server";
 import { requireAuth, authErrorResponse } from "@/lib/auth";
 import { requireStripe, STRIPE_PRICES, APP_URL } from "@/lib/stripe";
 import { getUserDb } from "@/lib/user-db";
-import {
-  getProBillingEnabled,
-  isMockStripeEnabled,
-  isMockUserStoreEnabled,
-} from "@/lib/runtime-mode";
-import { setMockUserTier, setMockStripeCustomer } from "@/lib/mock-user-store";
+import { getProBillingEnabled } from "@/lib/runtime-mode";
 
 function buildCheckoutIdempotencyKey(userId: string): string {
   // Coalesce rapid retries/double-clicks into one Checkout Session while
@@ -35,16 +30,6 @@ export async function POST() {
         { error: "feature_disabled", feature: "billing" },
         { status: 403 }
       );
-    }
-
-    if (isMockStripeEnabled()) {
-      if (isMockUserStoreEnabled()) {
-        setMockUserTier(user.userId, "pro");
-        setMockStripeCustomer(user.userId, "cus_mock_pro");
-      }
-      return NextResponse.json({
-        url: `${APP_URL}/settings/billing?success=true&mock=1`,
-      });
     }
 
     const stripe = requireStripe();

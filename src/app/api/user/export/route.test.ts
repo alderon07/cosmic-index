@@ -3,8 +3,99 @@ import type { NextRequest } from "next/server";
 
 let mockRequireAuth = async () => ({ userId: "user-1", tier: "free" as const });
 
+const savedRows = [
+  {
+    id: 21,
+    canonical_id: "cme:09cb02ec9d49485d6e861e6d",
+    display_name: "Coronal Mass Ejection Feb 28, 2026",
+    notes: null,
+    event_payload: JSON.stringify({
+      id: "2026-02-28T07:09:00-CME-001",
+      eventType: "CME",
+      startTime: "2026-02-28T07:09Z",
+      sourceLocation: "",
+      activeRegionNum: null,
+      speed: 330,
+      halfAngle: 29,
+      cmeType: "S",
+    }),
+    created_at: "2026-03-01 01:30:41",
+  },
+  {
+    id: 22,
+    canonical_id: "exoplanet:GJ%203090%20c",
+    display_name: "GJ 3090 c",
+    notes: "interesting target",
+    event_payload: null,
+    created_at: "2026-03-01 01:40:19",
+  },
+];
+
+const collectionRows = [
+  {
+    id: 11,
+    canonical_id: "star:TRAPPIST-1",
+    display_name: "TRAPPIST-1",
+    notes: "Primary target",
+    event_payload: null,
+    created_at: "2026-01-01T00:00:00.000Z",
+  },
+];
+
+const mockDb = {
+  execute: async ({ sql, args }: { sql: string; args?: unknown[] }) => {
+    if (sql.includes("SELECT COUNT(*) as request_count") && sql.includes("FROM export_history")) {
+      return { rows: [{ request_count: 0 }] };
+    }
+
+    if (sql.includes("COALESCE(SUM(exported_count), 0) as rows_used") && sql.includes("FROM export_history")) {
+      return { rows: [{ rows_used: 0 }] };
+    }
+
+    if (sql.includes("INSERT INTO export_history")) {
+      return { rows: [], lastInsertRowid: 1 };
+    }
+
+    if (sql.includes("UPDATE export_history")) {
+      return { rows: [] };
+    }
+
+    if (sql.includes("FROM collections") && sql.includes("WHERE id = ? AND user_id = ?")) {
+      const collectionId = Number(args?.[0] ?? 0);
+      return { rows: collectionId === 1 ? [{ id: 1 }] : [] };
+    }
+
+    if (sql.includes("FROM saved_objects") && sql.includes("ORDER BY created_at DESC")) {
+      const limit = Number(args?.[1] ?? 0);
+      const offset = Number(args?.[2] ?? 0);
+      return { rows: savedRows.slice(offset, offset + limit) };
+    }
+
+    if (sql.includes("FROM collection_items ci") && sql.includes("JOIN saved_objects so")) {
+      const limit = Number(args?.[2] ?? 0);
+      const offset = Number(args?.[3] ?? 0);
+      return { rows: collectionRows.slice(offset, offset + limit) };
+    }
+
+    return { rows: [] };
+  },
+};
+
 mock.module("@/lib/auth", () => ({
+  getAuthUser: async () => {
+    try {
+      return await mockRequireAuth();
+    } catch {
+      return null;
+    }
+  },
   requireAuth: () => mockRequireAuth(),
+  requirePro: async () => ({
+    userId: "user-1",
+    email: "user@example.com",
+    tier: "pro" as const,
+    isPro: true,
+  }),
   authErrorResponse: (error: unknown) => {
     if (error instanceof Error) {
       return new Response(JSON.stringify({ error: error.message }), { status: 401 });
@@ -14,84 +105,21 @@ mock.module("@/lib/auth", () => ({
 }));
 
 mock.module("@/lib/user-db", () => ({
-  getUserDb: () => null,
-  requireUserDb: () => null,
+  getUserDb: () => mockDb,
+  requireUserDb: () => mockDb,
 }));
 
 mock.module("@/lib/runtime-mode", () => ({
-  isMockUserStoreEnabled: () => true,
-  getConfiguredLimitMode: () => "enforce",
+  isClerkServerConfigured: () => true,
+  isClerkClientConfigured: () => true,
+  getConfiguredLimitMode: () => "shadow",
   getForceEnforce: () => false,
   getWaitlistEnabled: () => false,
   getWaitlistEnforceThreshold: () => 125,
   getProSurfacesEnabled: () => false,
   getProBillingEnabled: () => false,
+  getInternalAdminIds: () => [],
   getProRolloutAdminIds: () => [],
-}));
-
-mock.module("@/lib/mock-user-store", () => ({
-  listSavedObjects: () => ({
-    objects: [
-      {
-        id: 21,
-        canonicalId: "cme:09cb02ec9d49485d6e861e6d",
-        displayName: "Coronal Mass Ejection Feb 28, 2026",
-        notes: null,
-        eventPayload: {
-          id: "2026-02-28T07:09:00-CME-001",
-          eventType: "CME",
-          startTime: "2026-02-28T07:09Z",
-          sourceLocation: "",
-          activeRegionNum: null,
-          speed: 330,
-          halfAngle: 29,
-          cmeType: "S",
-        },
-        createdAt: "2026-03-01 01:30:41",
-      },
-      {
-        id: 22,
-        canonicalId: "exoplanet:GJ%203090%20c",
-        displayName: "GJ 3090 c",
-        notes: "interesting target",
-        eventPayload: null,
-        createdAt: "2026-03-01 01:40:19",
-      },
-    ],
-  }),
-  getCollectionWithItems: () => ({
-    collection: {
-      id: 1,
-      name: "Weekly Watchlist",
-      description: null,
-      color: "#f97316",
-      icon: "folder",
-      isPublic: false,
-      createdAt: "2026-01-01T00:00:00.000Z",
-      updatedAt: "2026-01-01T00:00:00.000Z",
-      itemCount: 1,
-    },
-    items: [
-      {
-        id: 11,
-        canonicalId: "star:TRAPPIST-1",
-        displayName: "TRAPPIST-1",
-        notes: "Primary target",
-        eventPayload: null,
-        createdAt: "2026-01-01T00:00:00.000Z",
-        position: 0,
-      },
-    ],
-  }),
-  saveObject: () => null,
-  countSavedObjects: () => 0,
-  countSavedObjectsSince: () => 0,
-  getSavedObjectByCanonicalId: () => null,
-  listSavedSearches: () => [],
-  createSavedSearch: () => null,
-  countSavedSearches: () => 0,
-  hasSavedSearchByHash: () => false,
-  listCollectionsForSavedObject: () => null,
 }));
 
 mock.module("@/lib/exoplanet-index", () => ({
@@ -259,9 +287,9 @@ describe("/api/user/export", () => {
     expect(res.status).toBe(200);
     expect(res.headers.get("Content-Type")).toContain("application/x-ndjson");
     const text = await res.text();
-    expect(text).toContain("\"schema\":\"v1\"");
+    expect(text).toContain('"schema":"v1"');
     expect(text).toContain("Kepler-22b");
-    expect(text).toContain("\"status\":\"complete\"");
+    expect(text).toContain('"status":"complete"');
   });
 
   it("rejects invalid cursor", async () => {
@@ -325,7 +353,7 @@ describe("/api/user/export", () => {
     const res = await POST(req as unknown as NextRequest);
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.data[0]?.event_payload_json).toContain("\"eventType\":\"CME\"");
+    expect(body.data[0]?.event_payload_json).toContain('"eventType":"CME"');
   });
 
   it("adds decoded keys and app links for saved objects", async () => {

@@ -1,12 +1,11 @@
 import { NextFetchEvent, NextRequest, NextResponse } from "next/server";
-import { isClerkServerConfigured, isMockAuthEnabled } from "@/lib/runtime-mode";
+import { isClerkServerConfigured } from "@/lib/runtime-mode";
 
 /**
  * Authentication middleware.
  *
- * - Mock mode: no redirects, allows local development without Clerk.
  * - Clerk mode: page protection is enforced by Clerk middleware.
- * - Fallback mode: when auth is disabled and Clerk is not configured,
+ * - Fallback mode: when Clerk is not configured,
  *   protected pages redirect home.
  */
 
@@ -20,10 +19,6 @@ export default async function proxy(request: NextRequest, event: NextFetchEvent)
     (pathname.startsWith("/api/docs") ||
       pathname.startsWith("/api/internal/openapi") ||
       pathname.startsWith("/openapi.json"));
-
-  if (isMockAuthEnabled()) {
-    return NextResponse.next();
-  }
 
   if (!isClerkServerConfigured()) {
     if (isProtectedPage) {

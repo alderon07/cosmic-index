@@ -2,12 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requirePro, authErrorResponse } from "@/lib/auth";
 import { requireUserDb } from "@/lib/user-db";
 import { UpdateAlertSchema, Alert } from "@/lib/types";
-import { getProSurfacesEnabled, isMockUserStoreEnabled } from "@/lib/runtime-mode";
-import {
-  deleteAlert,
-  getAlertById,
-  updateAlert,
-} from "@/lib/mock-user-store";
+import { getProSurfacesEnabled } from "@/lib/runtime-mode";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -37,14 +32,6 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const alertId = parseInt(id, 10);
     if (isNaN(alertId)) {
       return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
-    }
-
-    if (isMockUserStoreEnabled()) {
-      const alert = getAlertById(user.userId, alertId);
-      if (!alert) {
-        return NextResponse.json({ error: "Not found" }, { status: 404 });
-      }
-      return NextResponse.json(alert);
     }
 
     const db = requireUserDb();
@@ -109,15 +96,6 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     }
 
     const updates = parseResult.data;
-
-    if (isMockUserStoreEnabled()) {
-      const updated = updateAlert(user.userId, alertId, updates);
-      if (!updated) {
-        return NextResponse.json({ error: "Not found" }, { status: 404 });
-      }
-      return NextResponse.json(updated);
-    }
-
     const db = requireUserDb();
 
     // Build dynamic UPDATE query
@@ -187,14 +165,6 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     const alertId = parseInt(id, 10);
     if (isNaN(alertId)) {
       return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
-    }
-
-    if (isMockUserStoreEnabled()) {
-      const deleted = deleteAlert(user.userId, alertId);
-      if (!deleted) {
-        return NextResponse.json({ error: "Not found" }, { status: 404 });
-      }
-      return NextResponse.json({ success: true });
     }
 
     const db = requireUserDb();

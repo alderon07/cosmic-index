@@ -3,11 +3,6 @@ import { requireAuth, authErrorResponse } from "@/lib/auth";
 import { requireUserDb } from "@/lib/user-db";
 import { AddToCollectionSchema } from "@/lib/types";
 import { z } from "zod";
-import { isMockUserStoreEnabled } from "@/lib/runtime-mode";
-import {
-  addCollectionItem,
-  removeCollectionItem,
-} from "@/lib/mock-user-store";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -47,37 +42,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     const { savedObjectId, position } = parseResult.data;
-
-    if (isMockUserStoreEnabled()) {
-      const result = addCollectionItem({
-        userId: user.userId,
-        collectionId,
-        savedObjectId,
-        position,
-      });
-
-      if (result === "COLLECTION_NOT_FOUND") {
-        return NextResponse.json(
-          { error: "resource_not_found", message: "Resource not found." },
-          { status: 404 }
-        );
-      }
-      if (result === "OBJECT_NOT_FOUND") {
-        return NextResponse.json(
-          { error: "resource_not_found", message: "Resource not found." },
-          { status: 404 }
-        );
-      }
-      if (result === "DUPLICATE") {
-        return NextResponse.json(
-          { error: "item_already_in_collection", message: "Item already in collection." },
-          { status: 409 }
-        );
-      }
-
-      return NextResponse.json(result, { status: 201 });
-    }
-
     const db = requireUserDb();
 
     // Verify collection ownership
@@ -176,24 +140,6 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     }
 
     const { savedObjectId } = parseResult.data;
-
-    if (isMockUserStoreEnabled()) {
-      const removed = removeCollectionItem({
-        userId: user.userId,
-        collectionId,
-        savedObjectId,
-      });
-
-      if (!removed) {
-        return NextResponse.json(
-          { error: "item_not_in_collection", message: "Resource not found." },
-          { status: 404 }
-        );
-      }
-
-      return NextResponse.json({ success: true });
-    }
-
     const db = requireUserDb();
 
     // Verify collection ownership (implicitly through join)

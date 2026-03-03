@@ -3,13 +3,6 @@ import { requireAuth, authErrorResponse } from "@/lib/auth";
 import { requireUserDb } from "@/lib/user-db";
 import { CreateSavedSearchSchema, SavedSearch } from "@/lib/types";
 import { canonicalizeAndHash } from "@/lib/saved-searches";
-import { isMockUserStoreEnabled } from "@/lib/runtime-mode";
-import {
-  countSavedSearches,
-  createSavedSearch,
-  hasSavedSearchByHash,
-  listSavedSearches,
-} from "@/lib/mock-user-store";
 import { getTierLimits, getUpgradePayload } from "@/lib/tier-limits";
 import { resolveLimitMode, toLimitPolicyMetadata } from "@/lib/feature-policy";
 import { recordLimitHitWithDedup } from "@/lib/waitlist";
@@ -31,25 +24,8 @@ export async function GET(request: NextRequest) {
         ? category
         : undefined;
 
-    const useMockStore = isMockUserStoreEnabled();
-    const db = useMockStore ? null : requireUserDb();
+    const db = requireUserDb();
     const limitMode = await resolveLimitMode({ db });
-
-    if (useMockStore) {
-      const searches = listSavedSearches(user.userId, parsedCategory);
-      const total = countSavedSearches(user.userId);
-      return NextResponse.json({
-        searches,
-        usage: {
-          current: total,
-          limit: limits.MAX_SAVED_SEARCHES,
-          remaining: Math.max(0, limits.MAX_SAVED_SEARCHES - total),
-        },
-        limitPolicy: toLimitPolicyMetadata(limitMode, false),
-      });
-    }
-
-    const ensuredDb = db ?? requireUserDb();
 
     let sql = `
       SELECT id, name, category, query_params, result_count, last_executed_at, created_at
@@ -66,8 +42,8 @@ export async function GET(request: NextRequest) {
     sql += " ORDER BY last_executed_at DESC NULLS LAST, created_at DESC";
 
     const [result, countResult] = await Promise.all([
-      ensuredDb.execute({ sql, args }),
-      ensuredDb.execute({
+      db.execute({ sql, args }),
+      db.execute({
         sql: "SELECT COUNT(*) as total FROM saved_searches WHERE user_id = ?",
         args: [user.userId],
       }),
@@ -124,53 +100,11 @@ export async function POST(request: NextRequest) {
     const { name, category, queryParams } = parseResult.data;
     const { canonical, hash } = canonicalizeAndHash(queryParams);
 
-    const useMockStore = isMockUserStoreEnabled();
-    const db = useMockStore ? null : requireUserDb();
+    const db = requireUserDb();
     const limitMode = await resolveLimitMode({ db });
     let wouldBlock = false;
 
-    if (useMockStore) {
-      const isDuplicate = hasSavedSearchByHash(user.userId, category, hash);
-      if (!isDuplicate) {
-        const total = countSavedSearches(user.userId);
-        if (total >= limits.MAX_SAVED_SEARCHES) {
-          wouldBlock = true;
-          void recordLimitHitWithDedup({ db, userId: user.userId, feature: "saved_searches" });
-
-          if (limitMode.effectiveMode === "enforce") {
-            return NextResponse.json(
-              {
-                error: "saved_searches_limit_reached",
-                message: `You've reached your limit of ${limits.MAX_SAVED_SEARCHES} saved searches.`,
-                current: total,
-                limit: limits.MAX_SAVED_SEARCHES,
-                upgrade: getUpgradePayload("saved_searches"),
-                limitPolicy: toLimitPolicyMetadata(limitMode, true),
-              },
-              { status: 403 }
-            );
-          }
-        }
-      }
-
-      const savedSearch = createSavedSearch({
-        userId: user.userId,
-        name,
-        category,
-        queryParams,
-      });
-      return NextResponse.json(
-        {
-          ...savedSearch,
-          limitPolicy: toLimitPolicyMetadata(limitMode, wouldBlock),
-        },
-        { status: 201 }
-      );
-    }
-
-    const ensuredDb = db ?? requireUserDb();
-
-    const duplicateResult = await ensuredDb.execute({
+    const duplicateResult = await db.execute({
       sql: `
         SELECT id
         FROM saved_searches
@@ -181,7 +115,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (duplicateResult.rows.length === 0) {
-      const countResult = await ensuredDb.execute({
+      const countResult = await db.execute({
         sql: "SELECT COUNT(*) as total FROM saved_searches WHERE user_id = ?",
         args: [user.userId],
       });
@@ -207,7 +141,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    await ensuredDb.execute({
+    await db.execute({
       sql: `
         INSERT INTO saved_searches (user_id, name, category, query_params, params_hash, last_executed_at)
         VALUES (?, ?, ?, ?, ?, datetime('now'))
@@ -218,7 +152,7 @@ export async function POST(request: NextRequest) {
       args: [user.userId, name, category, canonical, hash],
     });
 
-    const result = await ensuredDb.execute({
+    const result = await db.execute({
       sql: `
         SELECT id, name, category, query_params, result_count, last_executed_at, created_at
         FROM saved_searches

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, mock } from "bun:test";
+import { afterAll, beforeEach, describe, expect, it, mock } from "bun:test";
 import type { NextRequest } from "next/server";
 
 let mockRequireAuth = async () => ({ userId: "user-1", email: "user@example.com", tier: "free" as const });
@@ -7,7 +7,6 @@ const mockDb = {};
 const mockUpsertWaitlistSignup = mock(async () => "joined");
 const mockIncrementWaitlistSignupsDaily = mock(async () => {});
 const mockCleanupWaitlistArtifacts = mock(async () => {});
-const mockInvalidateWaitlistCountCache = mock(() => {});
 const mockCheckWaitlistRateLimit = mock(async () => ({
   allowed: true,
   retryAfterSec: 0,
@@ -15,7 +14,20 @@ const mockCheckWaitlistRateLimit = mock(async () => ({
 }));
 
 mock.module("@/lib/auth", () => ({
+  getAuthUser: async () => {
+    try {
+      return await mockRequireAuth();
+    } catch {
+      return null;
+    }
+  },
   requireAuth: () => mockRequireAuth(),
+  requirePro: async () => ({
+    userId: "user-1",
+    email: "user@example.com",
+    tier: "pro" as const,
+    isPro: true,
+  }),
   authErrorResponse: (error: unknown) => {
     if (error instanceof Error) {
       return new Response(JSON.stringify({ error: error.message }), { status: 401 });
@@ -25,15 +37,21 @@ mock.module("@/lib/auth", () => ({
 }));
 
 mock.module("@/lib/runtime-mode", () => ({
+  isClerkServerConfigured: () => true,
+  isClerkClientConfigured: () => true,
+  getConfiguredLimitMode: () => "shadow",
+  getForceEnforce: () => false,
   getWaitlistEnabled: () => true,
+  getWaitlistEnforceThreshold: () => 125,
+  getProSurfacesEnabled: () => false,
+  getProBillingEnabled: () => false,
+  getInternalAdminIds: () => [],
+  getProRolloutAdminIds: () => [],
 }));
 
 mock.module("@/lib/user-db", () => ({
   getUserDb: () => mockDb,
-}));
-
-mock.module("@/lib/feature-policy", () => ({
-  invalidateWaitlistCountCache: () => mockInvalidateWaitlistCountCache(),
+  requireUserDb: () => mockDb,
 }));
 
 mock.module("@/lib/waitlist-rate-limit", () => ({
@@ -44,22 +62,27 @@ mock.module("@/lib/waitlist-rate-limit", () => ({
 mock.module("@/lib/waitlist", () => ({
   parseWaitlistSource: () => "billing",
   normalizeEmail: (value: string) => value.trim().toLowerCase(),
+  getActiveWaitlistCount: async () => 0,
   upsertWaitlistSignup: (...args: Parameters<typeof mockUpsertWaitlistSignup>) =>
     mockUpsertWaitlistSignup(...args),
   incrementWaitlistSignupsDaily: (...args: Parameters<typeof mockIncrementWaitlistSignupsDaily>) =>
     mockIncrementWaitlistSignupsDaily(...args),
+  recordLimitHitWithDedup: async () => {},
   cleanupWaitlistArtifacts: (...args: Parameters<typeof mockCleanupWaitlistArtifacts>) =>
     mockCleanupWaitlistArtifacts(...args),
 }));
 
 const { POST } = await import("@/app/api/waitlist/route");
 
+afterAll(() => {
+  mock.restore();
+});
+
 beforeEach(() => {
   mockRequireAuth = async () => ({ userId: "user-1", email: "user@example.com", tier: "free" as const });
   mockUpsertWaitlistSignup.mockClear();
   mockIncrementWaitlistSignupsDaily.mockClear();
   mockCleanupWaitlistArtifacts.mockClear();
-  mockInvalidateWaitlistCountCache.mockClear();
   mockCheckWaitlistRateLimit.mockClear();
 });
 
@@ -105,7 +128,6 @@ describe("POST /api/waitlist", () => {
     expect(rateLimitParams.emailNormalized).toBe("user@example.com");
     expect(mockIncrementWaitlistSignupsDaily).toHaveBeenCalledTimes(1);
     expect(mockCleanupWaitlistArtifacts).toHaveBeenCalledTimes(1);
-    expect(mockInvalidateWaitlistCountCache).toHaveBeenCalledTimes(1);
   });
 
   it("rejects attempts to submit an email different from the authenticated account email", async () => {

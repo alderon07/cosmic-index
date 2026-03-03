@@ -10,11 +10,11 @@ export const queryKeys = {
     ["events", "space-weather", fetchKey] as const,
   spaceWeatherNotifications: (fetchKey: string) =>
     ["events", "space-weather", "notifications", fetchKey] as const,
-  savedObjects: (page = 1, limit = 100) =>
-    ["user", "saved-objects", page, limit] as const,
-  collections: () => ["user", "collections"] as const,
-  collectionDetail: (collectionId: number, page = 1, limit = 24) =>
-    ["user", "collection-detail", collectionId, page, limit] as const,
+  savedObjects: (limit = 100) =>
+    ["user", "saved-objects", "cursor", limit] as const,
+  collections: () => ["user", "collections", "cursor"] as const,
+  collectionDetail: (collectionId: number, limit = 24) =>
+    ["user", "collection-detail", collectionId, "cursor", limit] as const,
   savedObjectCollections: (savedObjectId: number) =>
     ["user", "saved-object-collections", savedObjectId] as const,
 };

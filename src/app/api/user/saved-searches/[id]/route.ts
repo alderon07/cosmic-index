@@ -3,12 +3,6 @@ import { requireAuth, authErrorResponse } from "@/lib/auth";
 import { requireUserDb } from "@/lib/user-db";
 import { SavedSearch } from "@/lib/types";
 import { z } from "zod";
-import { isMockUserStoreEnabled } from "@/lib/runtime-mode";
-import {
-  deleteSavedSearch,
-  getSavedSearchById,
-  updateSavedSearch,
-} from "@/lib/mock-user-store";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -32,14 +26,6 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const searchId = parseInt(id, 10);
     if (isNaN(searchId)) {
       return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
-    }
-
-    if (isMockUserStoreEnabled()) {
-      const search = getSavedSearchById(user.userId, searchId);
-      if (!search) {
-        return NextResponse.json({ error: "Not found" }, { status: 404 });
-      }
-      return NextResponse.json(search);
     }
 
     const db = requireUserDb();
@@ -101,15 +87,6 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     }
 
     const updates = parseResult.data;
-
-    if (isMockUserStoreEnabled()) {
-      const updated = updateSavedSearch(user.userId, searchId, updates);
-      if (!updated) {
-        return NextResponse.json({ error: "Not found" }, { status: 404 });
-      }
-      return NextResponse.json(updated);
-    }
-
     const db = requireUserDb();
 
     // Build dynamic UPDATE query
@@ -171,14 +148,6 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     const searchId = parseInt(id, 10);
     if (isNaN(searchId)) {
       return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
-    }
-
-    if (isMockUserStoreEnabled()) {
-      const deleted = deleteSavedSearch(user.userId, searchId);
-      if (!deleted) {
-        return NextResponse.json({ error: "Not found" }, { status: 404 });
-      }
-      return NextResponse.json({ success: true });
     }
 
     const db = requireUserDb();

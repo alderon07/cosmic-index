@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/auth";
 import { isInternalAdmin, isInternalAdminConfigured } from "@/lib/admin-access";
-import { isClerkServerConfigured, isMockAuthEnabled } from "@/lib/runtime-mode";
+import { isClerkServerConfigured } from "@/lib/runtime-mode";
 import openApiSpec from "@/lib/openapi/openapi.json";
 
 export const runtime = "nodejs";
@@ -38,9 +38,9 @@ export async function GET() {
     return specResponse();
   }
 
-  if (!isClerkServerConfigured() || isMockAuthEnabled()) {
+  if (!isClerkServerConfigured()) {
     console.error(
-      "[internal-openapi] blocked due to production auth misconfiguration (Clerk missing or mock auth enabled)."
+      "[internal-openapi] blocked due to production auth misconfiguration (Clerk missing)."
     );
     return blockedResponse();
   }

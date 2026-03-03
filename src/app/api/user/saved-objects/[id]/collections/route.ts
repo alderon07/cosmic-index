@@ -1,7 +1,5 @@
 import { requireAuth, authErrorResponse } from "@/lib/auth";
 import { requireUserDb } from "@/lib/user-db";
-import { isMockUserStoreEnabled } from "@/lib/runtime-mode";
-import { listCollectionsForSavedObject } from "@/lib/mock-user-store";
 import { ServerTiming } from "@/lib/server-timing";
 
 interface RouteParams {
@@ -25,23 +23,6 @@ export async function GET(request: Request, { params }: RouteParams) {
         { error: "invalid_id", message: "Invalid ID." },
         { status: 400 }
       );
-    }
-
-    if (isMockUserStoreEnabled()) {
-      const collections = timing.measureSync("mock_list_membership", () =>
-        listCollectionsForSavedObject(user.userId, savedObjectId)
-      );
-      if (!collections) {
-        return timing.json(
-          { error: "resource_not_found", message: "Resource not found." },
-          { status: 404 }
-        );
-      }
-
-      return timing.json({
-        savedObjectId,
-        collections,
-      });
     }
 
     const db = timing.measureSync("resolve_db", () => requireUserDb());

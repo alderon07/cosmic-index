@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { ApiReference } from "@scalar/nextjs-api-reference";
 import { getAuthUser } from "@/lib/auth";
 import { isInternalAdmin, isInternalAdminConfigured } from "@/lib/admin-access";
-import { isClerkServerConfigured, isMockAuthEnabled } from "@/lib/runtime-mode";
+import { isClerkServerConfigured } from "@/lib/runtime-mode";
 
 const apiDocsHandler = ApiReference({
   url: "/api/internal/openapi",
@@ -32,9 +32,9 @@ function blockedResponse() {
 async function assertInternalAdminAccess() {
   if (process.env.NODE_ENV !== "production") return null;
 
-  if (!isClerkServerConfigured() || isMockAuthEnabled()) {
+  if (!isClerkServerConfigured()) {
     console.error(
-      "[internal-docs] blocked due to production auth misconfiguration (Clerk missing or mock auth enabled)."
+      "[internal-docs] blocked due to production auth misconfiguration (Clerk missing)."
     );
     return blockedResponse();
   }

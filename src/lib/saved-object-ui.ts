@@ -54,7 +54,7 @@ export function toExoplanetDetailId(id: string): string {
   // Current IDs are URI-encoded names (e.g. "Kepler-186%20f").
   if (/%[0-9a-f]{2}/i.test(id)) return id;
 
-  // Backward compatibility for legacy kebab slugs in old/mock saved data
+  // Backward compatibility for legacy kebab slugs in legacy saved data
   // (e.g. "kepler-186-f" -> "kepler-186%20f").
   const lastDash = id.lastIndexOf("-");
   if (lastDash <= 0 || lastDash >= id.length - 1) return id;
