@@ -110,6 +110,16 @@ mock.module("@/lib/user-db", () => ({
 }));
 
 mock.module("@/lib/runtime-mode", () => ({
+  getProGate: () => ({
+    productEnabled: false,
+    billingEnabled: false,
+    surfacesEnabled: false,
+    waitlistEnabled: false,
+    configuredLimitMode: "shadow" as const,
+    forceEnforce: false,
+    waitlistEnforceThreshold: 125,
+  }),
+  isProFeatureEnabled: () => false,
   isClerkServerConfigured: () => true,
   isClerkClientConfigured: () => true,
   getConfiguredLimitMode: () => "shadow",

@@ -1,4 +1,15 @@
 export type LimitMode = "shadow" | "warn" | "enforce";
+export type ProFeature = "billing" | "pro_surfaces" | "waitlist";
+
+export interface ProGate {
+  productEnabled: boolean;
+  billingEnabled: boolean;
+  surfacesEnabled: boolean;
+  waitlistEnabled: boolean;
+  configuredLimitMode: LimitMode;
+  forceEnforce: boolean;
+  waitlistEnforceThreshold: number;
+}
 
 function envEnabled(value: string | undefined): boolean {
   if (!value) return false;
@@ -29,52 +40,53 @@ export function isClerkClientConfigured(): boolean {
   return Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
 }
 
+function getServerFlag(value: string | undefined, fallback: boolean): boolean {
+  if (envEnabled(value)) return true;
+  if (envDisabled(value)) return false;
+  return fallback;
+}
+
+export function getProGate(): ProGate {
+  const productEnabled = getServerFlag(process.env.PRO_PRODUCT_ENABLED, false);
+
+  return {
+    productEnabled,
+    surfacesEnabled: getServerFlag(process.env.PRO_SURFACES_ENABLED, productEnabled),
+    billingEnabled: getServerFlag(process.env.PRO_BILLING_ENABLED, productEnabled),
+    waitlistEnabled: getServerFlag(process.env.WAITLIST_ENABLED, !productEnabled),
+    configuredLimitMode: getConfiguredLimitMode(),
+    forceEnforce: getForceEnforce(),
+    waitlistEnforceThreshold: getWaitlistEnforceThreshold(),
+  };
+}
+
+export function getProProductEnabled(): boolean {
+  return getProGate().productEnabled;
+}
+
+export function isProFeatureEnabled(feature: ProFeature): boolean {
+  const gate = getProGate();
+
+  switch (feature) {
+    case "billing":
+      return gate.billingEnabled;
+    case "pro_surfaces":
+      return gate.surfacesEnabled;
+    case "waitlist":
+      return gate.waitlistEnabled;
+  }
+}
+
 export function getProSurfacesEnabled(): boolean {
-  if (
-    envEnabled(process.env.PRO_SURFACES_ENABLED) ||
-    envEnabled(process.env.NEXT_PUBLIC_PRO_SURFACES_ENABLED)
-  ) {
-    return true;
-  }
-  if (
-    envDisabled(process.env.PRO_SURFACES_ENABLED) ||
-    envDisabled(process.env.NEXT_PUBLIC_PRO_SURFACES_ENABLED)
-  ) {
-    return false;
-  }
-  return false;
+  return getProGate().surfacesEnabled;
 }
 
 export function getProBillingEnabled(): boolean {
-  if (
-    envEnabled(process.env.PRO_BILLING_ENABLED) ||
-    envEnabled(process.env.NEXT_PUBLIC_PRO_BILLING_ENABLED)
-  ) {
-    return true;
-  }
-  if (
-    envDisabled(process.env.PRO_BILLING_ENABLED) ||
-    envDisabled(process.env.NEXT_PUBLIC_PRO_BILLING_ENABLED)
-  ) {
-    return false;
-  }
-  return false;
+  return getProGate().billingEnabled;
 }
 
 export function getWaitlistEnabled(): boolean {
-  if (
-    envEnabled(process.env.WAITLIST_ENABLED) ||
-    envEnabled(process.env.NEXT_PUBLIC_WAITLIST_ENABLED)
-  ) {
-    return true;
-  }
-  if (
-    envDisabled(process.env.WAITLIST_ENABLED) ||
-    envDisabled(process.env.NEXT_PUBLIC_WAITLIST_ENABLED)
-  ) {
-    return false;
-  }
-  return true;
+  return getProGate().waitlistEnabled;
 }
 
 export function getConfiguredLimitMode(): LimitMode {

@@ -5,7 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { WaitlistCta } from "@/components/waitlist/waitlist-cta";
 import { PRO_FEATURES } from "@/lib/pro-features";
-import { getWaitlistEnabled } from "@/lib/runtime-mode";
+import { getAuthUser } from "@/lib/auth";
+import { resolveProAccess } from "@/lib/pro-access";
 import { TIER_LIMITS } from "@/lib/tier-limits";
 import { ACCOUNT_CARD_TONE } from "@/lib/theme";
 
@@ -54,8 +55,9 @@ const PLAN_LIMIT_COMPARISON = [
   },
 ];
 
-export default function WaitlistPage() {
-  const waitlistEnabled = getWaitlistEnabled();
+export default async function WaitlistPage() {
+  const proAccess = resolveProAccess(await getAuthUser());
+  const waitlistEnabled = proAccess.canAccessWaitlist;
 
   return (
     <div className="shell-container py-10 sm:py-12">
@@ -79,6 +81,12 @@ export default function WaitlistPage() {
         <CardContent className="space-y-5">
           {waitlistEnabled ? (
             <WaitlistCta source="pro_badge" />
+          ) : proAccess.gate.productEnabled ? (
+            <div className="space-y-3 rounded-md border border-border/70 bg-muted/20 p-4">
+              <p className="text-sm text-muted-foreground">
+                Pro is live. Visit billing to upgrade when you&apos;re ready.
+              </p>
+            </div>
           ) : (
             <div className="space-y-3 rounded-md border border-border/70 bg-muted/20 p-4">
               <p className="text-sm text-muted-foreground">

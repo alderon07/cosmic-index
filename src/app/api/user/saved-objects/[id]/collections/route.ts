@@ -1,4 +1,5 @@
 import { requireAuth, authErrorResponse } from "@/lib/auth";
+import { resolveProAccess } from "@/lib/pro-access";
 import { requireUserDb } from "@/lib/user-db";
 import { ServerTiming } from "@/lib/server-timing";
 
@@ -15,6 +16,9 @@ export async function GET(request: Request, { params }: RouteParams) {
   const timing = new ServerTiming();
   try {
     const user = await timing.measure("auth", () => requireAuth());
+    if (!resolveProAccess(user).canAccessCollections) {
+      return timing.json({ error: "feature_disabled", feature: "collections" }, { status: 403 });
+    }
     const { id } = await timing.measure("resolve_params", () => params);
 
     const savedObjectId = Number.parseInt(id, 10);

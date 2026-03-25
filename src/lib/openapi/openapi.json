@@ -1758,6 +1758,9 @@
           },
           "401": {
             "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Collections unavailable until Pro is publicly enabled"
           }
         }
       },
@@ -1777,6 +1780,9 @@
           },
           "401": {
             "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Collections unavailable until Pro is publicly enabled"
           },
           "409": {
             "description": "Duplicate collection name"
@@ -1832,8 +1838,146 @@
           "401": {
             "description": "Unauthorized"
           },
+          "403": {
+            "description": "Collections unavailable until Pro is publicly enabled"
+          },
           "404": {
             "description": "Resource not found"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateCollection",
+        "summary": "Update collection",
+        "description": "Update collection metadata for the signed-in user.",
+        "tags": [
+          "User"
+        ],
+        "responses": {
+          "200": {
+            "description": "Collection updated"
+          },
+          "400": {
+            "description": "Invalid ID or request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Collections unavailable until Pro is publicly enabled"
+          },
+          "404": {
+            "description": "Resource not found"
+          },
+          "409": {
+            "description": "Duplicate collection name"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteCollection",
+        "summary": "Delete collection",
+        "description": "Delete a collection belonging to the signed-in user.",
+        "tags": [
+          "User"
+        ],
+        "responses": {
+          "200": {
+            "description": "Collection deleted"
+          },
+          "400": {
+            "description": "Invalid ID"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Collections unavailable until Pro is publicly enabled"
+          },
+          "404": {
+            "description": "Resource not found"
+          }
+        }
+      }
+    },
+    "/user/collections/{id}/items": {
+      "post": {
+        "operationId": "addCollectionItem",
+        "summary": "Add collection item",
+        "description": "Add a saved object to one of the signed-in user's collections.",
+        "tags": [
+          "User"
+        ],
+        "responses": {
+          "201": {
+            "description": "Item added to collection"
+          },
+          "400": {
+            "description": "Invalid ID or request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Collections unavailable until Pro is publicly enabled"
+          },
+          "404": {
+            "description": "Collection or saved object not found"
+          },
+          "409": {
+            "description": "Item already in collection"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "removeCollectionItem",
+        "summary": "Remove collection item",
+        "description": "Remove a saved object from one of the signed-in user's collections.",
+        "tags": [
+          "User"
+        ],
+        "responses": {
+          "200": {
+            "description": "Item removed from collection"
+          },
+          "400": {
+            "description": "Invalid ID or request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Collections unavailable until Pro is publicly enabled"
+          },
+          "404": {
+            "description": "Item or collection not found"
+          }
+        }
+      }
+    },
+    "/user/saved-objects/{id}/collections": {
+      "get": {
+        "operationId": "listSavedObjectCollections",
+        "summary": "List saved object collection memberships",
+        "description": "List the signed-in user's collections and whether a saved object belongs to each one.",
+        "tags": [
+          "User"
+        ],
+        "responses": {
+          "200": {
+            "description": "Collection memberships"
+          },
+          "400": {
+            "description": "Invalid saved object ID"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Collections unavailable until Pro is publicly enabled"
+          },
+          "404": {
+            "description": "Saved object not found"
           }
         }
       }
@@ -1982,11 +2126,59 @@
         }
       }
     },
+    "/stripe/checkout": {
+      "post": {
+        "operationId": "startStripeCheckout",
+        "summary": "Start Pro checkout",
+        "description": "Create a Stripe Checkout session for the signed-in user. Public access is controlled by the centralized Pro launch gate.",
+        "tags": [
+          "Billing"
+        ],
+        "responses": {
+          "200": {
+            "description": "Checkout session created"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Billing unavailable for the current user"
+          },
+          "500": {
+            "description": "Stripe configuration unavailable"
+          }
+        }
+      }
+    },
+    "/stripe/portal": {
+      "post": {
+        "operationId": "openStripePortal",
+        "summary": "Open billing portal",
+        "description": "Create a Stripe billing-portal session for the signed-in user. Public access is controlled by the centralized Pro launch gate.",
+        "tags": [
+          "Billing"
+        ],
+        "responses": {
+          "200": {
+            "description": "Portal session created"
+          },
+          "400": {
+            "description": "No linked or recoverable subscription found"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Billing unavailable for the current user"
+          }
+        }
+      }
+    },
     "/waitlist": {
       "post": {
         "operationId": "joinWaitlist",
         "summary": "Join Pro waitlist",
-        "description": "Join or refresh membership in the Pro waitlist. Requires a signed-in user account. The waitlist email is always derived from the signed-in account; if an `email` field is provided, it must match the account email.",
+        "description": "Join or refresh membership in the Pro waitlist while public Pro access is closed. Requires a signed-in user account. The waitlist email is always derived from the signed-in account; if an `email` field is provided, it must match the account email.",
         "tags": [
           "User"
         ],
@@ -2080,7 +2272,7 @@
             "description": "Unauthorized"
           },
           "403": {
-            "description": "Waitlist feature disabled or provided email does not match account email"
+            "description": "Waitlist unavailable for the current user or provided email does not match account email"
           },
           "429": {
             "description": "Rate limited"
@@ -2156,7 +2348,7 @@
       "post": {
         "operationId": "unsubscribeWaitlist",
         "summary": "Unsubscribe from waitlist",
-        "description": "Unsubscribes the signed-in user from the active waitlist.",
+        "description": "Unsubscribes the signed-in user from the active waitlist while public Pro access is still closed.",
         "tags": [
           "User"
         ],
@@ -2189,7 +2381,7 @@
             "description": "Unauthorized"
           },
           "403": {
-            "description": "Waitlist feature disabled"
+            "description": "Waitlist unavailable for the current user"
           },
           "503": {
             "description": "Waitlist unavailable"

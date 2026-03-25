@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth, authErrorResponse } from "@/lib/auth";
+import { getFeatureDisabledResponse, resolveProAccess } from "@/lib/pro-access";
 import { requireUserDb } from "@/lib/user-db";
 import { UpdateCollectionSchema, Collection } from "@/lib/types";
 import { ServerTiming } from "@/lib/server-timing";
@@ -22,6 +23,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   const timing = new ServerTiming();
   try {
     const user = await timing.measure("auth", () => requireAuth());
+    if (!resolveProAccess(user).canAccessCollections) {
+      return timing.json({ error: "feature_disabled", feature: "collections" }, { status: 403 });
+    }
     const { id } = await timing.measure("resolve_params", () => params);
     const searchParams = request.nextUrl.searchParams;
     const limit = parsePaginationLimit(searchParams.get("limit"), 24, 100);
@@ -157,6 +161,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
   try {
     const user = await requireAuth();
+    if (!resolveProAccess(user).canAccessCollections) {
+      return getFeatureDisabledResponse("collections");
+    }
     const { id } = await params;
 
     const collectionId = parseInt(id, 10);
@@ -283,6 +290,9 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
     const user = await requireAuth();
+    if (!resolveProAccess(user).canAccessCollections) {
+      return getFeatureDisabledResponse("collections");
+    }
     const { id } = await params;
 
     const collectionId = parseInt(id, 10);

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { authErrorResponse, requireAuth } from "@/lib/auth";
-import { getWaitlistEnabled } from "@/lib/runtime-mode";
+import { getFeatureDisabledResponse, resolveProAccess } from "@/lib/pro-access";
 import { getUserDb } from "@/lib/user-db";
 import { invalidateWaitlistCountCache } from "@/lib/feature-policy";
 import {
@@ -19,15 +19,11 @@ const WaitlistInputSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
-  if (!getWaitlistEnabled()) {
-    return NextResponse.json(
-      { error: "feature_disabled", feature: "waitlist" },
-      { status: 403 }
-    );
-  }
-
   try {
     const user = await requireAuth();
+    if (!resolveProAccess(user).canAccessWaitlist) {
+      return getFeatureDisabledResponse("waitlist");
+    }
     const db = getUserDb();
     if (!db) {
       return NextResponse.json(

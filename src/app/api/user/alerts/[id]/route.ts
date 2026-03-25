@@ -2,17 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { requirePro, authErrorResponse } from "@/lib/auth";
 import { requireUserDb } from "@/lib/user-db";
 import { UpdateAlertSchema, Alert } from "@/lib/types";
-import { getProSurfacesEnabled } from "@/lib/runtime-mode";
+import { getFeatureDisabledResponse, resolveProAccess } from "@/lib/pro-access";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
-}
-
-function getFeatureDisabledResponse() {
-  return NextResponse.json(
-    { error: "feature_disabled", feature: "pro_surfaces" },
-    { status: 403 }
-  );
 }
 
 /**
@@ -21,12 +14,11 @@ function getFeatureDisabledResponse() {
  * Get a single alert by ID.
  */
 export async function GET(request: NextRequest, { params }: RouteParams) {
-  if (!getProSurfacesEnabled()) {
-    return getFeatureDisabledResponse();
-  }
-
   try {
     const user = await requirePro();
+    if (!resolveProAccess(user).canAccessProSurfaces) {
+      return getFeatureDisabledResponse("pro_surfaces");
+    }
     const { id } = await params;
 
     const alertId = parseInt(id, 10);
@@ -72,12 +64,11 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
  * Update an alert's config, enabled status, or email settings.
  */
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
-  if (!getProSurfacesEnabled()) {
-    return getFeatureDisabledResponse();
-  }
-
   try {
     const user = await requirePro();
+    if (!resolveProAccess(user).canAccessProSurfaces) {
+      return getFeatureDisabledResponse("pro_surfaces");
+    }
     const { id } = await params;
 
     const alertId = parseInt(id, 10);
@@ -154,12 +145,11 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
  * Delete an alert. Also removes its triggers via CASCADE.
  */
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
-  if (!getProSurfacesEnabled()) {
-    return getFeatureDisabledResponse();
-  }
-
   try {
     const user = await requirePro();
+    if (!resolveProAccess(user).canAccessProSurfaces) {
+      return getFeatureDisabledResponse("pro_surfaces");
+    }
     const { id } = await params;
 
     const alertId = parseInt(id, 10);

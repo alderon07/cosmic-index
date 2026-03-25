@@ -28,12 +28,25 @@ mock.module("@/lib/auth", () => ({
 }));
 
 mock.module("@/lib/runtime-mode", () => ({
+  getProGate: () => ({
+    productEnabled: false,
+    billingEnabled: false,
+    surfacesEnabled: false,
+    waitlistEnabled: false,
+    configuredLimitMode: "enforce" as const,
+    forceEnforce: false,
+    waitlistEnforceThreshold: 125,
+  }),
+  isProFeatureEnabled: () => false,
+  isClerkServerConfigured: () => true,
+  isClerkClientConfigured: () => true,
   getConfiguredLimitMode: () => "enforce",
   getForceEnforce: () => false,
   getWaitlistEnabled: () => false,
   getWaitlistEnforceThreshold: () => 125,
   getProSurfacesEnabled: () => false,
   getProBillingEnabled: () => false,
+  getInternalAdminIds: () => [],
   getProRolloutAdminIds: () => [],
 }));
 
@@ -43,7 +56,11 @@ mock.module("@/lib/user-db", () => ({
 }));
 
 mock.module("@/lib/canonical-id", () => ({
-  parseCanonicalId: () => ({ type: "exoplanet", id: "kepler-22-b" }),
+  parseCanonicalId: (canonicalId: string) => {
+    const [type, id] = canonicalId.split(":", 2);
+    if (!type || !id) return null;
+    return { type, id };
+  },
 }));
 
 const { POST } = await import("@/app/api/user/saved-objects/route");

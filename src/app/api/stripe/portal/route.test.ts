@@ -32,6 +32,7 @@ const mockCreatePortalSession = mock(async () => ({ url: "https://billing.stripe
 const mockRetrieveSubscription = mock(async () => ({ customer: "cus_from_subscription" }));
 const mockListCustomers = mock(async () => ({ data: [] as Array<{ id: string; deleted?: boolean }> }));
 const mockListSubscriptions = mock(async () => ({ data: [] as Array<{ status: string }> }));
+let mockCanManageBilling = true;
 
 mock.module("@/lib/auth", () => ({
   requireAuth: async () => ({
@@ -49,6 +50,16 @@ mock.module("@/lib/auth", () => ({
 }));
 
 mock.module("@/lib/runtime-mode", () => ({
+  getProGate: () => ({
+    productEnabled: false,
+    billingEnabled: true,
+    surfacesEnabled: false,
+    waitlistEnabled: true,
+    configuredLimitMode: "shadow" as const,
+    forceEnforce: false,
+    waitlistEnforceThreshold: 125,
+  }),
+  isProFeatureEnabled: (feature: string) => feature === "billing",
   getProBillingEnabled: () => true,
   getProSurfacesEnabled: () => false,
   getWaitlistEnabled: () => true,
@@ -59,6 +70,14 @@ mock.module("@/lib/runtime-mode", () => ({
   isClerkClientConfigured: () => true,
   getInternalAdminIds: () => [],
   getProRolloutAdminIds: () => [],
+}));
+
+mock.module("@/lib/pro-access", () => ({
+  resolveProAccess: () => ({
+    canManageBilling: mockCanManageBilling,
+  }),
+  getFeatureDisabledResponse: (feature: string) =>
+    new Response(JSON.stringify({ error: "feature_disabled", feature }), { status: 403 }),
 }));
 
 mock.module("@/lib/user-db", () => ({
@@ -98,6 +117,7 @@ afterAll(() => {
 });
 
 beforeEach(() => {
+  mockCanManageBilling = true;
   currentUserRow = {};
   dbWrites.length = 0;
 
@@ -187,6 +207,16 @@ describe("POST /api/stripe/portal", () => {
     expect(response.status).toBe(400);
     const body = await response.json();
     expect(body.error).toBe("No subscription found");
+    expect(mockCreatePortalSession).not.toHaveBeenCalled();
+  });
+
+  it("returns 403 when billing access is disabled", async () => {
+    mockCanManageBilling = false;
+
+    const response = await POST();
+    expect(response.status).toBe(403);
+    const body = await response.json();
+    expect(body.feature).toBe("billing");
     expect(mockCreatePortalSession).not.toHaveBeenCalled();
   });
 });

@@ -3,7 +3,7 @@ import { Suspense } from "react";
 import { getUserDb } from "@/lib/user-db";
 import { BillingContent } from "./billing-content";
 import { getAuthUser } from "@/lib/auth";
-import { getProBillingEnabled, getWaitlistEnabled } from "@/lib/runtime-mode";
+import { resolveProAccess } from "@/lib/pro-access";
 
 export const metadata: Metadata = {
   title: "Billing",
@@ -24,6 +24,7 @@ export const revalidate = 0;
  */
 export default async function BillingPage() {
   const user = await getAuthUser();
+  const proAccess = resolveProAccess(user);
   if (!user) {
     return (
       <div className="container mx-auto px-4 py-8 max-w-2xl">
@@ -60,8 +61,10 @@ export default async function BillingPage() {
         <BillingContent
           tier={tier}
           hasStripeCustomer={hasStripeCustomer}
-          proBillingEnabled={getProBillingEnabled()}
-          waitlistEnabled={getWaitlistEnabled()}
+          productEnabled={proAccess.gate.productEnabled}
+          canStartCheckout={proAccess.canStartCheckout}
+          canManageBilling={proAccess.canManageBilling}
+          showWaitlist={proAccess.shouldShowWaitlist}
         />
       </Suspense>
     </div>

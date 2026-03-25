@@ -1,13 +1,9 @@
 import type { Client } from "@libsql/client";
 import {
   LimitMode,
-  getConfiguredLimitMode,
-  getForceEnforce,
-  getProBillingEnabled,
-  getProSurfacesEnabled,
-  getWaitlistEnabled,
-  getWaitlistEnforceThreshold,
+  getProGate,
 } from "@/lib/runtime-mode";
+import { resolveProAccess } from "@/lib/pro-access";
 import { getActiveWaitlistCount } from "@/lib/waitlist";
 
 type LimitModeReason =
@@ -57,14 +53,13 @@ export function invalidateWaitlistCountCache(): void {
 }
 
 export function getProPolicy() {
-  const surfacesEnabled = getProSurfacesEnabled();
-  const billingEnabled = getProBillingEnabled();
+  const gate = getProGate();
 
   return {
-    surfacesEnabled,
-    billingEnabled,
-    showPreview: !surfacesEnabled,
-    canAccessAlerts: surfacesEnabled,
+    surfacesEnabled: gate.surfacesEnabled,
+    billingEnabled: gate.billingEnabled,
+    showPreview: !gate.surfacesEnabled,
+    canAccessAlerts: gate.surfacesEnabled,
   };
 }
 
@@ -72,11 +67,12 @@ export async function resolveLimitMode(params?: {
   db?: Client | null;
   waitlistCountOverride?: number | null;
 }): Promise<LimitModeResolution> {
-  const configuredMode = getConfiguredLimitMode();
-  const waitlistEnabled = getWaitlistEnabled();
-  const threshold = getWaitlistEnforceThreshold();
+  const gate = getProGate();
+  const configuredMode = gate.configuredLimitMode;
+  const waitlistEnabled = gate.waitlistEnabled;
+  const threshold = gate.waitlistEnforceThreshold;
 
-  if (getForceEnforce()) {
+  if (gate.forceEnforce) {
     return {
       configuredMode,
       effectiveMode: "enforce",
@@ -129,14 +125,26 @@ export async function resolveLimitMode(params?: {
   }
 
   const reached = count >= threshold;
+  if (!reached) {
+    return {
+      configuredMode,
+      effectiveMode: "warn",
+      reason: "threshold_not_reached",
+      waitlistEnabled,
+      threshold,
+      waitlistCount: count,
+      reached: false,
+    };
+  }
+
   return {
     configuredMode,
     effectiveMode: "enforce",
-    reason: reached ? "threshold_reached" : "threshold_not_reached",
+    reason: "threshold_reached",
     waitlistEnabled,
     threshold,
     waitlistCount: count,
-    reached: true,
+    reached,
   };
 }
 
@@ -149,6 +157,6 @@ export function toLimitPolicyMetadata(
     effectiveMode: mode.effectiveMode,
     wouldBlock,
     waitlistEnabled: mode.waitlistEnabled,
-    upgradePreviewAvailable: !getProSurfacesEnabled(),
+    upgradePreviewAvailable: resolveProAccess(null).upgradePreviewAvailable,
   };
 }

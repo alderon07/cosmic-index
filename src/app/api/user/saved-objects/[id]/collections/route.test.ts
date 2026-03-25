@@ -1,5 +1,7 @@
 import { describe, expect, it, mock } from "bun:test";
 
+let mockCanAccessCollections = true;
+
 const db = {
   execute: async ({ sql, args }: { sql: string; args?: unknown[] }) => {
     if (sql.includes("SELECT id FROM saved_objects WHERE id = ? AND user_id = ?")) {
@@ -39,6 +41,12 @@ mock.module("@/lib/user-db", () => ({
   requireUserDb: () => db,
 }));
 
+mock.module("@/lib/pro-access", () => ({
+  resolveProAccess: () => ({
+    canAccessCollections: mockCanAccessCollections,
+  }),
+}));
+
 const { GET } = await import("@/app/api/user/saved-objects/[id]/collections/route");
 
 describe("GET /api/user/saved-objects/[id]/collections", () => {
@@ -68,5 +76,19 @@ describe("GET /api/user/saved-objects/[id]/collections", () => {
     });
 
     expect(response.status).toBe(404);
+  });
+
+  it("returns 403 when collections are not publicly enabled", async () => {
+    mockCanAccessCollections = false;
+
+    const response = await GET(new Request("http://localhost/api/user/saved-objects/42/collections"), {
+      params: Promise.resolve({ id: "42" }),
+    });
+
+    expect(response.status).toBe(403);
+    const payload = await response.json();
+    expect(payload.feature).toBe("collections");
+
+    mockCanAccessCollections = true;
   });
 });

@@ -1,29 +1,33 @@
 # Pro Rollout Runbook (Feature-Flagged)
 
-Last updated: 2026-03-03
+Last updated: 2026-03-25
 
 This document describes the implemented Pro rollout system:
 - feature-flagged Pro surfaces/billing
 - waitlist-driven limit enforcement
 - free-tier-safe interest tracking
 - internal rollout status endpoint/page
+- centralized server-side Pro gate resolution
 
 ## 1) Environment Flags
 
 Configure these in `.env.local` (and Vercel env vars for deployed environments):
 
 ```env
+# Public Pro launch switch
+PRO_PRODUCT_ENABLED=false
+
 # Pro surface visibility
-PRO_SURFACES_ENABLED=false
-NEXT_PUBLIC_PRO_SURFACES_ENABLED=false
+# Optional override. Defaults to PRO_PRODUCT_ENABLED when unset.
+PRO_SURFACES_ENABLED=true
 
 # Stripe billing availability
-PRO_BILLING_ENABLED=false
-NEXT_PUBLIC_PRO_BILLING_ENABLED=false
+# Optional override. Defaults to PRO_PRODUCT_ENABLED when unset.
+PRO_BILLING_ENABLED=true
 
 # Waitlist gate
+# Optional override. Defaults to !PRO_PRODUCT_ENABLED when unset.
 WAITLIST_ENABLED=true
-NEXT_PUBLIC_WAITLIST_ENABLED=true
 WAITLIST_ENFORCE_THRESHOLD=125
 
 # Limit rollout mode: shadow | warn | enforce
@@ -41,6 +45,20 @@ PRO_ROLLOUT_ADMIN_IDS=user_abc,user_def
 ## 2) Effective Mode Resolution
 
 `configuredMode` comes from `LIMIT_MODE`.
+
+All Pro rollout flags are resolved centrally on the server from the non-public env vars above.
+Server components pass the resolved booleans to client components as props where needed.
+
+Central launch behavior:
+- `PRO_PRODUCT_ENABLED=false`
+  - public users stay on free-tier behavior
+  - Pro checkout/portal/collections/alerts remain closed to the public
+  - internal admins listed in `INTERNAL_ADMIN_IDS` can still test billing and Pro flows in production
+  - waitlist defaults to enabled
+- `PRO_PRODUCT_ENABLED=true`
+  - Pro becomes publicly available
+  - `PRO_SURFACES_ENABLED` and `PRO_BILLING_ENABLED` default to enabled if not explicitly overridden
+  - waitlist defaults to disabled if not explicitly overridden
 
 `effectiveMode` is resolved as:
 1. If `LIMIT_MODE_FORCE_ENFORCE=true` -> `enforce`
@@ -86,9 +104,13 @@ Migration status is complete for the current rollout schema:
 ## 5) UIs Added/Updated
 
 - Billing page (`/settings/billing`)
-  - honors `PRO_BILLING_ENABLED`
-  - shows waitlist CTA when billing is disabled
+  - public upgrade flow is controlled by `PRO_PRODUCT_ENABLED`
+  - admin/testing access is still possible when product is off and billing is explicitly enabled
+  - shows waitlist CTA while product is not publicly available
   - shows **Manage or Cancel** controls with explicit post-checkout sync messaging
+- Collections pages (`/user/collections`, `/user/collections/[id]`)
+  - stay closed to the public until Pro is launched
+  - show a launch/waitlist notice instead of the management UI
 - Internal status page (`/settings/internal/pro-rollout`)
   - admin-only, noindex
 
@@ -104,11 +126,14 @@ In `enforce`, existing block behavior is preserved.
 
 ## 7) Stripe and Pro Surface Gating
 
+- `PRO_PRODUCT_ENABLED` is the primary public launch flag.
 - Stripe routes (`/api/stripe/checkout`, `/api/stripe/portal`) return:
   - `403 { error: "feature_disabled", feature: "billing" }`
-  when billing flag is off.
+  when billing is not available for the current user.
 - Portal route supports customer-recovery fallback (`stripe_subscription_id`, then email lookup) when `stripe_customer_id` is missing.
-- Alerts routes are gated by `PRO_SURFACES_ENABLED`.
+- Alerts routes are gated by launch access plus `PRO_SURFACES_ENABLED`.
+- Collections routes are gated by launch access.
+- Waitlist join/unsubscribe routes close automatically once Pro is publicly live unless the caller is an internal admin.
 
 ## 8) Rate Limits and Free-Tier Safety
 
@@ -133,7 +158,13 @@ Limit-hit counters are best-effort and non-fatal to user requests.
 2. Verify `INTERNAL_ADMIN_IDS` is set for your admin user (or fallback `PRO_ROLLOUT_ADMIN_IDS`).
 3. Check `GET /api/waitlist/status`.
 4. Open `/settings/internal/pro-rollout` as admin.
-5. Exercise billing page behavior with `PRO_BILLING_ENABLED` on/off.
+5. For prelaunch prod testing, set:
+   - `PRO_PRODUCT_ENABLED=false`
+   - `PRO_BILLING_ENABLED=true`
+   - `PRO_SURFACES_ENABLED=true`
+   - `INTERNAL_ADMIN_IDS=<your_user_id>`
+6. Exercise billing page behavior as admin and as a non-admin user.
+7. When ready for launch, flip `PRO_PRODUCT_ENABLED=true`.
 6. Verify `LIMIT_MODE` transitions:
    - `shadow` -> no blocking
    - `warn` -> no blocking + would-block metadata
@@ -145,3 +176,4 @@ Limit-hit counters are best-effort and non-fatal to user requests.
 - Waitlist writes require both Turso and Upstash availability in current fail-closed policy.
 - Billing tier can lag immediately after checkout until webhook sync completes; Billing UI keeps Manage/Cancel accessible during this window.
 - In `enforce` mode with waitlist enabled, low waitlist volume can keep effective mode at `warn` unless force-enforced.
+- Public launch and subsystem readiness are intentionally separate: `PRO_PRODUCT_ENABLED` controls customer exposure, while `PRO_BILLING_ENABLED` and `PRO_SURFACES_ENABLED` can still be used as internal safety overrides.

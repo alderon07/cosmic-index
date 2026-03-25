@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { requireAuth, authErrorResponse } from "@/lib/auth";
 import { requireStripe, APP_URL } from "@/lib/stripe";
 import { requireUserDb } from "@/lib/user-db";
-import { getProBillingEnabled } from "@/lib/runtime-mode";
+import { getFeatureDisabledResponse, resolveProAccess } from "@/lib/pro-access";
 
 /**
  * POST /api/stripe/portal
@@ -15,11 +15,8 @@ import { getProBillingEnabled } from "@/lib/runtime-mode";
 export async function POST() {
   try {
     const user = await requireAuth();
-    if (!getProBillingEnabled()) {
-      return NextResponse.json(
-        { error: "feature_disabled", feature: "billing" },
-        { status: 403 }
-      );
+    if (!resolveProAccess(user).canManageBilling) {
+      return getFeatureDisabledResponse("billing");
     }
 
     const stripe = requireStripe();

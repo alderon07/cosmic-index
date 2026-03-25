@@ -2,6 +2,7 @@ import { afterAll, beforeEach, describe, expect, it, mock } from "bun:test";
 import type { NextRequest } from "next/server";
 
 let mockRequireAuth = async () => ({ userId: "user-1", email: "user@example.com", tier: "free" as const });
+let mockCanAccessWaitlist = true;
 
 const mockDb = {};
 const mockUpsertWaitlistSignup = mock(async () => "joined");
@@ -37,6 +38,16 @@ mock.module("@/lib/auth", () => ({
 }));
 
 mock.module("@/lib/runtime-mode", () => ({
+  getProGate: () => ({
+    productEnabled: false,
+    billingEnabled: false,
+    surfacesEnabled: false,
+    waitlistEnabled: true,
+    configuredLimitMode: "shadow" as const,
+    forceEnforce: false,
+    waitlistEnforceThreshold: 125,
+  }),
+  isProFeatureEnabled: (feature: string) => feature === "waitlist",
   isClerkServerConfigured: () => true,
   isClerkClientConfigured: () => true,
   getConfiguredLimitMode: () => "shadow",
@@ -47,6 +58,14 @@ mock.module("@/lib/runtime-mode", () => ({
   getProBillingEnabled: () => false,
   getInternalAdminIds: () => [],
   getProRolloutAdminIds: () => [],
+}));
+
+mock.module("@/lib/pro-access", () => ({
+  resolveProAccess: () => ({
+    canAccessWaitlist: mockCanAccessWaitlist,
+  }),
+  getFeatureDisabledResponse: (feature: string) =>
+    new Response(JSON.stringify({ error: "feature_disabled", feature }), { status: 403 }),
 }));
 
 mock.module("@/lib/user-db", () => ({
@@ -80,6 +99,7 @@ afterAll(() => {
 
 beforeEach(() => {
   mockRequireAuth = async () => ({ userId: "user-1", email: "user@example.com", tier: "free" as const });
+  mockCanAccessWaitlist = true;
   mockUpsertWaitlistSignup.mockClear();
   mockIncrementWaitlistSignupsDaily.mockClear();
   mockCleanupWaitlistArtifacts.mockClear();
@@ -173,6 +193,20 @@ describe("POST /api/waitlist", () => {
     const body = await res.json();
     expect(body.error).toBe("account_email_unavailable");
     expect(mockCheckWaitlistRateLimit).not.toHaveBeenCalled();
+    expect(mockUpsertWaitlistSignup).not.toHaveBeenCalled();
+  });
+
+  it("returns 403 when the public waitlist is disabled by the product gate", async () => {
+    mockCanAccessWaitlist = false;
+
+    const req = new Request("http://localhost/api/waitlist", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ source: "billing" }),
+    });
+
+    const res = await POST(req as unknown as NextRequest);
+    expect(res.status).toBe(403);
     expect(mockUpsertWaitlistSignup).not.toHaveBeenCalled();
   });
 });

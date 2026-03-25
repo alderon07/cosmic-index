@@ -2,14 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requirePro, authErrorResponse } from "@/lib/auth";
 import { requireUserDb } from "@/lib/user-db";
 import { CreateAlertSchema, Alert } from "@/lib/types";
-import { getProSurfacesEnabled } from "@/lib/runtime-mode";
-
-function getFeatureDisabledResponse() {
-  return NextResponse.json(
-    { error: "feature_disabled", feature: "pro_surfaces" },
-    { status: 403 }
-  );
-}
+import { getFeatureDisabledResponse, resolveProAccess } from "@/lib/pro-access";
 
 /**
  * GET /api/user/alerts
@@ -17,12 +10,11 @@ function getFeatureDisabledResponse() {
  * List all alerts for the authenticated Pro user.
  */
 export async function GET() {
-  if (!getProSurfacesEnabled()) {
-    return getFeatureDisabledResponse();
-  }
-
   try {
     const user = await requirePro();
+    if (!resolveProAccess(user).canAccessProSurfaces) {
+      return getFeatureDisabledResponse("pro_surfaces");
+    }
     const db = requireUserDb();
 
     const result = await db.execute({
@@ -57,12 +49,11 @@ export async function GET() {
  * Create a new alert. Pro feature only.
  */
 export async function POST(request: NextRequest) {
-  if (!getProSurfacesEnabled()) {
-    return getFeatureDisabledResponse();
-  }
-
   try {
     const user = await requirePro();
+    if (!resolveProAccess(user).canAccessProSurfaces) {
+      return getFeatureDisabledResponse("pro_surfaces");
+    }
 
     const body = await request.json();
     const parseResult = CreateAlertSchema.safeParse(body);

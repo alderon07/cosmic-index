@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth, authErrorResponse } from "@/lib/auth";
+import { getFeatureDisabledResponse, resolveProAccess } from "@/lib/pro-access";
 import { requireUserDb } from "@/lib/user-db";
 import { AddToCollectionSchema } from "@/lib/types";
 import { z } from "zod";
@@ -21,6 +22,9 @@ const RemoveFromCollectionSchema = z.object({
 export async function POST(request: NextRequest, { params }: RouteParams) {
   try {
     const user = await requireAuth();
+    if (!resolveProAccess(user).canAccessCollections) {
+      return getFeatureDisabledResponse("collections");
+    }
     const { id } = await params;
 
     const collectionId = parseInt(id, 10);
@@ -119,6 +123,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
     const user = await requireAuth();
+    if (!resolveProAccess(user).canAccessCollections) {
+      return getFeatureDisabledResponse("collections");
+    }
     const { id } = await params;
 
     const collectionId = parseInt(id, 10);

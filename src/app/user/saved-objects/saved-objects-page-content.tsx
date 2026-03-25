@@ -137,7 +137,11 @@ async function prefetchCollections(
   };
 }
 
-export function SavedObjectsPageContent() {
+export function SavedObjectsPageContent({
+  canAccessCollections = false,
+}: {
+  canAccessCollections?: boolean;
+}) {
   const auth = useAppAuth();
   const queryClient = useQueryClient();
   const [selectedType, setSelectedType] = useState<SavedObjectFilter>("all");
@@ -172,7 +176,7 @@ export function SavedObjectsPageContent() {
   const totalSavedCount = data?.pages[0]?.total ?? items.length;
 
   useEffect(() => {
-    if (!auth.isSignedIn) return;
+    if (!auth.isSignedIn || !canAccessCollections) return;
     void queryClient.prefetchInfiniteQuery({
       queryKey: queryKeys.collections(),
       queryFn: ({ pageParam }: { pageParam: string | null }) =>
@@ -182,7 +186,7 @@ export function SavedObjectsPageContent() {
         lastPage.hasMore && lastPage.nextCursor ? lastPage.nextCursor : undefined,
       staleTime: 60_000,
     });
-  }, [auth.isSignedIn, queryClient]);
+  }, [auth.isSignedIn, canAccessCollections, queryClient]);
 
   const deleteSavedObjectMutation = useMutation({
     mutationFn: async (id: number) => {
@@ -396,17 +400,19 @@ export function SavedObjectsPageContent() {
         </p>
       </div>
       <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center sm:justify-end">
-        <Button
-          asChild
-          variant="outline"
-          size="sm"
-          className="gap-1.5 border-orange-300/30 bg-black/25 text-orange-100 hover:bg-orange-500/15"
-        >
-          <Link href="/user/collections">
-            <Layers className="h-3.5 w-3.5" />
-            Collections
-          </Link>
-        </Button>
+        {canAccessCollections ? (
+          <Button
+            asChild
+            variant="outline"
+            size="sm"
+            className="gap-1.5 border-orange-300/30 bg-black/25 text-orange-100 hover:bg-orange-500/15"
+          >
+            <Link href="/user/collections">
+              <Layers className="h-3.5 w-3.5" />
+              Collections
+            </Link>
+          </Button>
+        ) : null}
         <Button
           variant="outline"
           size="sm"
@@ -603,13 +609,15 @@ export function SavedObjectsPageContent() {
                               No direct detail page available
                             </span>
                           )}
-                          <AddToCollectionDialog
-                            savedObjectId={item.id}
-                            savedObjectName={item.displayName}
-                            onMembershipChange={() => {
-                              void queryClient.invalidateQueries({ queryKey: queryKeys.collections() });
-                            }}
-                          />
+                          {canAccessCollections ? (
+                            <AddToCollectionDialog
+                              savedObjectId={item.id}
+                              savedObjectName={item.displayName}
+                              onMembershipChange={() => {
+                                void queryClient.invalidateQueries({ queryKey: queryKeys.collections() });
+                              }}
+                            />
+                          ) : null}
                         </div>
                       </div>
                     );
