@@ -111,6 +111,9 @@ Migration status is complete for the current rollout schema:
 - Collections pages (`/user/collections`, `/user/collections/[id]`)
   - stay closed to the public until Pro is launched
   - show a launch/waitlist notice instead of the management UI
+- Alerts UI/API
+  - implemented behind the Pro gate for future rollout work
+  - not part of the current production cutover because scheduled execution and outbound email delivery are not live yet
 - Internal status page (`/settings/internal/pro-rollout`)
   - admin-only, noindex
 
@@ -132,6 +135,7 @@ In `enforce`, existing block behavior is preserved.
   when billing is not available for the current user.
 - Portal route supports customer-recovery fallback (`stripe_subscription_id`, then email lookup) when `stripe_customer_id` is missing.
 - Alerts routes are gated by launch access plus `PRO_SURFACES_ENABLED`.
+- Alerts should be treated as a future feature for production rollout until the scheduled runner and email delivery path are implemented.
 - Collections routes are gated by launch access.
 - Waitlist join/unsubscribe routes close automatically once Pro is publicly live unless the caller is an internal admin.
 
@@ -175,5 +179,6 @@ Limit-hit counters are best-effort and non-fatal to user requests.
 - If admin IDs are unset (`INTERNAL_ADMIN_IDS` and fallback `PRO_ROLLOUT_ADMIN_IDS`), internal status endpoint/page is intentionally hidden (`404`).
 - Waitlist writes require both Turso and Upstash availability in current fail-closed policy.
 - Billing tier can lag immediately after checkout until webhook sync completes; Billing UI keeps Manage/Cancel accessible during this window.
+- Alerts are not production-ready yet: `/api/cron/check-alerts` is not implemented and no outbound email provider is wired, so alerts should remain a future feature for now.
 - In `enforce` mode with waitlist enabled, low waitlist volume can keep effective mode at `warn` unless force-enforced.
 - Public launch and subsystem readiness are intentionally separate: `PRO_PRODUCT_ENABLED` controls customer exposure, while `PRO_BILLING_ENABLED` and `PRO_SURFACES_ENABLED` can still be used as internal safety overrides.
