@@ -9,6 +9,8 @@ import { getAuthUser } from "@/lib/auth";
 import { resolveProAccess } from "@/lib/pro-access";
 import { TIER_LIMITS } from "@/lib/tier-limits";
 import { ACCOUNT_CARD_TONE } from "@/lib/theme";
+import { getUserDb } from "@/lib/user-db";
+import { getUserWaitlistStatus } from "@/lib/waitlist";
 
 export const metadata: Metadata = {
   title: "Pro Waitlist",
@@ -56,8 +58,18 @@ const PLAN_LIMIT_COMPARISON = [
 ];
 
 export default async function WaitlistPage() {
-  const proAccess = resolveProAccess(await getAuthUser());
+  const user = await getAuthUser();
+  const proAccess = resolveProAccess(user);
   const waitlistEnabled = proAccess.canAccessWaitlist;
+
+  let initialJoined = false;
+  if (user && waitlistEnabled) {
+    const db = getUserDb();
+    if (db) {
+      const status = await getUserWaitlistStatus(db, user.userId).catch(() => null);
+      initialJoined = status === "active";
+    }
+  }
 
   return (
     <div className="shell-container py-10 sm:py-12">
@@ -80,7 +92,7 @@ export default async function WaitlistPage() {
         </CardHeader>
         <CardContent className="space-y-5">
           {waitlistEnabled ? (
-            <WaitlistCta source="pro_badge" />
+            <WaitlistCta source="pro_badge" initialJoined={initialJoined} />
           ) : proAccess.gate.productEnabled ? (
             <div className="space-y-3 rounded-md border border-border/70 bg-muted/20 p-4">
               <p className="text-sm text-muted-foreground">

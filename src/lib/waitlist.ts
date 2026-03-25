@@ -34,6 +34,20 @@ function getLimitHitColumn(feature: LimitHitFeature): string {
   return "exports_limit_hits";
 }
 
+export async function getUserWaitlistStatus(
+  db: Client,
+  userId: string
+): Promise<"active" | "unsubscribed" | "converted" | null> {
+  const result = await db.execute({
+    sql: `SELECT status FROM pro_waitlist WHERE user_id = ? LIMIT 1`,
+    args: [userId],
+  });
+  if (result.rows.length === 0) return null;
+  const raw = String(result.rows[0]?.status ?? "active");
+  if (raw === "active" || raw === "unsubscribed" || raw === "converted") return raw;
+  return null;
+}
+
 export async function getActiveWaitlistCount(db: Client): Promise<number> {
   const result = await db.execute({
     sql: "SELECT COUNT(*) AS total FROM pro_waitlist WHERE status = 'active'",

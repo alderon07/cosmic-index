@@ -12,18 +12,25 @@ interface WaitlistCtaProps {
   source: WaitlistSource;
   className?: string;
   compact?: boolean;
+  initialJoined?: boolean;
 }
 
-export function WaitlistCta({ source, className, compact = false }: WaitlistCtaProps) {
+export function WaitlistCta({ source, className, compact = false, initialJoined = false }: WaitlistCtaProps) {
   const auth = useAppAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [statusText, setStatusText] = useState<string | null>(null);
-  const [statusTone, setStatusTone] = useState<"muted" | "error" | "success">("muted");
+  const [hasJoined, setHasJoined] = useState(initialJoined);
+  const [statusText, setStatusText] = useState<string | null>(
+    initialJoined ? "You are already on the waitlist." : null
+  );
+  const [statusTone, setStatusTone] = useState<"muted" | "error" | "success">(
+    initialJoined ? "success" : "muted"
+  );
 
   const buttonLabel = useMemo(() => {
     if (isSubmitting) return "Joining...";
+    if (hasJoined) return "Already on Waitlist";
     return "Join Waitlist";
-  }, [isSubmitting]);
+  }, [isSubmitting, hasJoined]);
   const accountEmail = auth.email.trim();
   const hasAccountEmail = accountEmail.length > 0;
 
@@ -78,17 +85,20 @@ export function WaitlistCta({ source, className, compact = false }: WaitlistCtaP
       }
 
       if (payload?.status === "already_joined") {
+        setHasJoined(true);
         setStatusTone("success");
         setStatusText("You are already on the waitlist.");
         return;
       }
 
       if (payload?.status === "reactivated") {
+        setHasJoined(true);
         setStatusTone("success");
         setStatusText("You are back on the waitlist.");
         return;
       }
 
+      setHasJoined(true);
       setStatusTone("success");
       setStatusText("Thanks. You are on the waitlist.");
     } catch {
@@ -150,7 +160,7 @@ export function WaitlistCta({ source, className, compact = false }: WaitlistCtaP
               : "Your signed-in account email will be used automatically."}
           </p>
         </div>
-        <Button type="submit" disabled={isSubmitting}>
+        <Button type="submit" disabled={isSubmitting || hasJoined}>
           {isSubmitting ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : null}
           {buttonLabel}
         </Button>

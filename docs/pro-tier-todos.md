@@ -1,6 +1,6 @@
 # Pro Tier TODOs (Current)
 
-Last updated (UTC): 2026-03-03
+Last updated (UTC): 2026-03-25
 
 This file tracks only remaining rollout work to avoid repeating status already covered in `APP-TODO.md`.
 
@@ -23,6 +23,7 @@ This file tracks only remaining rollout work to avoid repeating status already c
 
 ### Alerts Delivery
 
+- [ ] Keep alerts positioned as a future feature in production until delivery infrastructure is complete
 - [ ] Add scheduled alert runner (`/api/cron/check-alerts`)
 - [ ] Integrate outbound email provider (Resend or SendGrid)
 - [ ] Add alert email templates and manual verification checklist
