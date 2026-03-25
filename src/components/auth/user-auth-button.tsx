@@ -17,7 +17,11 @@ import { clerkAppearance } from "@/components/auth/clerk-appearance";
  * - Dropdown with account management links
  * - Sign out option
  */
-export function UserAuthButton() {
+export function UserAuthButton({
+  showCollectionsLink = true,
+}: {
+  showCollectionsLink?: boolean;
+}) {
   const auth = useAppAuth();
 
   if (auth.mode === "none") {
@@ -60,11 +64,13 @@ export function UserAuthButton() {
               label="Saved Objects"
               labelIcon={<Bookmark className="h-4 w-4" />}
             />
-            <UserButton.Link
-              href="/user/collections"
-              label="Collections"
-              labelIcon={<Layers className="h-4 w-4" />}
-            />
+            {showCollectionsLink ? (
+              <UserButton.Link
+                href="/user/collections"
+                label="Collections"
+                labelIcon={<Layers className="h-4 w-4" />}
+              />
+            ) : null}
             <UserButton.Link
               href="/settings/billing"
               label="Billing"

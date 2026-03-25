@@ -1,6 +1,8 @@
 import { describe, expect, it, mock } from "bun:test";
 import { NextRequest } from "next/server";
 
+let mockCanAccessCollections = true;
+
 const db = {
   execute: async ({ sql }: { sql: string; args?: unknown[] }) => {
     if (sql.includes("FROM collections") && sql.includes("WHERE id = ? AND user_id = ?")) {
@@ -64,6 +66,14 @@ mock.module("@/lib/user-db", () => ({
   requireUserDb: () => db,
 }));
 
+mock.module("@/lib/pro-access", () => ({
+  resolveProAccess: () => ({
+    canAccessCollections: mockCanAccessCollections,
+  }),
+  getFeatureDisabledResponse: (feature: string) =>
+    new Response(JSON.stringify({ error: "feature_disabled", feature }), { status: 403 }),
+}));
+
 const { GET } = await import("@/app/api/user/collections/[id]/route");
 
 describe("GET /api/user/collections/[id]", () => {
@@ -90,5 +100,20 @@ describe("GET /api/user/collections/[id]", () => {
     expect(res.status).toBe(400);
     const body = await res.json();
     expect(body.error).toBe("invalid_cursor");
+  });
+
+  it("returns 403 when collections are not publicly enabled", async () => {
+    mockCanAccessCollections = false;
+
+    const req = new NextRequest("http://localhost/api/user/collections/5");
+    const res = await GET(req, {
+      params: Promise.resolve({ id: "5" }),
+    });
+
+    expect(res.status).toBe(403);
+    const body = await res.json();
+    expect(body.feature).toBe("collections");
+
+    mockCanAccessCollections = true;
   });
 });

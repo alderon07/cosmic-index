@@ -44,12 +44,25 @@ mock.module("@/lib/auth", () => ({
 }));
 
 mock.module("@/lib/runtime-mode", () => ({
+  getProGate: () => ({
+    productEnabled: false,
+    billingEnabled: false,
+    surfacesEnabled: false,
+    waitlistEnabled: false,
+    configuredLimitMode: "enforce" as const,
+    forceEnforce: false,
+    waitlistEnforceThreshold: 125,
+  }),
+  isProFeatureEnabled: () => false,
+  isClerkServerConfigured: () => true,
+  isClerkClientConfigured: () => true,
   getConfiguredLimitMode: () => "enforce",
   getForceEnforce: () => false,
   getWaitlistEnabled: () => false,
   getWaitlistEnforceThreshold: () => 125,
   getProSurfacesEnabled: () => false,
   getProBillingEnabled: () => false,
+  getInternalAdminIds: () => [],
   getProRolloutAdminIds: () => [],
 }));
 

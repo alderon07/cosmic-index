@@ -38,6 +38,16 @@ mock.module("@/lib/admin-access", () => ({
 }));
 
 mock.module("@/lib/runtime-mode", () => ({
+  getProGate: () => ({
+    productEnabled: false,
+    billingEnabled: false,
+    surfacesEnabled: false,
+    waitlistEnabled: true,
+    configuredLimitMode: "shadow" as const,
+    forceEnforce: false,
+    waitlistEnforceThreshold: 125,
+  }),
+  isProFeatureEnabled: () => false,
   isClerkServerConfigured: () => mockClerkConfigured,
   isClerkClientConfigured: () => mockClerkConfigured,
   getConfiguredLimitMode: () => "shadow",

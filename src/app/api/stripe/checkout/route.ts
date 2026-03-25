@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { requireAuth, authErrorResponse } from "@/lib/auth";
 import { requireStripe, STRIPE_PRICES, APP_URL } from "@/lib/stripe";
 import { getUserDb } from "@/lib/user-db";
-import { getProBillingEnabled } from "@/lib/runtime-mode";
+import { getFeatureDisabledResponse, resolveProAccess } from "@/lib/pro-access";
 
 function buildCheckoutIdempotencyKey(userId: string): string {
   // Coalesce rapid retries/double-clicks into one Checkout Session while
@@ -25,11 +25,8 @@ function buildCheckoutIdempotencyKey(userId: string): string {
 export async function POST() {
   try {
     const user = await requireAuth();
-    if (!getProBillingEnabled()) {
-      return NextResponse.json(
-        { error: "feature_disabled", feature: "billing" },
-        { status: 403 }
-      );
+    if (!resolveProAccess(user).canStartCheckout) {
+      return getFeatureDisabledResponse("billing");
     }
 
     const stripe = requireStripe();

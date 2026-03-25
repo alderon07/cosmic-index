@@ -28,7 +28,7 @@ import {
   NavigationMenuList,
   NavigationMenuTrigger,
 } from "@/components/ui/navigation-menu";
-import { getWaitlistEnabled } from "@/lib/runtime-mode";
+import { getProGate } from "@/lib/runtime-mode";
 import { serializeJsonLd } from "@/lib/safe-json-ld";
 
 const audiowide = Audiowide({
@@ -160,7 +160,7 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const waitlistEnabled = getWaitlistEnabled();
+  const { waitlistEnabled } = getProGate();
 
   return (
     <html lang="en" className="dark">

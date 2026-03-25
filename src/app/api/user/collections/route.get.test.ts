@@ -1,6 +1,8 @@
 import { describe, expect, it, mock } from "bun:test";
 import { NextRequest } from "next/server";
 
+let mockCanAccessCollections = true;
+
 const db = {
   execute: async ({ sql }: { sql: string; args?: unknown[] }) => {
     if (sql.includes("SELECT COUNT(*) AS total FROM collections WHERE user_id = ?")) {
@@ -53,6 +55,14 @@ mock.module("@/lib/user-db", () => ({
   requireUserDb: () => db,
 }));
 
+mock.module("@/lib/pro-access", () => ({
+  resolveProAccess: () => ({
+    canAccessCollections: mockCanAccessCollections,
+  }),
+  getFeatureDisabledResponse: (feature: string) =>
+    new Response(JSON.stringify({ error: "feature_disabled", feature }), { status: 403 }),
+}));
+
 const { GET } = await import("@/app/api/user/collections/route");
 
 describe("GET /api/user/collections", () => {
@@ -75,5 +85,18 @@ describe("GET /api/user/collections", () => {
     expect(res.status).toBe(400);
     const body = await res.json();
     expect(body.error).toBe("invalid_cursor");
+  });
+
+  it("returns 403 when collections are not publicly enabled", async () => {
+    mockCanAccessCollections = false;
+
+    const req = new NextRequest("http://localhost/api/user/collections");
+    const res = await GET(req);
+
+    expect(res.status).toBe(403);
+    const body = await res.json();
+    expect(body.feature).toBe("collections");
+
+    mockCanAccessCollections = true;
   });
 });

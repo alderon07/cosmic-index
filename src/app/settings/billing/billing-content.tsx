@@ -24,8 +24,10 @@ import { PRO_FEATURES } from "@/lib/pro-features";
 interface BillingContentProps {
   tier: "free" | "pro";
   hasStripeCustomer: boolean;
-  proBillingEnabled: boolean;
-  waitlistEnabled: boolean;
+  productEnabled: boolean;
+  canStartCheckout: boolean;
+  canManageBilling: boolean;
+  showWaitlist: boolean;
 }
 
 const freeLimits = TIER_LIMITS.free;
@@ -71,8 +73,10 @@ const PLAN_LIMIT_COMPARISON = [
 export function BillingContent({
   tier,
   hasStripeCustomer,
-  proBillingEnabled,
-  waitlistEnabled,
+  productEnabled,
+  canStartCheckout,
+  canManageBilling,
+  showWaitlist,
 }: BillingContentProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -205,12 +209,12 @@ export function BillingContent({
               <p className="text-sm text-muted-foreground">
                 Thank you for supporting Cosmic Index!
               </p>
-              {!proBillingEnabled ? (
+              {!canManageBilling ? (
                 <p className="text-sm text-muted-foreground">
                   Billing controls are temporarily unavailable.
                 </p>
               ) : null}
-              {proBillingEnabled ? (
+              {canManageBilling ? (
                 <div className="space-y-2">
                   <Button
                     onClick={handleManageSubscription}
@@ -235,7 +239,7 @@ export function BillingContent({
             </div>
           ) : (
             <div className="space-y-4">
-              {proBillingEnabled ? (
+              {canStartCheckout ? (
                 <div className="space-y-2">
                   <div className="flex flex-wrap gap-2">
                     <Button
@@ -250,41 +254,43 @@ export function BillingContent({
                       )}
                       Upgrade to Pro
                     </Button>
-                    <Button
-                      onClick={handleManageSubscription}
-                      disabled={isLoading}
-                      variant="outline"
-                      className="gap-2"
-                    >
-                      {isLoading ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <ExternalLink className="w-4 h-4" />
-                      )}
-                      Manage or Cancel
-                    </Button>
+                    {canManageBilling ? (
+                      <Button
+                        onClick={handleManageSubscription}
+                        disabled={isLoading}
+                        variant="outline"
+                        className="gap-2"
+                      >
+                        {isLoading ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <ExternalLink className="w-4 h-4" />
+                        )}
+                        Manage or Cancel
+                      </Button>
+                    ) : null}
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    Already subscribed? Use Manage or Cancel while status sync completes.
-                  </p>
+                  {canManageBilling ? (
+                    <p className="text-xs text-muted-foreground">
+                      Already subscribed? Use Manage or Cancel while status sync completes.
+                    </p>
+                  ) : null}
                 </div>
               ) : (
                 <div className="space-y-2">
                   <p className="text-sm text-muted-foreground">
-                    Pro billing is coming soon.
+                    {productEnabled
+                      ? "Billing is not available right now."
+                      : "Pro is not publicly available yet."}
                   </p>
                   {process.env.NODE_ENV !== "production" ? (
                     <p className="text-xs text-muted-foreground">
                       To enable checkout locally, set{" "}
-                      <code className="font-mono">PRO_BILLING_ENABLED=true</code>{" "}
-                      and{" "}
-                      <code className="font-mono">
-                        NEXT_PUBLIC_PRO_BILLING_ENABLED=true
-                      </code>
-                      .
+                      <code className="font-mono">PRO_PRODUCT_ENABLED=true</code>{" "}
+                      or override with <code className="font-mono">PRO_BILLING_ENABLED=true</code>.
                     </p>
                   ) : null}
-                  {waitlistEnabled ? (
+                  {showWaitlist ? (
                     <WaitlistCta source="billing" compact />
                   ) : null}
                 </div>

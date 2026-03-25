@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth, authErrorResponse } from "@/lib/auth";
+import { getFeatureDisabledResponse, resolveProAccess } from "@/lib/pro-access";
 import { requireUserDb } from "@/lib/user-db";
 import { CreateCollectionSchema, Collection } from "@/lib/types";
 import { ServerTiming } from "@/lib/server-timing";
@@ -19,6 +20,9 @@ export async function GET(request: NextRequest) {
   const timing = new ServerTiming();
   try {
     const user = await timing.measure("auth", () => requireAuth());
+    if (!resolveProAccess(user).canAccessCollections) {
+      return timing.json({ error: "feature_disabled", feature: "collections" }, { status: 403 });
+    }
     const searchParams = request.nextUrl.searchParams;
     const limit = timing.measureSync("parse_limit", () =>
       parsePaginationLimit(searchParams.get("limit"), 24, 100)
@@ -117,6 +121,9 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const user = await requireAuth();
+    if (!resolveProAccess(user).canAccessCollections) {
+      return getFeatureDisabledResponse("collections");
+    }
 
     const body = await request.json();
     const parseResult = CreateCollectionSchema.safeParse(body);
