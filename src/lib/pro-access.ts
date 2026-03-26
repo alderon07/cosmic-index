@@ -29,10 +29,10 @@ export function resolveProAccess(user: ProUser): ProAccess {
   const canAccessProduct = gate.productEnabled || isAdmin || isCurrentPro;
   const canAccessCollections = canAccessProduct;
   const canAccessProSurfaces = gate.surfacesEnabled && canAccessProduct;
-  const canStartCheckout = gate.billingEnabled && (gate.productEnabled || isAdmin);
+  const canStartCheckout = gate.billingEnabled && !isCurrentPro && (gate.productEnabled || isAdmin);
   const canManageBilling = gate.billingEnabled && (gate.productEnabled || isAdmin || isCurrentPro);
-  const canAccessWaitlist = gate.waitlistEnabled && (!gate.productEnabled || isAdmin);
-  const shouldShowWaitlist = canAccessWaitlist && !isAdmin && !isCurrentPro;
+  const canAccessWaitlist = false;
+  const shouldShowWaitlist = false;
 
   return {
     gate,
@@ -47,7 +47,7 @@ export function resolveProAccess(user: ProUser): ProAccess {
     canManageBilling,
     canAccessWaitlist,
     shouldShowWaitlist,
-    upgradePreviewAvailable: !gate.productEnabled && gate.waitlistEnabled,
+    upgradePreviewAvailable: false,
   };
 }
 
@@ -57,5 +57,14 @@ export function getFeatureDisabledResponse(
   return Response.json(
     { error: "feature_disabled", feature },
     { status: 403 }
+  );
+}
+
+export function getFeatureRetiredResponse(
+  feature: "waitlist"
+): Response {
+  return Response.json(
+    { error: "feature_retired", feature },
+    { status: 410 }
   );
 }

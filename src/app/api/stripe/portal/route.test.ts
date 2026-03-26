@@ -35,6 +35,12 @@ const mockListSubscriptions = mock(async () => ({ data: [] as Array<{ status: st
 let mockCanManageBilling = true;
 
 mock.module("@/lib/auth", () => ({
+  getAuthUser: async () => ({
+    userId: "user_123",
+    email: "user@example.com",
+    tier: "pro" as const,
+    isPro: true,
+  }),
   requireAuth: async () => ({
     userId: "user_123",
     email: "user@example.com",

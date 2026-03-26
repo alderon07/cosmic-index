@@ -4,9 +4,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getAuthUser } from "@/lib/auth";
 import { isInternalAdmin, isInternalAdminConfigured } from "@/lib/admin-access";
 import { resolveLimitMode } from "@/lib/feature-policy";
+import { getProGate } from "@/lib/runtime-mode";
 import { getUserDb } from "@/lib/user-db";
 import {
-  getActiveWaitlistCount,
   getInterestForDay,
   getInterestForLastDays,
   getUtcDayKey,
@@ -49,11 +49,8 @@ export default async function ProRolloutStatusPage() {
     );
   }
 
-  const waitlistCount = await getActiveWaitlistCount(db);
-  const mode = await resolveLimitMode({
-    db,
-    waitlistCountOverride: waitlistCount,
-  });
+  const gate = getProGate();
+  const mode = await resolveLimitMode();
   const [today, last7d] = await Promise.all([
     getInterestForDay(db, getUtcDayKey()),
     getInterestForLastDays(db, 7),
@@ -65,20 +62,20 @@ export default async function ProRolloutStatusPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Waitlist</CardTitle>
+          <CardTitle>Launch Gates</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2 text-sm">
           <div className="flex items-center justify-between">
-            <span className="text-muted-foreground">Active Signups</span>
-            <span>{formatNumber(waitlistCount)}</span>
+            <span className="text-muted-foreground">Product Enabled</span>
+            <span>{gate.productEnabled ? "Yes" : "No"}</span>
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-muted-foreground">Threshold</span>
-            <span>{formatNumber(mode.threshold)}</span>
+            <span className="text-muted-foreground">Billing Enabled</span>
+            <span>{gate.billingEnabled ? "Yes" : "No"}</span>
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-muted-foreground">Reached</span>
-            <span>{mode.reached ? "Yes" : "No"}</span>
+            <span className="text-muted-foreground">Pro Surfaces Enabled</span>
+            <span>{gate.surfacesEnabled ? "Yes" : "No"}</span>
           </div>
         </CardContent>
       </Card>
@@ -109,10 +106,6 @@ export default async function ProRolloutStatusPage() {
         </CardHeader>
         <CardContent className="space-y-2 text-sm">
           <div className="flex items-center justify-between">
-            <span className="text-muted-foreground">Waitlist Signups</span>
-            <span>{formatNumber(today.waitlistSignups)}</span>
-          </div>
-          <div className="flex items-center justify-between">
             <span className="text-muted-foreground">Saved Objects Limit Hits</span>
             <span>{formatNumber(today.savedObjectsLimitHits)}</span>
           </div>
@@ -132,10 +125,6 @@ export default async function ProRolloutStatusPage() {
           <CardTitle>Interest Last 7 Days (UTC)</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2 text-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-muted-foreground">Waitlist Signups</span>
-            <span>{formatNumber(last7d.waitlistSignups)}</span>
-          </div>
           <div className="flex items-center justify-between">
             <span className="text-muted-foreground">Saved Objects Limit Hits</span>
             <span>{formatNumber(last7d.savedObjectsLimitHits)}</span>

@@ -1,6 +1,6 @@
 # Migration Runbook (Executed 2026-03-01)
 
-Last updated (UTC): 2026-03-03
+Last updated (UTC): 2026-03-26
 
 ## Status
 
@@ -11,6 +11,8 @@ Last updated (UTC): 2026-03-03
   3. `db/migrations/003_tier_limit_indexes.sql`
   4. `db/migrations/004_waitlist_interest.sql`
 - There are no pending migrations in this sequence.
+- For the current production deployment track, migrations are already complete and should be treated as done unless the app is pointed at a different database.
+- No additional migration is required to retire the waitlist from the active rollout path; legacy waitlist tables can stay in place until a later cleanup migration.
 
 ## Execution Record
 

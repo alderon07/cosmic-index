@@ -5,9 +5,15 @@ export interface ProGate {
   productEnabled: boolean;
   billingEnabled: boolean;
   surfacesEnabled: boolean;
+  /**
+   * @deprecated Waitlist rollout is retired. This remains for compatibility and is always false.
+   */
   waitlistEnabled: boolean;
   configuredLimitMode: LimitMode;
   forceEnforce: boolean;
+  /**
+   * @deprecated Waitlist threshold rollout is retired. This remains for compatibility and is always 0.
+   */
   waitlistEnforceThreshold: number;
 }
 
@@ -21,13 +27,6 @@ function envDisabled(value: string | undefined): boolean {
   if (!value) return false;
   const normalized = value.trim().toLowerCase();
   return normalized === "0" || normalized === "false" || normalized === "no";
-}
-
-function parsePositiveInt(value: string | undefined, fallback: number): number {
-  if (!value) return fallback;
-  const parsed = Number.parseInt(value, 10);
-  if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
-  return parsed;
 }
 
 export function isClerkServerConfigured(): boolean {
@@ -47,16 +46,16 @@ function getServerFlag(value: string | undefined, fallback: boolean): boolean {
 }
 
 export function getProGate(): ProGate {
-  const productEnabled = getServerFlag(process.env.PRO_PRODUCT_ENABLED, false);
+  const productEnabled = getServerFlag(process.env.PRO_PRODUCT_ENABLED, true);
 
   return {
     productEnabled,
     surfacesEnabled: getServerFlag(process.env.PRO_SURFACES_ENABLED, productEnabled),
     billingEnabled: getServerFlag(process.env.PRO_BILLING_ENABLED, productEnabled),
-    waitlistEnabled: getServerFlag(process.env.WAITLIST_ENABLED, !productEnabled),
+    waitlistEnabled: false,
     configuredLimitMode: getConfiguredLimitMode(),
     forceEnforce: getForceEnforce(),
-    waitlistEnforceThreshold: getWaitlistEnforceThreshold(),
+    waitlistEnforceThreshold: 0,
   };
 }
 
@@ -86,7 +85,7 @@ export function getProBillingEnabled(): boolean {
 }
 
 export function getWaitlistEnabled(): boolean {
-  return getProGate().waitlistEnabled;
+  return false;
 }
 
 export function getConfiguredLimitMode(): LimitMode {
@@ -104,7 +103,7 @@ export function getForceEnforce(): boolean {
 }
 
 export function getWaitlistEnforceThreshold(): number {
-  return parsePositiveInt(process.env.WAITLIST_ENFORCE_THRESHOLD, 125);
+  return 0;
 }
 
 function parseAdminIds(raw: string | undefined): string[] {

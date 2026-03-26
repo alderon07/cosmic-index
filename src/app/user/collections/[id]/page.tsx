@@ -28,15 +28,13 @@ export default async function CollectionDetailPage() {
             <FolderHeart className="mx-auto mb-3 h-10 w-10 text-muted-foreground" />
             <p className="font-display text-xl text-orange-100">Collections are not publicly available yet</p>
             <p className="mt-2 text-sm text-muted-foreground">
-              This collection area will open when Pro becomes available.
+              This collection area is unavailable in this environment.
             </p>
-            {proAccess.shouldShowWaitlist ? (
-              <p className="mt-4 text-sm">
-                <Link href="/waitlist" className="text-primary hover:underline">
-                  Join the Pro waitlist
-                </Link>
-              </p>
-            ) : null}
+            <p className="mt-4 text-sm">
+              <Link href="/settings/billing" className="text-primary hover:underline">
+                Open Billing
+              </Link>
+            </p>
           </CardContent>
         </Card>
       </div>

@@ -4,15 +4,10 @@ import {
   getProGate,
 } from "@/lib/runtime-mode";
 import { resolveProAccess } from "@/lib/pro-access";
-import { getActiveWaitlistCount } from "@/lib/waitlist";
 
 type LimitModeReason =
   | "configured"
-  | "force_enforce"
-  | "waitlist_disabled"
-  | "threshold_reached"
-  | "threshold_not_reached"
-  | "waitlist_status_unavailable";
+  | "force_enforce";
 
 export interface LimitModeResolution {
   configuredMode: LimitMode;
@@ -32,24 +27,8 @@ export interface LimitPolicyMetadata {
   upgradePreviewAvailable: boolean;
 }
 
-let waitlistCountCache: { value: number; expiresAt: number } | null = null;
-const WAITLIST_CACHE_TTL_MS = 60_000;
-
-async function loadWaitlistCount(db: Client | null | undefined): Promise<number | null> {
-  if (!db) return null;
-
-  const now = Date.now();
-  if (waitlistCountCache && waitlistCountCache.expiresAt > now) {
-    return waitlistCountCache.value;
-  }
-
-  const count = await getActiveWaitlistCount(db);
-  waitlistCountCache = { value: count, expiresAt: now + WAITLIST_CACHE_TTL_MS };
-  return count;
-}
-
 export function invalidateWaitlistCountCache(): void {
-  waitlistCountCache = null;
+  // Waitlist caching is retired alongside the public waitlist flow.
 }
 
 export function getProPolicy() {
@@ -63,88 +42,34 @@ export function getProPolicy() {
   };
 }
 
-export async function resolveLimitMode(params?: {
+export async function resolveLimitMode(_params?: {
   db?: Client | null;
   waitlistCountOverride?: number | null;
 }): Promise<LimitModeResolution> {
+  void _params;
   const gate = getProGate();
   const configuredMode = gate.configuredLimitMode;
-  const waitlistEnabled = gate.waitlistEnabled;
-  const threshold = gate.waitlistEnforceThreshold;
 
   if (gate.forceEnforce) {
     return {
       configuredMode,
       effectiveMode: "enforce",
       reason: "force_enforce",
-      waitlistEnabled,
-      threshold,
-      waitlistCount: params?.waitlistCountOverride ?? null,
-      reached: true,
-    };
-  }
-
-  if (configuredMode !== "enforce") {
-    return {
-      configuredMode,
-      effectiveMode: configuredMode,
-      reason: "configured",
-      waitlistEnabled,
-      threshold,
-      waitlistCount: params?.waitlistCountOverride ?? null,
-      reached: false,
-    };
-  }
-
-  if (!waitlistEnabled) {
-    return {
-      configuredMode,
-      effectiveMode: "enforce",
-      reason: "waitlist_disabled",
-      waitlistEnabled,
-      threshold,
-      waitlistCount: params?.waitlistCountOverride ?? null,
-      reached: true,
-    };
-  }
-
-  const count =
-    params?.waitlistCountOverride ??
-    (await loadWaitlistCount(params?.db));
-
-  if (count === null) {
-    return {
-      configuredMode,
-      effectiveMode: "enforce",
-      reason: "waitlist_status_unavailable",
-      waitlistEnabled,
-      threshold,
+      waitlistEnabled: false,
+      threshold: 0,
       waitlistCount: null,
       reached: true,
     };
   }
 
-  const reached = count >= threshold;
-  if (!reached) {
-    return {
-      configuredMode,
-      effectiveMode: "warn",
-      reason: "threshold_not_reached",
-      waitlistEnabled,
-      threshold,
-      waitlistCount: count,
-      reached: false,
-    };
-  }
-
   return {
     configuredMode,
-    effectiveMode: "enforce",
-    reason: "threshold_reached",
-    waitlistEnabled,
-    threshold,
-    waitlistCount: count,
-    reached,
+    effectiveMode: configuredMode,
+    reason: "configured",
+    waitlistEnabled: false,
+    threshold: 0,
+    waitlistCount: null,
+    reached: configuredMode === "enforce",
   };
 }
 

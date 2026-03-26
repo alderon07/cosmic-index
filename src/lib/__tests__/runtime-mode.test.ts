@@ -13,12 +13,9 @@ const ENV_KEYS = [
   "NEXT_PUBLIC_PRO_SURFACES_ENABLED",
   "PRO_BILLING_ENABLED",
   "NEXT_PUBLIC_PRO_BILLING_ENABLED",
-  "WAITLIST_ENABLED",
-  "NEXT_PUBLIC_WAITLIST_ENABLED",
   "LIMIT_MODE",
   "LIMIT_MODE_FORCE_ENFORCE",
   "FORCE_ENFORCE_LIMIT_MODE",
-  "WAITLIST_ENFORCE_THRESHOLD",
 ] as const;
 
 const ORIGINAL_ENV = new Map<string, string | undefined>(
@@ -46,31 +43,27 @@ describe("runtime-mode Pro gate", () => {
     process.env.NEXT_PUBLIC_PRO_BILLING_ENABLED = "true";
     process.env.PRO_SURFACES_ENABLED = "false";
     process.env.NEXT_PUBLIC_PRO_SURFACES_ENABLED = "true";
-    delete process.env.WAITLIST_ENABLED;
-    process.env.NEXT_PUBLIC_WAITLIST_ENABLED = "false";
 
     const gate = getProGate();
 
-    expect(gate.productEnabled).toBe(false);
+    expect(gate.productEnabled).toBe(true);
     expect(gate.billingEnabled).toBe(false);
     expect(gate.surfacesEnabled).toBe(false);
-    expect(gate.waitlistEnabled).toBe(true);
+    expect(gate.waitlistEnabled).toBe(false);
     expect(getProBillingEnabled()).toBe(false);
     expect(getProSurfacesEnabled()).toBe(false);
-    expect(getWaitlistEnabled()).toBe(true);
+    expect(getWaitlistEnabled()).toBe(false);
     expect(isProFeatureEnabled("billing")).toBe(false);
     expect(isProFeatureEnabled("pro_surfaces")).toBe(false);
-    expect(isProFeatureEnabled("waitlist")).toBe(true);
+    expect(isProFeatureEnabled("waitlist")).toBe(false);
   });
 
-  it("returns normalized rollout configuration from one place", () => {
+  it("returns normalized rollout configuration from one place and retires waitlist fields", () => {
     process.env.PRO_PRODUCT_ENABLED = "yes";
     process.env.PRO_BILLING_ENABLED = "yes";
     process.env.PRO_SURFACES_ENABLED = "1";
-    process.env.WAITLIST_ENABLED = "no";
     process.env.LIMIT_MODE = "enforce";
     process.env.LIMIT_MODE_FORCE_ENFORCE = "true";
-    process.env.WAITLIST_ENFORCE_THRESHOLD = "250";
 
     expect(getProGate()).toEqual({
       productEnabled: true,
@@ -79,7 +72,16 @@ describe("runtime-mode Pro gate", () => {
       waitlistEnabled: false,
       configuredLimitMode: "enforce",
       forceEnforce: true,
-      waitlistEnforceThreshold: 250,
+      waitlistEnforceThreshold: 0,
     });
+  });
+
+  it("defaults product, billing, and surfaces to enabled when unset", () => {
+    const gate = getProGate();
+
+    expect(gate.productEnabled).toBe(true);
+    expect(gate.billingEnabled).toBe(true);
+    expect(gate.surfacesEnabled).toBe(true);
+    expect(gate.waitlistEnabled).toBe(false);
   });
 });

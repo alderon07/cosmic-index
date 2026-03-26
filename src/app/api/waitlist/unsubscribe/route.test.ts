@@ -5,13 +5,13 @@ mock.module("@/lib/pro-access", () => ({
     new Response(JSON.stringify({ error: "feature_retired", feature }), { status: 410 }),
 }));
 
-const { POST } = await import("@/app/api/waitlist/route");
+const { POST } = await import("@/app/api/waitlist/unsubscribe/route");
 
 afterAll(() => {
   mock.restore();
 });
 
-describe("POST /api/waitlist", () => {
+describe("POST /api/waitlist/unsubscribe", () => {
   it("returns 410 because the waitlist has been retired", async () => {
     const response = await POST();
 
