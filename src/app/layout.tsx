@@ -10,7 +10,6 @@ import {
   Flame,
   CloudLightning,
   Keyboard,
-  BellRing,
 } from "lucide-react";
 import { THEMES } from "@/lib/theme";
 import { Analytics } from "@vercel/analytics/react";
@@ -28,7 +27,6 @@ import {
   NavigationMenuList,
   NavigationMenuTrigger,
 } from "@/components/ui/navigation-menu";
-import { getProGate } from "@/lib/runtime-mode";
 import { serializeJsonLd } from "@/lib/safe-json-ld";
 
 const audiowide = Audiowide({
@@ -160,8 +158,6 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const { waitlistEnabled } = getProGate();
-
   return (
     <html lang="en" className="dark">
       <head>
@@ -296,17 +292,6 @@ export default function RootLayout({
                   <CloudLightning className="w-5 h-5 lg:hidden" />
                   <span className="hidden lg:inline">Weather</span>
                 </Link>
-                {waitlistEnabled ? (
-                  <Link
-                    href="/waitlist"
-                    className="inline-flex items-center gap-1.5 rounded-full border border-uranium-green/30 bg-uranium-green/10 px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.12em] text-uranium-green transition-colors hover:bg-uranium-green/20"
-                    title="Pro Waitlist"
-                  >
-                    <span className="h-1.5 w-1.5 rounded-full bg-uranium-green animate-pulse" />
-                    <BellRing className="h-3.5 w-3.5 lg:hidden" />
-                    <span className="hidden lg:inline">Waitlist</span>
-                  </Link>
-                ) : null}
                 {/* Auth separator and button */}
                 <div className="mx-1 hidden h-4 w-px bg-border/50 lg:block" />
                 <UserAuthButton />

@@ -64,7 +64,6 @@ export default async function BillingPage() {
           productEnabled={proAccess.gate.productEnabled}
           canStartCheckout={proAccess.canStartCheckout}
           canManageBilling={proAccess.canManageBilling}
-          showWaitlist={proAccess.shouldShowWaitlist}
         />
       </Suspense>
     </div>

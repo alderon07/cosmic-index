@@ -20,6 +20,7 @@ This file tracks only remaining rollout work to avoid repeating status already c
 - [ ] Configure Stripe live product/price and webhook endpoint
 - [ ] Verify Stripe Customer Portal branding/config in live mode
 - [ ] Run production checkout -> webhook -> cancel lifecycle verification
+- [x] Retire the public waitlist from the active launch path
 
 ### Alerts Delivery
 

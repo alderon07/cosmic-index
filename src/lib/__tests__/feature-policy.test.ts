@@ -6,8 +6,6 @@ const ENV_KEYS = [
   "LIMIT_MODE",
   "LIMIT_MODE_FORCE_ENFORCE",
   "FORCE_ENFORCE_LIMIT_MODE",
-  "WAITLIST_ENABLED",
-  "WAITLIST_ENFORCE_THRESHOLD",
 ] as const;
 
 const ORIGINAL_ENV = new Map<string, string | undefined>(
@@ -30,38 +28,35 @@ afterEach(() => {
 });
 
 describe("resolveLimitMode", () => {
-  it("drops to warn when enforce mode is configured but waitlist threshold is not reached", async () => {
+  it("enforces immediately when enforce mode is configured", async () => {
     process.env.LIMIT_MODE = "enforce";
-    process.env.WAITLIST_ENABLED = "true";
-    process.env.WAITLIST_ENFORCE_THRESHOLD = "125";
 
     const result = await resolveLimitMode({ waitlistCountOverride: 24 });
 
     expect(result).toMatchObject({
       configuredMode: "enforce",
-      effectiveMode: "warn",
-      reason: "threshold_not_reached",
-      waitlistEnabled: true,
-      threshold: 125,
-      waitlistCount: 24,
-      reached: false,
+      effectiveMode: "enforce",
+      reason: "configured",
+      waitlistEnabled: false,
+      threshold: 0,
+      waitlistCount: null,
+      reached: true,
     });
   });
 
-  it("enforces once the waitlist threshold is reached", async () => {
+  it("force override still enforces", async () => {
     process.env.LIMIT_MODE = "enforce";
-    process.env.WAITLIST_ENABLED = "true";
-    process.env.WAITLIST_ENFORCE_THRESHOLD = "125";
+    process.env.LIMIT_MODE_FORCE_ENFORCE = "true";
 
-    const result = await resolveLimitMode({ waitlistCountOverride: 125 });
+    const result = await resolveLimitMode();
 
     expect(result).toMatchObject({
       configuredMode: "enforce",
       effectiveMode: "enforce",
-      reason: "threshold_reached",
-      waitlistEnabled: true,
-      threshold: 125,
-      waitlistCount: 125,
+      reason: "force_enforce",
+      waitlistEnabled: false,
+      threshold: 0,
+      waitlistCount: null,
       reached: true,
     });
   });

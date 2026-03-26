@@ -27,15 +27,13 @@ export default async function CollectionsPage() {
             <FolderHeart className="mx-auto mb-3 h-10 w-10 text-muted-foreground" />
             <p className="font-display text-xl text-orange-100">Collections are not publicly available yet</p>
             <p className="mt-2 text-sm text-muted-foreground">
-              You can join the waitlist or check billing once Pro opens.
+              Collections are unavailable in this environment. Check billing for current access.
             </p>
-            {proAccess.shouldShowWaitlist ? (
-              <p className="mt-4 text-sm">
-                <Link href="/waitlist" className="text-primary hover:underline">
-                  Join the Pro waitlist
-                </Link>
-              </p>
-            ) : null}
+            <p className="mt-4 text-sm">
+              <Link href="/settings/billing" className="text-primary hover:underline">
+                Open Billing
+              </Link>
+            </p>
           </CardContent>
         </Card>
       </div>

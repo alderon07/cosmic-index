@@ -5,7 +5,6 @@ import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ProBadge } from "@/components/pro-badge";
-import { WaitlistCta } from "@/components/waitlist/waitlist-cta";
 import { ACCOUNT_CARD_TONE } from "@/lib/theme";
 import { Check, Loader2, ExternalLink, Sparkles } from "lucide-react";
 import { TIER_LIMITS } from "@/lib/tier-limits";
@@ -27,7 +26,6 @@ interface BillingContentProps {
   productEnabled: boolean;
   canStartCheckout: boolean;
   canManageBilling: boolean;
-  showWaitlist: boolean;
 }
 
 const freeLimits = TIER_LIMITS.free;
@@ -76,7 +74,6 @@ export function BillingContent({
   productEnabled,
   canStartCheckout,
   canManageBilling,
-  showWaitlist,
 }: BillingContentProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -285,13 +282,10 @@ export function BillingContent({
                   </p>
                   {process.env.NODE_ENV !== "production" ? (
                     <p className="text-xs text-muted-foreground">
-                      To enable checkout locally, set{" "}
-                      <code className="font-mono">PRO_PRODUCT_ENABLED=true</code>{" "}
-                      or override with <code className="font-mono">PRO_BILLING_ENABLED=true</code>.
+                      Checkout is enabled by default. To disable it locally, set{" "}
+                      <code className="font-mono">PRO_PRODUCT_ENABLED=false</code>{" "}
+                      or <code className="font-mono">PRO_BILLING_ENABLED=false</code>.
                     </p>
-                  ) : null}
-                  {showWaitlist ? (
-                    <WaitlistCta source="billing" compact />
                   ) : null}
                 </div>
               )}

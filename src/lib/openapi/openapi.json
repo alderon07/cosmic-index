@@ -2177,108 +2177,14 @@
     "/waitlist": {
       "post": {
         "operationId": "joinWaitlist",
-        "summary": "Join Pro waitlist",
-        "description": "Join or refresh membership in the Pro waitlist while public Pro access is closed. Requires a signed-in user account. The waitlist email is always derived from the signed-in account; if an `email` field is provided, it must match the account email.",
+        "summary": "Retired waitlist endpoint",
+        "description": "The public waitlist flow has been retired. This endpoint is kept only to return a stable retirement response.",
         "tags": [
           "User"
         ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "source"
-                ],
-                "properties": {
-                  "email": {
-                    "type": "string",
-                    "format": "email",
-                    "maxLength": 320,
-                    "description": "Optional. If provided, must exactly match the authenticated account email."
-                  },
-                  "source": {
-                    "type": "string",
-                    "enum": [
-                      "billing",
-                      "limit_saved_objects",
-                      "limit_saved_searches",
-                      "limit_exports",
-                      "pro_badge"
-                    ]
-                  }
-                }
-              }
-            }
-          }
-        },
         "responses": {
-          "200": {
-            "description": "Already joined or reactivated",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "ok",
-                    "status"
-                  ],
-                  "properties": {
-                    "ok": {
-                      "type": "boolean",
-                      "const": true
-                    },
-                    "status": {
-                      "type": "string",
-                      "enum": [
-                        "already_joined",
-                        "reactivated"
-                      ]
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "201": {
-            "description": "Joined waitlist",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "ok",
-                    "status"
-                  ],
-                  "properties": {
-                    "ok": {
-                      "type": "boolean",
-                      "const": true
-                    },
-                    "status": {
-                      "type": "string",
-                      "const": "joined"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request"
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Waitlist unavailable for the current user or provided email does not match account email"
-          },
-          "429": {
-            "description": "Rate limited"
-          },
-          "503": {
-            "description": "Waitlist unavailable"
+          "410": {
+            "description": "Waitlist retired"
           }
         }
       }
@@ -2286,60 +2192,14 @@
     "/waitlist/status": {
       "get": {
         "operationId": "getWaitlistStatus",
-        "summary": "Get waitlist status",
-        "description": "Returns current waitlist count, threshold, and resolved limit mode.",
+        "summary": "Retired waitlist status endpoint",
+        "description": "The public waitlist flow has been retired. This endpoint is kept only to return a stable retirement response.",
         "tags": [
           "User"
         ],
         "responses": {
-          "200": {
-            "description": "Waitlist status",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "waitlistCount",
-                    "threshold",
-                    "reached",
-                    "configuredMode",
-                    "effectiveMode"
-                  ],
-                  "properties": {
-                    "waitlistCount": {
-                      "type": "integer",
-                      "minimum": 0
-                    },
-                    "threshold": {
-                      "type": "integer",
-                      "minimum": 1
-                    },
-                    "reached": {
-                      "type": "boolean"
-                    },
-                    "configuredMode": {
-                      "type": "string",
-                      "enum": [
-                        "shadow",
-                        "warn",
-                        "enforce"
-                      ]
-                    },
-                    "effectiveMode": {
-                      "type": "string",
-                      "enum": [
-                        "shadow",
-                        "warn",
-                        "enforce"
-                      ]
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "Status unavailable"
+          "410": {
+            "description": "Waitlist retired"
           }
         }
       }
@@ -2347,44 +2207,14 @@
     "/waitlist/unsubscribe": {
       "post": {
         "operationId": "unsubscribeWaitlist",
-        "summary": "Unsubscribe from waitlist",
-        "description": "Unsubscribes the signed-in user from the active waitlist while public Pro access is still closed.",
+        "summary": "Retired waitlist unsubscribe endpoint",
+        "description": "The public waitlist flow has been retired. This endpoint is kept only to return a stable retirement response.",
         "tags": [
           "User"
         ],
         "responses": {
-          "200": {
-            "description": "Unsubscribed",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "ok",
-                    "status"
-                  ],
-                  "properties": {
-                    "ok": {
-                      "type": "boolean",
-                      "const": true
-                    },
-                    "status": {
-                      "type": "string",
-                      "const": "unsubscribed"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Waitlist unavailable for the current user"
-          },
-          "503": {
-            "description": "Waitlist unavailable"
+          "410": {
+            "description": "Waitlist retired"
           }
         }
       }
