@@ -25,9 +25,9 @@ import {
   generateExportFilename,
   type ExportCursor,
 } from "@/lib/export-utils";
+import { recordLimitHitWithDedup } from "@/lib/pro-interest";
 import { getTierLimits } from "@/lib/tier-limits";
 import { resolveLimitMode, toLimitPolicyMetadata } from "@/lib/feature-policy";
-import { recordLimitHitWithDedup } from "@/lib/waitlist";
 import { resolveSavedObjectHref } from "@/lib/saved-object-ui";
 
 /**

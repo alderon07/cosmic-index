@@ -5,7 +5,7 @@ import { SaveObjectInputSchema, SavedObject } from "@/lib/types";
 import { parseCanonicalId } from "@/lib/canonical-id";
 import { getTierLimits, getUpgradePayload } from "@/lib/tier-limits";
 import { resolveLimitMode, toLimitPolicyMetadata } from "@/lib/feature-policy";
-import { recordLimitHitWithDedup } from "@/lib/waitlist";
+import { recordLimitHitWithDedup } from "@/lib/pro-interest";
 import { ServerTiming } from "@/lib/server-timing";
 import {
   decodeSavedObjectsCursor,

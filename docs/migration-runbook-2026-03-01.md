@@ -12,7 +12,8 @@ Last updated (UTC): 2026-03-26
   4. `db/migrations/004_waitlist_interest.sql`
 - There are no pending migrations in this sequence.
 - For the current production deployment track, migrations are already complete and should be treated as done unless the app is pointed at a different database.
-- No additional migration is required to retire the waitlist from the active rollout path; legacy waitlist tables can stay in place until a later cleanup migration.
+- No additional migration was required to retire the waitlist from the active rollout path.
+- A later cleanup migration is now available as `db/migrations/005_drop_pro_waitlist.sql` to remove the retired `pro_waitlist` table while keeping the interest-metrics tables.
 
 ## Execution Record
 

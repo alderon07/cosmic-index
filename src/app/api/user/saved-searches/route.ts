@@ -3,9 +3,9 @@ import { requireAuth, authErrorResponse } from "@/lib/auth";
 import { requireUserDb } from "@/lib/user-db";
 import { CreateSavedSearchSchema, SavedSearch } from "@/lib/types";
 import { canonicalizeAndHash } from "@/lib/saved-searches";
+import { recordLimitHitWithDedup } from "@/lib/pro-interest";
 import { getTierLimits, getUpgradePayload } from "@/lib/tier-limits";
 import { resolveLimitMode, toLimitPolicyMetadata } from "@/lib/feature-policy";
-import { recordLimitHitWithDedup } from "@/lib/waitlist";
 
 /**
  * GET /api/user/saved-searches

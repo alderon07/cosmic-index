@@ -4,13 +4,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getAuthUser } from "@/lib/auth";
 import { isInternalAdmin, isInternalAdminConfigured } from "@/lib/admin-access";
 import { resolveLimitMode } from "@/lib/feature-policy";
+import { getInterestForDay, getInterestForLastDays, getUtcDayKey } from "@/lib/pro-interest";
 import { getProGate } from "@/lib/runtime-mode";
 import { getUserDb } from "@/lib/user-db";
-import {
-  getInterestForDay,
-  getInterestForLastDays,
-  getUtcDayKey,
-} from "@/lib/waitlist";
 
 export const metadata: Metadata = {
   title: "Pro Rollout Status",

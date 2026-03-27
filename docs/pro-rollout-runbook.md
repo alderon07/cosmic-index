@@ -72,9 +72,24 @@ Migration status is complete for the current rollout schema:
 - `002_export_history_audit.sql`
 - `003_tier_limit_indexes.sql`
 - `004_waitlist_interest.sql`
+- `005_drop_pro_waitlist.sql` is available for cleanup once you want to remove the retired waitlist table
 
 No new migration is required to launch Pro publicly or retire the waitlist from the active rollout path.
-The legacy waitlist tables remain in place for now and can be removed later in a cleanup migration if desired.
+The retired `pro_waitlist` table can now be removed with `005_drop_pro_waitlist.sql`.
+The interest tables remain in use for internal rollout metrics.
+
+Current table roles:
+- `pro_waitlist`
+  - retired public waitlist signup table
+  - no longer used by the application
+  - safe to remove with `005_drop_pro_waitlist.sql`
+- `pro_interest_daily`
+  - daily aggregate metrics for upgrade pressure
+  - still used by the internal rollout status page and API
+  - tracks free-tier limit-hit counts and still contains a legacy `waitlist_signups` column
+- `pro_interest_dedup`
+  - deduplication table used so repeated limit hits from the same user on the same day do not overcount interest metrics
+  - still used by the internal rollout metrics pipeline
 
 ## 5) UIs and Routes
 
@@ -124,9 +139,38 @@ The legacy waitlist tables remain in place for now and can be removed later in a
    - `warn` -> no blocking + would-block metadata
    - `enforce` -> blocks at limits
 
+Current deployment-ready checklist:
+- Confirm `INTERNAL_ADMIN_IDS` contains your Clerk user ID.
+- Confirm `LIMIT_MODE` matches the intended launch behavior.
+- Confirm Stripe live mode is fully configured:
+  - `STRIPE_SECRET_KEY`
+  - `STRIPE_PRO_PRICE_ID`
+  - `STRIPE_WEBHOOK_SECRET`
+  - webhook endpoint at `/api/webhooks/stripe`
+- Confirm Clerk production is fully configured:
+  - `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`
+  - `CLERK_SECRET_KEY`
+  - production domain and redirect URLs
+- Confirm core runtime infra vars are present:
+  - `NEXT_PUBLIC_APP_URL`
+  - `TURSO_DATABASE_URL`
+  - `TURSO_AUTH_TOKEN`
+  - `UPSTASH_REDIS_REST_URL`
+  - `UPSTASH_REDIS_REST_TOKEN`
+- Optionally apply `005_drop_pro_waitlist.sql` if you want to physically remove the retired `pro_waitlist` table now.
+- After deploy, smoke test:
+  - sign-in flow
+  - billing page
+  - checkout
+  - webhook sync
+  - customer portal
+  - collections
+  - internal rollout page
+
 ## 9) Known Caveats
 
 - If admin IDs are unset (`INTERNAL_ADMIN_IDS` and fallback `PRO_ROLLOUT_ADMIN_IDS`), the internal status endpoint/page is intentionally hidden (`404`).
 - Billing tier can lag immediately after checkout until webhook sync completes; billing UI keeps Manage/Cancel accessible during this window.
 - Alerts are not production-ready yet: `/api/cron/check-alerts` is not implemented and no outbound email provider is wired.
-- Legacy waitlist tables remain in the database even though the public waitlist flow is retired.
+- `pro_waitlist` is no longer used by the app and can be dropped with `005_drop_pro_waitlist.sql`.
+- `pro_interest_daily` and `pro_interest_dedup` are still in use for internal limit-interest metrics.
