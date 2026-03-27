@@ -2,13 +2,9 @@ import { NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/auth";
 import { isInternalAdmin, isInternalAdminConfigured } from "@/lib/admin-access";
 import { resolveLimitMode } from "@/lib/feature-policy";
+import { getInterestForDay, getInterestForLastDays, getUtcDayKey } from "@/lib/pro-interest";
 import { getProGate } from "@/lib/runtime-mode";
 import { getUserDb } from "@/lib/user-db";
-import {
-  getInterestForDay,
-  getInterestForLastDays,
-  getUtcDayKey,
-} from "@/lib/waitlist";
 
 function getBaseHeaders() {
   return {

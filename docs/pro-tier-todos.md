@@ -21,6 +21,7 @@ This file tracks only remaining rollout work to avoid repeating status already c
 - [ ] Verify Stripe Customer Portal branding/config in live mode
 - [ ] Run production checkout -> webhook -> cancel lifecycle verification
 - [x] Retire the public waitlist from the active launch path
+- [ ] Apply `005_drop_pro_waitlist.sql` if you want to physically remove the retired waitlist table
 
 ### Alerts Delivery
 
