@@ -336,12 +336,14 @@ export interface SpaceWeatherPageClientProps {
   initialData: PaginatedResult<AnySpaceWeatherEvent> | null;
   initialError: string | null;
   initialFetchKey: string;
+  forceBackgroundRefresh?: boolean;
 }
 
 export function SpaceWeatherPageClient({
   initialData,
   initialError,
   initialFetchKey,
+  forceBackgroundRefresh = false,
 }: SpaceWeatherPageClientProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -472,6 +474,7 @@ export function SpaceWeatherPageClient({
     enabled: !shouldUseInitialError,
     initialData: currentFetchKey === initialFetchKey ? (initialData ?? undefined) : undefined,
     staleTime: 30_000,
+    refetchOnMount: forceBackgroundRefresh ? "always" : true,
     retry: 1,
   });
 
@@ -490,7 +493,7 @@ export function SpaceWeatherPageClient({
           observer.disconnect();
         }
       },
-      { rootMargin: "240px 0px" }
+      { rootMargin: "120px 0px" }
     );
 
     observer.observe(target);
@@ -772,7 +775,6 @@ export function SpaceWeatherPageClient({
           <Accordion
             type="single"
             collapsible
-            defaultValue="notifications-panel"
             className="w-full"
           >
             <AccordionItem value="notifications-panel" className="border-none">
@@ -911,6 +913,18 @@ export function SpaceWeatherPageClient({
         </Card>
       </div>
 
+      {!isLoading && shouldFetchTimeline && timelineBuckets.length > 0 && (
+        <div className="mb-10">
+          <EventTimeline
+            title="Space Weather Timeline"
+            pageType="space-weather"
+            theme="space-weather"
+            buckets={timelineBuckets}
+            actionable={false}
+          />
+        </div>
+      )}
+
       {/* Results Info */}
       {data && !isLoading && (
         <div className="mb-6 space-y-4">
@@ -946,18 +960,6 @@ export function SpaceWeatherPageClient({
             </p>
           )}
         </div>
-      )}
-
-      <div ref={timelineGateRef} className="h-px w-full" aria-hidden />
-
-      {!isLoading && shouldFetchTimeline && timelineBuckets.length > 0 && (
-        <EventTimeline
-          title="Space Weather Timeline"
-          pageType="space-weather"
-          theme="space-weather"
-          buckets={timelineBuckets}
-          actionable={false}
-        />
       )}
 
       {/* Error State */}
@@ -1047,6 +1049,10 @@ export function SpaceWeatherPageClient({
             showing all event types.
           </p>
         </div>
+      )}
+
+      {!isLoading && data && events.length > 0 && timelineEligible && (
+        <div ref={timelineGateRef} className="mt-10 h-px w-full" aria-hidden />
       )}
 
       {/* Event Detail Modal */}

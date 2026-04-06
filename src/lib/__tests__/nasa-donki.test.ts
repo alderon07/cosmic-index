@@ -462,7 +462,7 @@ describe("notifications integration", () => {
     ).toBe(true);
   });
 
-  it("fails over notifications to CCMC when NASA DONKI returns 503", async () => {
+  it("fails over notifications to NASA when CCMC DONKI returns 503", async () => {
     process.env.NASA_API_KEY = "test_nasa_key";
 
     const requestedUrls: string[] = [];
@@ -475,14 +475,14 @@ describe("notifications integration", () => {
             : input.url;
       requestedUrls.push(url);
 
-      if (url.includes("api.nasa.gov/DONKI/notifications")) {
+      if (url.includes("kauai.ccmc.gsfc.nasa.gov/DONKI/WS/get/notifications")) {
         return new Response("Service Unavailable", {
           status: 503,
           statusText: "Service Unavailable",
         });
       }
 
-      if (url.includes("kauai.ccmc.gsfc.nasa.gov/DONKI/WS/get/notifications")) {
+      if (url.includes("api.nasa.gov/DONKI/notifications")) {
         return new Response(
           JSON.stringify([
             {
@@ -510,10 +510,10 @@ describe("notifications integration", () => {
     });
 
     expect(result.notifications).toHaveLength(1);
-    expect(requestedUrls.some((url) => url.includes("api.nasa.gov/DONKI/notifications"))).toBe(true);
     expect(
       requestedUrls.some((url) => url.includes("kauai.ccmc.gsfc.nasa.gov/DONKI/WS/get/notifications")),
     ).toBe(true);
+    expect(requestedUrls.some((url) => url.includes("api.nasa.gov/DONKI/notifications"))).toBe(true);
   });
 });
 
@@ -689,7 +689,7 @@ describe("DONKI upstream failure handling", () => {
     ).toBe(true);
   });
 
-  it("defaults to NASA DONKI gateway when NASA_API_KEY is set", async () => {
+  it("prefers the CCMC DONKI gateway when NASA_API_KEY is set", async () => {
     process.env.NASA_API_KEY = "test_nasa_key";
 
     const requestedUrls: string[] = [];
@@ -716,11 +716,10 @@ describe("DONKI upstream failure handling", () => {
     });
 
     expect(requestedUrls).toHaveLength(1);
-    expect(requestedUrls[0]).toContain("api.nasa.gov/DONKI/FLR");
-    expect(requestedUrls[0]).toContain("api_key=test_nasa_key");
+    expect(requestedUrls[0]).toContain("kauai.ccmc.gsfc.nasa.gov/DONKI/WS/get/FLR");
   });
 
-  it("fails over event fetches to CCMC when NASA DONKI returns 503", async () => {
+  it("fails over event fetches to NASA when CCMC DONKI returns 503", async () => {
     process.env.NASA_API_KEY = "test_nasa_key";
 
     const requestedUrls: string[] = [];
@@ -733,14 +732,14 @@ describe("DONKI upstream failure handling", () => {
             : input.url;
       requestedUrls.push(url);
 
-      if (url.includes("api.nasa.gov/DONKI/FLR")) {
+      if (url.includes("kauai.ccmc.gsfc.nasa.gov/DONKI/WS/get/FLR")) {
         return new Response("Service Unavailable", {
           status: 503,
           statusText: "Service Unavailable",
         });
       }
 
-      if (url.includes("kauai.ccmc.gsfc.nasa.gov/DONKI/WS/get/FLR")) {
+      if (url.includes("api.nasa.gov/DONKI/FLR")) {
         return new Response(
           JSON.stringify([
             {
@@ -768,8 +767,8 @@ describe("DONKI upstream failure handling", () => {
     });
 
     expect(result.events).toHaveLength(1);
-    expect(requestedUrls.some((url) => url.includes("api.nasa.gov/DONKI/FLR"))).toBe(true);
     expect(requestedUrls.some((url) => url.includes("kauai.ccmc.gsfc.nasa.gov/DONKI/WS/get/FLR"))).toBe(true);
+    expect(requestedUrls.some((url) => url.includes("api.nasa.gov/DONKI/FLR"))).toBe(true);
   });
 
   it("applies base cooldown after retryable failures to reduce repeated pressure on failing upstreams", async () => {
@@ -785,14 +784,14 @@ describe("DONKI upstream failure handling", () => {
             : input.url;
       requestedUrls.push(url);
 
-      if (url.includes("api.nasa.gov/DONKI/SEP")) {
+      if (url.includes("kauai.ccmc.gsfc.nasa.gov/DONKI/WS/get/SEP")) {
         return new Response("Service Unavailable", {
           status: 503,
           statusText: "Service Unavailable",
         });
       }
 
-      if (url.includes("kauai.ccmc.gsfc.nasa.gov/DONKI/WS/get/SEP")) {
+      if (url.includes("api.nasa.gov/DONKI/SEP")) {
         return new Response(JSON.stringify([]), {
           status: 200,
           headers: { "Content-Type": "application/json" },
@@ -821,13 +820,13 @@ describe("DONKI upstream failure handling", () => {
       page: 1,
     });
 
-    const nasaSepCalls = requestedUrls.filter((url) => url.includes("api.nasa.gov/DONKI/SEP"));
     const ccmcSepCalls = requestedUrls.filter((url) =>
       url.includes("kauai.ccmc.gsfc.nasa.gov/DONKI/WS/get/SEP")
     );
+    const nasaSepCalls = requestedUrls.filter((url) => url.includes("api.nasa.gov/DONKI/SEP"));
 
-    expect(nasaSepCalls).toHaveLength(1);
-    expect(ccmcSepCalls).toHaveLength(2);
+    expect(ccmcSepCalls).toHaveLength(1);
+    expect(nasaSepCalls).toHaveLength(2);
   });
 
   it("limits concurrent upstream event requests across event types", async () => {

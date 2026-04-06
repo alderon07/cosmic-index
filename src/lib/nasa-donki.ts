@@ -426,7 +426,7 @@ function warnMissingNasaApiKey(message: string): void {
 
 function getDonkiBaseCandidates(): string[] {
   if (getNasaApiKey()) {
-    return [DONKI_NASA_BASE_URL, DONKI_CCMC_BASE_URL];
+    return [DONKI_CCMC_BASE_URL, DONKI_NASA_BASE_URL];
   }
 
   warnMissingNasaApiKey(
