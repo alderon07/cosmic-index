@@ -1,6 +1,6 @@
 "use client";
 
-import { SignedIn, SignedOut, SignInButton, UserButton } from "@clerk/nextjs";
+import { Show, SignInButton, UserButton } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import { User, Bookmark, Layers, CreditCard } from "lucide-react";
 import { useAppAuth } from "./app-auth-provider";
@@ -41,7 +41,7 @@ export function UserAuthButton({
 
   return (
     <>
-      <SignedOut>
+      <Show when="signed-out">
         <SignInButton mode="modal">
           <Button
             variant="ghost"
@@ -52,12 +52,9 @@ export function UserAuthButton({
             <span className="hidden lg:inline">Sign In</span>
           </Button>
         </SignInButton>
-      </SignedOut>
-      <SignedIn>
-        <UserButton
-          appearance={clerkAppearance}
-          afterSignOutUrl="/"
-        >
+      </Show>
+      <Show when="signed-in">
+        <UserButton appearance={clerkAppearance}>
           <UserButton.MenuItems>
             <UserButton.Link
               href="/user/saved-objects"
@@ -78,7 +75,7 @@ export function UserAuthButton({
             />
           </UserButton.MenuItems>
         </UserButton>
-      </SignedIn>
+      </Show>
     </>
   );
 }

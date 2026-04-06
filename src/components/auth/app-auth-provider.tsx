@@ -51,7 +51,10 @@ function ClerkAuthBridge({ children }: { children: ReactNode }) {
 export function AppAuthProvider({ children }: { children: ReactNode }) {
   if (isClerkClientConfigured()) {
     return (
-      <ClerkProvider appearance={clerkAppearance}>
+      <ClerkProvider
+        appearance={clerkAppearance}
+        afterSignOutUrl="/"
+      >
         <ClerkAuthBridge>{children}</ClerkAuthBridge>
       </ClerkProvider>
     );

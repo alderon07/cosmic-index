@@ -14,7 +14,7 @@
     "ingest:exoplanets": "npx tsx scripts/ingest-exoplanets.ts"
   },
   "dependencies": {
-    "@clerk/nextjs": "^6.37.3",
+    "@clerk/nextjs": "^7.0.0",
     "@libsql/client": "^0.14.0",
     "@radix-ui/react-accordion": "^1.2.12",
     "@radix-ui/react-dialog": "^1.1.15",
