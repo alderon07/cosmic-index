@@ -46,7 +46,7 @@ import {
 import { SPACE_WEATHER_EVENT_ICONS } from "@/lib/space-weather-icons";
 import { sanitizeExternalHttpUrl } from "@/lib/safe-url";
 import {
-  CloudLightning,
+  Sun,
   Filter,
   RotateCcw,
   X,
