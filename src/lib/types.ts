@@ -960,7 +960,7 @@ export const SaveObjectInputSchema = z.object({
   canonicalId: z.string().min(1).max(200),
   displayName: z.string().min(1).max(200),
   notes: z.string().max(2000).optional(),
-  eventPayload: z.record(z.unknown()).optional(),
+  eventPayload: z.record(z.string(), z.unknown()).optional(),
 });
 
 export const UpdateSavedObjectSchema = z.object({
@@ -990,17 +990,17 @@ export const AddToCollectionSchema = z.object({
 export const CreateSavedSearchSchema = z.object({
   name: z.string().min(1).max(100),
   category: z.enum(["exoplanets", "stars", "small-bodies"]),
-  queryParams: z.record(z.unknown()),
+  queryParams: z.record(z.string(), z.unknown()),
 });
 
 export const CreateAlertSchema = z.object({
   alertType: z.enum(["space_weather", "fireball", "close_approach"]),
-  config: z.record(z.unknown()),
+  config: z.record(z.string(), z.unknown()),
   emailEnabled: z.boolean().optional(),
 });
 
 export const UpdateAlertSchema = z.object({
-  config: z.record(z.unknown()).optional(),
+  config: z.record(z.string(), z.unknown()).optional(),
   enabled: z.boolean().optional(),
   emailEnabled: z.boolean().optional(),
 });
