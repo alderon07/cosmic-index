@@ -1,7 +1,13 @@
 
 # Progress Tracker 
 
-> **Last updated:** 2026-03-03
+> **Last updated:** 2026-04-05
+
+Status snapshot:
+- Former `feature/pro-tier` work is already deployed to production.
+- Clerk is configured in production.
+- Stripe live setup is still pending.
+- Google OAuth remains blocked until the app is published.
 
 ## ✅ Completed
 
@@ -35,7 +41,7 @@
 | Stripe Portal Reliability | Added customer resolution fallbacks (`stripe_subscription_id`, email-based lookup) and route tests for portal recovery paths |
 | **Pro Tier Backend** | Full implementation - see details below |
 
-### Pro Tier Implementation (Code Complete)
+### Pro Tier Implementation (Deployed)
 
 | Component | Files |
 |-----------|-------|
@@ -55,16 +61,15 @@
 
 | Task | Description |
 |------|-------------|
-| **Clerk Production Setup** | Validate deployed Clerk app config and production env vars (`NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`) |
 | **Stripe Production Setup** | Validate live product/price, webhook endpoint, and production env vars (`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRO_PRICE_ID`) |
+| **Google OAuth Publication** | Publish the app before treating Google OAuth as production-ready |
 
 ## 📋 Up Next (Priority Order)
 
-1. **Production Auth Cutover** - Enable Clerk in deployed environments and validate auth-gated flows end-to-end.
-2. **Production Billing Cutover** - Configure live Stripe product/price + webhook signing and verify upgrade/downgrade lifecycle.
-3. **Post-Migration Verification** - Document completed production Turso migration checks, rollback notes, and validation queries.
-4. **Compare UX QA Sweep** - Validate card/tray/dialog theming and behavior on all domains, including mobile viewport fit and conflict recovery.
-5. **Saved Objects Link QA** - Verify `Open details` routing with real (non-mock) saved data for all canonical ID types.
+1. **Finish Production Launch Blockers** - Complete Stripe live setup and publish the app before treating Google OAuth as production-ready.
+2. **Post-Migration Verification** - Document completed production Turso migration checks, rollback notes, and validation queries.
+3. **Compare UX QA Sweep** - Validate card/tray/dialog theming and behavior on all domains, including mobile viewport fit and conflict recovery.
+4. **Saved Objects Link QA** - Verify `Open details` routing with real (non-mock) saved data for all canonical ID types.
 
 ## 🔮 Future / Lower Priority
 

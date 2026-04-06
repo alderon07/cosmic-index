@@ -1,12 +1,13 @@
 # Pro Tier TODOs (Current)
 
-Last updated (UTC): 2026-03-25
+Last updated (UTC): 2026-04-05
 
 This file tracks only remaining rollout work to avoid repeating status already covered in `APP-TODO.md`.
 
 ## Completed Baseline
 
 - [x] Auth foundation (`src/proxy.ts`, auth utilities, app auth provider)
+- [x] Clerk is configured in production
 - [x] Core Pro schema migrations applied (`001`-`004`)
 - [x] Saved objects, collections, saved searches, alerts, and export APIs/UI
 - [x] Stripe checkout, webhook handling, and billing settings page
@@ -16,10 +17,10 @@ This file tracks only remaining rollout work to avoid repeating status already c
 
 ### Production Cutover
 
-- [ ] Validate deployed Clerk configuration and production keys
 - [ ] Configure Stripe live product/price and webhook endpoint
 - [ ] Verify Stripe Customer Portal branding/config in live mode
 - [ ] Run production checkout -> webhook -> cancel lifecycle verification
+- [ ] Publish the app before treating Google OAuth as production-ready
 - [x] Retire the public waitlist from the active launch path
 - [ ] Apply `005_drop_pro_waitlist.sql` if you want to physically remove the retired waitlist table
 

@@ -1,12 +1,13 @@
 # AGENTS.md
 
-Last updated (UTC): 2026-03-03
-Version: 1.5
+Last updated (UTC): 2026-04-05
+Version: 1.6
 
 This file provides implementation-oriented guidance for agents working in this repo.
 
 ## Change Log
 
+- 2026-04-05: Added current deployment status notes: former `feature/pro-tier` work is already in production, Clerk is configured, Stripe live setup is still pending, and Google OAuth remains blocked until the app is published.
 - 2026-03-03: Documented completed DB migration status (`001`-`004`) and updated Stripe billing behavior notes (always-available manage/cancel path plus portal customer fallback recovery).
 - 2026-02-17: Space weather expanded to include `IPS`, `HSS`, `SEP`, a separate notifications endpoint (`GET /api/v1/space-weather/notifications`), and DONKI reliability hardening (retry/timeout/single-flight/cache updates).
 - 2026-02-17: Cleaned wording and removed duplicate policy statements.
@@ -34,6 +35,13 @@ Cosmic Index is a Next.js 16 App Router application for browsing and comparing:
 - APOD (home page feature)
 
 It also includes Pro-tier features (saved objects, collections, saved searches, alerts, exports, billing).
+
+Current deployment status:
+
+- Former `feature/pro-tier` work is already merged and deployed to production.
+- Clerk is configured in production and should be treated as the active auth path when keys are present.
+- Stripe code paths exist, but live Stripe setup is still pending.
+- Google OAuth should be treated as not production-ready until the app is published.
 
 ## Build and Test Commands
 

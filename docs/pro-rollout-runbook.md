@@ -1,9 +1,12 @@
 # Pro Launch Runbook
 
-Last updated: 2026-03-26
+Last updated: 2026-04-05
 
 This document describes the current Pro rollout system:
-- public Pro product launch
+- Pro-tier code from the former `feature/pro-tier` branch is already deployed to production
+- Clerk auth is configured in production
+- Stripe live billing setup is still pending
+- Google OAuth is not production-ready until the app is published
 - centralized server-side launch gate resolution
 - direct limit-mode enforcement with no waitlist threshold dependency
 - internal rollout status endpoint/page
@@ -58,8 +61,8 @@ There is no longer a waitlist threshold gate between `warn` and `enforce`.
 ## 3) Launch Behavior
 
 - `PRO_PRODUCT_ENABLED=true`
-  - public users can upgrade to Pro
-  - Pro checkout, billing management, collections, and other launched Pro surfaces are publicly available
+  - Pro surfaces can be exposed in the UI
+  - public billing and upgrade flows still depend on live Stripe configuration being present
   - `PRO_SURFACES_ENABLED` and `PRO_BILLING_ENABLED` can still be used as safety overrides
 - `PRO_PRODUCT_ENABLED=false`
   - public Pro access is disabled for that environment
@@ -142,15 +145,12 @@ Current table roles:
 Current deployment-ready checklist:
 - Confirm `INTERNAL_ADMIN_IDS` contains your Clerk user ID.
 - Confirm `LIMIT_MODE` matches the intended launch behavior.
+- Clerk production is already configured in the current deployment track; revalidate only if keys, domains, or redirect URLs change.
 - Confirm Stripe live mode is fully configured:
   - `STRIPE_SECRET_KEY`
   - `STRIPE_PRO_PRICE_ID`
   - `STRIPE_WEBHOOK_SECRET`
   - webhook endpoint at `/api/webhooks/stripe`
-- Confirm Clerk production is fully configured:
-  - `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`
-  - `CLERK_SECRET_KEY`
-  - production domain and redirect URLs
 - Confirm core runtime infra vars are present:
   - `NEXT_PUBLIC_APP_URL`
   - `TURSO_DATABASE_URL`
@@ -170,6 +170,7 @@ Current deployment-ready checklist:
 ## 9) Known Caveats
 
 - If admin IDs are unset (`INTERNAL_ADMIN_IDS` and fallback `PRO_ROLLOUT_ADMIN_IDS`), the internal status endpoint/page is intentionally hidden (`404`).
+- Clerk is live, but Google OAuth should remain disabled or treated as incomplete until the app is published.
 - Billing tier can lag immediately after checkout until webhook sync completes; billing UI keeps Manage/Cancel accessible during this window.
 - Alerts are not production-ready yet: `/api/cron/check-alerts` is not implemented and no outbound email provider is wired.
 - `pro_waitlist` is no longer used by the app and can be dropped with `005_drop_pro_waitlist.sql`.
