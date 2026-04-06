@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -277,6 +278,8 @@ interface SpaceWeatherCardProps {
 }
 
 export function SpaceWeatherCard({ event, variant = "default", onModalOpen }: SpaceWeatherCardProps) {
+  const router = useRouter();
+  const hasPrefetchedDetailRef = useRef(false);
   const eventTypeForCanonical = event.eventType === "FLR"
     ? "flr"
     : event.eventType === "CME"
@@ -355,6 +358,12 @@ export function SpaceWeatherCard({ event, variant = "default", onModalOpen }: Sp
   // Generate detail page URL
   const detailHref = `/space-weather/${encodeURIComponent(event.id)}`;
 
+  const prefetchDetail = useCallback(() => {
+    if (hasPrefetchedDetailRef.current) return;
+    hasPrefetchedDetailRef.current = true;
+    void router.prefetch(detailHref);
+  }, [detailHref, router]);
+
   // Handle card click for modal mode
   const handleCardClick = useCallback(() => {
     if (onModalOpen) {
@@ -381,6 +390,8 @@ export function SpaceWeatherCard({ event, variant = "default", onModalOpen }: Sp
       <Card
         className={`py-0 ${theme.cardSurface} transition-all duration-300 hover:border-aurora-violet/50 hover:glow-violet bezel overflow-hidden min-h-[44px] ${onModalOpen ? "cursor-pointer" : ""}`}
         onClick={onModalOpen ? handleCardClick : undefined}
+        onMouseEnter={prefetchDetail}
+        onFocus={prefetchDetail}
         role={onModalOpen ? "button" : undefined}
         tabIndex={onModalOpen ? 0 : undefined}
         onKeyDown={onModalOpen ? handleKeyDown : undefined}
@@ -470,6 +481,7 @@ export function SpaceWeatherCard({ event, variant = "default", onModalOpen }: Sp
             {onModalOpen ? (
               <Link
                 href={detailHref}
+                prefetch={false}
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={handleNavigateClick}
@@ -497,7 +509,13 @@ export function SpaceWeatherCard({ event, variant = "default", onModalOpen }: Sp
 
     // Default mode: link to detail page
     return (
-      <Link href={detailHref} className="block group">
+      <Link
+        href={detailHref}
+        prefetch={false}
+        onMouseEnter={prefetchDetail}
+        onFocus={prefetchDetail}
+        className="block group"
+      >
         {compactContent}
       </Link>
     );
@@ -510,6 +528,7 @@ export function SpaceWeatherCard({ event, variant = "default", onModalOpen }: Sp
       {onModalOpen && (
         <Link
           href={detailHref}
+          prefetch={false}
           target="_blank"
           rel="noopener noreferrer"
           onClick={handleNavigateClick}
@@ -621,6 +640,8 @@ export function SpaceWeatherCard({ event, variant = "default", onModalOpen }: Sp
         role="button"
         tabIndex={0}
         onClick={() => onModalOpen(event)}
+        onMouseEnter={prefetchDetail}
+        onFocus={prefetchDetail}
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") {
             e.preventDefault();
@@ -638,7 +659,13 @@ export function SpaceWeatherCard({ event, variant = "default", onModalOpen }: Sp
 
   // Default mode: entire card is a link
   return (
-    <Link href={detailHref} className="block h-full group">
+    <Link
+      href={detailHref}
+      prefetch={false}
+      onMouseEnter={prefetchDetail}
+      onFocus={prefetchDetail}
+      className="block h-full group"
+    >
       <Card className={`h-full ${theme.cardSurface} transition-all duration-300 hover:border-aurora-violet/50 hover:glow-violet bezel overflow-hidden relative`}>
         {defaultContent}
       </Card>
