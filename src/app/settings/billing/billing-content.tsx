@@ -48,22 +48,22 @@ const PLAN_LIMIT_COMPARISON = [
   },
   {
     label: "Export requests / hour",
-    free: freeLimits.EXPORT_REQUESTS_PER_HOUR.toLocaleString(),
+    free: "Pro only",
     pro: proLimits.EXPORT_REQUESTS_PER_HOUR.toLocaleString(),
   },
   {
     label: "Export rows / hour",
-    free: freeLimits.EXPORT_ROWS_PER_HOUR.toLocaleString(),
+    free: "Pro only",
     pro: proLimits.EXPORT_ROWS_PER_HOUR.toLocaleString(),
   },
   {
     label: "Max rows per export",
-    free: freeLimits.MAX_EXPORT_ROWS.toLocaleString(),
+    free: "Pro only",
     pro: proLimits.MAX_EXPORT_ROWS.toLocaleString(),
   },
   {
     label: "CSV export max rows",
-    free: freeLimits.CSV_MAX_ROWS.toLocaleString(),
+    free: "Pro only",
     pro: proLimits.CSV_MAX_ROWS.toLocaleString(),
   },
 ];

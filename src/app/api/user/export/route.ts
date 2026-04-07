@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { z } from "zod";
 import crypto from "node:crypto";
 
-import { requireAuth, authErrorResponse } from "@/lib/auth";
+import { requirePro, authErrorResponse } from "@/lib/auth";
 import { getUserDb } from "@/lib/user-db";
 import { searchExoplanets } from "@/lib/exoplanet-index";
 import { searchStars } from "@/lib/star-index";
@@ -33,7 +33,7 @@ import { resolveSavedObjectHref } from "@/lib/saved-object-ui";
 /**
  * POST /api/user/export
  *
- * Export cosmic objects data as CSV, JSON, or NDJSON.
+ * Export cosmic objects data as CSV, JSON, or NDJSON. Requires Pro.
  */
 
 const EXPORT_CHUNK_SIZE = 1000;
@@ -980,7 +980,7 @@ export async function POST(request: NextRequest) {
   const baseHeaders = { "X-Request-Id": requestId };
 
   try {
-    const user = await requireAuth();
+    const user = await requirePro();
     const tierLimits = getTierLimits(user.tier);
     const userDb = getUserDb();
     const limitMode = await resolveLimitMode({ db: userDb });

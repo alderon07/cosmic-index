@@ -47,6 +47,12 @@ mock.module("@/lib/auth", () => ({
     tier: "pro" as const,
     isPro: true,
   }),
+  requirePro: async () => ({
+    userId: "user_123",
+    email: "user@example.com",
+    tier: "pro" as const,
+    isPro: true,
+  }),
   authErrorResponse: (error: unknown) => {
     if (error instanceof Error) {
       return new Response(JSON.stringify({ error: error.message }), { status: 401 });

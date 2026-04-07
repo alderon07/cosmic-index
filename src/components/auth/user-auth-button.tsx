@@ -1,6 +1,6 @@
 "use client";
 
-import { Show, SignInButton, UserButton } from "@clerk/nextjs";
+import { SignInButton, UserButton } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import { User, Bookmark, Layers, CreditCard } from "lucide-react";
 import { useAppAuth } from "./app-auth-provider";
@@ -39,43 +39,56 @@ export function UserAuthButton({
     );
   }
 
+  if (!auth.isLoaded) {
+    return (
+      <Button
+        variant="ghost"
+        size="sm"
+        className="gap-1.5 text-muted-foreground hover:text-foreground"
+        disabled
+      >
+        <User className="w-4 h-4" />
+        <span className="hidden lg:inline">Loading</span>
+      </Button>
+    );
+  }
+
+  if (!auth.isSignedIn) {
+    return (
+      <SignInButton mode="modal">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="gap-1.5 text-muted-foreground hover:text-foreground"
+        >
+          <User className="w-4 h-4" />
+          <span className="hidden lg:inline">Sign In</span>
+        </Button>
+      </SignInButton>
+    );
+  }
+
   return (
-    <>
-      <Show when="signed-out">
-        <SignInButton mode="modal">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="gap-1.5 text-muted-foreground hover:text-foreground"
-          >
-            <User className="w-4 h-4" />
-            <span className="hidden lg:inline">Sign In</span>
-          </Button>
-        </SignInButton>
-      </Show>
-      <Show when="signed-in">
-        <UserButton appearance={clerkAppearance}>
-          <UserButton.MenuItems>
-            <UserButton.Link
-              href="/user/saved-objects"
-              label="Saved Objects"
-              labelIcon={<Bookmark className="h-4 w-4" />}
-            />
-            {showCollectionsLink ? (
-              <UserButton.Link
-                href="/user/collections"
-                label="Collections"
-                labelIcon={<Layers className="h-4 w-4" />}
-              />
-            ) : null}
-            <UserButton.Link
-              href="/settings/billing"
-              label="Billing"
-              labelIcon={<CreditCard className="h-4 w-4" />}
-            />
-          </UserButton.MenuItems>
-        </UserButton>
-      </Show>
-    </>
+    <UserButton appearance={clerkAppearance}>
+      <UserButton.MenuItems>
+        <UserButton.Link
+          href="/user/saved-objects"
+          label="Saved Objects"
+          labelIcon={<Bookmark className="h-4 w-4" />}
+        />
+        {showCollectionsLink ? (
+          <UserButton.Link
+            href="/user/collections"
+            label="Collections"
+            labelIcon={<Layers className="h-4 w-4" />}
+          />
+        ) : null}
+        <UserButton.Link
+          href="/settings/billing"
+          label="Billing"
+          labelIcon={<CreditCard className="h-4 w-4" />}
+        />
+      </UserButton.MenuItems>
+    </UserButton>
   );
 }

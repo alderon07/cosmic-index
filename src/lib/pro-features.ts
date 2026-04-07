@@ -19,8 +19,8 @@ export const PRO_FEATURES: ProFeature[] = [
   },
   {
     icon: Download,
-    label: "Higher export throughput",
-    description: "Run larger JSON/CSV exports with higher per-hour and per-export limits for research workflows.",
+    label: "Research exports",
+    description: "Download JSON, NDJSON, and CSV exports with Pro-only per-hour and per-export limits for research workflows.",
   },
   {
     icon: Bell,

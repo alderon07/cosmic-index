@@ -1986,7 +1986,7 @@
       "post": {
         "operationId": "exportUserData",
         "summary": "Export user data",
-        "description": "Export cosmic objects as JSON, NDJSON, or CSV. Profile `basic` returns compact fields for everyday use and `research` returns the full enriched dataset. Saved-object exports support `layout=wide|relational`, optional raw payload inclusion, decoded object IDs, app links, normalized UTC timestamps, and saved-object filters (`objectType`, `hasEventPayload`, `savedAfter`, `savedBefore`). Limits are tier-based and CSV requires an explicit bounded limit.",
+        "description": "Pro-only export of cosmic objects as JSON, NDJSON, or CSV. Profile `basic` returns compact fields for everyday use and `research` returns the full enriched dataset. Saved-object exports support `layout=wide|relational`, optional raw payload inclusion, decoded object IDs, app links, normalized UTC timestamps, and saved-object filters (`objectType`, `hasEventPayload`, `savedAfter`, `savedBefore`). Pro export limits apply and CSV requires an explicit bounded limit.",
         "tags": [
           "User"
         ],
@@ -2089,7 +2089,7 @@
                 },
                 "examples": {
                   "small_export": {
-                    "summary": "CSV export (tier-capped rows)",
+                    "summary": "CSV export (Pro-capped rows)",
                     "value": "Planet Name,Host Star,Discovery Method\nKepler-22b,Kepler-22,Transit"
                   }
                 }

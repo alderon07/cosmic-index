@@ -213,6 +213,7 @@ export function ExportButton({
   const [savedAfter, setSavedAfter] = useState("");
   const [savedBefore, setSavedBefore] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
   const showSavedObjectControls = category === "saved-objects";
   const profileDescription =
     profile === "basic"
@@ -237,6 +238,7 @@ export function ExportButton({
     if (isLoading) return;
 
     setIsLoading(true);
+    setExportError(null);
     try {
       const requestQueryParams = {
         ...(queryParams ?? {}),
@@ -268,7 +270,12 @@ export function ExportButton({
       });
 
       if (!response.ok) {
-        throw new Error(`Export failed (${response.status})`);
+        const body = (await response.json().catch(() => null)) as { error?: string } | null;
+        const message =
+          response.status === 403
+            ? "Export is a Pro feature."
+            : body?.error ?? `Export failed (${response.status})`;
+        throw new Error(message);
       }
 
       const blob = await response.blob();
@@ -287,13 +294,14 @@ export function ExportButton({
       URL.revokeObjectURL(href);
     } catch (error) {
       console.error("Export failed", error);
+      setExportError(error instanceof Error ? error.message : "Export failed.");
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2">
         <Dialog>
           <DialogTrigger asChild>
             <Button
@@ -465,6 +473,16 @@ export function ExportButton({
           {isLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
           Export
         </Button>
+        {exportError ? (
+          <p className="w-full text-xs text-destructive" role="status">
+            {exportError}{" "}
+            {exportError.includes("Pro feature") ? (
+              <a href="/settings/billing" className="underline underline-offset-2">
+                Open Billing
+              </a>
+            ) : null}
+          </p>
+        ) : null}
     </div>
   );
 }

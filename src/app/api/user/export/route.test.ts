@@ -1,7 +1,19 @@
 import { describe, it, expect, mock } from "bun:test";
 import type { NextRequest } from "next/server";
 
-let mockRequireAuth = async () => ({ userId: "user-1", tier: "free" as const });
+type MockAuthUser = {
+  userId: string;
+  email: string;
+  tier: "free" | "pro";
+  isPro: boolean;
+};
+
+let mockRequireAuth = async (): Promise<MockAuthUser> => ({
+  userId: "user-1",
+  email: "user@example.com",
+  tier: "pro",
+  isPro: true,
+});
 
 const savedRows = [
   {
@@ -90,15 +102,29 @@ mock.module("@/lib/auth", () => ({
     }
   },
   requireAuth: () => mockRequireAuth(),
-  requirePro: async () => ({
-    userId: "user-1",
-    email: "user@example.com",
-    tier: "pro" as const,
-    isPro: true,
-  }),
+  requirePro: async () => {
+    const user = await mockRequireAuth();
+    if (!user.isPro) {
+      const error = new Error("Pro subscription required") as Error & {
+        status?: number;
+        code?: string;
+      };
+      error.status = 403;
+      error.code = "PRO_REQUIRED";
+      throw error;
+    }
+    return user;
+  },
   authErrorResponse: (error: unknown) => {
     if (error instanceof Error) {
-      return new Response(JSON.stringify({ error: error.message }), { status: 401 });
+      const authError = error as Error & { status?: number; code?: string };
+      return new Response(
+        JSON.stringify({
+          error: authError.message,
+          ...(authError.code ? { code: authError.code } : {}),
+        }),
+        { status: authError.status ?? 401 }
+      );
     }
     return new Response(JSON.stringify({ error: String(error) }), { status: 401 });
   },
@@ -184,8 +210,13 @@ const { POST } = await import("@/app/api/user/export/route");
 describe("/api/user/export", () => {
   it("returns 401 when user is not signed in", async () => {
     mockRequireAuth = async () => {
-      const error = new Error("Authentication required");
+      const error = new Error("Authentication required") as Error & {
+        status?: number;
+        code?: string;
+      };
       error.name = "AuthError";
+      error.status = 401;
+      error.code = "UNAUTHORIZED";
       throw error;
     };
 
@@ -200,7 +231,40 @@ describe("/api/user/export", () => {
     const body = await res.json();
     expect(body.error).toBe("Authentication required");
 
-    mockRequireAuth = async () => ({ userId: "user-1", tier: "free" as const });
+    mockRequireAuth = async () => ({
+      userId: "user-1",
+      email: "user@example.com",
+      tier: "pro",
+      isPro: true,
+    });
+  });
+
+  it("returns 403 when a signed-in user is not Pro", async () => {
+    mockRequireAuth = async () => ({
+      userId: "user-free",
+      email: "free@example.com",
+      tier: "free",
+      isPro: false,
+    });
+
+    const req = new Request("http://localhost/api/user/export", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ format: "json", category: "exoplanets", queryParams: { limit: 1 } }),
+    });
+
+    const res = await POST(req as unknown as NextRequest);
+    expect(res.status).toBe(403);
+    const body = await res.json();
+    expect(body.error).toBe("Pro subscription required");
+    expect(body.code).toBe("PRO_REQUIRED");
+
+    mockRequireAuth = async () => ({
+      userId: "user-1",
+      email: "user@example.com",
+      tier: "pro",
+      isPro: true,
+    });
   });
 
   it("allows CSV without explicit limit by applying tier default cap", async () => {
