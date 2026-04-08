@@ -89,12 +89,16 @@ describe("stripe-subscriptions", () => {
       customer: "cus_123",
       status: "active",
       cancel_at_period_end: false,
-      current_period_start: 1_700_000_000,
-      current_period_end: 1_700_086_400,
       ended_at: null,
       metadata: { userId: "user_123" },
       items: {
-        data: [{ price: { id: "price_pro", product: "prod_pro" } }],
+        data: [
+          {
+            current_period_start: 1_700_000_000,
+            current_period_end: 1_700_086_400,
+            price: { id: "price_pro", product: "prod_pro" },
+          },
+        ],
       },
     } as never);
 

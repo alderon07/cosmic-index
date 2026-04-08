@@ -1,6 +1,7 @@
 import type Stripe from "stripe";
 
 type SubscriptionLike = Pick<Stripe.Subscription, "status" | "items">;
+type SubscriptionItemLike = Stripe.Subscription["items"]["data"][number];
 
 export interface StripeSubscriptionSnapshot {
   stripeSubscriptionId: string;
@@ -45,13 +46,7 @@ function normalizeStripeProductId(
 export function getSubscriptionPriceDetails(
   subscription: SubscriptionLike
 ): { priceId: string | null; productId: string | null } {
-  const configuredPriceId = getConfiguredProPriceId();
-  const items = subscription.items.data;
-
-  const preferredItem =
-    (configuredPriceId
-      ? items.find((item) => item.price?.id === configuredPriceId)
-      : undefined) ?? items[0];
+  const preferredItem = getPreferredSubscriptionItem(subscription);
 
   if (!preferredItem?.price) {
     return { priceId: null, productId: null };
@@ -61,6 +56,19 @@ export function getSubscriptionPriceDetails(
     priceId: preferredItem.price.id ?? null,
     productId: normalizeStripeProductId(preferredItem.price.product),
   };
+}
+
+function getPreferredSubscriptionItem(
+  subscription: SubscriptionLike
+): SubscriptionItemLike | undefined {
+  const configuredPriceId = getConfiguredProPriceId();
+  const items = subscription.items.data;
+
+  return (
+    (configuredPriceId
+      ? items.find((item) => item.price?.id === configuredPriceId)
+      : undefined) ?? items[0]
+  );
 }
 
 export function matchesConfiguredProPrice(
@@ -112,6 +120,7 @@ export function buildStripeSubscriptionSnapshot(
   if (!customerId) return null;
 
   const { priceId, productId } = getSubscriptionPriceDetails(subscription);
+  const preferredItem = getPreferredSubscriptionItem(subscription);
 
   return {
     stripeSubscriptionId: subscription.id,
@@ -121,9 +130,11 @@ export function buildStripeSubscriptionSnapshot(
     status: subscription.status,
     cancelAtPeriodEnd: subscription.cancel_at_period_end,
     currentPeriodStart: normalizeStripeTimestamp(
-      subscription.current_period_start
+      preferredItem?.current_period_start
     ),
-    currentPeriodEnd: normalizeStripeTimestamp(subscription.current_period_end),
+    currentPeriodEnd: normalizeStripeTimestamp(
+      preferredItem?.current_period_end
+    ),
     endedAt: normalizeStripeTimestamp(subscription.ended_at),
     metadataJson:
       subscription.metadata && Object.keys(subscription.metadata).length > 0
