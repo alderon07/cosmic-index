@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { BookmarkPlus, Loader2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -76,6 +76,24 @@ export function SavedSearchControls({
     const timer = window.setTimeout(() => setRefreshNotice(null), 3000);
     return () => window.clearTimeout(timer);
   }, [refreshNotice, isRefreshing]);
+
+  const effectiveSelectedId = useMemo(() => {
+    if (selectedId === "none") return "none";
+    const selected = searches.find((s) => s.id.toString() === selectedId);
+    if (!selected) return "none";
+
+    const strip = (obj: Record<string, unknown>) =>
+      JSON.stringify(
+        Object.entries(obj)
+          .filter(([, v]) => v != null && v !== "" && v !== false)
+          .map(([k, v]) => [k, String(v)])
+          .sort(([a], [b]) => a.localeCompare(b))
+      );
+
+    return strip(currentParams) === strip(selected.queryParams)
+      ? selectedId
+      : "none";
+  }, [currentParams, selectedId, searches]);
 
   if (!auth.isSignedIn) {
     return null;
@@ -154,7 +172,7 @@ export function SavedSearchControls({
 
   return (
     <div className="flex w-full flex-wrap items-center gap-2">
-      <Select value={selectedId} onValueChange={handleSelect}>
+      <Select value={effectiveSelectedId} onValueChange={handleSelect}>
         <SelectTrigger
           className={cn(
             "h-8 min-w-0 flex-1 text-xs font-mono sm:w-[220px] sm:flex-none",
