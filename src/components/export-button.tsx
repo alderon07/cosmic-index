@@ -301,7 +301,7 @@ export function ExportButton({
   };
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="relative flex flex-wrap items-center gap-2">
         <Dialog>
           <DialogTrigger asChild>
             <Button
@@ -474,7 +474,7 @@ export function ExportButton({
           Export
         </Button>
         {exportError ? (
-          <p className="w-full text-xs text-destructive" role="status">
+          <p className="absolute right-0 top-full mt-1 text-xs text-destructive" role="status">
             {exportError}{" "}
             {exportError.includes("Pro feature") ? (
               <a href="/settings/billing" className="underline underline-offset-2">
