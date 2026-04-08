@@ -55,3 +55,9 @@ plans/
 
 # clerk configuration (can include secrets)
 /.clerk/
+
+# vscode
+.vscode/
+
+# codex
+.codex
