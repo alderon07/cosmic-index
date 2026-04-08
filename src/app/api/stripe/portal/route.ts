@@ -3,6 +3,11 @@ import { requireAuth, authErrorResponse } from "@/lib/auth";
 import { requireStripe, APP_URL } from "@/lib/stripe";
 import { requireUserDb } from "@/lib/user-db";
 import { getFeatureDisabledResponse, resolveProAccess } from "@/lib/pro-access";
+import {
+  getSubscriptionPriceDetails,
+  isManageableStripeSubscriptionStatus,
+  matchesConfiguredProPrice,
+} from "@/lib/stripe-subscriptions";
 
 /**
  * POST /api/stripe/portal
@@ -32,49 +37,52 @@ export async function POST() {
     const dbSubscriptionId = result.rows[0]?.stripe_subscription_id as string | undefined;
     let customerId: string | undefined = dbCustomerId;
 
-    // Fallback 1: resolve customer from known subscription ID.
+    const localSubscriptions = await db.execute({
+      sql: `
+        SELECT stripe_subscription_id, stripe_customer_id, status, current_period_end
+        FROM stripe_subscriptions
+        WHERE user_id = ?
+          AND stripe_price_id = ?
+          AND status IN ('active', 'trialing', 'past_due', 'unpaid', 'incomplete')
+        ORDER BY
+          CASE status
+            WHEN 'active' THEN 0
+            WHEN 'trialing' THEN 1
+            WHEN 'past_due' THEN 2
+            WHEN 'unpaid' THEN 3
+            ELSE 4
+          END,
+          current_period_end DESC,
+          stripe_subscription_id DESC
+      `,
+      args: [user.userId, process.env.STRIPE_PRO_PRICE_ID ?? ""],
+    });
+
+    const preferredLocalSubscription = localSubscriptions.rows.find((row) =>
+      isManageableStripeSubscriptionStatus(row.status as string | undefined)
+    );
+
+    if (preferredLocalSubscription) {
+      customerId = preferredLocalSubscription.stripe_customer_id as string;
+    }
+
+    // Fallback: resolve customer from known subscription ID, but only for the
+    // configured Pro price so we do not recover arbitrary subscriptions.
     if (!customerId && dbSubscriptionId) {
       try {
         const subscription = await stripe.subscriptions.retrieve(dbSubscriptionId);
-        customerId =
-          typeof subscription.customer === "string"
-            ? subscription.customer
-            : subscription.customer?.id;
-      } catch (error) {
-        console.warn("Stripe portal: subscription lookup failed", error);
-      }
-    }
-
-    // Fallback 2: resolve customer by account email and active-ish subscriptions.
-    if (!customerId && user.email) {
-      try {
-        const customers = await stripe.customers.list({
-          email: user.email,
-          limit: 5,
-        });
-
-        for (const candidate of customers.data) {
-          if ("deleted" in candidate && candidate.deleted) continue;
-
-          const subscriptions = await stripe.subscriptions.list({
-            customer: candidate.id,
-            status: "all",
-            limit: 5,
-          });
-
-          const hasManageableSubscription = subscriptions.data.some(
-            (subscription) =>
-              subscription.status !== "canceled" &&
-              subscription.status !== "incomplete_expired"
-          );
-
-          if (hasManageableSubscription) {
-            customerId = candidate.id;
-            break;
-          }
+        const { priceId } = getSubscriptionPriceDetails(subscription);
+        if (
+          matchesConfiguredProPrice(priceId) &&
+          isManageableStripeSubscriptionStatus(subscription.status)
+        ) {
+          customerId =
+            typeof subscription.customer === "string"
+              ? subscription.customer
+              : subscription.customer?.id;
         }
       } catch (error) {
-        console.warn("Stripe portal: customer email lookup failed", error);
+        console.warn("Stripe portal: subscription lookup failed", error);
       }
     }
 

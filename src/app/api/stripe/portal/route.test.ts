@@ -6,6 +6,12 @@ type UserRow = {
 };
 
 let currentUserRow: UserRow = {};
+let currentStripeSubscriptions: Array<{
+  stripe_subscription_id: string;
+  stripe_customer_id: string;
+  status: string;
+  current_period_end?: string | null;
+}> = [];
 const dbWrites: Array<{ sql: string; args?: unknown[] }> = [];
 
 const mockDbExecute = mock(async ({ sql, args }: { sql: string; args?: unknown[] }) => {
@@ -20,6 +26,12 @@ const mockDbExecute = mock(async ({ sql, args }: { sql: string; args?: unknown[]
     };
   }
 
+  if (sql.includes("SELECT stripe_subscription_id, stripe_customer_id, status, current_period_end")) {
+    return {
+      rows: currentStripeSubscriptions,
+    };
+  }
+
   if (sql.includes("UPDATE users") && sql.includes("SET stripe_customer_id = ?")) {
     dbWrites.push({ sql, args });
     return { rows: [] };
@@ -29,10 +41,15 @@ const mockDbExecute = mock(async ({ sql, args }: { sql: string; args?: unknown[]
 });
 
 const mockCreatePortalSession = mock(async () => ({ url: "https://billing.stripe.test/session" }));
-const mockRetrieveSubscription = mock(async () => ({ customer: "cus_from_subscription" }));
-const mockListCustomers = mock(async () => ({ data: [] as Array<{ id: string; deleted?: boolean }> }));
-const mockListSubscriptions = mock(async () => ({ data: [] as Array<{ status: string }> }));
+const mockRetrieveSubscription = mock(async () => ({
+  customer: "cus_from_subscription",
+  status: "active",
+  items: {
+    data: [{ price: { id: "price_live_pro", product: "prod_live_pro" } }],
+  },
+}));
 let mockCanManageBilling = true;
+const ORIGINAL_STRIPE_PRO_PRICE_ID = process.env.STRIPE_PRO_PRICE_ID;
 
 mock.module("@/lib/auth", () => ({
   getAuthUser: async () => ({
@@ -113,11 +130,6 @@ mock.module("@/lib/stripe", () => ({
     subscriptions: {
       retrieve: (...args: Parameters<typeof mockRetrieveSubscription>) =>
         mockRetrieveSubscription(...args),
-      list: (...args: Parameters<typeof mockListSubscriptions>) =>
-        mockListSubscriptions(...args),
-    },
-    customers: {
-      list: (...args: Parameters<typeof mockListCustomers>) => mockListCustomers(...args),
     },
   }),
 }));
@@ -129,36 +141,54 @@ afterAll(() => {
 });
 
 beforeEach(() => {
+  process.env.STRIPE_PRO_PRICE_ID = "price_live_pro";
   mockCanManageBilling = true;
   currentUserRow = {};
+  currentStripeSubscriptions = [];
   dbWrites.length = 0;
 
   mockDbExecute.mockClear();
   mockCreatePortalSession.mockClear();
   mockRetrieveSubscription.mockClear();
-  mockListCustomers.mockClear();
-  mockListSubscriptions.mockClear();
 
   mockRetrieveSubscription.mockImplementation(async () => ({
     customer: "cus_from_subscription",
+    status: "active",
+    items: {
+      data: [{ price: { id: "price_live_pro", product: "prod_live_pro" } }],
+    },
   }));
-  mockListCustomers.mockImplementation(async () => ({ data: [] }));
-  mockListSubscriptions.mockImplementation(async () => ({ data: [] }));
+});
+
+afterAll(() => {
+  if (ORIGINAL_STRIPE_PRO_PRICE_ID === undefined) {
+    delete process.env.STRIPE_PRO_PRICE_ID;
+  } else {
+    process.env.STRIPE_PRO_PRICE_ID = ORIGINAL_STRIPE_PRO_PRICE_ID;
+  }
 });
 
 describe("POST /api/stripe/portal", () => {
-  it("uses stripe_customer_id from database when present", async () => {
+  it("uses a verified local Pro subscription when present", async () => {
     currentUserRow = {
-      stripe_customer_id: "cus_from_db",
+      stripe_customer_id: "cus_from_local",
       stripe_subscription_id: "sub_from_db",
     };
+    currentStripeSubscriptions = [
+      {
+        stripe_subscription_id: "sub_from_db",
+        stripe_customer_id: "cus_from_local",
+        status: "active",
+        current_period_end: "2026-05-01T00:00:00.000Z",
+      },
+    ];
 
     const response = await POST();
     expect(response.status).toBe(200);
     const body = await response.json();
     expect(body.url).toBe("https://billing.stripe.test/session");
     expect(mockCreatePortalSession).toHaveBeenCalledWith({
-      customer: "cus_from_db",
+      customer: "cus_from_local",
       return_url: "http://localhost:3000/settings/billing",
     });
     expect(mockRetrieveSubscription).not.toHaveBeenCalled();
@@ -180,40 +210,19 @@ describe("POST /api/stripe/portal", () => {
     expect(dbWrites.length).toBe(1);
   });
 
-  it("falls back to email customer lookup when database linkage is missing", async () => {
+  it("returns 400 when no verified Pro subscription exists", async () => {
     currentUserRow = {
       stripe_customer_id: null,
-      stripe_subscription_id: null,
+      stripe_subscription_id: "sub_from_db",
     };
 
-    mockListCustomers.mockImplementation(async () => ({
-      data: [{ id: "cus_a" }, { id: "cus_b" }],
+    mockRetrieveSubscription.mockImplementation(async () => ({
+      customer: "cus_wrong_plan",
+      status: "active",
+      items: {
+        data: [{ price: { id: "price_other", product: "prod_other" } }],
+      },
     }));
-    mockListSubscriptions.mockImplementation(async ({ customer }: { customer: string }) => {
-      if (customer === "cus_a") {
-        return { data: [{ status: "canceled" }] };
-      }
-      return { data: [{ status: "active" }] };
-    });
-
-    const response = await POST();
-    expect(response.status).toBe(200);
-    expect(mockListCustomers).toHaveBeenCalledWith({
-      email: "user@example.com",
-      limit: 5,
-    });
-    expect(mockCreatePortalSession).toHaveBeenCalledWith({
-      customer: "cus_b",
-      return_url: "http://localhost:3000/settings/billing",
-    });
-    expect(dbWrites.length).toBe(1);
-  });
-
-  it("returns 400 when no linked or recoverable Stripe subscription exists", async () => {
-    currentUserRow = {
-      stripe_customer_id: null,
-      stripe_subscription_id: null,
-    };
 
     const response = await POST();
     expect(response.status).toBe(400);

@@ -22,7 +22,7 @@ export async function GET() {
 
   const user = await getAuthUser();
   if (!user || !isInternalAdmin(user.userId)) {
-    return NextResponse.json({ error: "forbidden" }, { status: 403, headers });
+    return NextResponse.json({ error: "not_found" }, { status: 404, headers });
   }
 
   const db = getUserDb();

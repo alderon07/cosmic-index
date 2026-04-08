@@ -57,6 +57,14 @@
     {
       "name": "User",
       "description": "Authenticated user features"
+    },
+    {
+      "name": "Billing",
+      "description": "Stripe checkout, portal, and webhook flows"
+    },
+    {
+      "name": "Internal",
+      "description": "Internal admin-only operational endpoints"
     }
   ],
   "paths": {
@@ -2170,6 +2178,48 @@
           },
           "403": {
             "description": "Billing unavailable for the current user"
+          }
+        }
+      }
+    },
+    "/webhooks/stripe": {
+      "post": {
+        "operationId": "handleStripeWebhook",
+        "summary": "Process Stripe webhook events",
+        "description": "Verify the Stripe signature, apply subscription state changes, and record idempotency markers for duplicate suppression.",
+        "tags": [
+          "Billing"
+        ],
+        "responses": {
+          "200": {
+            "description": "Webhook accepted"
+          },
+          "400": {
+            "description": "Missing or invalid Stripe signature"
+          },
+          "500": {
+            "description": "Database, Stripe secret, or event processing failure"
+          }
+        }
+      }
+    },
+    "/internal/pro-rollout-status": {
+      "get": {
+        "operationId": "getProRolloutStatus",
+        "summary": "Get Pro rollout status",
+        "description": "Return internal rollout, limit-mode, and demand metrics for authenticated internal admins.",
+        "tags": [
+          "Internal"
+        ],
+        "responses": {
+          "200": {
+            "description": "Operational rollout status"
+          },
+          "404": {
+            "description": "Not found for unauthenticated or unauthorized callers"
+          },
+          "503": {
+            "description": "Status unavailable because the database or supporting services are unavailable"
           }
         }
       }

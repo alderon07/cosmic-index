@@ -3,6 +3,10 @@ import Stripe from "stripe";
 import { requireStripe } from "@/lib/stripe";
 import { getUserDb } from "@/lib/user-db";
 import { Client } from "@libsql/client";
+import {
+  buildStripeSubscriptionSnapshot,
+  isEntitledStripeSubscriptionRecord,
+} from "@/lib/stripe-subscriptions";
 
 /**
  * POST /api/webhooks/stripe
@@ -100,14 +104,10 @@ async function processStripeEvent(event: Stripe.Event, db: Client) {
     case "customer.subscription.created":
     case "customer.subscription.updated": {
       const subscription = event.data.object as Stripe.Subscription;
-      const status = subscription.status;
 
-      // Tier based on subscription STATUS, not event type
-      // Active or trialing = Pro, everything else = free
-      const tier = ["active", "trialing"].includes(status) ? "pro" : "free";
-
-      // Resolve user by customer ID (more reliable) or metadata fallback
+      // Resolve user by subscription ID, customer ID, or metadata fallback.
       const userId = await resolveUserId(
+        subscription.id,
         subscription.customer as string,
         subscription.metadata?.userId,
         db
@@ -120,20 +120,23 @@ async function processStripeEvent(event: Stripe.Event, db: Client) {
         return; // Don't throw - webhook should still return 200
       }
 
-      await updateUserTier(userId, tier, subscription.id, db);
+      await upsertStripeSubscription(userId, subscription, event.id, db);
+      await syncUserStripeState(userId, db);
       break;
     }
 
     case "customer.subscription.deleted": {
       const subscription = event.data.object as Stripe.Subscription;
       const userId = await resolveUserId(
+        subscription.id,
         subscription.customer as string,
         subscription.metadata?.userId,
         db
       );
 
       if (userId) {
-        await updateUserTier(userId, "free", null, db);
+        await upsertStripeSubscription(userId, subscription, event.id, db);
+        await syncUserStripeState(userId, db);
       }
       break;
     }
@@ -155,6 +158,27 @@ async function processStripeEvent(event: Stripe.Event, db: Client) {
           `Stripe webhook: Linked customer ${session.customer} to user ${session.metadata.userId}`
         );
       }
+
+      if (session.metadata?.userId && typeof session.subscription === "string") {
+        try {
+          const stripe = requireStripe();
+          const subscription = await stripe.subscriptions.retrieve(
+            session.subscription
+          );
+          await upsertStripeSubscription(
+            session.metadata.userId,
+            subscription,
+            event.id,
+            db
+          );
+          await syncUserStripeState(session.metadata.userId, db);
+        } catch (error) {
+          console.warn(
+            "Stripe webhook: unable to hydrate subscription on checkout completion",
+            error
+          );
+        }
+      }
       break;
     }
 
@@ -169,10 +193,29 @@ async function processStripeEvent(event: Stripe.Event, db: Client) {
  * Tries customer ID first (more reliable), falls back to metadata.
  */
 async function resolveUserId(
+  subscriptionId: string,
   customerId: string,
   metadataUserId: string | undefined,
   db: Client
 ): Promise<string | null> {
+  const bySubscriptionTable = await db.execute({
+    sql: "SELECT user_id FROM stripe_subscriptions WHERE stripe_subscription_id = ? LIMIT 1",
+    args: [subscriptionId],
+  });
+
+  if (bySubscriptionTable.rows.length > 0) {
+    return bySubscriptionTable.rows[0].user_id as string;
+  }
+
+  const byLegacySubscription = await db.execute({
+    sql: "SELECT id FROM users WHERE stripe_subscription_id = ? LIMIT 1",
+    args: [subscriptionId],
+  });
+
+  if (byLegacySubscription.rows.length > 0) {
+    return byLegacySubscription.rows[0].id as string;
+  }
+
   // Try customer ID first (more reliable)
   const byCustomer = await db.execute({
     sql: "SELECT id FROM users WHERE stripe_customer_id = ?",
@@ -200,21 +243,118 @@ async function resolveUserId(
 }
 
 /**
- * Update a user's tier and subscription ID.
+ * Persist the latest Stripe subscription snapshot.
  */
-async function updateUserTier(
+async function upsertStripeSubscription(
   userId: string,
-  tier: "free" | "pro",
-  subscriptionId: string | null,
+  subscription: Stripe.Subscription,
+  eventId: string,
   db: Client
 ) {
+  const snapshot = buildStripeSubscriptionSnapshot(subscription);
+  if (!snapshot) {
+    console.warn(
+      `Stripe webhook: subscription ${subscription.id} missing customer linkage`
+    );
+    return;
+  }
+
+  await db.execute({
+    sql: `
+      INSERT INTO stripe_subscriptions (
+        user_id,
+        stripe_subscription_id,
+        stripe_customer_id,
+        stripe_price_id,
+        stripe_product_id,
+        status,
+        cancel_at_period_end,
+        current_period_start,
+        current_period_end,
+        ended_at,
+        metadata_json,
+        last_webhook_event_id,
+        updated_at
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+      ON CONFLICT(stripe_subscription_id) DO UPDATE SET
+        user_id = excluded.user_id,
+        stripe_customer_id = excluded.stripe_customer_id,
+        stripe_price_id = excluded.stripe_price_id,
+        stripe_product_id = excluded.stripe_product_id,
+        status = excluded.status,
+        cancel_at_period_end = excluded.cancel_at_period_end,
+        current_period_start = excluded.current_period_start,
+        current_period_end = excluded.current_period_end,
+        ended_at = excluded.ended_at,
+        metadata_json = excluded.metadata_json,
+        last_webhook_event_id = excluded.last_webhook_event_id,
+        updated_at = datetime('now')
+    `,
+    args: [
+      userId,
+      snapshot.stripeSubscriptionId,
+      snapshot.stripeCustomerId,
+      snapshot.stripePriceId,
+      snapshot.stripeProductId,
+      snapshot.status,
+      snapshot.cancelAtPeriodEnd ? 1 : 0,
+      snapshot.currentPeriodStart,
+      snapshot.currentPeriodEnd,
+      snapshot.endedAt,
+      snapshot.metadataJson,
+      eventId,
+    ],
+  });
+}
+
+/**
+ * Recompute the user's Pro entitlement from the subscription ledger.
+ */
+async function syncUserStripeState(userId: string, db: Client) {
+  const configuredPriceId = process.env.STRIPE_PRO_PRICE_ID;
+  let activeSubscriptionId: string | null = null;
+
+  if (configuredPriceId) {
+    const result = await db.execute({
+      sql: `
+        SELECT stripe_subscription_id, status, stripe_price_id
+        FROM stripe_subscriptions
+        WHERE user_id = ? AND stripe_price_id = ?
+        ORDER BY
+          CASE status
+            WHEN 'active' THEN 0
+            WHEN 'trialing' THEN 1
+            ELSE 2
+          END,
+          current_period_end DESC,
+          updated_at DESC,
+          stripe_subscription_id DESC
+      `,
+      args: [userId, configuredPriceId],
+    });
+
+    const entitled = result.rows.find((row) =>
+      isEntitledStripeSubscriptionRecord({
+        status: row.status as string | undefined,
+        priceId: row.stripe_price_id as string | undefined,
+      })
+    );
+
+    activeSubscriptionId = entitled
+      ? (entitled.stripe_subscription_id as string)
+      : null;
+  }
+
+  const tier = activeSubscriptionId ? "pro" : "free";
+
   await db.execute({
     sql: `
       UPDATE users
       SET tier = ?, stripe_subscription_id = ?, updated_at = datetime('now')
       WHERE id = ?
     `,
-    args: [tier, subscriptionId, userId],
+    args: [tier, activeSubscriptionId, userId],
   });
 
   console.log(`Stripe webhook: Updated user ${userId} to tier ${tier}`);

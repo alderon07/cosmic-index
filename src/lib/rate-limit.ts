@@ -309,6 +309,15 @@ export async function checkRateLimit(
 
   // If Redis not configured, use in-memory fallback
   if (!client) {
+    if (process.env.NODE_ENV === "production") {
+      console.error("[RateLimit] Redis unavailable in production, failing closed");
+      return {
+        allowed: false,
+        remaining: 0,
+        resetTime: Date.now() + config.windowMs,
+        effectiveLimit: 0,
+      };
+    }
     if (process.env.NODE_ENV === "development") {
       console.warn("[RateLimit] Redis unavailable, using in-memory fallback");
     }
@@ -351,6 +360,15 @@ export async function checkRateLimit(
       effectiveLimit: windowLim,
     };
   } catch (error) {
+    if (process.env.NODE_ENV === "production") {
+      console.error("[RateLimit] Redis error in production, failing closed:", error);
+      return {
+        allowed: false,
+        remaining: 0,
+        resetTime: Date.now() + config.windowMs,
+        effectiveLimit: 0,
+      };
+    }
     console.error("[RateLimit] Redis error, falling back to in-memory:", error);
     return checkRateLimitMemory(identifier, type, confidence);
   }
