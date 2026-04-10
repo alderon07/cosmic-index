@@ -1,18 +1,15 @@
 import { NextResponse } from "next/server";
-import { searchExoplanets } from "@/lib/exoplanet-index";
+import { searchStars } from "@/lib/star-index";
 import {
-  generateSitemapXml,
   buildUrl,
+  generateSitemapXml,
   getIsoDate,
   SITEMAP_BATCH_SIZE,
   SITEMAP_CACHE_TTL_MS,
-  SitemapUrl,
+  type SitemapUrl,
 } from "@/lib/sitemap";
 
-// Force dynamic rendering - sitemaps fetch external APIs
 export const dynamic = "force-dynamic";
-
-// Cache the response for 24 hours via headers
 export const revalidate = 0;
 
 let cachedSitemap:
@@ -44,16 +41,15 @@ export async function GET() {
     let page = 1;
     let hasMore = true;
 
-    // Fetch all exoplanets from the local index in batches.
     while (hasMore && page <= 10) {
-      const result = await searchExoplanets({
+      const result = await searchStars({
         page,
         limit: SITEMAP_BATCH_SIZE,
       });
 
-      for (const exoplanet of result.objects) {
+      for (const star of result.objects) {
         allUrls.push({
-          loc: buildUrl(`/exoplanets/${exoplanet.id}`),
+          loc: buildUrl(`/stars/${star.id}`),
           lastmod,
           changefreq: "monthly",
           priority: 0.6,
@@ -61,7 +57,7 @@ export async function GET() {
       }
 
       hasMore = result.hasMore;
-      page++;
+      page += 1;
     }
 
     const xml = generateSitemapXml(allUrls);
@@ -73,7 +69,7 @@ export async function GET() {
 
     return xmlResponse(xml, lastmod);
   } catch (error) {
-    console.error("Error generating exoplanet sitemap:", error);
+    console.error("Error generating stars sitemap:", error);
 
     if (cachedSitemap) {
       return xmlResponse(cachedSitemap.xml, cachedSitemap.lastmod);

@@ -4,8 +4,6 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { ChevronRight, Home } from "lucide-react";
 import { getCategoryFromPath, getListUrl } from "@/lib/list-url-store";
-import { BASE_URL } from "@/lib/config";
-import { serializeJsonLd } from "@/lib/safe-json-ld";
 
 export interface BreadcrumbItem {
   label: string;
@@ -16,23 +14,6 @@ interface BreadcrumbsProps {
   items: BreadcrumbItem[];
   className?: string;
   linkHoverClassName?: string;
-}
-
-// Generate JSON-LD BreadcrumbList schema
-// All content is static or from trusted sources, JSON.stringify escapes properly
-function generateBreadcrumbJsonLd(items: BreadcrumbItem[]) {
-  const itemListElement = items.map((item, index) => ({
-    "@type": "ListItem",
-    position: index + 1,
-    name: item.label,
-    ...(item.href && { item: `${BASE_URL}${item.href}` }),
-  }));
-
-  return {
-    "@context": "https://schema.org",
-    "@type": "BreadcrumbList",
-    itemListElement,
-  };
 }
 
 // Resolve list URLs from sessionStorage
@@ -53,9 +34,6 @@ export function Breadcrumbs({
   className = "",
   linkHoverClassName,
 }: BreadcrumbsProps) {
-  // JSON-LD uses original items (canonical URLs for SEO)
-  const jsonLd = generateBreadcrumbJsonLd(items);
-
   // Track mount state to avoid hydration mismatch (sessionStorage only available client-side)
   const [isMounted, setIsMounted] = useState(false);
 
@@ -69,62 +47,54 @@ export function Breadcrumbs({
   const resolvedItems = isMounted ? resolveListUrls(items) : items;
 
   return (
-    <>
-      {/* JSON-LD for SEO - uses canonical URLs, content from trusted sources */}
-      <script
-        type="application/ld+json"
-        // Safe: jsonLd is generated from static labels/hrefs, JSON.stringify escapes special chars
-        dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }}
-      />
-      <nav
-        aria-label="Breadcrumb"
-        className={`flex items-center text-sm text-muted-foreground ${className}`}
-      >
-        <ol className="flex items-center flex-wrap gap-1">
-          {resolvedItems.map((item, index) => {
-            const isLast = index === resolvedItems.length - 1;
-            const isFirst = index === 0;
-            const crumbKey = item.href
-              ? `${item.href}:${item.label}`
-              : `${item.label}:${isLast ? "current" : "node"}`;
+    <nav
+      aria-label="Breadcrumb"
+      className={`flex items-center text-sm text-muted-foreground ${className}`}
+    >
+      <ol className="flex items-center flex-wrap gap-1">
+        {resolvedItems.map((item, index) => {
+          const isLast = index === resolvedItems.length - 1;
+          const isFirst = index === 0;
+          const crumbKey = item.href
+            ? `${item.href}:${item.label}`
+            : `${item.label}:${isLast ? "current" : "node"}`;
 
-            return (
-              <li key={crumbKey} className="flex items-center">
-                {index > 0 && (
-                  <ChevronRight className="w-4 h-4 mx-1 flex-shrink-0" />
-                )}
-                {item.href && !isLast ? (
-                  <Link
-                    href={item.href}
-                    className={`transition-colors flex items-center gap-1 ${
-                      linkHoverClassName ?? "hover:text-primary"
-                    }`}
-                  >
-                    {isFirst && <Home className="w-4 h-4" />}
-                    <span>{item.label}</span>
-                  </Link>
-                ) : (
+          return (
+            <li key={crumbKey} className="flex items-center">
+              {index > 0 && (
+                <ChevronRight className="w-4 h-4 mx-1 flex-shrink-0" />
+              )}
+              {item.href && !isLast ? (
+                <Link
+                  href={item.href}
+                  className={`transition-colors flex items-center gap-1 ${
+                    linkHoverClassName ?? "hover:text-primary"
+                  }`}
+                >
+                  {isFirst && <Home className="w-4 h-4" />}
+                  <span>{item.label}</span>
+                </Link>
+              ) : (
+                <span
+                  className={`flex items-center gap-1 ${
+                    isLast ? "text-foreground font-medium" : ""
+                  }`}
+                  aria-current={isLast ? "page" : undefined}
+                >
+                  {isFirst && !item.href && <Home className="w-4 h-4" />}
                   <span
-                    className={`flex items-center gap-1 ${
-                      isLast ? "text-foreground font-medium" : ""
-                    }`}
-                    aria-current={isLast ? "page" : undefined}
+                    className={
+                      isLast ? "truncate max-w-[200px] md:max-w-none" : ""
+                    }
                   >
-                    {isFirst && !item.href && <Home className="w-4 h-4" />}
-                    <span
-                      className={
-                        isLast ? "truncate max-w-[200px] md:max-w-none" : ""
-                      }
-                    >
-                      {item.label}
-                    </span>
+                    {item.label}
                   </span>
-                )}
-              </li>
-            );
-          })}
-        </ol>
-      </nav>
-    </>
+                </span>
+              )}
+            </li>
+          );
+        })}
+      </ol>
+    </nav>
   );
 }

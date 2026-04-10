@@ -1,0 +1,34 @@
+import { beforeEach, describe, expect, it, mock } from "bun:test";
+import { NextRequest } from "next/server";
+
+let mockObjects = [{ id: "kepler-22-b" }];
+let mockHasMore = false;
+
+mock.module("@/lib/exoplanet-index", () => ({
+  searchExoplanets: async () => ({
+    objects: mockObjects,
+    total: mockObjects.length,
+    page: 1,
+    limit: 10000,
+    hasMore: mockHasMore,
+    usedCursor: false,
+  }),
+}));
+
+const { GET } = await import("@/app/sitemap-exoplanets/route");
+
+beforeEach(() => {
+  mockObjects = [{ id: "kepler-22-b" }];
+  mockHasMore = false;
+});
+
+describe("GET /sitemap-exoplanets", () => {
+  it("returns xml sitemap entries from the indexed exoplanet catalog", async () => {
+    const response = await GET(new NextRequest("http://localhost:3000/sitemap-exoplanets"));
+    const body = await response.text();
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toContain("application/xml");
+    expect(body).toContain("<loc>https://cosmicindex.dev/exoplanets/kepler-22-b</loc>");
+  });
+});

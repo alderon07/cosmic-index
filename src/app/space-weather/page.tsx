@@ -16,29 +16,34 @@ import {
   SpaceWeatherLoadingSkeleton,
   SpaceWeatherPageClient,
 } from "./space-weather-page-client";
+import { JsonLd } from "@/components/seo/json-ld";
+import {
+  buildCollectionPageJsonLd,
+  buildHubMetadata,
+  toSingleValueParams,
+} from "@/lib/seo";
 
 interface SpaceWeatherPageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
-export const metadata: Metadata = {
-  title: "Space Weather",
-  description:
-    "Track NASA DONKI space weather events (FLR/CME/GST/IPS/HSS/SEP) from the last 90 days, plus recent notifications.",
-};
+const SPACE_WEATHER_DESCRIPTION =
+  "Track NASA DONKI space weather events (FLR/CME/GST/IPS/HSS/SEP) from the last 90 days, plus recent notifications.";
+const SPACE_WEATHER_VARIANT_KEYS = ["eventTypes", "page", "view"] as const;
 
-function toSingleValueParams(
-  params: Record<string, string | string[] | undefined>
-): Record<string, string> {
-  const entries: Array<[string, string]> = [];
-  for (const [key, value] of Object.entries(params)) {
-    if (typeof value === "string") {
-      entries.push([key, value]);
-    } else if (Array.isArray(value) && value.length > 0) {
-      entries.push([key, value[0]]);
-    }
-  }
-  return Object.fromEntries(entries);
+export async function generateMetadata({
+  searchParams,
+}: SpaceWeatherPageProps): Promise<Metadata> {
+  const rawParams = toSingleValueParams(await searchParams);
+
+  return buildHubMetadata({
+    title: "Space Weather",
+    description: SPACE_WEATHER_DESCRIPTION,
+    path: "/space-weather",
+    variantKeys: SPACE_WEATHER_VARIANT_KEYS,
+    params: rawParams,
+    imageAlt: "Cosmic Index - Space Weather",
+  });
 }
 export default async function SpaceWeatherPage({
   searchParams,
@@ -107,19 +112,30 @@ export default async function SpaceWeatherPage({
     }
   }
 
+  const collectionPageJsonLd = buildCollectionPageJsonLd({
+    name: "Space Weather",
+    description: SPACE_WEATHER_DESCRIPTION,
+    path: "/space-weather",
+    sourceName: "NASA DONKI",
+    sourceUrl: "https://kauai.ccmc.gsfc.nasa.gov/DONKI/",
+  });
+
   return (
-    <Suspense fallback={<SpaceWeatherLoadingSkeleton />}>
-      <SpaceWeatherPageClient
-        initialData={initialData}
-        initialError={initialError}
-        initialFetchKey={initialFetchKey}
-        forceBackgroundRefresh={
-          parsed.success &&
-          (parsed.data.page ?? 1) === 1 &&
-          parseEventTypesParam(parsed.data.eventTypes).includes("CME") &&
-          parseEventTypesParam(parsed.data.eventTypes).length > 1
-        }
-      />
-    </Suspense>
+    <>
+      <JsonLd data={collectionPageJsonLd} />
+      <Suspense fallback={<SpaceWeatherLoadingSkeleton />}>
+        <SpaceWeatherPageClient
+          initialData={initialData}
+          initialError={initialError}
+          initialFetchKey={initialFetchKey}
+          forceBackgroundRefresh={
+            parsed.success &&
+            (parsed.data.page ?? 1) === 1 &&
+            parseEventTypesParam(parsed.data.eventTypes).includes("CME") &&
+            parseEventTypesParam(parsed.data.eventTypes).length > 1
+          }
+        />
+      </Suspense>
+    </>
   );
 }

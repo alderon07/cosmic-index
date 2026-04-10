@@ -5,29 +5,45 @@ import { searchStars } from "@/lib/star-index";
 import { StarsLoadingSkeleton, StarsPageClient } from "./stars-page-client";
 import { PaginatedResult } from "@/lib/api-client";
 import { DEFAULT_PAGE_SIZE } from "@/lib/constants";
+import { JsonLd } from "@/components/seo/json-ld";
+import {
+  buildCollectionPageJsonLd,
+  buildHubMetadata,
+  toSingleValueParams,
+} from "@/lib/seo";
 
 interface StarsPageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
-export const metadata: Metadata = {
-  title: "Stars",
-  description:
-    "Browse host stars of confirmed exoplanets from NASA's Exoplanet Archive. Filter by spectral class, distance, brightness, and planet count.",
-};
+const STARS_HUB_DESCRIPTION =
+  "Explore over 4,500 host stars of known exoplanets from NASA's Exoplanet Archive. Browse by spectral class, planet count, distance, and brightness.";
+const STARS_VARIANT_KEYS = [
+  "query",
+  "spectralClass",
+  "minPlanets",
+  "multiPlanet",
+  "maxDistancePc",
+  "sort",
+  "order",
+  "page",
+  "limit",
+  "view",
+] as const;
 
-function toSingleValueParams(
-  params: Record<string, string | string[] | undefined>
-): Record<string, string> {
-  const entries: Array<[string, string]> = [];
-  for (const [key, value] of Object.entries(params)) {
-    if (typeof value === "string") {
-      entries.push([key, value]);
-    } else if (Array.isArray(value) && value.length > 0) {
-      entries.push([key, value[0]]);
-    }
-  }
-  return Object.fromEntries(entries);
+export async function generateMetadata({
+  searchParams,
+}: StarsPageProps): Promise<Metadata> {
+  const rawParams = toSingleValueParams(await searchParams);
+
+  return buildHubMetadata({
+    title: "Stars",
+    description: STARS_HUB_DESCRIPTION,
+    path: "/stars",
+    variantKeys: STARS_VARIANT_KEYS,
+    params: rawParams,
+    imageAlt: "Cosmic Index - Stars",
+  });
 }
 
 function buildInitialFetchKey(params: StarQueryParams): string {
@@ -81,13 +97,28 @@ export default async function StarsPage({ searchParams }: StarsPageProps) {
     }
   }
 
+  const collectionPageJsonLd = buildCollectionPageJsonLd({
+    name: "Stars",
+    description: STARS_HUB_DESCRIPTION,
+    path: "/stars",
+    sourceName: "NASA Exoplanet Archive",
+    sourceUrl: "https://exoplanetarchive.ipac.caltech.edu/",
+    items: initialData?.objects.slice(0, 10).map((star) => ({
+      name: star.displayName,
+      path: `/stars/${star.id}`,
+    })),
+  });
+
   return (
-    <Suspense fallback={<StarsLoadingSkeleton />}>
-      <StarsPageClient
-        initialData={initialData}
-        initialError={initialError}
-        initialFetchKey={initialFetchKey}
-      />
-    </Suspense>
+    <>
+      <JsonLd data={collectionPageJsonLd} />
+      <Suspense fallback={<StarsLoadingSkeleton />}>
+        <StarsPageClient
+          initialData={initialData}
+          initialError={initialError}
+          initialFetchKey={initialFetchKey}
+        />
+      </Suspense>
+    </>
   );
 }

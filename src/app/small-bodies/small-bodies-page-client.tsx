@@ -286,6 +286,10 @@ export function SmallBodiesPageClient({
         that develop tails when they approach the Sun. Some small bodies, known as Near-Earth Objects (NEOs),
         have orbits that bring them close to Earth.
       </p>
+      <p className="text-sm text-muted-foreground/70 mt-2">
+        Data is sourced from JPL&apos;s Small-Body Database. Orbit classifications, hazard flags, and
+        physical properties can change as additional observations refine each object&apos;s solution.
+      </p>
       </div>
 
       {/* Search and Filters */}

@@ -331,6 +331,10 @@ export function ExoplanetsPageClient({
         These distant worlds range from rocky planets similar to Earth to gas giants larger than Jupiter,
         and they may exist in habitable zones where conditions could potentially support life.
       </p>
+      <p className="text-sm text-muted-foreground/70 mt-2">
+        Data is sourced from NASA&apos;s Exoplanet Archive and may be revised as catalog records improve
+        over time. Summaries and comparisons on Cosmic Index are generated from those published catalog fields.
+      </p>
       </div>
 
       {/* Search and Filters */}

@@ -5,28 +5,50 @@ import { searchExoplanets } from "@/lib/exoplanet-index";
 import { ExoplanetsLoadingSkeleton, ExoplanetsPageClient } from "./exoplanets-page-client";
 import { PaginatedResult } from "@/lib/api-client";
 import { DEFAULT_PAGE_SIZE } from "@/lib/constants";
+import { JsonLd } from "@/components/seo/json-ld";
+import {
+  buildCollectionPageJsonLd,
+  buildHubMetadata,
+  toSingleValueParams,
+} from "@/lib/seo";
 
 interface ExoplanetsPageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
-export const metadata: Metadata = {
-  title: "Exoplanets",
-  description: "Browse confirmed exoplanets from NASA's Exoplanet Archive.",
-};
+const EXOPLANETS_HUB_DESCRIPTION =
+  "Explore over 5,000 confirmed exoplanets from NASA's Exoplanet Archive. Search and filter by discovery method, size, habitability, and more.";
+const EXOPLANETS_VARIANT_KEYS = [
+  "query",
+  "discoveryMethod",
+  "year",
+  "hasRadius",
+  "hasMass",
+  "sizeCategory",
+  "habitable",
+  "facility",
+  "multiPlanet",
+  "maxDistancePc",
+  "sort",
+  "order",
+  "page",
+  "limit",
+  "view",
+] as const;
 
-function toSingleValueParams(
-  params: Record<string, string | string[] | undefined>
-): Record<string, string> {
-  const entries: Array<[string, string]> = [];
-  for (const [key, value] of Object.entries(params)) {
-    if (typeof value === "string") {
-      entries.push([key, value]);
-    } else if (Array.isArray(value) && value.length > 0) {
-      entries.push([key, value[0]]);
-    }
-  }
-  return Object.fromEntries(entries);
+export async function generateMetadata({
+  searchParams,
+}: ExoplanetsPageProps): Promise<Metadata> {
+  const rawParams = toSingleValueParams(await searchParams);
+
+  return buildHubMetadata({
+    title: "Exoplanets",
+    description: EXOPLANETS_HUB_DESCRIPTION,
+    path: "/exoplanets",
+    variantKeys: EXOPLANETS_VARIANT_KEYS,
+    params: rawParams,
+    imageAlt: "Cosmic Index - Exoplanets",
+  });
 }
 
 function buildInitialFetchKey(params: ExoplanetQueryParams): string {
@@ -85,13 +107,28 @@ export default async function ExoplanetsPage({ searchParams }: ExoplanetsPagePro
     }
   }
 
+  const collectionPageJsonLd = buildCollectionPageJsonLd({
+    name: "Exoplanets",
+    description: EXOPLANETS_HUB_DESCRIPTION,
+    path: "/exoplanets",
+    sourceName: "NASA Exoplanet Archive",
+    sourceUrl: "https://exoplanetarchive.ipac.caltech.edu/",
+    items: initialData?.objects.slice(0, 10).map((exoplanet) => ({
+      name: exoplanet.displayName,
+      path: `/exoplanets/${exoplanet.id}`,
+    })),
+  });
+
   return (
-    <Suspense fallback={<ExoplanetsLoadingSkeleton />}>
-      <ExoplanetsPageClient
-        initialData={initialData}
-        initialError={initialError}
-        initialFetchKey={initialFetchKey}
-      />
-    </Suspense>
+    <>
+      <JsonLd data={collectionPageJsonLd} />
+      <Suspense fallback={<ExoplanetsLoadingSkeleton />}>
+        <ExoplanetsPageClient
+          initialData={initialData}
+          initialError={initialError}
+          initialFetchKey={initialFetchKey}
+        />
+      </Suspense>
+    </>
   );
 }

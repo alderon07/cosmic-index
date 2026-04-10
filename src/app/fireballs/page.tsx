@@ -7,29 +7,41 @@ import {
   FireballsLoadingSkeleton,
   FireballsPageClient,
 } from "./fireballs-page-client";
+import { JsonLd } from "@/components/seo/json-ld";
+import {
+  buildCollectionPageJsonLd,
+  buildHubMetadata,
+  toSingleValueParams,
+} from "@/lib/seo";
 
 interface FireballsPageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
-export const metadata: Metadata = {
-  title: "Fireballs",
-  description:
-    "Browse reported fireball events (bright meteors) from NASA JPL CNEOS, including timing, estimated energy, and sometimes location/altitude/velocity.",
-};
+const FIREBALLS_DESCRIPTION =
+  "Browse reported fireball events (bright meteors) from NASA JPL CNEOS, including timing, estimated energy, and sometimes location, altitude, or velocity.";
+const FIREBALLS_VARIANT_KEYS = [
+  "reqLoc",
+  "reqAlt",
+  "reqVel",
+  "sort",
+  "order",
+  "view",
+] as const;
 
-function toSingleValueParams(
-  params: Record<string, string | string[] | undefined>
-): Record<string, string> {
-  const entries: Array<[string, string]> = [];
-  for (const [key, value] of Object.entries(params)) {
-    if (typeof value === "string") {
-      entries.push([key, value]);
-    } else if (Array.isArray(value) && value.length > 0) {
-      entries.push([key, value[0]]);
-    }
-  }
-  return Object.fromEntries(entries);
+export async function generateMetadata({
+  searchParams,
+}: FireballsPageProps): Promise<Metadata> {
+  const rawParams = toSingleValueParams(await searchParams);
+
+  return buildHubMetadata({
+    title: "Fireballs",
+    description: FIREBALLS_DESCRIPTION,
+    path: "/fireballs",
+    variantKeys: FIREBALLS_VARIANT_KEYS,
+    params: rawParams,
+    imageAlt: "Cosmic Index - Fireballs",
+  });
 }
 
 function buildInitialFetchKey(filters: {
@@ -94,13 +106,24 @@ export default async function FireballsPage({ searchParams }: FireballsPageProps
     initialError = error instanceof Error ? error.message : "An error occurred";
   }
 
+  const collectionPageJsonLd = buildCollectionPageJsonLd({
+    name: "Fireballs",
+    description: FIREBALLS_DESCRIPTION,
+    path: "/fireballs",
+    sourceName: "NASA JPL CNEOS Fireball Data",
+    sourceUrl: "https://cneos.jpl.nasa.gov/fireballs/",
+  });
+
   return (
-    <Suspense fallback={<FireballsLoadingSkeleton />}>
-      <FireballsPageClient
-        initialData={initialData}
-        initialError={initialError}
-        initialFetchKey={initialFetchKey}
-      />
-    </Suspense>
+    <>
+      <JsonLd data={collectionPageJsonLd} />
+      <Suspense fallback={<FireballsLoadingSkeleton />}>
+        <FireballsPageClient
+          initialData={initialData}
+          initialError={initialError}
+          initialFetchKey={initialFetchKey}
+        />
+      </Suspense>
+    </>
   );
 }

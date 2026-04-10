@@ -1,16 +1,12 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { fetchSmallBodies } from "@/lib/jpl-sbdb";
 import {
   generateSitemapXml,
   buildUrl,
   getIsoDate,
+  SITEMAP_CACHE_TTL_MS,
   SitemapUrl,
 } from "@/lib/sitemap";
-import {
-  checkRateLimit,
-  getClientIdentifier,
-  getRateLimitHeaders,
-} from "@/lib/rate-limit";
 
 // Force dynamic rendering - sitemaps fetch external APIs
 export const dynamic = "force-dynamic";
@@ -25,21 +21,30 @@ const BATCH_SIZE = 100;
 // PHAs are the most newsworthy objects
 const MAX_OBJECTS = 2000;
 
-export async function GET(request: NextRequest) {
-  try {
-    // Rate limiting - sitemaps are expensive, limit to 10 req/hour
-    const { id: clientId, confidence } = getClientIdentifier(request);
-    const rateLimitResult = await checkRateLimit(clientId, "SITEMAP", confidence);
-
-    if (!rateLimitResult.allowed) {
-      return new NextResponse("Rate limit exceeded. Please try again later.", {
-        status: 429,
-        headers: {
-          "Content-Type": "text/plain",
-          ...getRateLimitHeaders(rateLimitResult),
-        },
-      });
+let cachedSitemap:
+  | {
+      xml: string;
+      lastmod: string;
+      expiresAt: number;
     }
+  | null = null;
+
+function xmlResponse(xml: string, lastmod: string) {
+  return new NextResponse(xml, {
+    headers: {
+      "Content-Type": "application/xml",
+      "Cache-Control": "public, max-age=86400, s-maxage=86400, stale-while-revalidate=3600",
+      "Last-Modified": new Date(`${lastmod}T00:00:00.000Z`).toUTCString(),
+    },
+  });
+}
+
+export async function GET() {
+  if (cachedSitemap && cachedSitemap.expiresAt > Date.now()) {
+    return xmlResponse(cachedSitemap.xml, cachedSitemap.lastmod);
+  }
+
+  try {
     const allUrls: SitemapUrl[] = [];
     const lastmod = getIsoDate();
 
@@ -80,23 +85,20 @@ export async function GET(request: NextRequest) {
     }
 
     const xml = generateSitemapXml(allUrls);
+    cachedSitemap = {
+      xml,
+      lastmod,
+      expiresAt: Date.now() + SITEMAP_CACHE_TTL_MS,
+    };
 
-    return new NextResponse(xml, {
-      headers: {
-        "Content-Type": "application/xml",
-        "Cache-Control": "public, max-age=86400, s-maxage=86400",
-        ...getRateLimitHeaders(rateLimitResult),
-      },
-    });
+    return xmlResponse(xml, lastmod);
   } catch (error) {
     console.error("Error generating small body sitemap:", error);
-    // Return an empty sitemap rather than erroring
-    const xml = generateSitemapXml([]);
-    return new NextResponse(xml, {
-      headers: {
-        "Content-Type": "application/xml",
-        "Cache-Control": "public, max-age=3600, s-maxage=3600",
-      },
-    });
+
+    if (cachedSitemap) {
+      return xmlResponse(cachedSitemap.xml, cachedSitemap.lastmod);
+    }
+
+    return xmlResponse(generateSitemapXml([]), getIsoDate());
   }
 }

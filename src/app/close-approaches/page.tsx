@@ -7,29 +7,41 @@ import {
   CloseApproachesPageClient,
 } from "./close-approaches-page-client";
 import { EventStreamResult } from "@/lib/api-client";
+import { JsonLd } from "@/components/seo/json-ld";
+import {
+  buildCollectionPageJsonLd,
+  buildHubMetadata,
+  toSingleValueParams,
+} from "@/lib/seo";
 
 interface CloseApproachesPageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
-export const metadata: Metadata = {
-  title: "Close Approaches",
-  description:
-    "Browse upcoming close approaches of asteroids and comets near Earth, including approach time, distance (LD), relative speed, and hazard flags (PHA).",
-};
+const CLOSE_APPROACHES_DESCRIPTION =
+  "Browse upcoming close approaches of asteroids and comets near Earth, including approach time, distance (LD), relative speed, and hazard flags (PHA).";
+const CLOSE_APPROACHES_VARIANT_KEYS = [
+  "days",
+  "distMaxLd",
+  "phaOnly",
+  "sort",
+  "order",
+  "view",
+] as const;
 
-function toSingleValueParams(
-  params: Record<string, string | string[] | undefined>
-): Record<string, string> {
-  const entries: Array<[string, string]> = [];
-  for (const [key, value] of Object.entries(params)) {
-    if (typeof value === "string") {
-      entries.push([key, value]);
-    } else if (Array.isArray(value) && value.length > 0) {
-      entries.push([key, value[0]]);
-    }
-  }
-  return Object.fromEntries(entries);
+export async function generateMetadata({
+  searchParams,
+}: CloseApproachesPageProps): Promise<Metadata> {
+  const rawParams = toSingleValueParams(await searchParams);
+
+  return buildHubMetadata({
+    title: "Close Approaches",
+    description: CLOSE_APPROACHES_DESCRIPTION,
+    path: "/close-approaches",
+    variantKeys: CLOSE_APPROACHES_VARIANT_KEYS,
+    params: rawParams,
+    imageAlt: "Cosmic Index - Close Approaches",
+  });
 }
 
 function buildInitialFetchKey(filters: {
@@ -102,13 +114,24 @@ export default async function CloseApproachesPage({
     initialError = error instanceof Error ? error.message : "An error occurred";
   }
 
+  const collectionPageJsonLd = buildCollectionPageJsonLd({
+    name: "Close Approaches",
+    description: CLOSE_APPROACHES_DESCRIPTION,
+    path: "/close-approaches",
+    sourceName: "NASA JPL CNEOS Close Approach Data",
+    sourceUrl: "https://cneos.jpl.nasa.gov/ca/",
+  });
+
   return (
-    <Suspense fallback={<CloseApproachesLoadingSkeleton />}>
-      <CloseApproachesPageClient
-        initialData={initialData}
-        initialError={initialError}
-        initialFetchKey={initialFetchKey}
-      />
-    </Suspense>
+    <>
+      <JsonLd data={collectionPageJsonLd} />
+      <Suspense fallback={<CloseApproachesLoadingSkeleton />}>
+        <CloseApproachesPageClient
+          initialData={initialData}
+          initialError={initialError}
+          initialFetchKey={initialFetchKey}
+        />
+      </Suspense>
+    </>
   );
 }

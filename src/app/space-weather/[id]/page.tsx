@@ -16,6 +16,8 @@ import {
 } from "@/lib/types";
 import { BASE_URL } from "@/lib/config";
 import { THEMES } from "@/lib/theme";
+import { JsonLd } from "@/components/seo/json-ld";
+import { buildBreadcrumbJsonLd } from "@/lib/seo";
 
 const theme = THEMES["space-weather"];
 
@@ -113,13 +115,16 @@ export default async function SpaceWeatherDetailPage({
   ];
 
   return (
-    <div className="shell-container py-8">
-      <Breadcrumbs
-        items={breadcrumbItems}
-        className="mb-6"
-        linkHoverClassName={theme.hoverText}
-      />
-      <SpaceWeatherDetail event={event} />
-    </div>
+    <>
+      <JsonLd data={buildBreadcrumbJsonLd(breadcrumbItems)} />
+      <div className="shell-container py-8">
+        <Breadcrumbs
+          items={breadcrumbItems}
+          className="mb-6"
+          linkHoverClassName={theme.hoverText}
+        />
+        <SpaceWeatherDetail event={event} />
+      </div>
+    </>
   );
 }

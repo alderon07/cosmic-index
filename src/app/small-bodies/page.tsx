@@ -12,28 +12,43 @@ import {
 } from "./small-bodies-page-client";
 import { PaginatedResult } from "@/lib/api-client";
 import { DEFAULT_PAGE_SIZE } from "@/lib/constants";
+import { JsonLd } from "@/components/seo/json-ld";
+import {
+  buildCollectionPageJsonLd,
+  buildHubMetadata,
+  toSingleValueParams,
+} from "@/lib/seo";
 
 interface SmallBodiesPageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
-export const metadata: Metadata = {
-  title: "Small Bodies",
-  description: "Discover asteroids and comets from JPL's Small-Body Database.",
-};
+const SMALL_BODIES_HUB_DESCRIPTION =
+  "Discover over 1,000,000 asteroids and comets from JPL's Small-Body Database. Search and filter by type, orbit class, NEO status, and potential hazard classification.";
+const SMALL_BODIES_VARIANT_KEYS = [
+  "query",
+  "kind",
+  "neo",
+  "pha",
+  "orbitClass",
+  "page",
+  "limit",
+  "view",
+] as const;
 
-function toSingleValueParams(
-  params: Record<string, string | string[] | undefined>
-): Record<string, string> {
-  const entries: Array<[string, string]> = [];
-  for (const [key, value] of Object.entries(params)) {
-    if (typeof value === "string") {
-      entries.push([key, value]);
-    } else if (Array.isArray(value) && value.length > 0) {
-      entries.push([key, value[0]]);
-    }
-  }
-  return Object.fromEntries(entries);
+export async function generateMetadata({
+  searchParams,
+}: SmallBodiesPageProps): Promise<Metadata> {
+  const rawParams = toSingleValueParams(await searchParams);
+
+  return buildHubMetadata({
+    title: "Small Bodies",
+    description: SMALL_BODIES_HUB_DESCRIPTION,
+    path: "/small-bodies",
+    variantKeys: SMALL_BODIES_VARIANT_KEYS,
+    params: rawParams,
+    imageAlt: "Cosmic Index - Small Bodies",
+  });
 }
 
 function buildInitialFetchKey(params: SmallBodyQueryParams): string {
@@ -82,13 +97,28 @@ export default async function SmallBodiesPage({
     }
   }
 
+  const collectionPageJsonLd = buildCollectionPageJsonLd({
+    name: "Small Bodies",
+    description: SMALL_BODIES_HUB_DESCRIPTION,
+    path: "/small-bodies",
+    sourceName: "JPL Small-Body Database",
+    sourceUrl: "https://ssd.jpl.nasa.gov/tools/sbdb_lookup.html",
+    items: initialData?.objects.slice(0, 10).map((body) => ({
+      name: body.displayName,
+      path: `/small-bodies/${body.id}`,
+    })),
+  });
+
   return (
-    <Suspense fallback={<SmallBodiesLoadingSkeleton />}>
-      <SmallBodiesPageClient
-        initialData={initialData}
-        initialError={initialError}
-        initialFetchKey={initialFetchKey}
-      />
-    </Suspense>
+    <>
+      <JsonLd data={collectionPageJsonLd} />
+      <Suspense fallback={<SmallBodiesLoadingSkeleton />}>
+        <SmallBodiesPageClient
+          initialData={initialData}
+          initialError={initialError}
+          initialFetchKey={initialFetchKey}
+        />
+      </Suspense>
+    </>
   );
 }

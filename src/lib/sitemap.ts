@@ -8,6 +8,7 @@ export const MAX_URLS_PER_SITEMAP = 50000;
 
 // Reasonable batch size for API requests
 export const SITEMAP_BATCH_SIZE = 10000;
+export const SITEMAP_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 
 export interface SitemapUrl {
   loc: string;
@@ -81,8 +82,8 @@ function escapeXml(text: string): string {
 /**
  * Get the current date in ISO format for lastmod
  */
-export function getIsoDate(): string {
-  return new Date().toISOString().split("T")[0];
+export function getIsoDate(input: Date = new Date()): string {
+  return input.toISOString().split("T")[0];
 }
 
 /**
