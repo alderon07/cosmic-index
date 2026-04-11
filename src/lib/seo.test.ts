@@ -79,6 +79,17 @@ describe("seo helpers", () => {
       "@type": "ItemList",
       numberOfItems: 2,
     });
+    expect(jsonLd.about).toMatchObject({
+      "@type": "Dataset",
+      name: "NASA Exoplanet Archive",
+      description: "Browse exoplanets.",
+      license: "https://science.data.nasa.gov/about/license",
+      creator: {
+        "@type": "Organization",
+        name: "NASA Exoplanet Archive",
+        url: "https://exoplanetarchive.ipac.caltech.edu/",
+      },
+    });
   });
 
   it("builds breadcrumb json-ld with canonical urls", () => {

@@ -11,6 +11,8 @@ export interface SeoItemListEntry {
   path: string;
 }
 
+const DEFAULT_DATASET_LICENSE_URL = "https://science.data.nasa.gov/about/license";
+
 const GOOGLEBOT_ROBOTS = {
   follow: true,
   "max-video-preview": -1,
@@ -118,6 +120,10 @@ export function buildCollectionPageJsonLd(input: {
   path: string;
   sourceName: string;
   sourceUrl: string;
+  sourceDescription?: string;
+  sourceLicense?: string;
+  sourceCreatorName?: string;
+  sourceCreatorUrl?: string;
   items?: SeoItemListEntry[];
 }) {
   const url = `${BASE_URL}${input.path}`;
@@ -150,7 +156,14 @@ export function buildCollectionPageJsonLd(input: {
     about: {
       "@type": "Dataset",
       name: input.sourceName,
+      description: input.sourceDescription ?? input.description,
       url: input.sourceUrl,
+      creator: {
+        "@type": "Organization",
+        name: input.sourceCreatorName ?? input.sourceName,
+        url: input.sourceCreatorUrl ?? input.sourceUrl,
+      },
+      license: input.sourceLicense ?? DEFAULT_DATASET_LICENSE_URL,
     },
     ...(itemList ? { mainEntity: itemList } : {}),
   };
