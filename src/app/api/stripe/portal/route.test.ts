@@ -3,7 +3,6 @@ import { BASE_URL } from "@/lib/config";
 
 type UserRow = {
   stripe_customer_id?: string | null;
-  stripe_subscription_id?: string | null;
 };
 
 let currentUserRow: UserRow = {};
@@ -16,12 +15,11 @@ let currentStripeSubscriptions: Array<{
 const dbWrites: Array<{ sql: string; args?: unknown[] }> = [];
 
 const mockDbExecute = mock(async ({ sql, args }: { sql: string; args?: unknown[] }) => {
-  if (sql.includes("SELECT stripe_customer_id, stripe_subscription_id FROM users WHERE id = ?")) {
+  if (sql.includes("SELECT stripe_customer_id FROM users WHERE id = ?")) {
     return {
       rows: [
         {
           stripe_customer_id: currentUserRow.stripe_customer_id ?? null,
-          stripe_subscription_id: currentUserRow.stripe_subscription_id ?? null,
         },
       ],
     };
@@ -42,13 +40,6 @@ const mockDbExecute = mock(async ({ sql, args }: { sql: string; args?: unknown[]
 });
 
 const mockCreatePortalSession = mock(async () => ({ url: "https://billing.stripe.test/session" }));
-const mockRetrieveSubscription = mock(async () => ({
-  customer: "cus_from_subscription",
-  status: "active",
-  items: {
-    data: [{ price: { id: "price_live_pro", product: "prod_live_pro" } }],
-  },
-}));
 let mockCanManageBilling = true;
 const ORIGINAL_STRIPE_PRO_PRICE_ID = process.env.STRIPE_PRO_PRICE_ID;
 const SAME_ORIGIN = new URL(BASE_URL).origin;
@@ -138,10 +129,6 @@ mock.module("@/lib/stripe", () => ({
           mockCreatePortalSession(...args),
       },
     },
-    subscriptions: {
-      retrieve: (...args: Parameters<typeof mockRetrieveSubscription>) =>
-        mockRetrieveSubscription(...args),
-    },
   }),
 }));
 
@@ -160,15 +147,6 @@ beforeEach(() => {
 
   mockDbExecute.mockClear();
   mockCreatePortalSession.mockClear();
-  mockRetrieveSubscription.mockClear();
-
-  mockRetrieveSubscription.mockImplementation(async () => ({
-    customer: "cus_from_subscription",
-    status: "active",
-    items: {
-      data: [{ price: { id: "price_live_pro", product: "prod_live_pro" } }],
-    },
-  }));
 });
 
 afterAll(() => {
@@ -181,10 +159,7 @@ afterAll(() => {
 
 describe("POST /api/stripe/portal", () => {
   it("uses a verified local Pro subscription when present", async () => {
-    currentUserRow = {
-      stripe_customer_id: "cus_from_local",
-      stripe_subscription_id: "sub_from_db",
-    };
+    currentUserRow = {};
     currentStripeSubscriptions = [
       {
         stripe_subscription_id: "sub_from_db",
@@ -202,38 +177,26 @@ describe("POST /api/stripe/portal", () => {
       customer: "cus_from_local",
       return_url: "http://localhost:3000/settings/billing",
     });
-    expect(mockRetrieveSubscription).not.toHaveBeenCalled();
   });
 
-  it("falls back to stripe_subscription_id when customer id is missing", async () => {
+  it("uses the stored customer id when present on the user row", async () => {
     currentUserRow = {
-      stripe_customer_id: null,
-      stripe_subscription_id: "sub_from_db",
+      stripe_customer_id: "cus_from_user",
     };
 
     const response = await POST(createSameOriginRequest("http://localhost/api/stripe/portal"));
     expect(response.status).toBe(200);
-    expect(mockRetrieveSubscription).toHaveBeenCalledWith("sub_from_db");
     expect(mockCreatePortalSession).toHaveBeenCalledWith({
-      customer: "cus_from_subscription",
+      customer: "cus_from_user",
       return_url: "http://localhost:3000/settings/billing",
     });
-    expect(dbWrites.length).toBe(1);
+    expect(dbWrites.length).toBe(0);
   });
 
   it("returns 400 when no verified Pro subscription exists", async () => {
     currentUserRow = {
       stripe_customer_id: null,
-      stripe_subscription_id: "sub_from_db",
     };
-
-    mockRetrieveSubscription.mockImplementation(async () => ({
-      customer: "cus_wrong_plan",
-      status: "active",
-      items: {
-        data: [{ price: { id: "price_other", product: "prod_other" } }],
-      },
-    }));
 
     const response = await POST(createSameOriginRequest("http://localhost/api/stripe/portal"));
     expect(response.status).toBe(400);

@@ -105,9 +105,8 @@ async function processStripeEvent(event: Stripe.Event, db: Client) {
     case "customer.subscription.updated": {
       const subscription = event.data.object as Stripe.Subscription;
 
-      // Resolve user by subscription ID, customer ID, or metadata fallback.
+      // Resolve user by ledger customer linkage, direct customer linkage, or metadata fallback.
       const userId = await resolveUserId(
-        subscription.id,
         subscription.customer as string,
         subscription.metadata?.userId,
         db
@@ -128,7 +127,6 @@ async function processStripeEvent(event: Stripe.Event, db: Client) {
     case "customer.subscription.deleted": {
       const subscription = event.data.object as Stripe.Subscription;
       const userId = await resolveUserId(
-        subscription.id,
         subscription.customer as string,
         subscription.metadata?.userId,
         db
@@ -189,31 +187,20 @@ async function processStripeEvent(event: Stripe.Event, db: Client) {
 }
 
 /**
- * Resolve user ID from Stripe customer ID or metadata.
- * Tries customer ID first (more reliable), falls back to metadata.
+ * Resolve user ID from the subscription ledger, Stripe customer linkage, or metadata.
  */
 async function resolveUserId(
-  subscriptionId: string,
   customerId: string,
   metadataUserId: string | undefined,
   db: Client
 ): Promise<string | null> {
   const bySubscriptionTable = await db.execute({
-    sql: "SELECT user_id FROM stripe_subscriptions WHERE stripe_subscription_id = ? LIMIT 1",
-    args: [subscriptionId],
+    sql: "SELECT user_id FROM stripe_subscriptions WHERE stripe_customer_id = ? LIMIT 1",
+    args: [customerId],
   });
 
   if (bySubscriptionTable.rows.length > 0) {
     return bySubscriptionTable.rows[0].user_id as string;
-  }
-
-  const byLegacySubscription = await db.execute({
-    sql: "SELECT id FROM users WHERE stripe_subscription_id = ? LIMIT 1",
-    args: [subscriptionId],
-  });
-
-  if (byLegacySubscription.rows.length > 0) {
-    return byLegacySubscription.rows[0].id as string;
   }
 
   // Try customer ID first (more reliable)
@@ -313,7 +300,7 @@ async function upsertStripeSubscription(
  */
 async function syncUserStripeState(userId: string, db: Client) {
   const configuredPriceId = process.env.STRIPE_PRO_PRICE_ID;
-  let activeSubscriptionId: string | null = null;
+  let hasEntitledSubscription = false;
 
   if (configuredPriceId) {
     const result = await db.execute({
@@ -341,20 +328,18 @@ async function syncUserStripeState(userId: string, db: Client) {
       })
     );
 
-    activeSubscriptionId = entitled
-      ? (entitled.stripe_subscription_id as string)
-      : null;
+    hasEntitledSubscription = Boolean(entitled);
   }
 
-  const tier = activeSubscriptionId ? "pro" : "free";
+  const tier = hasEntitledSubscription ? "pro" : "free";
 
   await db.execute({
     sql: `
       UPDATE users
-      SET tier = ?, stripe_subscription_id = ?, updated_at = datetime('now')
+      SET tier = ?, updated_at = datetime('now')
       WHERE id = ?
     `,
-    args: [tier, activeSubscriptionId, userId],
+    args: [tier, userId],
   });
 
   console.log(`Stripe webhook: Updated user ${userId} to tier ${tier}`);

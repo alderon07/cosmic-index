@@ -4,11 +4,6 @@ import { requireStripe, APP_URL } from "@/lib/stripe";
 import { requireUserDb } from "@/lib/user-db";
 import { getFeatureDisabledResponse, resolveProAccess } from "@/lib/pro-access";
 import { requireSameOrigin } from "@/lib/request-origin";
-import {
-  getSubscriptionPriceDetails,
-  isManageableStripeSubscriptionStatus,
-  matchesConfiguredProPrice,
-} from "@/lib/stripe-subscriptions";
 
 /**
  * POST /api/stripe/portal
@@ -35,12 +30,11 @@ export async function POST(request: Request) {
 
     // Get user's Stripe linkage from DB.
     const result = await db.execute({
-      sql: "SELECT stripe_customer_id, stripe_subscription_id FROM users WHERE id = ?",
+      sql: "SELECT stripe_customer_id FROM users WHERE id = ?",
       args: [user.userId],
     });
 
     const dbCustomerId = result.rows[0]?.stripe_customer_id as string | undefined;
-    const dbSubscriptionId = result.rows[0]?.stripe_subscription_id as string | undefined;
     let customerId: string | undefined = dbCustomerId;
 
     const localSubscriptions = await db.execute({
@@ -64,32 +58,10 @@ export async function POST(request: Request) {
       args: [user.userId, process.env.STRIPE_PRO_PRICE_ID ?? ""],
     });
 
-    const preferredLocalSubscription = localSubscriptions.rows.find((row) =>
-      isManageableStripeSubscriptionStatus(row.status as string | undefined)
-    );
+    const preferredLocalSubscription = localSubscriptions.rows[0];
 
     if (preferredLocalSubscription) {
       customerId = preferredLocalSubscription.stripe_customer_id as string;
-    }
-
-    // Fallback: resolve customer from known subscription ID, but only for the
-    // configured Pro price so we do not recover arbitrary subscriptions.
-    if (!customerId && dbSubscriptionId) {
-      try {
-        const subscription = await stripe.subscriptions.retrieve(dbSubscriptionId);
-        const { priceId } = getSubscriptionPriceDetails(subscription);
-        if (
-          matchesConfiguredProPrice(priceId) &&
-          isManageableStripeSubscriptionStatus(subscription.status)
-        ) {
-          customerId =
-            typeof subscription.customer === "string"
-              ? subscription.customer
-              : subscription.customer?.id;
-        }
-      } catch (error) {
-        console.warn("Stripe portal: subscription lookup failed", error);
-      }
     }
 
     // Persist recovered customer linkage for future requests.

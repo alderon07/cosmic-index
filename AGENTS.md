@@ -232,7 +232,7 @@ Notes:
 - `src/proxy.ts` is used instead of a legacy `middleware.ts` naming pattern.
 - Exoplanet browse requires Turso index; detail pages may still work via NASA fetch path.
 - Billing status can lag immediately after Stripe Checkout until webhook sync completes; billing UI exposes Manage/Cancel during this window.
-- Stripe portal route includes customer recovery fallback via `stripe_subscription_id` and email lookup when `stripe_customer_id` linkage is missing.
+- Stripe portal route relies on `users.stripe_customer_id` first, then `stripe_subscriptions` for recovery when billing sync has partially completed.
 - If compare state seems stale/weird, clear session storage key `cosmic-index:compare:v1`.
 - DONKI notifications endpoint has a 30-day max query window; requests beyond this are clamped and surfaced via warnings.
 - Linked space-weather events can include unsupported DONKI types (e.g. `RBE`/`MPC`); unsupported links should route to DONKI external references, not in-app detail routes.

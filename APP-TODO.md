@@ -38,7 +38,7 @@ Status snapshot:
 | Database Migrations | Applied all current migrations (`001_pro_features.sql`, `002_export_history_audit.sql`, `003_tier_limit_indexes.sql`, `004_waitlist_interest.sql`) |
 | Stripe Billing UX | Added Billing nav entry in user menu, in-page API error messaging, and explicit **Manage or Cancel** actions on billing |
 | Stripe Billing Sync UX | Billing page now handles post-checkout sync lag explicitly (shows sync state and keeps **Manage or Cancel** available) |
-| Stripe Portal Reliability | Added customer resolution fallbacks (`stripe_subscription_id`, email-based lookup) and route tests for portal recovery paths |
+| Stripe Portal Reliability | Added customer-linkage recovery via `users.stripe_customer_id` and `stripe_subscriptions`, plus route tests for portal recovery paths |
 | **Pro Tier Backend** | Full implementation - see details below |
 
 ### Pro Tier Implementation (Deployed)

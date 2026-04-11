@@ -228,7 +228,6 @@ CREATE TABLE users (
   email TEXT NOT NULL,
   tier TEXT NOT NULL DEFAULT 'free',  -- 'free' | 'pro'
   stripe_customer_id TEXT,
-  stripe_subscription_id TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
