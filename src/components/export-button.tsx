@@ -420,6 +420,9 @@ export function ExportButton({
                         </SelectContent>
                       </Select>
                       <span className="text-[11px] text-muted-foreground">{layoutDescription}</span>
+                      <span className="text-[11px] text-muted-foreground">
+                        Wide keeps everything in one row per saved object. Relational splits saved objects and saved events into linked tables for analysis.
+                      </span>
                     </div>
 
                     {profile === "research" && (
@@ -465,19 +468,24 @@ export function ExportButton({
                       </Select>
                     </div>
 
-                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    <div className="grid gap-2">
+                      <p className="text-[11px] text-muted-foreground">
+                        Filters by when you saved the item in Cosmic Index, not the object discovery date or event time.
+                      </p>
+                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                       <ThemedDatePicker
-                        label="Saved After (UTC)"
+                        label="Saved On/After (UTC)"
                         value={savedAfter}
                         onChange={setSavedAfter}
                         theme={theme}
                       />
                       <ThemedDatePicker
-                        label="Saved Before (UTC)"
+                        label="Saved On/Before (UTC)"
                         value={savedBefore}
                         onChange={setSavedBefore}
                         theme={theme}
                       />
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
