@@ -30,7 +30,7 @@ export interface RateLimitPass {
  */
 export async function withRateLimit(
   request: NextRequest,
-  type: "BROWSE" | "DETAIL" | "SITEMAP",
+  type: "BROWSE" | "DETAIL" | "UPSTREAM_DETAIL" | "IMAGE_SEARCH" | "SITEMAP",
   requestId: string,
 ): Promise<RateLimitPass | NextResponse> {
   const { id: clientId, confidence } = getClientIdentifier(request);
@@ -59,7 +59,7 @@ export async function withRateLimit(
 
 function rateLimitError(
   result: { resetTime: number; allowed: boolean; remaining: number; effectiveLimit: number },
-  type: "BROWSE" | "DETAIL" | "SITEMAP",
+  type: "BROWSE" | "DETAIL" | "UPSTREAM_DETAIL" | "IMAGE_SEARCH" | "SITEMAP",
   requestId: string,
 ): NextResponse {
   const resetSeconds = Math.max(1, Math.ceil((result.resetTime - Date.now()) / 1000));

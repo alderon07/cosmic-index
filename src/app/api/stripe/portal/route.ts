@@ -3,6 +3,7 @@ import { requireAuth, authErrorResponse } from "@/lib/auth";
 import { requireStripe, APP_URL } from "@/lib/stripe";
 import { requireUserDb } from "@/lib/user-db";
 import { getFeatureDisabledResponse, resolveProAccess } from "@/lib/pro-access";
+import { requireSameOrigin } from "@/lib/request-origin";
 import {
   getSubscriptionPriceDetails,
   isManageableStripeSubscriptionStatus,
@@ -17,8 +18,13 @@ import {
  *
  * Returns the portal URL for client-side redirect.
  */
-export async function POST() {
+export async function POST(request: Request) {
   try {
+    const sameOriginError = requireSameOrigin(request);
+    if (sameOriginError) {
+      return sameOriginError;
+    }
+
     const user = await requireAuth();
     if (!resolveProAccess(user).canManageBilling) {
       return getFeatureDisabledResponse("billing");

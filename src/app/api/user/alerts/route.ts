@@ -3,6 +3,7 @@ import { requirePro, authErrorResponse } from "@/lib/auth";
 import { requireUserDb } from "@/lib/user-db";
 import { CreateAlertSchema, Alert } from "@/lib/types";
 import { getFeatureDisabledResponse, resolveProAccess } from "@/lib/pro-access";
+import { requireSameOrigin } from "@/lib/request-origin";
 
 /**
  * GET /api/user/alerts
@@ -50,6 +51,11 @@ export async function GET() {
  */
 export async function POST(request: NextRequest) {
   try {
+    const sameOriginError = requireSameOrigin(request);
+    if (sameOriginError) {
+      return sameOriginError;
+    }
+
     const user = await requirePro();
     if (!resolveProAccess(user).canAccessProSurfaces) {
       return getFeatureDisabledResponse("pro_surfaces");

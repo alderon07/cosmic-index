@@ -3,6 +3,7 @@ import { requireAuth, authErrorResponse } from "@/lib/auth";
 import { requireStripe, STRIPE_PRICES, APP_URL } from "@/lib/stripe";
 import { getUserDb } from "@/lib/user-db";
 import { getFeatureDisabledResponse, resolveProAccess } from "@/lib/pro-access";
+import { requireSameOrigin } from "@/lib/request-origin";
 
 function buildCheckoutIdempotencyKey(userId: string): string {
   // Coalesce rapid retries/double-clicks into one Checkout Session while
@@ -22,8 +23,13 @@ function buildCheckoutIdempotencyKey(userId: string): string {
  * - Success/cancel URLs
  * - Customer email pre-fill
  */
-export async function POST() {
+export async function POST(request: Request) {
   try {
+    const sameOriginError = requireSameOrigin(request);
+    if (sameOriginError) {
+      return sameOriginError;
+    }
+
     const user = await requireAuth();
     if (!resolveProAccess(user).canStartCheckout) {
       return getFeatureDisabledResponse("billing");

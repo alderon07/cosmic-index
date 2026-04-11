@@ -1,4 +1,5 @@
 import { afterAll, beforeEach, describe, expect, it, mock } from "bun:test";
+import { BASE_URL } from "@/lib/config";
 
 type UserRow = {
   stripe_customer_id?: string | null;
@@ -50,6 +51,16 @@ const mockRetrieveSubscription = mock(async () => ({
 }));
 let mockCanManageBilling = true;
 const ORIGINAL_STRIPE_PRO_PRICE_ID = process.env.STRIPE_PRO_PRICE_ID;
+const SAME_ORIGIN = new URL(BASE_URL).origin;
+
+function createSameOriginRequest(url: string): Request {
+  return new Request(url, {
+    method: "POST",
+    headers: {
+      Origin: SAME_ORIGIN,
+    },
+  });
+}
 
 mock.module("@/lib/auth", () => ({
   getAuthUser: async () => ({
@@ -183,7 +194,7 @@ describe("POST /api/stripe/portal", () => {
       },
     ];
 
-    const response = await POST();
+    const response = await POST(createSameOriginRequest("http://localhost/api/stripe/portal"));
     expect(response.status).toBe(200);
     const body = await response.json();
     expect(body.url).toBe("https://billing.stripe.test/session");
@@ -200,7 +211,7 @@ describe("POST /api/stripe/portal", () => {
       stripe_subscription_id: "sub_from_db",
     };
 
-    const response = await POST();
+    const response = await POST(createSameOriginRequest("http://localhost/api/stripe/portal"));
     expect(response.status).toBe(200);
     expect(mockRetrieveSubscription).toHaveBeenCalledWith("sub_from_db");
     expect(mockCreatePortalSession).toHaveBeenCalledWith({
@@ -224,7 +235,7 @@ describe("POST /api/stripe/portal", () => {
       },
     }));
 
-    const response = await POST();
+    const response = await POST(createSameOriginRequest("http://localhost/api/stripe/portal"));
     expect(response.status).toBe(400);
     const body = await response.json();
     expect(body.error).toBe("No subscription found");
@@ -234,7 +245,7 @@ describe("POST /api/stripe/portal", () => {
   it("returns 403 when billing access is disabled", async () => {
     mockCanManageBilling = false;
 
-    const response = await POST();
+    const response = await POST(createSameOriginRequest("http://localhost/api/stripe/portal"));
     expect(response.status).toBe(403);
     const body = await response.json();
     expect(body.feature).toBe("billing");

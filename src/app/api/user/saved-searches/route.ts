@@ -6,6 +6,7 @@ import { canonicalizeAndHash } from "@/lib/saved-searches";
 import { recordLimitHitWithDedup } from "@/lib/pro-interest";
 import { getTierLimits, getUpgradePayload } from "@/lib/tier-limits";
 import { resolveLimitMode, toLimitPolicyMetadata } from "@/lib/feature-policy";
+import { requireSameOrigin } from "@/lib/request-origin";
 
 /**
  * GET /api/user/saved-searches
@@ -84,6 +85,11 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
+    const sameOriginError = requireSameOrigin(request);
+    if (sameOriginError) {
+      return sameOriginError;
+    }
+
     const user = await requireAuth();
     const limits = getTierLimits(user.tier);
 

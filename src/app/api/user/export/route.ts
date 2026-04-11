@@ -35,6 +35,7 @@ import { resolveLimitMode, toLimitPolicyMetadata } from "@/lib/feature-policy";
 import { resolveSavedObjectHref } from "@/lib/saved-object-ui";
 import { BASE_URL } from "@/lib/config";
 import { limitConcurrencySettled } from "@/lib/concurrency";
+import { requireSameOrigin } from "@/lib/request-origin";
 
 /**
  * POST /api/user/export
@@ -1395,6 +1396,11 @@ export async function POST(request: NextRequest) {
   const baseHeaders = { "X-Request-Id": requestId };
 
   try {
+    const sameOriginError = requireSameOrigin(request);
+    if (sameOriginError) {
+      return sameOriginError;
+    }
+
     const user = await requirePro();
     const tierLimits = getTierLimits(user.tier);
     const userDb = getUserDb();

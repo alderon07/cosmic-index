@@ -22,7 +22,7 @@ const ImageQuerySchema = z.object({
 export async function GET(request: NextRequest) {
   const { requestId } = initRequest();
 
-  const rateLimit = await withRateLimit(request, "DETAIL", requestId);
+  const rateLimit = await withRateLimit(request, "IMAGE_SEARCH", requestId);
   if (rateLimit instanceof Response) return rateLimit;
 
   const searchParams = Object.fromEntries(request.nextUrl.searchParams);

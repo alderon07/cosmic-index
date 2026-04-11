@@ -3977,7 +3977,7 @@
         }
       },
       "RateLimitExceeded": {
-        "description": "Rate limit exceeded (429). Requests are subject to per-endpoint limits (browse: 100/min, detail: 200/min, sitemap: 10/hr), a global per-client cap (300/min across all endpoints), and burst micro-windows (e.g., browse max 20 per 10s). Effective limits scale by client identification confidence: IP-identified clients get full limits, fingerprint-identified clients get half, and unidentifiable clients get 1/10th. Check the RateLimit-* response headers for your current quota.",
+        "description": "Rate limit exceeded (429). Requests are subject to per-endpoint limits (browse: 100/min, detail: 200/min, upstream-heavy detail: 60/min, image search: 20/min, sitemap: 10/hr), a global per-client cap (300/min across all endpoints), and burst micro-windows (browse: 20 per 10s, detail: 40 per 10s, upstream-heavy detail: 10 per 10s, image search: 5 per 10s). Effective limits scale by client identification confidence: IP-identified clients get full limits, fingerprint-identified clients get half, and unidentifiable clients get 1/10th. Check the RateLimit-* response headers for your current quota.",
         "headers": {
           "$ref": "#/components/headers/StandardResponseHeaders",
           "Retry-After": {

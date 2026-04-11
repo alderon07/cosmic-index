@@ -34,4 +34,36 @@ describe("checkRateLimit", () => {
     expect(result.remaining).toBe(0);
     expect(result.effectiveLimit).toBe(0);
   });
+
+  it("applies the tighter unknown-confidence cap to image search", async () => {
+    process.env.NODE_ENV = "test";
+    delete process.env.UPSTASH_REDIS_REST_URL;
+    delete process.env.UPSTASH_REDIS_REST_TOKEN;
+
+    const result = await checkRateLimit(
+      `image-search-${crypto.randomUUID()}`,
+      "IMAGE_SEARCH",
+      "unknown"
+    );
+
+    expect(result.allowed).toBe(true);
+    expect(result.effectiveLimit).toBe(2);
+    expect(result.remaining).toBe(1);
+  });
+
+  it("applies the tighter fingerprint-confidence cap to upstream detail routes", async () => {
+    process.env.NODE_ENV = "test";
+    delete process.env.UPSTASH_REDIS_REST_URL;
+    delete process.env.UPSTASH_REDIS_REST_TOKEN;
+
+    const result = await checkRateLimit(
+      `upstream-detail-${crypto.randomUUID()}`,
+      "UPSTREAM_DETAIL",
+      "fingerprint"
+    );
+
+    expect(result.allowed).toBe(true);
+    expect(result.effectiveLimit).toBe(30);
+    expect(result.remaining).toBe(29);
+  });
 });

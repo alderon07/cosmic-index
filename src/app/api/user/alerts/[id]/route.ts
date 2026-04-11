@@ -3,6 +3,7 @@ import { requirePro, authErrorResponse } from "@/lib/auth";
 import { requireUserDb } from "@/lib/user-db";
 import { UpdateAlertSchema, Alert } from "@/lib/types";
 import { getFeatureDisabledResponse, resolveProAccess } from "@/lib/pro-access";
+import { requireSameOrigin } from "@/lib/request-origin";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -65,6 +66,11 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
  */
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
   try {
+    const sameOriginError = requireSameOrigin(request);
+    if (sameOriginError) {
+      return sameOriginError;
+    }
+
     const user = await requirePro();
     if (!resolveProAccess(user).canAccessProSurfaces) {
       return getFeatureDisabledResponse("pro_surfaces");
@@ -146,6 +152,11 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
  */
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
+    const sameOriginError = requireSameOrigin(request);
+    if (sameOriginError) {
+      return sameOriginError;
+    }
+
     const user = await requirePro();
     if (!resolveProAccess(user).canAccessProSurfaces) {
       return getFeatureDisabledResponse("pro_surfaces");

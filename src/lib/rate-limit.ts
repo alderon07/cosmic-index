@@ -28,6 +28,8 @@ function getRedis(): Redis | null {
 export const RATE_LIMITS = {
   BROWSE: { requests: 100, windowMs: 60_000 },        // 100 req/min
   DETAIL: { requests: 200, windowMs: 60_000 },        // 200 req/min
+  UPSTREAM_DETAIL: { requests: 60, windowMs: 60_000 }, // 60 req/min for upstream-heavy detail fetches
+  IMAGE_SEARCH: { requests: 20, windowMs: 60_000 },   // 20 req/min for NASA image search
   SITEMAP: { requests: 10, windowMs: 60 * 60_000 },   // 10 req/hour
   GLOBAL: { requests: 300, windowMs: 60_000 },         // 300 req/min across all endpoints
 } as const;
@@ -37,6 +39,8 @@ export type RateLimitType = keyof typeof RATE_LIMITS;
 const BURST_LIMITS: Record<RateLimitType, { requests: number; windowMs: number } | null> = {
   BROWSE:  { requests: 20, windowMs: 10_000 },   // max 20 per 10s
   DETAIL:  { requests: 40, windowMs: 10_000 },   // max 40 per 10s
+  UPSTREAM_DETAIL: { requests: 10, windowMs: 10_000 }, // max 10 per 10s
+  IMAGE_SEARCH: { requests: 5, windowMs: 10_000 }, // max 5 per 10s
   SITEMAP: null,                                   // no burst limit
   GLOBAL:  { requests: 60, windowMs: 10_000 },   // max 60 per 10s globally
 };

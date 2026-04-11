@@ -15,7 +15,7 @@ export async function GET(
 ) {
   const { requestId } = initRequest();
 
-  const rateLimit = await withRateLimit(request, "DETAIL", requestId);
+  const rateLimit = await withRateLimit(request, "UPSTREAM_DETAIL", requestId);
   if (rateLimit instanceof Response) return rateLimit;
 
   const { id } = await params;

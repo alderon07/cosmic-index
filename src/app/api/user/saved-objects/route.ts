@@ -7,6 +7,7 @@ import { getTierLimits, getUpgradePayload } from "@/lib/tier-limits";
 import { resolveLimitMode, toLimitPolicyMetadata } from "@/lib/feature-policy";
 import { recordLimitHitWithDedup } from "@/lib/pro-interest";
 import { ServerTiming } from "@/lib/server-timing";
+import { requireSameOrigin } from "@/lib/request-origin";
 import {
   decodeSavedObjectsCursor,
   encodeSavedObjectsCursor,
@@ -149,6 +150,11 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
+    const sameOriginError = requireSameOrigin(request);
+    if (sameOriginError) {
+      return sameOriginError;
+    }
+
     const user = await requireAuth();
     const limits = getTierLimits(user.tier);
     const db = requireUserDb();

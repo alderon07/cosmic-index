@@ -4,6 +4,7 @@ import { getFeatureDisabledResponse, resolveProAccess } from "@/lib/pro-access";
 import { requireUserDb } from "@/lib/user-db";
 import { CreateCollectionSchema, Collection } from "@/lib/types";
 import { ServerTiming } from "@/lib/server-timing";
+import { requireSameOrigin } from "@/lib/request-origin";
 import {
   decodeCollectionsCursor,
   encodeCollectionsCursor,
@@ -120,6 +121,11 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
+    const sameOriginError = requireSameOrigin(request);
+    if (sameOriginError) {
+      return sameOriginError;
+    }
+
     const user = await requireAuth();
     if (!resolveProAccess(user).canAccessCollections) {
       return getFeatureDisabledResponse("collections");

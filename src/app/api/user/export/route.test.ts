@@ -1,5 +1,6 @@
 import { describe, it, expect, mock } from "bun:test";
 import type { NextRequest } from "next/server";
+import { BASE_URL } from "@/lib/config";
 
 type MockAuthUser = {
   userId: string;
@@ -318,6 +319,13 @@ mock.module("@/lib/jpl-sbdb", () => ({
 }));
 
 const { POST } = await import("@/app/api/user/export/route");
+const SAME_ORIGIN = new URL(BASE_URL).origin;
+
+function createSameOriginRequest(url: string, init: RequestInit): NextRequest {
+  const headers = new Headers(init.headers);
+  headers.set("Origin", SAME_ORIGIN);
+  return new Request(url, { ...init, headers }) as unknown as NextRequest;
+}
 
 describe("/api/user/export", () => {
   it("returns 401 when user is not signed in", async () => {
@@ -332,13 +340,13 @@ describe("/api/user/export", () => {
       throw error;
     };
 
-    const req = new Request("http://localhost/api/user/export", {
+    const req = createSameOriginRequest("http://localhost/api/user/export", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ format: "csv", category: "exoplanets", queryParams: {} }),
     });
 
-    const res = await POST(req as unknown as NextRequest);
+    const res = await POST(req);
     expect(res.status).toBe(401);
     const body = await res.json();
     expect(body.error).toBe("Authentication required");
@@ -359,13 +367,13 @@ describe("/api/user/export", () => {
       isPro: false,
     });
 
-    const req = new Request("http://localhost/api/user/export", {
+    const req = createSameOriginRequest("http://localhost/api/user/export", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ format: "json", category: "exoplanets", queryParams: { limit: 1 } }),
     });
 
-    const res = await POST(req as unknown as NextRequest);
+    const res = await POST(req);
     expect(res.status).toBe(403);
     const body = await res.json();
     expect(body.error).toBe("Pro subscription required");
@@ -380,13 +388,13 @@ describe("/api/user/export", () => {
   });
 
   it("allows CSV without explicit limit by applying tier default cap", async () => {
-    const req = new Request("http://localhost/api/user/export", {
+    const req = createSameOriginRequest("http://localhost/api/user/export", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ format: "csv", category: "exoplanets", queryParams: {} }),
     });
 
-    const res = await POST(req as unknown as NextRequest);
+    const res = await POST(req);
     expect(res.status).toBe(200);
     expect(res.headers.get("Content-Type")).toContain("text/csv");
     const text = await res.text();
@@ -396,7 +404,7 @@ describe("/api/user/export", () => {
   });
 
   it("returns JSON document for valid request", async () => {
-    const req = new Request("http://localhost/api/user/export", {
+    const req = createSameOriginRequest("http://localhost/api/user/export", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -406,7 +414,7 @@ describe("/api/user/export", () => {
       }),
     });
 
-    const res = await POST(req as unknown as NextRequest);
+    const res = await POST(req);
     expect(res.status).toBe(200);
     expect(res.headers.get("Content-Type")).toContain("application/json");
     const body = await res.json();
@@ -421,7 +429,7 @@ describe("/api/user/export", () => {
   });
 
   it("returns enriched fields when profile=research", async () => {
-    const req = new Request("http://localhost/api/user/export", {
+    const req = createSameOriginRequest("http://localhost/api/user/export", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -432,7 +440,7 @@ describe("/api/user/export", () => {
       }),
     });
 
-    const res = await POST(req as unknown as NextRequest);
+    const res = await POST(req);
     expect(res.status).toBe(200);
     expect(res.headers.get("Content-Type")).toContain("application/json");
     const body = await res.json();
@@ -446,20 +454,20 @@ describe("/api/user/export", () => {
   });
 
   it("rejects CSV when limit exceeds tier cap", async () => {
-    const req = new Request("http://localhost/api/user/export", {
+    const req = createSameOriginRequest("http://localhost/api/user/export", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ format: "csv", category: "exoplanets", queryParams: { limit: 50000 } }),
     });
 
-    const res = await POST(req as unknown as NextRequest);
+    const res = await POST(req);
     expect(res.status).toBe(400);
     const body = await res.json();
     expect(body.error).toBe("csv_row_limit_exceeded");
   });
 
   it("returns NDJSON stream for valid request", async () => {
-    const req = new Request("http://localhost/api/user/export", {
+    const req = createSameOriginRequest("http://localhost/api/user/export", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -469,7 +477,7 @@ describe("/api/user/export", () => {
       }),
     });
 
-    const res = await POST(req as unknown as NextRequest);
+    const res = await POST(req);
     expect(res.status).toBe(200);
     expect(res.headers.get("Content-Type")).toContain("application/x-ndjson");
     const text = await res.text();
@@ -479,7 +487,7 @@ describe("/api/user/export", () => {
   });
 
   it("adds user-facing small-body fields to basic exports", async () => {
-    const req = new Request("http://localhost/api/user/export", {
+    const req = createSameOriginRequest("http://localhost/api/user/export", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -489,7 +497,7 @@ describe("/api/user/export", () => {
       }),
     });
 
-    const res = await POST(req as unknown as NextRequest);
+    const res = await POST(req);
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.data[0]?.full_name).toBe("1P/Halley");
@@ -498,7 +506,7 @@ describe("/api/user/export", () => {
   });
 
   it("adds richer archival identifiers to small-body research exports", async () => {
-    const req = new Request("http://localhost/api/user/export", {
+    const req = createSameOriginRequest("http://localhost/api/user/export", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -509,7 +517,7 @@ describe("/api/user/export", () => {
       }),
     });
 
-    const res = await POST(req as unknown as NextRequest);
+    const res = await POST(req);
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.data[0]?.full_name).toBe("1P/Halley");
@@ -521,7 +529,7 @@ describe("/api/user/export", () => {
   });
 
   it("rejects invalid cursor", async () => {
-    const req = new Request("http://localhost/api/user/export", {
+    const req = createSameOriginRequest("http://localhost/api/user/export", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -532,14 +540,14 @@ describe("/api/user/export", () => {
       }),
     });
 
-    const res = await POST(req as unknown as NextRequest);
+    const res = await POST(req);
     expect(res.status).toBe(400);
     const body = await res.json();
     expect(body.error).toBe("invalid_cursor_format");
   });
 
   it("flattens saved object event payload fields for research profile", async () => {
-    const req = new Request("http://localhost/api/user/export", {
+    const req = createSameOriginRequest("http://localhost/api/user/export", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -550,7 +558,7 @@ describe("/api/user/export", () => {
       }),
     });
 
-    const res = await POST(req as unknown as NextRequest);
+    const res = await POST(req);
     expect(res.status).toBe(200);
     expect(res.headers.get("Content-Type")).toContain("application/json");
     const body = await res.json();
@@ -566,7 +574,7 @@ describe("/api/user/export", () => {
   });
 
   it("includes raw payload when includeRawPayload=true", async () => {
-    const req = new Request("http://localhost/api/user/export", {
+    const req = createSameOriginRequest("http://localhost/api/user/export", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -578,14 +586,14 @@ describe("/api/user/export", () => {
       }),
     });
 
-    const res = await POST(req as unknown as NextRequest);
+    const res = await POST(req);
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.data[0]?.event_payload_json).toContain('"eventType":"CME"');
   });
 
   it("adds decoded keys and app links for saved objects", async () => {
-    const req = new Request("http://localhost/api/user/export", {
+    const req = createSameOriginRequest("http://localhost/api/user/export", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -596,7 +604,7 @@ describe("/api/user/export", () => {
       }),
     });
 
-    const res = await POST(req as unknown as NextRequest);
+    const res = await POST(req);
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.data.length).toBe(1);
@@ -608,7 +616,7 @@ describe("/api/user/export", () => {
   });
 
   it("enriches saved-object basic CSV rows with catalog links and user-facing fields", async () => {
-    const req = new Request("http://localhost/api/user/export", {
+    const req = createSameOriginRequest("http://localhost/api/user/export", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -618,7 +626,7 @@ describe("/api/user/export", () => {
       }),
     });
 
-    const res = await POST(req as unknown as NextRequest);
+    const res = await POST(req);
     expect(res.status).toBe(200);
     expect(res.headers.get("Content-Type")).toContain("text/csv");
     const text = await res.text();
@@ -631,7 +639,7 @@ describe("/api/user/export", () => {
   });
 
   it("enriches saved-object research exports with domain-specific catalog fields", async () => {
-    const req = new Request("http://localhost/api/user/export", {
+    const req = createSameOriginRequest("http://localhost/api/user/export", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -642,7 +650,7 @@ describe("/api/user/export", () => {
       }),
     });
 
-    const res = await POST(req as unknown as NextRequest);
+    const res = await POST(req);
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.data.length).toBe(1);
@@ -657,7 +665,7 @@ describe("/api/user/export", () => {
   });
 
   it("filters saved objects by hasEventPayload and date range", async () => {
-    const req = new Request("http://localhost/api/user/export", {
+    const req = createSameOriginRequest("http://localhost/api/user/export", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -673,7 +681,7 @@ describe("/api/user/export", () => {
       }),
     });
 
-    const res = await POST(req as unknown as NextRequest);
+    const res = await POST(req);
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.data.length).toBe(1);
@@ -681,7 +689,7 @@ describe("/api/user/export", () => {
   });
 
   it("supports relational JSON layout for saved objects", async () => {
-    const req = new Request("http://localhost/api/user/export", {
+    const req = createSameOriginRequest("http://localhost/api/user/export", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -693,7 +701,7 @@ describe("/api/user/export", () => {
       }),
     });
 
-    const res = await POST(req as unknown as NextRequest);
+    const res = await POST(req);
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.meta?.layout).toBe("relational");
@@ -704,7 +712,7 @@ describe("/api/user/export", () => {
   });
 
   it("returns ZIP for relational CSV layout", async () => {
-    const req = new Request("http://localhost/api/user/export", {
+    const req = createSameOriginRequest("http://localhost/api/user/export", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -717,7 +725,7 @@ describe("/api/user/export", () => {
       }),
     });
 
-    const res = await POST(req as unknown as NextRequest);
+    const res = await POST(req);
     expect(res.status).toBe(200);
     expect(res.headers.get("Content-Type")).toContain("application/zip");
     const bytes = new Uint8Array(await res.arrayBuffer());
@@ -726,7 +734,7 @@ describe("/api/user/export", () => {
   });
 
   it("rejects relational layout for non-saved-object categories", async () => {
-    const req = new Request("http://localhost/api/user/export", {
+    const req = createSameOriginRequest("http://localhost/api/user/export", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -737,14 +745,14 @@ describe("/api/user/export", () => {
       }),
     });
 
-    const res = await POST(req as unknown as NextRequest);
+    const res = await POST(req);
     expect(res.status).toBe(400);
     const body = await res.json();
     expect(body.error).toBe("invalid_layout");
   });
 
   it("exports saved objects scoped to a collection when collectionId is provided", async () => {
-    const req = new Request("http://localhost/api/user/export", {
+    const req = createSameOriginRequest("http://localhost/api/user/export", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -754,7 +762,7 @@ describe("/api/user/export", () => {
       }),
     });
 
-    const res = await POST(req as unknown as NextRequest);
+    const res = await POST(req);
     expect(res.status).toBe(200);
     expect(res.headers.get("Content-Type")).toContain("text/csv");
     const text = await res.text();

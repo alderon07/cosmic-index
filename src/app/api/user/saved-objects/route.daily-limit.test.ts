@@ -1,5 +1,6 @@
 import { describe, it, expect, mock } from "bun:test";
 import type { NextRequest } from "next/server";
+import { BASE_URL } from "@/lib/config";
 
 const db = {
   execute: async ({ sql }: { sql: string; args?: unknown[] }) => {
@@ -64,10 +65,17 @@ mock.module("@/lib/canonical-id", () => ({
 }));
 
 const { POST } = await import("@/app/api/user/saved-objects/route");
+const SAME_ORIGIN = new URL(BASE_URL).origin;
+
+function createSameOriginRequest(url: string, init: RequestInit): NextRequest {
+  const headers = new Headers(init.headers);
+  headers.set("Origin", SAME_ORIGIN);
+  return new Request(url, { ...init, headers }) as unknown as NextRequest;
+}
 
 describe("/api/user/saved-objects POST daily limits", () => {
   it("returns 429 when rolling 24-hour save limit is reached", async () => {
-    const req = new Request("http://localhost/api/user/saved-objects", {
+    const req = createSameOriginRequest("http://localhost/api/user/saved-objects", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -76,7 +84,7 @@ describe("/api/user/saved-objects POST daily limits", () => {
       }),
     });
 
-    const res = await POST(req as unknown as NextRequest);
+    const res = await POST(req);
     expect(res.status).toBe(429);
     expect(res.headers.get("X-RateLimit-Saves-Limit")).toBe("25");
     const body = await res.json();

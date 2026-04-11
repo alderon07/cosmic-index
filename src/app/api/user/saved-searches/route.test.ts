@@ -1,5 +1,6 @@
 import { describe, it, expect, mock } from "bun:test";
 import type { NextRequest } from "next/server";
+import { BASE_URL } from "@/lib/config";
 
 const db = {
   execute: async ({ sql }: { sql: string; args?: unknown[] }) => {
@@ -54,10 +55,17 @@ mock.module("@/lib/saved-searches", () => ({
 }));
 
 const { POST } = await import("@/app/api/user/saved-searches/route");
+const SAME_ORIGIN = new URL(BASE_URL).origin;
+
+function createSameOriginRequest(url: string, init: RequestInit): NextRequest {
+  const headers = new Headers(init.headers);
+  headers.set("Origin", SAME_ORIGIN);
+  return new Request(url, { ...init, headers }) as unknown as NextRequest;
+}
 
 describe("/api/user/saved-searches POST", () => {
   it("returns 403 when free-tier saved searches limit is reached", async () => {
-    const req = new Request("http://localhost/api/user/saved-searches", {
+    const req = createSameOriginRequest("http://localhost/api/user/saved-searches", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -67,7 +75,7 @@ describe("/api/user/saved-searches POST", () => {
       }),
     });
 
-    const res = await POST(req as unknown as NextRequest);
+    const res = await POST(req);
     expect(res.status).toBe(403);
     const body = await res.json();
     expect(body.error).toBe("saved_searches_limit_reached");

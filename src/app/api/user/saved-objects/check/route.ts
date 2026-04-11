@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authErrorResponse, getAuthUser } from "@/lib/auth";
 import { getUserDb } from "@/lib/user-db";
+import { requireSameOrigin } from "@/lib/request-origin";
 import { z } from "zod";
 
 const CheckSavedSchema = z.object({
@@ -21,6 +22,11 @@ const CheckSavedSchema = z.object({
  */
 export async function POST(request: NextRequest) {
   try {
+    const sameOriginError = requireSameOrigin(request);
+    if (sameOriginError) {
+      return sameOriginError;
+    }
+
     // Use getAuthUser instead of requireAuth for graceful degradation
     const user = await getAuthUser();
 

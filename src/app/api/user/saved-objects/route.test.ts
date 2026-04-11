@@ -1,5 +1,6 @@
 import { describe, it, expect, mock } from "bun:test";
 import type { NextRequest } from "next/server";
+import { BASE_URL } from "@/lib/config";
 
 const db = {
   execute: async ({ sql }: { sql: string; args?: unknown[] }) => {
@@ -61,10 +62,17 @@ mock.module("@/lib/canonical-id", () => ({
 }));
 
 const { POST } = await import("@/app/api/user/saved-objects/route");
+const SAME_ORIGIN = new URL(BASE_URL).origin;
+
+function createSameOriginRequest(url: string, init: RequestInit): NextRequest {
+  const headers = new Headers(init.headers);
+  headers.set("Origin", SAME_ORIGIN);
+  return new Request(url, { ...init, headers }) as unknown as NextRequest;
+}
 
 describe("/api/user/saved-objects POST", () => {
   it("returns 400 when attempting to save a fireball object", async () => {
-    const req = new Request("http://localhost/api/user/saved-objects", {
+    const req = createSameOriginRequest("http://localhost/api/user/saved-objects", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -73,14 +81,14 @@ describe("/api/user/saved-objects POST", () => {
       }),
     });
 
-    const res = await POST(req as unknown as NextRequest);
+    const res = await POST(req);
     expect(res.status).toBe(400);
     const body = await res.json();
     expect(body.error).toBe("unsupported_object_type");
   });
 
   it("returns 403 when free-tier total saved objects limit is reached", async () => {
-    const req = new Request("http://localhost/api/user/saved-objects", {
+    const req = createSameOriginRequest("http://localhost/api/user/saved-objects", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -89,7 +97,7 @@ describe("/api/user/saved-objects POST", () => {
       }),
     });
 
-    const res = await POST(req as unknown as NextRequest);
+    const res = await POST(req);
     expect(res.status).toBe(403);
     const body = await res.json();
     expect(body.error).toBe("saved_objects_limit_reached");

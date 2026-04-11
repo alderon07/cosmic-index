@@ -4,6 +4,7 @@ import { getFeatureDisabledResponse, resolveProAccess } from "@/lib/pro-access";
 import { requireUserDb } from "@/lib/user-db";
 import { UpdateCollectionSchema, Collection } from "@/lib/types";
 import { ServerTiming } from "@/lib/server-timing";
+import { requireSameOrigin } from "@/lib/request-origin";
 import {
   decodeCollectionItemsCursor,
   encodeCollectionItemsCursor,
@@ -160,6 +161,11 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
  */
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
   try {
+    const sameOriginError = requireSameOrigin(request);
+    if (sameOriginError) {
+      return sameOriginError;
+    }
+
     const user = await requireAuth();
     if (!resolveProAccess(user).canAccessCollections) {
       return getFeatureDisabledResponse("collections");
@@ -289,6 +295,11 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
  */
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
+    const sameOriginError = requireSameOrigin(request);
+    if (sameOriginError) {
+      return sameOriginError;
+    }
+
     const user = await requireAuth();
     if (!resolveProAccess(user).canAccessCollections) {
       return getFeatureDisabledResponse("collections");
