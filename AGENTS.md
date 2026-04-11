@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Last updated (UTC): 2026-04-05
+Last updated (UTC): 2026-04-11
 Version: 1.6
 
 This file provides implementation-oriented guidance for agents working in this repo.
@@ -21,6 +21,7 @@ This file provides implementation-oriented guidance for agents working in this r
   - gotchas, caveats, and edge cases
   - performance improvements
   - missing implementation details
+- Always do TDD
 
 ## Project Overview
 
@@ -82,6 +83,7 @@ mise run cli-test
 - Keep API response shapes consistent with shared response utilities and existing route patterns.
 - Preserve canonical ID conventions (`exoplanet:*`, `star:*`, `small-body:*`, and hashed event IDs).
 - Reuse existing libraries/utilities before adding new dependencies.
+- Avoid using useEffect unless absolutely necessary.
 
 ## Testing Instructions
 

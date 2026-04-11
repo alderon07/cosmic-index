@@ -4,9 +4,13 @@ import crypto from "node:crypto";
 
 import { requirePro, authErrorResponse } from "@/lib/auth";
 import { getUserDb } from "@/lib/user-db";
-import { searchExoplanets } from "@/lib/exoplanet-index";
-import { searchStars } from "@/lib/star-index";
-import { fetchSmallBodies } from "@/lib/jpl-sbdb";
+import {
+  getExoplanetBySlug,
+  searchExoplanets,
+} from "@/lib/exoplanet-index";
+import { fetchExoplanetBySlug } from "@/lib/nasa-exoplanet";
+import { getStarBySlug, searchStars } from "@/lib/star-index";
+import { fetchSmallBodies, fetchSmallBodyBySlug } from "@/lib/jpl-sbdb";
 import {
   ExoplanetQuerySchema,
   SmallBodyQuerySchema,
@@ -29,6 +33,8 @@ import { recordLimitHitWithDedup } from "@/lib/pro-interest";
 import { getTierLimits } from "@/lib/tier-limits";
 import { resolveLimitMode, toLimitPolicyMetadata } from "@/lib/feature-policy";
 import { resolveSavedObjectHref } from "@/lib/saved-object-ui";
+import { BASE_URL } from "@/lib/config";
+import { limitConcurrencySettled } from "@/lib/concurrency";
 
 /**
  * POST /api/user/export
@@ -89,12 +95,14 @@ const CSV_FIELDS_BY_PROFILE: Record<ExportProfile, Record<ExportCategory, CSVFie
     "small-bodies": [
       { key: "display_name", header: "Name" },
       { key: "id", header: "Export ID" },
+      { key: "full_name", header: "Full Name" },
       { key: "kind", header: "Type" },
       { key: "orbit_class", header: "Orbit Class" },
       { key: "neo", header: "Near-Earth Object" },
       { key: "pha", header: "Potentially Hazardous" },
       { key: "diameter_km", header: "Diameter (km)" },
       { key: "absolute_magnitude", header: "Absolute Magnitude (H)" },
+      { key: "discovered_year", header: "Discovered Year" },
       { key: "source_url", header: "Source URL" },
       { key: "summary", header: "Summary" },
     ],
@@ -107,7 +115,17 @@ const CSV_FIELDS_BY_PROFILE: Record<ExportProfile, Record<ExportCategory, CSVFie
       { key: "display_name", header: "Name" },
       { key: "notes", header: "Notes" },
       { key: "app_url", header: "App URL" },
+      { key: "app_url_absolute", header: "App URL (Absolute)" },
       { key: "source_url", header: "Source URL" },
+      { key: "object_summary", header: "Summary" },
+      { key: "exoplanet_host_star", header: "Host Star" },
+      { key: "exoplanet_discovery_method", header: "Discovery Method" },
+      { key: "star_spectral_class", header: "Star Spectral Class" },
+      { key: "star_planet_count", header: "Star Planet Count" },
+      { key: "small_body_kind", header: "Small Body Type" },
+      { key: "small_body_orbit_class", header: "Orbit Class" },
+      { key: "small_body_neo", header: "Near-Earth Object" },
+      { key: "small_body_pha", header: "Potentially Hazardous" },
       { key: "saved_at_utc", header: "Saved At (UTC ISO)" },
       { key: "created_at", header: "Saved At" },
     ],
@@ -165,13 +183,20 @@ const CSV_FIELDS_BY_PROFILE: Record<ExportProfile, Record<ExportCategory, CSVFie
     "small-bodies": [
     { key: "display_name", header: "Name" },
     { key: "id", header: "Export ID" },
+    { key: "full_name", header: "Full Name" },
     { key: "source_id", header: "Source ID" },
+    { key: "aliases", header: "Aliases" },
+    { key: "discovered_year", header: "Discovered Year" },
     { key: "kind", header: "Type" },
     { key: "orbit_class", header: "Orbit Class" },
     { key: "neo", header: "Near-Earth Object" },
     { key: "pha", header: "Potentially Hazardous" },
     { key: "diameter_km", header: "Diameter (km)" },
     { key: "absolute_magnitude", header: "Absolute Magnitude (H)" },
+    { key: "jpl_spkid", header: "JPL SPK-ID" },
+    { key: "jpl_primary_designation", header: "Primary Designation" },
+    { key: "jpl_orbit_class_code", header: "Orbit Class Code" },
+    { key: "jpl_kind_code", header: "Kind Code" },
     { key: "source_url", header: "Source URL" },
     { key: "summary", header: "Summary" },
   ],
@@ -184,7 +209,45 @@ const CSV_FIELDS_BY_PROFILE: Record<ExportProfile, Record<ExportCategory, CSVFie
     { key: "display_name", header: "Name" },
     { key: "notes", header: "Notes" },
     { key: "app_url", header: "App URL" },
+    { key: "app_url_absolute", header: "App URL (Absolute)" },
     { key: "source_url", header: "Source URL" },
+    { key: "object_source_id", header: "Object Source ID" },
+    { key: "object_summary", header: "Summary" },
+    { key: "exoplanet_host_star", header: "Host Star" },
+    { key: "exoplanet_discovery_method", header: "Discovery Method" },
+    { key: "exoplanet_discovery_year", header: "Discovery Year" },
+    { key: "exoplanet_orbital_period_days", header: "Orbital Period (days)" },
+    { key: "exoplanet_radius_earth", header: "Radius (Earth)" },
+    { key: "exoplanet_mass_earth", header: "Mass (Earth)" },
+    { key: "exoplanet_mass_estimated", header: "Mass Estimated" },
+    { key: "exoplanet_distance_parsecs", header: "Distance (pc)" },
+    { key: "exoplanet_equilibrium_temp_k", header: "Equilibrium Temp (K)" },
+    { key: "exoplanet_stars_in_system", header: "Stars In System" },
+    { key: "exoplanet_planets_in_system", header: "Planets In System" },
+    { key: "exoplanet_host_spectral_type", header: "Host Spectral Type" },
+    { key: "exoplanet_host_temp_k", header: "Host Temp (K)" },
+    { key: "exoplanet_host_mass_solar", header: "Host Mass (Solar)" },
+    { key: "exoplanet_host_radius_solar", header: "Host Radius (Solar)" },
+    { key: "exoplanet_host_luminosity_log", header: "Host Luminosity (log Lsun)" },
+    { key: "star_spectral_class", header: "Star Spectral Class" },
+    { key: "star_spectral_type", header: "Star Spectral Type" },
+    { key: "star_planet_count", header: "Star Planet Count" },
+    { key: "star_planets_in_system", header: "Star Planets In System" },
+    { key: "star_temp_k", header: "Star Temp (K)" },
+    { key: "star_mass_solar", header: "Star Mass (Solar)" },
+    { key: "star_radius_solar", header: "Star Radius (Solar)" },
+    { key: "star_luminosity_log", header: "Star Luminosity (log Lsun)" },
+    { key: "star_metallicity_feh", header: "Star Metallicity [Fe/H]" },
+    { key: "star_age_gyr", header: "Star Age (Gyr)" },
+    { key: "star_distance_parsecs", header: "Star Distance (pc)" },
+    { key: "star_vmag", header: "Star V Magnitude" },
+    { key: "star_kmag", header: "Star K Magnitude" },
+    { key: "small_body_kind", header: "Small Body Type" },
+    { key: "small_body_orbit_class", header: "Orbit Class" },
+    { key: "small_body_neo", header: "Near-Earth Object" },
+    { key: "small_body_pha", header: "Potentially Hazardous" },
+    { key: "small_body_diameter_km", header: "Diameter (km)" },
+    { key: "small_body_absolute_magnitude", header: "Absolute Magnitude (H)" },
     { key: "has_event_payload", header: "Has Event Payload" },
     { key: "event_id", header: "Event ID" },
     { key: "event_type", header: "Event Type" },
@@ -216,7 +279,18 @@ const RELATIONAL_OBJECT_CSV_FIELDS: CSVField[] = [
   { key: "display_name", header: "Name" },
   { key: "notes", header: "Notes" },
   { key: "app_url", header: "App URL" },
+  { key: "app_url_absolute", header: "App URL (Absolute)" },
   { key: "source_url", header: "Source URL" },
+  { key: "object_source_id", header: "Object Source ID" },
+  { key: "object_summary", header: "Summary" },
+  { key: "exoplanet_host_star", header: "Host Star" },
+  { key: "exoplanet_discovery_method", header: "Discovery Method" },
+  { key: "star_spectral_class", header: "Star Spectral Class" },
+  { key: "star_planet_count", header: "Star Planet Count" },
+  { key: "small_body_kind", header: "Small Body Type" },
+  { key: "small_body_orbit_class", header: "Orbit Class" },
+  { key: "small_body_neo", header: "Near-Earth Object" },
+  { key: "small_body_pha", header: "Potentially Hazardous" },
   { key: "has_event_payload", header: "Has Event Payload" },
   { key: "saved_at_utc", header: "Saved At (UTC ISO)" },
   { key: "created_at", header: "Saved At" },
@@ -327,6 +401,81 @@ function getSourceUrl(links: Array<{ label: string; url: string }> | undefined):
   return links[0]?.url ?? null;
 }
 
+async function resolveSavedObjectCatalogDetails(input: {
+  canonicalId: string;
+  displayName: string;
+}): Promise<SavedObjectCatalogDetails> {
+  const { objectType, objectKey } = splitCanonicalId(input.canonicalId);
+  const fallbackSourceUrl = getSavedObjectCatalogSourceUrl(
+    input.canonicalId,
+    input.displayName
+  );
+
+  if (!objectKey) {
+    return {
+      ...EMPTY_SAVED_OBJECT_CATALOG_DETAILS,
+      sourceUrl: fallbackSourceUrl,
+    };
+  }
+
+  try {
+    if (objectType === "exoplanet") {
+      const item =
+        (await getExoplanetBySlug(objectKey)) ??
+        (await fetchExoplanetBySlug(objectKey));
+      if (!item) {
+        return {
+          ...EMPTY_SAVED_OBJECT_CATALOG_DETAILS,
+          sourceUrl: fallbackSourceUrl,
+        };
+      }
+      return {
+        ...buildExoplanetCatalogDetails(item),
+        sourceUrl: getPrimarySourceUrl(item.links) ?? fallbackSourceUrl,
+      };
+    }
+
+    if (objectType === "star") {
+      const item = await getStarBySlug(objectKey);
+      if (!item) {
+        return {
+          ...EMPTY_SAVED_OBJECT_CATALOG_DETAILS,
+          sourceUrl: fallbackSourceUrl,
+        };
+      }
+      return {
+        ...buildStarCatalogDetails(item),
+        sourceUrl: getPrimarySourceUrl(item.links) ?? fallbackSourceUrl,
+      };
+    }
+
+    if (objectType === "small-body") {
+      const item = await fetchSmallBodyBySlug(objectKey);
+      if (!item) {
+        return {
+          ...EMPTY_SAVED_OBJECT_CATALOG_DETAILS,
+          sourceUrl: fallbackSourceUrl,
+        };
+      }
+      return {
+        ...buildSmallBodyCatalogDetails(item),
+        sourceUrl: getPrimarySourceUrl(item.links) ?? fallbackSourceUrl,
+      };
+    }
+  } catch (error) {
+    console.warn(
+      "[export] saved object catalog hydration failed",
+      input.canonicalId,
+      error
+    );
+  }
+
+  return {
+    ...EMPTY_SAVED_OBJECT_CATALOG_DETAILS,
+    sourceUrl: fallbackSourceUrl,
+  };
+}
+
 function buildExoplanetExportRow(item: ExoplanetData, profile: ExportProfile): Record<string, unknown> {
   if (profile === "basic") {
     return {
@@ -412,16 +561,24 @@ function buildStarExportRow(item: StarData, profile: ExportProfile): Record<stri
 }
 
 function buildSmallBodyExportRow(item: SmallBodyData, profile: ExportProfile): Record<string, unknown> {
+  const fullName =
+    item.aliases.find((alias) => alias && alias.trim().length > 0) ?? item.displayName;
+  const aliases =
+    item.aliases.length > 0 ? item.aliases.join(" | ") : null;
+  const raw = item.raw ?? {};
+
   if (profile === "basic") {
     return {
       display_name: item.displayName,
       id: item.id,
+      full_name: fullName,
       kind: item.bodyKind,
       orbit_class: item.orbitClass,
       neo: item.isNeo,
       pha: item.isPha,
       diameter_km: item.diameterKm ?? null,
       absolute_magnitude: item.absoluteMagnitude ?? null,
+      discovered_year: item.discoveredYear ?? null,
       source_url: getSourceUrl(item.links),
       summary: item.summary,
     };
@@ -430,13 +587,32 @@ function buildSmallBodyExportRow(item: SmallBodyData, profile: ExportProfile): R
   return {
     display_name: item.displayName,
     id: item.id,
+    full_name: fullName,
     source_id: item.sourceId,
+    aliases,
+    discovered_year: item.discoveredYear ?? null,
     kind: item.bodyKind,
     orbit_class: item.orbitClass,
     neo: item.isNeo,
     pha: item.isPha,
     diameter_km: item.diameterKm ?? null,
     absolute_magnitude: item.absoluteMagnitude ?? null,
+    jpl_spkid:
+      typeof raw.spkid === "string" && raw.spkid.trim().length > 0
+        ? raw.spkid
+        : null,
+    jpl_primary_designation:
+      typeof raw.pdes === "string" && raw.pdes.trim().length > 0
+        ? raw.pdes
+        : null,
+    jpl_orbit_class_code:
+      typeof raw.class === "string" && raw.class.trim().length > 0
+        ? raw.class
+        : null,
+    jpl_kind_code:
+      typeof raw.kind === "string" && raw.kind.trim().length > 0
+        ? raw.kind
+        : null,
     source_url: getSourceUrl(item.links),
     summary: item.summary,
   };
@@ -451,6 +627,179 @@ function splitCanonicalId(canonicalId: string): { objectType: string; objectKey:
   const objectType = canonicalId.slice(0, separator) || "unknown";
   const objectKey = canonicalId.slice(separator + 1) || null;
   return { objectType, objectKey };
+}
+
+type SavedObjectCatalogDetails = {
+  sourceUrl: string | null;
+  objectSourceId: string | null;
+  objectSummary: string | null;
+  exoplanetHostStar: string | null;
+  exoplanetDiscoveryMethod: string | null;
+  exoplanetDiscoveryYear: number | null;
+  exoplanetOrbitalPeriodDays: number | null;
+  exoplanetRadiusEarth: number | null;
+  exoplanetMassEarth: number | null;
+  exoplanetMassEstimated: boolean | null;
+  exoplanetDistanceParsecs: number | null;
+  exoplanetEquilibriumTempK: number | null;
+  exoplanetStarsInSystem: number | null;
+  exoplanetPlanetsInSystem: number | null;
+  exoplanetHostSpectralType: string | null;
+  exoplanetHostTempK: number | null;
+  exoplanetHostMassSolar: number | null;
+  exoplanetHostRadiusSolar: number | null;
+  exoplanetHostLuminosityLog: number | null;
+  starSpectralClass: string | null;
+  starSpectralType: string | null;
+  starPlanetCount: number | null;
+  starPlanetsInSystem: number | null;
+  starTempK: number | null;
+  starMassSolar: number | null;
+  starRadiusSolar: number | null;
+  starLuminosityLog: number | null;
+  starMetallicityFeH: number | null;
+  starAgeGyr: number | null;
+  starDistanceParsecs: number | null;
+  starVMag: number | null;
+  starKMag: number | null;
+  smallBodyKind: string | null;
+  smallBodyOrbitClass: string | null;
+  smallBodyNeo: boolean | null;
+  smallBodyPha: boolean | null;
+  smallBodyDiameterKm: number | null;
+  smallBodyAbsoluteMagnitude: number | null;
+};
+
+const EMPTY_SAVED_OBJECT_CATALOG_DETAILS: SavedObjectCatalogDetails = {
+  sourceUrl: null,
+  objectSourceId: null,
+  objectSummary: null,
+  exoplanetHostStar: null,
+  exoplanetDiscoveryMethod: null,
+  exoplanetDiscoveryYear: null,
+  exoplanetOrbitalPeriodDays: null,
+  exoplanetRadiusEarth: null,
+  exoplanetMassEarth: null,
+  exoplanetMassEstimated: null,
+  exoplanetDistanceParsecs: null,
+  exoplanetEquilibriumTempK: null,
+  exoplanetStarsInSystem: null,
+  exoplanetPlanetsInSystem: null,
+  exoplanetHostSpectralType: null,
+  exoplanetHostTempK: null,
+  exoplanetHostMassSolar: null,
+  exoplanetHostRadiusSolar: null,
+  exoplanetHostLuminosityLog: null,
+  starSpectralClass: null,
+  starSpectralType: null,
+  starPlanetCount: null,
+  starPlanetsInSystem: null,
+  starTempK: null,
+  starMassSolar: null,
+  starRadiusSolar: null,
+  starLuminosityLog: null,
+  starMetallicityFeH: null,
+  starAgeGyr: null,
+  starDistanceParsecs: null,
+  starVMag: null,
+  starKMag: null,
+  smallBodyKind: null,
+  smallBodyOrbitClass: null,
+  smallBodyNeo: null,
+  smallBodyPha: null,
+  smallBodyDiameterKm: null,
+  smallBodyAbsoluteMagnitude: null,
+};
+
+function getSavedObjectAbsoluteAppUrl(canonicalId: string): string | null {
+  const href = resolveSavedObjectHref(canonicalId);
+  return href ? `${BASE_URL}${href}` : null;
+}
+
+function getSavedObjectCatalogSourceUrl(
+  canonicalId: string,
+  displayName: string
+): string | null {
+  const { objectType, objectKey } = splitCanonicalId(canonicalId);
+  const decodedKey = decodeObjectKey(objectKey) ?? displayName;
+
+  if (objectType === "exoplanet" || objectType === "star") {
+    return `https://exoplanetarchive.ipac.caltech.edu/overview/${encodeURIComponent(decodedKey)}`;
+  }
+
+  if (objectType === "small-body") {
+    return `https://ssd.jpl.nasa.gov/tools/sbdb_lookup.html#/?sstr=${encodeURIComponent(decodedKey)}`;
+  }
+
+  return null;
+}
+
+function getPrimarySourceUrl(
+  links: Array<{ label: string; url: string }> | undefined
+): string | null {
+  return getSourceUrl(links);
+}
+
+function buildExoplanetCatalogDetails(item: ExoplanetData): SavedObjectCatalogDetails {
+  return {
+    ...EMPTY_SAVED_OBJECT_CATALOG_DETAILS,
+    sourceUrl: getPrimarySourceUrl(item.links),
+    objectSourceId: item.sourceId ?? null,
+    objectSummary: item.summary ?? null,
+    exoplanetHostStar: item.hostStar ?? null,
+    exoplanetDiscoveryMethod: item.discoveryMethod ?? null,
+    exoplanetDiscoveryYear: item.discoveredYear ?? null,
+    exoplanetOrbitalPeriodDays: item.orbitalPeriodDays ?? null,
+    exoplanetRadiusEarth: item.radiusEarth ?? null,
+    exoplanetMassEarth: item.massEarth ?? null,
+    exoplanetMassEstimated: item.massIsEstimated ?? null,
+    exoplanetDistanceParsecs: item.distanceParsecs ?? null,
+    exoplanetEquilibriumTempK: item.equilibriumTempK ?? null,
+    exoplanetStarsInSystem: item.starsInSystem ?? null,
+    exoplanetPlanetsInSystem: item.planetsInSystem ?? null,
+    exoplanetHostSpectralType: item.spectralType ?? null,
+    exoplanetHostTempK: item.starTempK ?? null,
+    exoplanetHostMassSolar: item.starMassSolar ?? null,
+    exoplanetHostRadiusSolar: item.starRadiusSolar ?? null,
+    exoplanetHostLuminosityLog: item.starLuminosity ?? null,
+  };
+}
+
+function buildStarCatalogDetails(item: StarData): SavedObjectCatalogDetails {
+  return {
+    ...EMPTY_SAVED_OBJECT_CATALOG_DETAILS,
+    sourceUrl: getPrimarySourceUrl(item.links),
+    objectSourceId: item.sourceId ?? null,
+    objectSummary: item.summary ?? null,
+    starSpectralClass: item.spectralClass ?? null,
+    starSpectralType: item.spectralType ?? null,
+    starPlanetCount: item.planetCount ?? null,
+    starPlanetsInSystem: item.planetsInSystem ?? null,
+    starTempK: item.starTempK ?? null,
+    starMassSolar: item.starMassSolar ?? null,
+    starRadiusSolar: item.starRadiusSolar ?? null,
+    starLuminosityLog: item.starLuminosity ?? null,
+    starMetallicityFeH: item.metallicityFeH ?? null,
+    starAgeGyr: item.ageGyr ?? null,
+    starDistanceParsecs: item.distanceParsecs ?? null,
+    starVMag: item.vMag ?? null,
+    starKMag: item.kMag ?? null,
+  };
+}
+
+function buildSmallBodyCatalogDetails(item: SmallBodyData): SavedObjectCatalogDetails {
+  return {
+    ...EMPTY_SAVED_OBJECT_CATALOG_DETAILS,
+    sourceUrl: getPrimarySourceUrl(item.links),
+    objectSourceId: item.sourceId ?? null,
+    objectSummary: item.summary ?? null,
+    smallBodyKind: item.bodyKind ?? null,
+    smallBodyOrbitClass: item.orbitClass ?? null,
+    smallBodyNeo: item.isNeo ?? null,
+    smallBodyPha: item.isPha ?? null,
+    smallBodyDiameterKm: item.diameterKm ?? null,
+    smallBodyAbsoluteMagnitude: item.absoluteMagnitude ?? null,
+  };
 }
 
 function toJsonString(value: unknown): string | null {
@@ -576,6 +925,7 @@ function buildSavedObjectEventFields(
 type SavedObjectBuildOptions = {
   profile: ExportProfile;
   includeRawPayload: boolean;
+  catalogDetails?: SavedObjectCatalogDetails;
 };
 
 function buildSavedObjectExportRow(input: {
@@ -589,7 +939,12 @@ function buildSavedObjectExportRow(input: {
   const { objectType, objectKey } = splitCanonicalId(input.canonicalId);
   const objectKeyDecoded = decodeObjectKey(objectKey);
   const appUrl = getSavedObjectAppUrl(input.canonicalId);
-  const sourceUrl = getSavedObjectSourceUrl(input.eventPayload);
+  const appUrlAbsolute = getSavedObjectAbsoluteAppUrl(input.canonicalId);
+  const catalogDetails = options.catalogDetails ?? EMPTY_SAVED_OBJECT_CATALOG_DETAILS;
+  const sourceUrl =
+    getSavedObjectSourceUrl(input.eventPayload) ??
+    catalogDetails.sourceUrl ??
+    getSavedObjectCatalogSourceUrl(input.canonicalId, input.displayName);
   const savedAtIso = toIsoUtc(input.createdAt);
   const eventPayloadJson = toJsonString(input.eventPayload);
   const hasEventPayload = eventPayloadJson !== null && eventPayloadJson.length > 0;
@@ -605,7 +960,17 @@ function buildSavedObjectExportRow(input: {
       display_name: input.displayName,
       notes: input.notes,
       app_url: appUrl,
+      app_url_absolute: appUrlAbsolute,
       source_url: sourceUrl,
+      object_summary: catalogDetails.objectSummary,
+      exoplanet_host_star: catalogDetails.exoplanetHostStar,
+      exoplanet_discovery_method: catalogDetails.exoplanetDiscoveryMethod,
+      star_spectral_class: catalogDetails.starSpectralClass,
+      star_planet_count: catalogDetails.starPlanetCount,
+      small_body_kind: catalogDetails.smallBodyKind,
+      small_body_orbit_class: catalogDetails.smallBodyOrbitClass,
+      small_body_neo: catalogDetails.smallBodyNeo,
+      small_body_pha: catalogDetails.smallBodyPha,
       saved_at_utc: savedAtIso,
       created_at: input.createdAt,
     };
@@ -620,7 +985,45 @@ function buildSavedObjectExportRow(input: {
     display_name: input.displayName,
     notes: input.notes,
     app_url: appUrl,
+    app_url_absolute: appUrlAbsolute,
     source_url: sourceUrl,
+    object_source_id: catalogDetails.objectSourceId,
+    object_summary: catalogDetails.objectSummary,
+    exoplanet_host_star: catalogDetails.exoplanetHostStar,
+    exoplanet_discovery_method: catalogDetails.exoplanetDiscoveryMethod,
+    exoplanet_discovery_year: catalogDetails.exoplanetDiscoveryYear,
+    exoplanet_orbital_period_days: catalogDetails.exoplanetOrbitalPeriodDays,
+    exoplanet_radius_earth: catalogDetails.exoplanetRadiusEarth,
+    exoplanet_mass_earth: catalogDetails.exoplanetMassEarth,
+    exoplanet_mass_estimated: catalogDetails.exoplanetMassEstimated,
+    exoplanet_distance_parsecs: catalogDetails.exoplanetDistanceParsecs,
+    exoplanet_equilibrium_temp_k: catalogDetails.exoplanetEquilibriumTempK,
+    exoplanet_stars_in_system: catalogDetails.exoplanetStarsInSystem,
+    exoplanet_planets_in_system: catalogDetails.exoplanetPlanetsInSystem,
+    exoplanet_host_spectral_type: catalogDetails.exoplanetHostSpectralType,
+    exoplanet_host_temp_k: catalogDetails.exoplanetHostTempK,
+    exoplanet_host_mass_solar: catalogDetails.exoplanetHostMassSolar,
+    exoplanet_host_radius_solar: catalogDetails.exoplanetHostRadiusSolar,
+    exoplanet_host_luminosity_log: catalogDetails.exoplanetHostLuminosityLog,
+    star_spectral_class: catalogDetails.starSpectralClass,
+    star_spectral_type: catalogDetails.starSpectralType,
+    star_planet_count: catalogDetails.starPlanetCount,
+    star_planets_in_system: catalogDetails.starPlanetsInSystem,
+    star_temp_k: catalogDetails.starTempK,
+    star_mass_solar: catalogDetails.starMassSolar,
+    star_radius_solar: catalogDetails.starRadiusSolar,
+    star_luminosity_log: catalogDetails.starLuminosityLog,
+    star_metallicity_feh: catalogDetails.starMetallicityFeH,
+    star_age_gyr: catalogDetails.starAgeGyr,
+    star_distance_parsecs: catalogDetails.starDistanceParsecs,
+    star_vmag: catalogDetails.starVMag,
+    star_kmag: catalogDetails.starKMag,
+    small_body_kind: catalogDetails.smallBodyKind,
+    small_body_orbit_class: catalogDetails.smallBodyOrbitClass,
+    small_body_neo: catalogDetails.smallBodyNeo,
+    small_body_pha: catalogDetails.smallBodyPha,
+    small_body_diameter_km: catalogDetails.smallBodyDiameterKm,
+    small_body_absolute_magnitude: catalogDetails.smallBodyAbsoluteMagnitude,
     has_event_payload: hasEventPayload,
     ...eventFields,
     saved_at_utc: savedAtIso,
@@ -641,10 +1044,11 @@ function buildSavedObjectRelationalRows(input: {
   notes: string | null;
   eventPayload: unknown;
   createdAt: string;
-}, includeRawPayload: boolean): { objectRow: Record<string, unknown>; eventRow: Record<string, unknown> | null } {
+}, includeRawPayload: boolean, catalogDetails?: SavedObjectCatalogDetails): { objectRow: Record<string, unknown>; eventRow: Record<string, unknown> | null } {
   const wide = buildSavedObjectExportRow(input, {
     profile: "research",
     includeRawPayload,
+    catalogDetails,
   });
 
   const objectRow: Record<string, unknown> = {
@@ -656,7 +1060,18 @@ function buildSavedObjectRelationalRows(input: {
     display_name: wide.display_name,
     notes: wide.notes,
     app_url: wide.app_url,
+    app_url_absolute: wide.app_url_absolute,
     source_url: wide.source_url,
+    object_source_id: wide.object_source_id,
+    object_summary: wide.object_summary,
+    exoplanet_host_star: wide.exoplanet_host_star,
+    exoplanet_discovery_method: wide.exoplanet_discovery_method,
+    star_spectral_class: wide.star_spectral_class,
+    star_planet_count: wide.star_planet_count,
+    small_body_kind: wide.small_body_kind,
+    small_body_orbit_class: wide.small_body_orbit_class,
+    small_body_neo: wide.small_body_neo,
+    small_body_pha: wide.small_body_pha,
     has_event_payload: wide.has_event_payload,
     saved_at_utc: wide.saved_at_utc,
     created_at: wide.created_at,
@@ -1727,10 +2142,27 @@ export async function POST(request: NextRequest) {
               }
 
             if (exportLayout === "relational") {
+              const hydratedRows = await limitConcurrencySettled(
+                savedRows.map((savedRow) => async () => ({
+                  savedRow,
+                  catalogDetails: await resolveSavedObjectCatalogDetails(savedRow),
+                })),
+                6
+              );
               const objectRows: Record<string, unknown>[] = [];
               const eventRows: Record<string, unknown>[] = [];
-              for (const savedRow of savedRows) {
-                const relational = buildSavedObjectRelationalRows(savedRow, includeRawPayload);
+              for (let i = 0; i < savedRows.length; i += 1) {
+                const savedRow = savedRows[i]!;
+                const hydrated = hydratedRows[i];
+                const catalogDetails =
+                  hydrated?.status === "fulfilled"
+                    ? hydrated.value.catalogDetails
+                    : EMPTY_SAVED_OBJECT_CATALOG_DETAILS;
+                const relational = buildSavedObjectRelationalRows(
+                  savedRow,
+                  includeRawPayload,
+                  catalogDetails
+                );
                 objectRows.push(relational.objectRow);
                 if (relational.eventRow) eventRows.push(relational.eventRow);
               }
@@ -1822,10 +2254,24 @@ export async function POST(request: NextRequest) {
                 }
               }
             } else {
-              for (const savedRow of savedRows) {
+              const hydratedRows = await limitConcurrencySettled(
+                savedRows.map((savedRow) => async () => ({
+                  savedRow,
+                  catalogDetails: await resolveSavedObjectCatalogDetails(savedRow),
+                })),
+                6
+              );
+
+              for (let i = 0; i < savedRows.length; i += 1) {
+                const savedRow = savedRows[i]!;
+                const hydrated = hydratedRows[i];
                 const row = buildSavedObjectExportRow(savedRow, {
                   profile: exportProfile,
                   includeRawPayload,
+                  catalogDetails:
+                    hydrated?.status === "fulfilled"
+                      ? hydrated.value.catalogDetails
+                      : EMPTY_SAVED_OBJECT_CATALOG_DETAILS,
                 });
                 if (format === "csv") {
                   controller.enqueue(encoder.encode(`${toCSVRow(row, category, exportProfile, includeRawPayload)}\n`));

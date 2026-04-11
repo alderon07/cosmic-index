@@ -1994,7 +1994,7 @@
       "post": {
         "operationId": "exportUserData",
         "summary": "Export user data",
-        "description": "Pro-only export of cosmic objects as JSON, NDJSON, or CSV. Profile `basic` returns compact fields for everyday use and `research` returns the full enriched dataset. Saved-object exports support `layout=wide|relational`, optional raw payload inclusion, decoded object IDs, app links, normalized UTC timestamps, and saved-object filters (`objectType`, `hasEventPayload`, `savedAfter`, `savedBefore`). Pro export limits apply and CSV requires an explicit bounded limit.",
+        "description": "Pro-only export of cosmic objects as JSON, NDJSON, or CSV. Profile `basic` returns compact fields for everyday use and `research` returns the full enriched dataset. Exoplanet and star research exports include extended scientific measurements, while small-body research exports include archival identifiers, aliases, and designation metadata. Saved-object exports support `layout=wide|relational`, optional raw payload inclusion, decoded object IDs, relative and absolute app links, normalized UTC timestamps, domain-aware catalog enrichment for saved exoplanets/stars/small bodies, and saved-object filters (`objectType`, `hasEventPayload`, `savedAfter`, `savedBefore`). Pro export limits apply and CSV requires an explicit bounded limit.",
         "tags": [
           "User"
         ],

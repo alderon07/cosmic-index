@@ -195,14 +195,126 @@ mock.module("@/lib/exoplanet-index", () => ({
     page: 1,
     total: 1,
   }),
+  getExoplanetBySlug: async (slug: string) => {
+    if (slug === "GJ%203090%20c") {
+      return {
+        id: "GJ%203090%20c",
+        sourceId: "GJ 3090 c",
+        displayName: "GJ 3090 c",
+        summary: "A nearby exoplanet in the GJ 3090 system.",
+        links: [{ label: "NASA Exoplanet Archive", url: "https://example.com/exoplanets/gj-3090-c" }],
+        hostStar: "GJ 3090",
+        discoveryMethod: "Transit",
+        discoveredYear: 2020,
+        orbitalPeriodDays: 12.4,
+        radiusEarth: 1.8,
+        massEarth: 4.2,
+        massIsEstimated: false,
+        equilibriumTempK: 510,
+        distanceParsecs: 14.7,
+        starsInSystem: 1,
+        planetsInSystem: 2,
+        spectralType: "M3V",
+        starTempK: 3410,
+        starMassSolar: 0.42,
+        starRadiusSolar: 0.39,
+        starLuminosity: -1.65,
+      };
+    }
+
+    if (slug === "DMPP-2%20c") {
+      return {
+        id: "DMPP-2%20c",
+        sourceId: "DMPP-2 c",
+        displayName: "DMPP-2 c",
+        summary: "A compact temperate exoplanet orbiting DMPP-2.",
+        links: [{ label: "NASA Exoplanet Archive", url: "https://example.com/exoplanets/dmpp-2-c" }],
+        hostStar: "DMPP-2",
+        discoveryMethod: "Radial Velocity",
+        discoveredYear: 2021,
+        orbitalPeriodDays: 5.21,
+        radiusEarth: 2.1,
+        massEarth: 9.4,
+        massIsEstimated: false,
+        equilibriumTempK: 640,
+        distanceParsecs: 42.1,
+        starsInSystem: 1,
+        planetsInSystem: 3,
+        spectralType: "F8V",
+        starTempK: 6200,
+        starMassSolar: 1.3,
+        starRadiusSolar: 1.6,
+        starLuminosity: 0.48,
+      };
+    }
+
+    if (slug === "DMPP-2%20d") {
+      return {
+        id: "DMPP-2%20d",
+        sourceId: "DMPP-2 d",
+        displayName: "DMPP-2 d",
+        summary: "An outer companion in the DMPP-2 system.",
+        links: [{ label: "NASA Exoplanet Archive", url: "https://example.com/exoplanets/dmpp-2-d" }],
+        hostStar: "DMPP-2",
+        discoveryMethod: "Radial Velocity",
+        discoveredYear: 2021,
+        orbitalPeriodDays: 17.18,
+        radiusEarth: null,
+        massEarth: 8.8,
+        massIsEstimated: false,
+        equilibriumTempK: 410,
+        distanceParsecs: 42.1,
+        starsInSystem: 1,
+        planetsInSystem: 3,
+        spectralType: "F8V",
+        starTempK: 6200,
+        starMassSolar: 1.3,
+        starRadiusSolar: 1.6,
+        starLuminosity: 0.48,
+      };
+    }
+
+    return null;
+  },
+}));
+
+mock.module("@/lib/nasa-exoplanet", () => ({
+  fetchExoplanetBySlug: async () => null,
 }));
 
 mock.module("@/lib/star-index", () => ({
   searchStars: async () => ({ objects: [], hasMore: false, nextCursor: null, usedCursor: true, limit: 1, page: 1, total: 0 }),
+  getStarBySlug: async () => null,
 }));
 
 mock.module("@/lib/jpl-sbdb", () => ({
-  fetchSmallBodies: async () => ({ objects: [], hasMore: false }),
+  fetchSmallBodies: async () => ({
+    objects: [
+      {
+        id: "1P%2FHalley",
+        sourceId: "90000001",
+        displayName: "Halley",
+        aliases: ["1P/Halley"],
+        summary: "A famous short-period comet visible from Earth.",
+        links: [{ label: "JPL Small-Body Database", url: "https://example.com/small-bodies/halley" }],
+        bodyKind: "comet",
+        orbitClass: "HTC",
+        isNeo: false,
+        isPha: false,
+        diameterKm: 11,
+        absoluteMagnitude: 5.5,
+        discoveredYear: 1758,
+        raw: {
+          spkid: "90000001",
+          pdes: "1P",
+          class: "htc",
+          kind: "cn",
+        },
+      },
+    ],
+    hasMore: false,
+  }),
+  fetchSmallBodyBySlug: async () => null,
 }));
 
 const { POST } = await import("@/app/api/user/export/route");
@@ -366,6 +478,48 @@ describe("/api/user/export", () => {
     expect(text).toContain('"status":"complete"');
   });
 
+  it("adds user-facing small-body fields to basic exports", async () => {
+    const req = new Request("http://localhost/api/user/export", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        format: "json",
+        category: "small-bodies",
+        queryParams: { limit: 1 },
+      }),
+    });
+
+    const res = await POST(req as unknown as NextRequest);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.data[0]?.full_name).toBe("1P/Halley");
+    expect(body.data[0]?.discovered_year).toBe(1758);
+    expect(body.data[0]?.kind).toBe("comet");
+  });
+
+  it("adds richer archival identifiers to small-body research exports", async () => {
+    const req = new Request("http://localhost/api/user/export", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        format: "json",
+        profile: "research",
+        category: "small-bodies",
+        queryParams: { limit: 1 },
+      }),
+    });
+
+    const res = await POST(req as unknown as NextRequest);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.data[0]?.full_name).toBe("1P/Halley");
+    expect(body.data[0]?.aliases).toBe("1P/Halley");
+    expect(body.data[0]?.jpl_spkid).toBe("90000001");
+    expect(body.data[0]?.jpl_primary_designation).toBe("1P");
+    expect(body.data[0]?.jpl_orbit_class_code).toBe("htc");
+    expect(body.data[0]?.jpl_kind_code).toBe("cn");
+  });
+
   it("rejects invalid cursor", async () => {
     const req = new Request("http://localhost/api/user/export", {
       method: "POST",
@@ -449,7 +603,57 @@ describe("/api/user/export", () => {
     expect(body.data[0]?.object_key).toBe("GJ%203090%20c");
     expect(body.data[0]?.object_key_decoded).toBe("GJ 3090 c");
     expect(body.data[0]?.app_url).toBe("/exoplanets/GJ%203090%20c");
+    expect(body.data[0]?.app_url_absolute).toBe("https://cosmicindex.dev/exoplanets/GJ%203090%20c");
     expect(body.data[0]?.has_event_payload).toBe(false);
+  });
+
+  it("enriches saved-object basic CSV rows with catalog links and user-facing fields", async () => {
+    const req = new Request("http://localhost/api/user/export", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        format: "csv",
+        category: "saved-objects",
+        queryParams: { objectType: "exoplanet", limit: 10 },
+      }),
+    });
+
+    const res = await POST(req as unknown as NextRequest);
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Content-Type")).toContain("text/csv");
+    const text = await res.text();
+    expect(text).toContain("App URL (Absolute)");
+    expect(text).toContain("Summary");
+    expect(text).toContain("Host Star");
+    expect(text).toContain("https://example.com/exoplanets/gj-3090-c");
+    expect(text).toContain("GJ 3090");
+    expect(text).toContain("Transit");
+  });
+
+  it("enriches saved-object research exports with domain-specific catalog fields", async () => {
+    const req = new Request("http://localhost/api/user/export", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        format: "json",
+        profile: "research",
+        category: "saved-objects",
+        queryParams: { objectType: "exoplanet", limit: 10 },
+      }),
+    });
+
+    const res = await POST(req as unknown as NextRequest);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.data.length).toBe(1);
+    expect(body.data[0]?.source_url).toBe("https://example.com/exoplanets/gj-3090-c");
+    expect(body.data[0]?.object_summary).toBe("A nearby exoplanet in the GJ 3090 system.");
+    expect(body.data[0]?.exoplanet_host_star).toBe("GJ 3090");
+    expect(body.data[0]?.exoplanet_discovery_method).toBe("Transit");
+    expect(body.data[0]?.exoplanet_discovery_year).toBe(2020);
+    expect(body.data[0]?.exoplanet_mass_earth).toBe(4.2);
+    expect(body.data[0]?.exoplanet_host_mass_solar).toBe(0.42);
+    expect(body.data[0]?.small_body_kind).toBeNull();
   });
 
   it("filters saved objects by hasEventPayload and date range", async () => {

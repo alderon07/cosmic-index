@@ -57,6 +57,34 @@ interface ThemedDatePickerProps {
   theme: ThemeConfig;
 }
 
+const PROFILE_DESCRIPTIONS: Record<
+  ExportCategory,
+  Record<ExportProfile, string>
+> = {
+  exoplanets: {
+    basic: "Readable planet facts for quick review, spreadsheets, and sharing.",
+    research:
+      "Expanded planetary and host-star measurements for deeper analysis.",
+  },
+  stars: {
+    basic: "Core host-star attributes for sorting, comparison, and reporting.",
+    research:
+      "Adds stellar structure, magnitudes, metallicity, age, and coordinates.",
+  },
+  "small-bodies": {
+    basic:
+      "Quick triage fields for names, hazard flags, orbit class, size, and discovery year.",
+    research:
+      "Adds designations, aliases, JPL identifiers, and richer archival metadata.",
+  },
+  "saved-objects": {
+    basic:
+      "Compact saved-item rows with user-facing catalog context and direct links.",
+    research:
+      "Full saved-item enrichment with domain-specific metrics and event details.",
+  },
+};
+
 function parseDate(value: string): Date | null {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
   const date = new Date(`${value}T00:00:00Z`);
@@ -215,10 +243,7 @@ export function ExportButton({
   const [isLoading, setIsLoading] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
   const showSavedObjectControls = category === "saved-objects";
-  const profileDescription =
-    profile === "basic"
-      ? "Compact columns for quick review and spreadsheet use."
-      : "Full scientific fields and event metrics for analysis.";
+  const profileDescription = PROFILE_DESCRIPTIONS[category][profile];
   const layoutDescription =
     layout === "wide"
       ? "One row per saved object."
