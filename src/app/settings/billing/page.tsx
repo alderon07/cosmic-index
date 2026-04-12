@@ -8,6 +8,10 @@ import { resolveProAccess } from "@/lib/pro-access";
 export const metadata: Metadata = {
   title: "Billing",
   description: "Manage your Cosmic Index subscription",
+  robots: {
+    index: false,
+    follow: false,
+  },
 };
 
 // Authenticated settings page must render per-request.
@@ -18,7 +22,7 @@ export const revalidate = 0;
  * Billing Settings Page
  *
  * Server component that:
- * 1. Checks authentication (redirects if not signed in)
+ * 1. Checks authentication and renders a signed-out state when needed
  * 2. Fetches user tier from database
  * 3. Renders client component with tier info
  */

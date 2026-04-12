@@ -9,11 +9,20 @@ import { isClerkServerConfigured } from "@/lib/runtime-mode";
  *   protected pages redirect home.
  */
 
+const AUTH_OPTIONAL_PATHS = new Set(["/settings/billing"]);
+
+export function isProtectedPagePath(pathname: string) {
+  if (AUTH_OPTIONAL_PATHS.has(pathname)) {
+    return false;
+  }
+
+  return pathname.startsWith("/settings") || pathname.startsWith("/user/");
+}
+
 export default async function proxy(request: NextRequest, event: NextFetchEvent) {
   const pathname = request.nextUrl.pathname;
   const isProduction = process.env.NODE_ENV === "production";
-  const isProtectedPage =
-    pathname.startsWith("/settings") || pathname.startsWith("/user/");
+  const isProtectedPage = isProtectedPagePath(pathname);
   const isProtectedDocRoute =
     isProduction &&
     (pathname.startsWith("/api/docs") ||
@@ -51,6 +60,10 @@ export default async function proxy(request: NextRequest, event: NextFetchEvent)
   const isProtectedRoute = createRouteMatcher(protectedPatterns);
 
   return clerkMiddleware(async (auth, req) => {
+    if (AUTH_OPTIONAL_PATHS.has(req.nextUrl.pathname)) {
+      return;
+    }
+
     if (isProtectedRoute(req)) {
       await auth.protect();
     }
