@@ -9,12 +9,19 @@ import { BASE_URL } from "@/lib/config";
 import { THEMES } from "@/lib/theme";
 import { JsonLd } from "@/components/seo/json-ld";
 import { buildBreadcrumbJsonLd } from "@/lib/seo";
+import { getExoplanetsForHostStar } from "@/lib/exoplanet-index";
+import { getStarByHostname } from "@/lib/star-index";
+import { ExoplanetSystemContext } from "./exoplanet-system-context";
 
 interface ExoplanetDetailPageProps {
   params: Promise<{ id: string }>;
 }
 
 const getExoplanetById = cache(async (id: string) => fetchExoplanetBySlug(id));
+const getHostStarByName = cache(async (hostname: string) => getStarByHostname(hostname));
+const getSystemPlanets = cache(async (hostname: string) =>
+  getExoplanetsForHostStar(hostname)
+);
 
 // Generate dynamic metadata for SEO
 export async function generateMetadata({
@@ -161,6 +168,14 @@ export default async function ExoplanetDetailPage({
     { label: exoplanet.displayName },
   ];
 
+  const hasHostStar = Boolean(exoplanet.hostStar && exoplanet.hostStar !== "Unknown");
+  const [hostStar, systemPlanets] = hasHostStar
+    ? await Promise.all([
+        getHostStarByName(exoplanet.hostStar),
+        getSystemPlanets(exoplanet.hostStar),
+      ])
+    : [null, []];
+
   return (
     <>
       <JsonLd data={jsonLd} />
@@ -172,6 +187,13 @@ export default async function ExoplanetDetailPage({
           linkHoverClassName={THEMES.exoplanets.hoverText}
         />
         <ObjectDetail object={exoplanet} />
+        <div className="mt-8">
+          <ExoplanetSystemContext
+            exoplanet={exoplanet}
+            hostStar={hostStar}
+            systemPlanets={systemPlanets}
+          />
+        </div>
       </div>
     </>
   );

@@ -27,5 +27,6 @@ describe("GET /sitemap-small-bodies", () => {
     expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toContain("application/xml");
     expect(body).toContain("<loc>https://cosmicindex.dev/small-bodies/433-eros</loc>");
+    expect(body).not.toContain("<lastmod>");
   });
 });

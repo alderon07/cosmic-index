@@ -30,5 +30,6 @@ describe("GET /sitemap-stars", () => {
     expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toContain("application/xml");
     expect(body).toContain("<loc>https://cosmicindex.dev/stars/trappist-1</loc>");
+    expect(body).not.toContain("<lastmod>");
   });
 });

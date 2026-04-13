@@ -46,7 +46,7 @@ export async function GET() {
 
   try {
     const allUrls: SitemapUrl[] = [];
-    const lastmod = getIsoDate();
+    const generatedAt = getIsoDate();
 
     // Only fetch PHAs (Potentially Hazardous Asteroids) - most newsworthy
     // This keeps the sitemap small and focused on the most important objects
@@ -65,7 +65,6 @@ export async function GET() {
         for (const body of result.objects) {
           allUrls.push({
             loc: buildUrl(`/small-bodies/${body.id}`),
-            lastmod,
             changefreq: "monthly",
             priority: 0.7,
           });
@@ -87,11 +86,11 @@ export async function GET() {
     const xml = generateSitemapXml(allUrls);
     cachedSitemap = {
       xml,
-      lastmod,
+      lastmod: generatedAt,
       expiresAt: Date.now() + SITEMAP_CACHE_TTL_MS,
     };
 
-    return xmlResponse(xml, lastmod);
+    return xmlResponse(xml, generatedAt);
   } catch (error) {
     console.error("Error generating small body sitemap:", error);
 

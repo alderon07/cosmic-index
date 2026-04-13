@@ -37,7 +37,7 @@ export async function GET() {
 
   try {
     const allUrls: SitemapUrl[] = [];
-    const lastmod = getIsoDate();
+    const generatedAt = getIsoDate();
     let page = 1;
     let hasMore = true;
 
@@ -50,7 +50,6 @@ export async function GET() {
       for (const star of result.objects) {
         allUrls.push({
           loc: buildUrl(`/stars/${star.id}`),
-          lastmod,
           changefreq: "monthly",
           priority: 0.6,
         });
@@ -63,11 +62,11 @@ export async function GET() {
     const xml = generateSitemapXml(allUrls);
     cachedSitemap = {
       xml,
-      lastmod,
+      lastmod: generatedAt,
       expiresAt: Date.now() + SITEMAP_CACHE_TTL_MS,
     };
 
-    return xmlResponse(xml, lastmod);
+    return xmlResponse(xml, generatedAt);
   } catch (error) {
     console.error("Error generating stars sitemap:", error);
 

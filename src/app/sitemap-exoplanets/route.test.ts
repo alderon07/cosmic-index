@@ -30,5 +30,6 @@ describe("GET /sitemap-exoplanets", () => {
     expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toContain("application/xml");
     expect(body).toContain("<loc>https://cosmicindex.dev/exoplanets/kepler-22-b</loc>");
+    expect(body).not.toContain("<lastmod>");
   });
 });
