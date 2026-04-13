@@ -40,18 +40,29 @@ describe("SpaceWeatherOverviewPage", () => {
     );
 
     expect(html).toContain("Space Weather Observatory");
-    expect(html).toContain("/space-weather/events");
-    expect(html).toContain("/space-weather/alerts");
+    expect(html).toContain("Browse Space Weather Events");
+    expect(html).toContain("Open Space Weather Alerts");
     expect(html).toContain("/space-weather/solar");
     expect(html).toContain("/space-weather/geomagnetic");
+    expect(html).toContain("Track space weather in near real time");
     expect(html).toContain("What is space weather?");
     expect(html).toContain("About this data");
+    expect(html).toContain('"@type":"CollectionPage"');
+    expect(html).toContain("/space-weather/alerts");
+    expect(html).toContain("/space-weather/geomagnetic");
   });
 
   it("publishes observatory metadata on the root route", () => {
     expect(metadata.title).toBe("Space Weather Observatory");
     expect(metadata.alternates).toMatchObject({
       canonical: "https://cosmicindex.dev/space-weather",
+    });
+    expect(metadata.openGraph).toMatchObject({
+      url: "https://cosmicindex.dev/space-weather",
+      title: "Space Weather Observatory | Cosmic Index",
+    });
+    expect(metadata.twitter).toMatchObject({
+      title: "Space Weather Observatory | Cosmic Index",
     });
   });
 });

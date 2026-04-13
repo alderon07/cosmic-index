@@ -18,12 +18,14 @@ import { Star } from "lucide-react";
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { SavedSearchControls } from "@/components/saved-search-controls";
 import { ExportButton } from "@/components/export-button";
+import { LearnBlock } from "@/components/space-weather/learn-block";
 import { queryKeys } from "@/lib/query-keys";
 import {
   applySearchParamUpdates,
   buildPathWithSearch,
   isNoopUrlUpdate,
 } from "@/lib/url-normalize";
+import { CATALOG_EDUCATION } from "@/lib/catalog-education";
 
 const theme = THEMES.stars;
 
@@ -307,6 +309,14 @@ export function StarsPageClient({
           Data is sourced from NASA&apos;s Exoplanet Archive and may be incomplete or updated over time.
           Use filters to narrow results by spectral class, planet count, and distance.
         </p>
+        <div className="mt-4">
+          <LearnBlock
+            title={CATALOG_EDUCATION.stars.title}
+            explanation={CATALOG_EDUCATION.stars.explanation}
+            impact={CATALOG_EDUCATION.stars.impact}
+            theme="stars"
+          />
+        </div>
       </div>
 
       {/* Search and Filters */}

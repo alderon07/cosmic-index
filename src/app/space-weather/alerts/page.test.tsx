@@ -74,15 +74,22 @@ describe("SpaceWeatherAlertsPage", () => {
     );
 
     expect(html).toContain("Space Weather Alerts");
+    expect(html).toContain("Monitor space weather alerts from NASA DONKI and NOAA SWPC");
     expect(html).toContain("What are space weather alerts?");
     expect(html).toContain("DONKI vs. SWPC");
-    expect(html).toContain("Full event browser");
+    expect(html).toContain("Browse Space Weather Events");
+    expect(html).toContain('"@type":"CollectionPage"');
+    expect(html).toContain("https://cosmicindex.dev/space-weather/alerts");
   });
 
   it("publishes canonical metadata for the alerts route", () => {
     expect(metadata.title).toBe("Space Weather Alerts");
     expect(metadata.alternates).toMatchObject({
       canonical: "https://cosmicindex.dev/space-weather/alerts",
+    });
+    expect(metadata.openGraph).toMatchObject({
+      url: "https://cosmicindex.dev/space-weather/alerts",
+      title: "Space Weather Alerts | Cosmic Index",
     });
   });
 });

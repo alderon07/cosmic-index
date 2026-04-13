@@ -40,6 +40,7 @@ import {
 import { ViewToggle, ViewMode } from "@/components/view-toggle";
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { EventTimeline } from "@/components/timeline/event-timeline";
+import { LearnBlock } from "@/components/space-weather/learn-block";
 import {
   buildTimelineBuckets,
   parseCloseApproachTimestamp,
@@ -50,6 +51,7 @@ import {
   buildPathWithSearch,
   isNoopUrlUpdate,
 } from "@/lib/url-normalize";
+import { CATALOG_EDUCATION } from "@/lib/catalog-education";
 
 const theme = THEMES["close-approaches"];
 
@@ -294,6 +296,14 @@ export function CloseApproachesPageClient({
           on NASA’s standard criteria; orbital solutions can improve over time, so encounter details
           may be revised.
         </p>
+        <div className="mt-4">
+          <LearnBlock
+            title={CATALOG_EDUCATION["close-approaches"].title}
+            explanation={CATALOG_EDUCATION["close-approaches"].explanation}
+            impact={CATALOG_EDUCATION["close-approaches"].impact}
+            theme="close-approaches"
+          />
+        </div>
       </div>
 
       {/* Highlight Cards */}

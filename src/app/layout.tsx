@@ -10,6 +10,10 @@ import {
   Flame,
   CloudLightning,
   Keyboard,
+  Activity,
+  ShieldAlert,
+  Sun,
+  Waves,
 } from "lucide-react";
 import { THEMES } from "@/lib/theme";
 import { Analytics } from "@vercel/analytics/react";
@@ -286,12 +290,132 @@ export default function RootLayout({
                 </Link>
                 <Link
                   href="/space-weather"
-                  className={`font-display text-sm tracking-wide transition-colors ${THEMES["space-weather"].hoverText}`}
+                  className={`font-display text-sm tracking-wide text-orange-100/75 transition-colors lg:hidden ${THEMES["space-weather"].hoverText}`}
                   title="Space Weather"
                 >
-                  <CloudLightning className="w-5 h-5 lg:hidden" />
+                  <CloudLightning className="w-5 h-5" />
                   <span className="hidden lg:inline">Weather</span>
                 </Link>
+                <NavigationMenu viewport={false} className="hidden lg:flex">
+                  <NavigationMenuList>
+                    <NavigationMenuItem>
+                      <NavigationMenuTrigger
+                        className={`font-display text-sm tracking-wide text-orange-100/75 transition-colors ${THEMES["space-weather"].hoverText} bg-transparent p-0 h-auto hover:!bg-transparent hover:!text-aurora-violet focus:!bg-transparent focus:!text-aurora-violet focus-visible:!text-aurora-violet data-[state=open]:!bg-transparent data-[state=open]:!text-aurora-violet data-[state=closed]:text-orange-100/75`}
+                      >
+                        Weather
+                      </NavigationMenuTrigger>
+                      <NavigationMenuContent className="!top-full !right-0 !left-auto !mt-2.5 !w-[31rem] rounded-lg border border-border/50 bg-[#160f0b]/97 p-3.5 shadow-[0_12px_36px_rgba(0,0,0,0.45)] backdrop-blur-md">
+                        <ul className="grid grid-cols-2 gap-2">
+                          <li className="col-span-2">
+                            <NavigationMenuLink
+                              className="!p-0 data-[active]:!bg-transparent data-[active]:!text-inherit hover:!bg-transparent hover:!text-inherit focus:!bg-transparent focus:!text-inherit"
+                              asChild
+                            >
+                              <Link
+                                href="/space-weather"
+                                className="group flex h-full flex-col justify-start rounded-md border border-aurora-violet/25 bg-aurora-violet/6 text-left transition-colors hover:border-aurora-violet/45 hover:bg-aurora-violet/10"
+                              >
+                                <div className="px-4 py-3.5">
+                                  <div className="flex items-center gap-2 text-orange-100/85 group-hover:text-aurora-violet">
+                                    <CloudLightning className="w-4 h-4 shrink-0" />
+                                    <span className="font-display text-[0.82rem] tracking-wide">Space Weather Observatory</span>
+                                  </div>
+                                  <p className="mt-2 font-sans text-xs leading-[1.5] text-orange-100/50 group-hover:text-aurora-violet/80">
+                                    Hub overview for live monitoring, educational context, and quick access to alerts, solar, geomagnetic, and event views.
+                                  </p>
+                                </div>
+                              </Link>
+                            </NavigationMenuLink>
+                          </li>
+                          <li>
+                            <NavigationMenuLink
+                              className="!p-0 data-[active]:!bg-transparent data-[active]:!text-inherit hover:!bg-transparent hover:!text-inherit focus:!bg-transparent focus:!text-inherit"
+                              asChild
+                            >
+                              <Link
+                                href="/space-weather/events"
+                                className="group flex h-full flex-col justify-start rounded-md border border-border/40 bg-card/50 text-left transition-colors hover:border-aurora-violet/35 hover:bg-aurora-violet/8"
+                              >
+                                <div className="px-4 py-3.5">
+                                  <div className="flex items-center gap-2 text-orange-100/85 group-hover:text-aurora-violet">
+                                    <Activity className="w-4 h-4 shrink-0" />
+                                    <span className="font-display text-[0.82rem] tracking-wide">DONKI Events</span>
+                                  </div>
+                                  <p className="mt-2 font-sans text-xs leading-[1.5] text-orange-100/50 group-hover:text-aurora-violet/75">
+                                    Browse NASA event reports across flares, CMEs, geomagnetic storms, and more.
+                                  </p>
+                                </div>
+                              </Link>
+                            </NavigationMenuLink>
+                          </li>
+                          <li>
+                            <NavigationMenuLink
+                              className="!p-0 data-[active]:!bg-transparent data-[active]:!text-inherit hover:!bg-transparent hover:!text-inherit focus:!bg-transparent focus:!text-inherit"
+                              asChild
+                            >
+                              <Link
+                                href="/space-weather/alerts"
+                                className="group flex h-full flex-col justify-start rounded-md border border-border/40 bg-card/50 text-left transition-colors hover:border-amber-300/35 hover:bg-amber-300/8"
+                              >
+                                <div className="px-4 py-3.5">
+                                  <div className="flex items-center gap-2 text-orange-100/85 group-hover:text-amber-300">
+                                    <ShieldAlert className="w-4 h-4 shrink-0" />
+                                    <span className="font-display text-[0.82rem] tracking-wide">SWPC Alerts</span>
+                                  </div>
+                                  <p className="mt-2 font-sans text-xs leading-[1.5] text-orange-100/50 group-hover:text-amber-300/75">
+                                    Open the alerts desk for merged NOAA and DONKI notices with severity context.
+                                  </p>
+                                </div>
+                              </Link>
+                            </NavigationMenuLink>
+                          </li>
+                          <li>
+                            <NavigationMenuLink
+                              className="!p-0 data-[active]:!bg-transparent data-[active]:!text-inherit hover:!bg-transparent hover:!text-inherit focus:!bg-transparent focus:!text-inherit"
+                              asChild
+                            >
+                              <Link
+                                href="/space-weather/solar"
+                                className="group flex h-full flex-col justify-start rounded-md border border-border/40 bg-card/50 text-left transition-colors hover:border-orange-400/35 hover:bg-orange-400/8"
+                              >
+                                <div className="px-4 py-3.5">
+                                  <div className="flex items-center gap-2 text-orange-100/85 group-hover:text-orange-400">
+                                    <Sun className="w-4 h-4 shrink-0" />
+                                    <span className="font-display text-[0.82rem] tracking-wide">Solar Watch</span>
+                                  </div>
+                                  <p className="mt-2 font-sans text-xs leading-[1.5] text-orange-100/50 group-hover:text-orange-400/75">
+                                    Check GOES SUVI imagery, D-RAP absorption, and short-range flare probabilities.
+                                  </p>
+                                </div>
+                              </Link>
+                            </NavigationMenuLink>
+                          </li>
+                          <li>
+                            <NavigationMenuLink
+                              className="!p-0 data-[active]:!bg-transparent data-[active]:!text-inherit hover:!bg-transparent hover:!text-inherit focus:!bg-transparent focus:!text-inherit"
+                              asChild
+                            >
+                              <Link
+                                href="/space-weather/geomagnetic"
+                                className="group flex h-full flex-col justify-start rounded-md border border-border/40 bg-card/50 text-left transition-colors hover:border-cyan-400/35 hover:bg-cyan-400/8"
+                              >
+                                <div className="px-4 py-3.5">
+                                  <div className="flex items-center gap-2 text-orange-100/85 group-hover:text-cyan-400">
+                                    <Waves className="w-4 h-4 shrink-0" />
+                                    <span className="font-display text-[0.82rem] tracking-wide">Geomagnetic</span>
+                                  </div>
+                                  <p className="mt-2 font-sans text-xs leading-[1.5] text-orange-100/50 group-hover:text-cyan-400/75">
+                                    Follow Hp30, AE, and recent disturbance activity for Earth&apos;s magnetic response.
+                                  </p>
+                                </div>
+                              </Link>
+                            </NavigationMenuLink>
+                          </li>
+                        </ul>
+                      </NavigationMenuContent>
+                    </NavigationMenuItem>
+                  </NavigationMenuList>
+                </NavigationMenu>
                 {/* Auth separator and button */}
                 <div className="mx-1 hidden h-4 w-px bg-border/50 lg:block" />
                 <UserAuthButton />

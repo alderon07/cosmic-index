@@ -22,6 +22,8 @@ This file provides implementation-oriented guidance for agents working in this r
   - performance improvements
   - missing implementation details
 - Always do TDD
+- When building UI ALWAYS take mobile first approach
+
 
 ## Project Overview
 

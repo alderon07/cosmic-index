@@ -61,19 +61,28 @@ describe("SpaceWeatherGeomagneticPage", () => {
     const html = renderToStaticMarkup(await SpaceWeatherGeomagneticPage());
 
     expect(html).toContain("Geomagnetic Monitoring");
+    expect(html).toContain("Track geomagnetic storm conditions");
     expect(html).toContain("GFZ Hp30");
     expect(html).toContain("Kyoto AE");
     expect(html).toContain("404");
+    expect(html).toContain("Browse Space Weather Events");
+    expect(html).toContain("Open Space Weather Alerts");
     expect(html).toContain("Understanding geomagnetic activity");
     expect(html).toContain("What is the Hp30 index?");
     expect(html).toContain("What is the AE index?");
     expect(html).toContain("About This Data");
+    expect(html).toContain('"@type":"CollectionPage"');
+    expect(html).toContain("https://cosmicindex.dev/space-weather/geomagnetic");
   });
 
   it("publishes canonical metadata for the geomagnetic route", () => {
     expect(metadata.title).toBe("Geomagnetic Monitoring");
     expect(metadata.alternates).toMatchObject({
       canonical: "https://cosmicindex.dev/space-weather/geomagnetic",
+    });
+    expect(metadata.openGraph).toMatchObject({
+      url: "https://cosmicindex.dev/space-weather/geomagnetic",
+      title: "Geomagnetic Monitoring | Cosmic Index",
     });
   });
 });

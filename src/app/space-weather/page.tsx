@@ -4,8 +4,7 @@ import { ArrowRight, Radio } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { JsonLd } from "@/components/seo/json-ld";
-import { buildCollectionPageJsonLd } from "@/lib/seo";
-import { BASE_URL } from "@/lib/config";
+import { buildCollectionPageJsonLd, buildHubMetadata } from "@/lib/seo";
 import { LearnBlock } from "@/components/space-weather/learn-block";
 import { SPACE_WEATHER_EDUCATION } from "@/lib/space-weather-education";
 import { buildSpaceWeatherOverviewSnapshot } from "@/lib/space-weather/overview";
@@ -13,25 +12,34 @@ import { ObservatoryDashboardClient } from "@/app/space-weather/observatory-dash
 import { THEMES } from "@/lib/theme";
 
 const theme = THEMES["space-weather"];
+const SPACE_WEATHER_OVERVIEW_DESCRIPTION =
+  "Live space weather dashboard tracking solar flares, coronal mass ejections, geomagnetic storms, and operational alerts from NASA DONKI and NOAA SWPC.";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = buildHubMetadata({
   title: "Space Weather Observatory",
-  description:
-    "Live space weather dashboard tracking solar flares, CMEs, geomagnetic storms, and more from NASA DONKI and NOAA SWPC.",
-  alternates: {
-    canonical: `${BASE_URL}/space-weather`,
-  },
-};
+  description: SPACE_WEATHER_OVERVIEW_DESCRIPTION,
+  path: "/space-weather",
+  variantKeys: [],
+  params: {},
+  imageAlt: "Cosmic Index - Space Weather Observatory",
+});
 
 export default async function SpaceWeatherPage() {
   const overview = await buildSpaceWeatherOverviewSnapshot();
   const collectionPageJsonLd = buildCollectionPageJsonLd({
     name: "Space Weather Observatory",
-    description:
-      "Observatory overview for recent DONKI events, alert monitoring, solar watch, and geomagnetic tracking.",
+    description: SPACE_WEATHER_OVERVIEW_DESCRIPTION,
     path: "/space-weather",
     sourceName: "NASA DONKI",
     sourceUrl: "https://kauai.ccmc.gsfc.nasa.gov/DONKI/",
+    sourceDescription:
+      "Space weather observatory overview combining NASA DONKI events with NOAA SWPC monitoring products for solar and geomagnetic conditions.",
+    items: [
+      { name: "Space Weather Events", path: "/space-weather/events" },
+      { name: "Space Weather Alerts", path: "/space-weather/alerts" },
+      { name: "Solar Monitoring", path: "/space-weather/solar" },
+      { name: "Geomagnetic Monitoring", path: "/space-weather/geomagnetic" },
+    ],
   });
 
   return (
@@ -53,20 +61,21 @@ export default async function SpaceWeatherPage() {
                 Space Weather Observatory
               </h1>
               <p className="max-w-2xl text-base leading-relaxed text-muted-foreground/85">
-                Track solar activity and its effects on Earth in near-real-time. From solar flares
-                and coronal mass ejections to geomagnetic storms and radio blackouts &mdash; everything
-                the Sun throws at us, monitored and explained.
+                Track space weather in near real time with a live dashboard for solar flares,
+                coronal mass ejections, geomagnetic storms, radio blackouts, and operational
+                alerts. This observatory brings together NASA DONKI events and NOAA SWPC
+                monitoring so you can follow what the Sun is doing and how Earth responds.
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
               <Button asChild className="bg-aurora-violet text-black hover:bg-aurora-violet/85">
                 <Link href="/space-weather/events">
-                  Browse DONKI Events
+                  Browse Space Weather Events
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               </Button>
               <Button asChild variant="outline" className="border-aurora-violet/35 bg-black/15">
-                <Link href="/space-weather/alerts">Open Alerts Desk</Link>
+                <Link href="/space-weather/alerts">Open Space Weather Alerts</Link>
               </Button>
             </div>
           </div>
@@ -78,6 +87,7 @@ export default async function SpaceWeatherPage() {
             title="What is space weather?"
             explanation={SPACE_WEATHER_EDUCATION.SPACE_WEATHER.explanation}
             impact={SPACE_WEATHER_EDUCATION.SPACE_WEATHER.impact}
+            theme="space-weather"
           />
         </section>
 

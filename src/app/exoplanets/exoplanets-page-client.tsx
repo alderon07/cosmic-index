@@ -18,12 +18,14 @@ import { Circle } from "lucide-react";
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { SavedSearchControls } from "@/components/saved-search-controls";
 import { ExportButton } from "@/components/export-button";
+import { LearnBlock } from "@/components/space-weather/learn-block";
 import { queryKeys } from "@/lib/query-keys";
 import {
   applySearchParamUpdates,
   buildPathWithSearch,
   isNoopUrlUpdate,
 } from "@/lib/url-normalize";
+import { CATALOG_EDUCATION } from "@/lib/catalog-education";
 
 const theme = THEMES.exoplanets;
 
@@ -335,6 +337,14 @@ export function ExoplanetsPageClient({
         Data is sourced from NASA&apos;s Exoplanet Archive and may be revised as catalog records improve
         over time. Summaries and comparisons on Cosmic Index are generated from those published catalog fields.
       </p>
+      <div className="mt-4">
+        <LearnBlock
+          title={CATALOG_EDUCATION.exoplanets.title}
+          explanation={CATALOG_EDUCATION.exoplanets.explanation}
+          impact={CATALOG_EDUCATION.exoplanets.impact}
+          theme="exoplanets"
+        />
+      </div>
       </div>
 
       {/* Search and Filters */}

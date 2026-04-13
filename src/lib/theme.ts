@@ -61,6 +61,12 @@ export interface ThemeConfig {
   footerSurface: string;
   // Timeline panel hover border treatment
   timelineHoverBorder: string;
+  // Learn block treatment
+  learnBlockCardItem: string;
+  learnBlockInlineItem: string;
+  learnBlockTrigger: string;
+  learnBlockSectionLabel: string;
+  learnBlockDivider: string;
 }
 
 export const THEMES: Record<ObjectTheme, ThemeConfig> = {
@@ -86,6 +92,14 @@ export const THEMES: Record<ObjectTheme, ThemeConfig> = {
     metricSurface: "rounded-md border border-border/40 bg-black/15 px-2.5 py-2",
     footerSurface: "border-t border-border/30 pt-3",
     timelineHoverBorder: "hover:border-reactor-orange/35",
+    learnBlockCardItem:
+      "rounded-xl border border-primary/20 bg-primary/[0.04] px-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]",
+    learnBlockInlineItem:
+      "rounded-none border-x-0 border-b-0 border-t border-primary/15 bg-transparent px-0",
+    learnBlockTrigger:
+      "text-primary hover:no-underline [&>svg]:text-primary/70",
+    learnBlockSectionLabel: "text-primary/80",
+    learnBlockDivider: "border-primary/12",
   },
   stars: {
     text: "text-uranium-green",
@@ -111,6 +125,14 @@ export const THEMES: Record<ObjectTheme, ThemeConfig> = {
     metricSurface: "rounded-md border border-border/40 bg-black/15 px-2.5 py-2",
     footerSurface: "border-t border-border/30 pt-3",
     timelineHoverBorder: "hover:border-uranium-green/40",
+    learnBlockCardItem:
+      "rounded-xl border border-uranium-green/20 bg-uranium-green/[0.04] px-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]",
+    learnBlockInlineItem:
+      "rounded-none border-x-0 border-b-0 border-t border-uranium-green/15 bg-transparent px-0",
+    learnBlockTrigger:
+      "text-uranium-green hover:no-underline [&>svg]:text-uranium-green/70",
+    learnBlockSectionLabel: "text-uranium-green/80",
+    learnBlockDivider: "border-uranium-green/12",
   },
   "small-bodies": {
     text: "text-secondary",
@@ -134,6 +156,14 @@ export const THEMES: Record<ObjectTheme, ThemeConfig> = {
     metricSurface: "rounded-md border border-border/40 bg-black/15 px-2.5 py-2",
     footerSurface: "border-t border-border/30 pt-3",
     timelineHoverBorder: "hover:border-secondary/40",
+    learnBlockCardItem:
+      "rounded-xl border border-secondary/20 bg-secondary/[0.04] px-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]",
+    learnBlockInlineItem:
+      "rounded-none border-x-0 border-b-0 border-t border-secondary/15 bg-transparent px-0",
+    learnBlockTrigger:
+      "text-secondary hover:no-underline [&>svg]:text-secondary/70",
+    learnBlockSectionLabel: "text-secondary/80",
+    learnBlockDivider: "border-secondary/12",
   },
   "close-approaches": {
     text: "text-destructive",
@@ -158,6 +188,14 @@ export const THEMES: Record<ObjectTheme, ThemeConfig> = {
     metricSurface: "rounded-md border border-border/40 bg-black/15 px-2.5 py-2",
     footerSurface: "border-t border-border/30 pt-3",
     timelineHoverBorder: "hover:border-destructive/40",
+    learnBlockCardItem:
+      "rounded-xl border border-destructive/20 bg-destructive/[0.04] px-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]",
+    learnBlockInlineItem:
+      "rounded-none border-x-0 border-b-0 border-t border-destructive/15 bg-transparent px-0",
+    learnBlockTrigger:
+      "text-destructive hover:no-underline [&>svg]:text-destructive/70",
+    learnBlockSectionLabel: "text-destructive/80",
+    learnBlockDivider: "border-destructive/12",
   },
   fireballs: {
     text: "text-radium-teal",
@@ -182,6 +220,14 @@ export const THEMES: Record<ObjectTheme, ThemeConfig> = {
     metricSurface: "rounded-md border border-border/40 bg-black/15 px-2.5 py-2",
     footerSurface: "border-t border-border/30 pt-3",
     timelineHoverBorder: "hover:border-radium-teal/40",
+    learnBlockCardItem:
+      "rounded-xl border border-radium-teal/20 bg-radium-teal/[0.04] px-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]",
+    learnBlockInlineItem:
+      "rounded-none border-x-0 border-b-0 border-t border-radium-teal/15 bg-transparent px-0",
+    learnBlockTrigger:
+      "text-radium-teal hover:no-underline [&>svg]:text-radium-teal/70",
+    learnBlockSectionLabel: "text-radium-teal/80",
+    learnBlockDivider: "border-radium-teal/12",
   },
   "space-weather": {
     text: "text-aurora-violet",
@@ -207,6 +253,14 @@ export const THEMES: Record<ObjectTheme, ThemeConfig> = {
     metricSurface: "rounded-md border border-border/40 bg-black/15 px-2.5 py-2",
     footerSurface: "border-t border-border/30 pt-3",
     timelineHoverBorder: "hover:border-aurora-violet/40",
+    learnBlockCardItem:
+      "rounded-xl border border-aurora-violet/20 bg-aurora-violet/[0.04] px-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]",
+    learnBlockInlineItem:
+      "rounded-none border-x-0 border-b-0 border-t border-aurora-violet/15 bg-transparent px-0",
+    learnBlockTrigger:
+      "text-aurora-violet hover:no-underline [&>svg]:text-aurora-violet/70",
+    learnBlockSectionLabel: "text-aurora-violet/80",
+    learnBlockDivider: "border-aurora-violet/12",
   },
 };
 

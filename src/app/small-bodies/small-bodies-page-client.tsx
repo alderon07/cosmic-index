@@ -18,12 +18,14 @@ import { CircleDot } from "lucide-react";
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { SavedSearchControls } from "@/components/saved-search-controls";
 import { ExportButton } from "@/components/export-button";
+import { LearnBlock } from "@/components/space-weather/learn-block";
 import { queryKeys } from "@/lib/query-keys";
 import {
   applySearchParamUpdates,
   buildPathWithSearch,
   isNoopUrlUpdate,
 } from "@/lib/url-normalize";
+import { CATALOG_EDUCATION } from "@/lib/catalog-education";
 
 const theme = THEMES["small-bodies"];
 
@@ -290,6 +292,14 @@ export function SmallBodiesPageClient({
         Data is sourced from JPL&apos;s Small-Body Database. Orbit classifications, hazard flags, and
         physical properties can change as additional observations refine each object&apos;s solution.
       </p>
+      <div className="mt-4">
+        <LearnBlock
+          title={CATALOG_EDUCATION["small-bodies"].title}
+          explanation={CATALOG_EDUCATION["small-bodies"].explanation}
+          impact={CATALOG_EDUCATION["small-bodies"].impact}
+          theme="small-bodies"
+        />
+      </div>
       </div>
 
       {/* Search and Filters */}

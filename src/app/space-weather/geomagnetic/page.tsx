@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Activity, ArrowRight, Compass, Waves } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { JsonLd } from "@/components/seo/json-ld";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { InfoTooltip, TOOLTIP_CONTENT } from "@/components/info-tooltip";
 import { LearnBlock } from "@/components/space-weather/learn-block";
@@ -13,17 +14,20 @@ import { getEventTypeLabel } from "@/lib/nasa-donki";
 import { buildSpaceWeatherGeomagneticSnapshot } from "@/lib/space-weather/geomagnetic";
 import { formatSpaceWeatherTimestamp } from "@/lib/space-weather/format";
 import { THEMES } from "@/lib/theme";
+import { buildCollectionPageJsonLd, buildHubMetadata } from "@/lib/seo";
 
 const theme = THEMES["space-weather"];
+const SPACE_WEATHER_GEOMAGNETIC_DESCRIPTION =
+  "Geomagnetic monitoring with GFZ Hp30 nowcast, Kyoto AE auroral electrojet quicklook, and recent DONKI disturbance events.";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = buildHubMetadata({
   title: "Geomagnetic Monitoring",
-  description:
-    "Geomagnetic monitoring with GFZ Hp30 nowcast, Kyoto AE auroral electrojet quicklook, and recent DONKI disturbance events.",
-  alternates: {
-    canonical: "https://cosmicindex.dev/space-weather/geomagnetic",
-  },
-};
+  description: SPACE_WEATHER_GEOMAGNETIC_DESCRIPTION,
+  path: "/space-weather/geomagnetic",
+  variantKeys: [],
+  params: {},
+  imageAlt: "Cosmic Index - Geomagnetic Monitoring",
+});
 
 function Hp30ScaleIndicator({ value }: { value: number | null }) {
   if (value === null) return null;
@@ -52,9 +56,22 @@ function Hp30ScaleIndicator({ value }: { value: number | null }) {
 
 export default async function SpaceWeatherGeomagneticPage() {
   const snapshot = await buildSpaceWeatherGeomagneticSnapshot();
+  const collectionPageJsonLd = buildCollectionPageJsonLd({
+    name: "Geomagnetic Monitoring",
+    description: SPACE_WEATHER_GEOMAGNETIC_DESCRIPTION,
+    path: "/space-weather/geomagnetic",
+    sourceName: "GFZ Potsdam, Kyoto WDC, and NASA DONKI",
+    sourceUrl: "https://kp.gfz.de/en/hp30-hp60/data",
+    sourceDescription:
+      "Geomagnetic monitoring products combining GFZ Potsdam Hp30 nowcast data, Kyoto WDC auroral electrojet quicklook data, and recent NASA DONKI disturbance events.",
+    sourceCreatorName: "GFZ Potsdam, Kyoto WDC, and NASA CCMC",
+    sourceCreatorUrl: "https://kauai.ccmc.gsfc.nasa.gov/DONKI/",
+  });
 
   return (
-    <div className="shell-container py-8">
+    <>
+      <JsonLd data={collectionPageJsonLd} />
+      <div className="shell-container py-8">
       {/* Header */}
       <section className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div className="space-y-3">
@@ -65,20 +82,20 @@ export default async function SpaceWeatherGeomagneticPage() {
             Geomagnetic Monitoring
           </h1>
           <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground/80">
-            Monitor Earth&apos;s magnetic field response to solar activity. This surface combines
-            near-real-time geomagnetic indices with recent storm, shock, and high-speed stream events
-            from NASA DONKI.
+            Track geomagnetic storm conditions with near-real-time magnetic field indices, auroral
+            electrojet activity, and recent disturbance events from NASA DONKI. This monitoring
+            surface focuses on how solar activity translates into geomagnetic response around Earth.
           </p>
         </div>
         <div className="flex flex-wrap gap-3">
           <Button asChild variant="outline" className="border-aurora-violet/35 bg-black/15">
             <Link href="/space-weather/events">
-              Event browser
+              Browse Space Weather Events
               <ArrowRight className="h-4 w-4" />
             </Link>
           </Button>
           <Button asChild variant="outline" className="border-aurora-violet/35 bg-black/15">
-            <Link href="/space-weather/alerts">Alerts desk</Link>
+            <Link href="/space-weather/alerts">Open Space Weather Alerts</Link>
           </Button>
         </div>
       </section>
@@ -90,6 +107,7 @@ export default async function SpaceWeatherGeomagneticPage() {
           explanation={SPACE_WEATHER_EDUCATION.GST.explanation}
           impact={SPACE_WEATHER_EDUCATION.GST.impact}
           scale={SPACE_WEATHER_EDUCATION.GST.scale}
+          theme="space-weather"
         />
       </section>
 
@@ -126,6 +144,7 @@ export default async function SpaceWeatherGeomagneticPage() {
               title="What is the Hp30 index?"
               explanation={SPACE_WEATHER_EDUCATION.HP30.explanation}
               impact={SPACE_WEATHER_EDUCATION.HP30.impact}
+              theme="space-weather"
             />
           </CardHeader>
           <CardContent>
@@ -205,6 +224,7 @@ export default async function SpaceWeatherGeomagneticPage() {
               title="What is the AE index?"
               explanation={SPACE_WEATHER_EDUCATION.AE_INDEX.explanation}
               impact={SPACE_WEATHER_EDUCATION.AE_INDEX.impact}
+              theme="space-weather"
             />
           </CardHeader>
           <CardContent>
@@ -271,8 +291,8 @@ export default async function SpaceWeatherGeomagneticPage() {
         </Card>
       </section>
 
-      {/* Disturbance Lane + About This Data */}
-      <section className="mt-4 grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
+      {/* Disturbance Lane */}
+      <section className="mt-4">
         <Card className={theme.cardSurface}>
           <CardHeader className="gap-3">
             <CardTitle className="flex items-center gap-2 font-display text-xl">
@@ -315,7 +335,10 @@ export default async function SpaceWeatherGeomagneticPage() {
             })}
           </CardContent>
         </Card>
+      </section>
 
+      {/* About This Data */}
+      <section className="mt-4">
         <Card className={theme.cardSurface}>
           <CardHeader className="gap-3">
             <CardTitle className="font-display text-xl">
@@ -354,6 +377,7 @@ export default async function SpaceWeatherGeomagneticPage() {
           </CardContent>
         </Card>
       </section>
-    </div>
+      </div>
+    </>
   );
 }

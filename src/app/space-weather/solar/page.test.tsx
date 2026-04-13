@@ -81,20 +81,29 @@ describe("SpaceWeatherSolarPage", () => {
     const html = renderToStaticMarkup(await SpaceWeatherSolarPage());
 
     expect(html).toContain("Solar Monitoring");
+    expect(html).toContain("Monitor the Sun with live solar imagery");
     expect(html).toContain("GOES SUVI");
     expect(html).toContain("D-RAP");
     expect(html).toContain("Flare Forecast");
     expect(html).toContain("75%");
     expect(html).toContain("https://services.swpc.noaa.gov/images/animations/d-rap/global/latest.png");
+    expect(html).toContain("Browse Space Weather Events");
+    expect(html).toContain("Open Space Weather Alerts");
     expect(html).toContain("What am I looking at?");
     expect(html).toContain("Understanding flare classes");
     expect(html).toContain("About This Data");
+    expect(html).toContain('"@type":"CollectionPage"');
+    expect(html).toContain("https://cosmicindex.dev/space-weather/solar");
   });
 
   it("publishes canonical metadata for the solar route", () => {
     expect(metadata.title).toBe("Solar Monitoring");
     expect(metadata.alternates).toMatchObject({
       canonical: "https://cosmicindex.dev/space-weather/solar",
+    });
+    expect(metadata.openGraph).toMatchObject({
+      url: "https://cosmicindex.dev/space-weather/solar",
+      title: "Solar Monitoring | Cosmic Index",
     });
   });
 });

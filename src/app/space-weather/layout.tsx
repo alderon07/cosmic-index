@@ -12,6 +12,7 @@ export const metadata: Metadata = {
     url: `${BASE_URL}/space-weather`,
     type: "website",
     images: [
+      // TODO: Replace the generic site OG image with a dedicated space-weather social card.
       {
         url: "/og-image.png",
         width: 1200,

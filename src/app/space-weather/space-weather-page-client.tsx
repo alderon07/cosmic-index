@@ -30,6 +30,7 @@ import {
   AnySpaceWeatherEvent,
   SpaceWeatherNotification,
   SPACE_WEATHER_EVENT_TYPES,
+  SPACE_WEATHER_NOTIFICATION_FILTER_TYPES,
 } from "@/lib/types";
 import {
   apiFetchEvents,
@@ -105,6 +106,9 @@ const LIST_SKELETON_KEYS = [
   "sw-list-sk-8",
 ] as const;
 const SPACE_WEATHER_TIMELINE_DAYS = 45;
+const SUPPORTED_NOTIFICATION_TYPES = SPACE_WEATHER_NOTIFICATION_FILTER_TYPES
+  .filter((type) => type !== "all")
+  .join(", ");
 
 function getEventCompletenessScore(event: AnySpaceWeatherEvent): number {
   let score = 0;
@@ -791,7 +795,10 @@ export function SpaceWeatherPageClient({
                   </div>
                   <p className="text-[0.82rem] leading-[1.6] text-muted-foreground/70 max-w-lg">
                     Separate alert feed from NASA&apos;s DONKI system. Limited to a
-                    rolling 30-day query window.
+                    rolling 30-day query window. Currently normalized types:
+                    {" "}
+                    {SUPPORTED_NOTIFICATION_TYPES}. Unsupported DONKI notification
+                    types appear as OTHER.
                   </p>
                 </div>
               </AccordionTrigger>

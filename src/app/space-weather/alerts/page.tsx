@@ -3,24 +3,27 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { JsonLd } from "@/components/seo/json-ld";
 import { LearnBlock } from "@/components/space-weather/learn-block";
-import { SPACE_WEATHER_EDUCATION } from "@/lib/space-weather-education";
 import { fetchUnifiedSpaceWeatherAlerts } from "@/lib/space-weather/alerts";
 import type { PaginatedResult } from "@/lib/api-client";
 import type { SpaceWeatherAlert } from "@/lib/types";
 import { AlertsDeskClient } from "@/app/space-weather/alerts/alerts-desk-client";
 import { THEMES } from "@/lib/theme";
+import { buildCollectionPageJsonLd, buildHubMetadata } from "@/lib/seo";
 
 const theme = THEMES["space-weather"];
+const SPACE_WEATHER_ALERTS_DESCRIPTION =
+  "Unified space weather alert desk merging NASA DONKI and NOAA SWPC notifications with severity levels, related events, and alert history.";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = buildHubMetadata({
   title: "Space Weather Alerts",
-  description:
-    "Unified alert triage for DONKI and SWPC space weather notifications with severity levels, related events, and alert history.",
-  alternates: {
-    canonical: "https://cosmicindex.dev/space-weather/alerts",
-  },
-};
+  description: SPACE_WEATHER_ALERTS_DESCRIPTION,
+  path: "/space-weather/alerts",
+  variantKeys: [],
+  params: {},
+  imageAlt: "Cosmic Index - Space Weather Alerts",
+});
 
 export default async function SpaceWeatherAlertsPage() {
   const generatedAt = new Date().toISOString();
@@ -66,8 +69,22 @@ export default async function SpaceWeatherAlertsPage() {
     },
   };
 
+  const collectionPageJsonLd = buildCollectionPageJsonLd({
+    name: "Space Weather Alerts",
+    description: SPACE_WEATHER_ALERTS_DESCRIPTION,
+    path: "/space-weather/alerts",
+    sourceName: "NASA DONKI and NOAA SWPC",
+    sourceUrl: "https://www.swpc.noaa.gov/",
+    sourceDescription:
+      "Operational space weather alerts merged from NOAA Space Weather Prediction Center bulletins and NASA DONKI event-linked notifications.",
+    sourceCreatorName: "NOAA SWPC and NASA CCMC",
+    sourceCreatorUrl: "https://kauai.ccmc.gsfc.nasa.gov/DONKI/",
+  });
+
   return (
-    <div className="shell-container py-8">
+    <>
+      <JsonLd data={collectionPageJsonLd} />
+      <div className="shell-container py-8">
       {/* Header */}
       <section className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div className="space-y-3">
@@ -78,14 +95,15 @@ export default async function SpaceWeatherAlertsPage() {
             Space Weather Alerts
           </h1>
           <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground/80">
-            A unified view of alerts from NASA DONKI and NOAA SWPC. Alerts are sorted
-            by time and enriched with severity levels and linked event data where available.
-            New alerts appear automatically as they are issued.
+            Monitor space weather alerts from NASA DONKI and NOAA SWPC in one timeline.
+            This alert desk highlights solar flare alerts, geomagnetic storm watches, radio
+            blackout notices, and related event context so you can quickly see what changed,
+            how severe it is, and what activity may be driving it.
           </p>
         </div>
         <Button asChild variant="outline" className="border-aurora-violet/35 bg-black/15">
           <Link href="/space-weather/events">
-            Full event browser
+            Browse Space Weather Events
             <ArrowRight className="h-4 w-4" />
           </Link>
         </Button>
@@ -97,11 +115,13 @@ export default async function SpaceWeatherAlertsPage() {
           title="What are space weather alerts?"
           explanation="Space weather alerts are issued when solar or geomagnetic conditions exceed thresholds that could affect technology on Earth or in orbit. NASA's DONKI publishes event-linked notifications when new activity is cataloged, while NOAA SWPC issues operational watches, warnings, and alerts for the U.S. government and critical infrastructure operators."
           impact="Alerts help satellite operators protect spacecraft, airlines reroute polar flights, power grid controllers prepare for geomagnetically induced currents, and amateur radio operators anticipate propagation changes."
+          theme="space-weather"
         />
         <LearnBlock
           title="DONKI vs. SWPC — two sources, one desk"
           explanation="DONKI notifications are research-grade and link directly to specific solar events (flares, CMEs, storms). SWPC alerts are operational and follow NOAA's formal watch/warning/alert framework used by emergency managers and critical infrastructure. This desk merges both into one timeline."
           impact="By seeing both sources together, you get the scientific event context from DONKI alongside the operational severity assessments from SWPC — a more complete picture than either source alone."
+          theme="space-weather"
         />
       </section>
 
@@ -110,6 +130,7 @@ export default async function SpaceWeatherAlertsPage() {
         initialAlerts={initialAlerts}
         generatedAt={generatedAt}
       />
-    </div>
+      </div>
+    </>
   );
 }

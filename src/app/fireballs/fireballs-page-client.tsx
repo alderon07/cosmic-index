@@ -47,6 +47,7 @@ import {
 } from "lucide-react";
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { EventTimeline } from "@/components/timeline/event-timeline";
+import { LearnBlock } from "@/components/space-weather/learn-block";
 import { buildTimelineBuckets } from "@/lib/timeline-buckets";
 import { queryKeys } from "@/lib/query-keys";
 import {
@@ -54,6 +55,7 @@ import {
   buildPathWithSearch,
   isNoopUrlUpdate,
 } from "@/lib/url-normalize";
+import { CATALOG_EDUCATION } from "@/lib/catalog-education";
 
 const theme = THEMES["fireballs"];
 
@@ -299,6 +301,14 @@ export function FireballsPageClient({
           estimate like peak altitude, velocity, and an approximate location. Missing fields are
           common, so filters can narrow to events with specific measurements.
         </p>
+        <div className="mt-4">
+          <LearnBlock
+            title={CATALOG_EDUCATION.fireballs.title}
+            explanation={CATALOG_EDUCATION.fireballs.explanation}
+            impact={CATALOG_EDUCATION.fireballs.impact}
+            theme="fireballs"
+          />
+        </div>
       </div>
 
       {/* Filters */}

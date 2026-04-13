@@ -12,7 +12,6 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { InfoTooltip, TOOLTIP_CONTENT } from "@/components/info-tooltip";
 import { DataFreshnessBadge } from "@/components/space-weather/data-freshness-badge";
 import { apiFetch } from "@/lib/api-client";
 import { queryKeys } from "@/lib/query-keys";
@@ -190,65 +189,6 @@ export function ObservatoryDashboardClient({
         </Card>
       </section>
 
-      {/* Quick-glance summary row */}
-      <section className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <Card className={theme.cardSurface}>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 font-display text-base">
-              <Activity className={`h-4 w-4 ${theme.icon}`} />
-              <InfoTooltip content={TOOLTIP_CONTENT.DONKI} theme="space-weather">
-                DONKI Events
-              </InfoTooltip>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="text-sm text-muted-foreground/85">
-            {overview.eventSummary.total} events across all categories in the last {overview.eventSummary.windowDays} days.
-          </CardContent>
-        </Card>
-
-        <Card className={theme.cardSurface}>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 font-display text-base">
-              <ShieldAlert className={`h-4 w-4 ${theme.icon}`} />
-              <InfoTooltip content={TOOLTIP_CONTENT.SWPC} theme="space-weather">
-                SWPC Alerts
-              </InfoTooltip>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="text-sm text-muted-foreground/85">
-            Alerts from NASA DONKI and NOAA SWPC are merged into a unified triage view on the alerts desk.
-          </CardContent>
-        </Card>
-
-        <Card className={theme.cardSurface}>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 font-display text-base">
-              <Sun className={`h-4 w-4 ${theme.icon}`} />
-              <InfoTooltip content={TOOLTIP_CONTENT.SUVI} theme="space-weather">
-                Solar Watch
-              </InfoTooltip>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="text-sm text-muted-foreground/85">
-            Live GOES SUVI imagery, D-RAP absorption guidance, and NOAA flare probabilities.
-          </CardContent>
-        </Card>
-
-        <Card className={theme.cardSurface}>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 font-display text-base">
-              <Waves className={`h-4 w-4 ${theme.icon}`} />
-              <InfoTooltip content={TOOLTIP_CONTENT.KP_INDEX} theme="space-weather">
-                Geomagnetic
-              </InfoTooltip>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="text-sm text-muted-foreground/85">
-            Hp30 nowcast, Kyoto AE quicklook, and recent geomagnetic disturbance events.
-          </CardContent>
-        </Card>
-      </section>
-
       {/* Navigation cards */}
       <section className="mt-8 grid gap-4 lg:grid-cols-2">
         <OverviewLinkCard
@@ -256,7 +196,7 @@ export function ObservatoryDashboardClient({
           eyebrow="Event Browser"
           title="DONKI Events"
           icon={Activity}
-          description="Browse the full NASA DONKI event catalog with filtering by type, date range, and pagination. Drill down into individual event details with linked activity chains."
+          description={`${overview.eventSummary.total} events across all categories in the last ${overview.eventSummary.windowDays} days. Browse the full NASA DONKI event catalog with filtering by type, date range, and pagination.`}
           accent="text-aurora-violet"
         />
         <OverviewLinkCard
@@ -264,7 +204,7 @@ export function ObservatoryDashboardClient({
           eyebrow="Alerts Desk"
           title="Alert Triage"
           icon={ShieldAlert}
-          description="Review alerts from DONKI and NOAA SWPC in a unified view. See severity levels, related events, and alert history at a glance."
+          description="Alerts from NASA DONKI and NOAA SWPC are merged into a unified triage view. Review severity levels, related events, and alert history at a glance."
           accent="text-amber-300"
         />
         <OverviewLinkCard
@@ -272,7 +212,7 @@ export function ObservatoryDashboardClient({
           eyebrow="Solar Monitoring"
           title="Solar Surface"
           icon={Sun}
-          description="Track the Sun in real-time with GOES SUVI ultraviolet imagery, D-RAP radio absorption maps, and the NOAA 3-day flare forecast."
+          description="Live GOES SUVI imagery, D-RAP absorption guidance, and NOAA flare probabilities. Track the Sun in real time with imagery, radio absorption maps, and the 3-day flare forecast."
           accent="text-orange-400"
         />
         <OverviewLinkCard
@@ -280,7 +220,7 @@ export function ObservatoryDashboardClient({
           eyebrow="Geomagnetic Monitoring"
           title="Geomagnetic Surface"
           icon={Waves}
-          description="Monitor Earth's magnetic field response with GFZ Hp30 nowcast data, Kyoto AE auroral electrojet indices, and recent storm/shock/HSS activity."
+          description="Hp30 nowcast, Kyoto AE quicklook, and recent geomagnetic disturbance events. Monitor Earth's magnetic field response with GFZ and auroral electrojet data."
           accent="text-cyan-400"
         />
       </section>

@@ -104,6 +104,16 @@ function parseHeaderValue(text: string, label: string): string | undefined {
   return value ? value : undefined;
 }
 
+function sanitizeWarningValue(value: string | undefined): string | undefined {
+  if (!value) return undefined;
+
+  const normalized = value.replace(/^#+\s*/, "").trim();
+  if (!normalized) return undefined;
+  if (/^(none|n\/a|na|nil|null|unknown)$/i.test(normalized)) return undefined;
+
+  return normalized;
+}
+
 function buildSourceMeta(
   label: string,
   sourceUrl: string,
@@ -239,13 +249,10 @@ export async function fetchSolarDrapSnapshot(): Promise<SpaceWeatherSolarDrapSna
     const observedAt = parseDrapProductValidAt(text);
     const estimatedRecoveryTime = parseHeaderValue(text, "Estimated Recovery Time");
     const xrayMessage = parseHeaderValue(text, "X-RAY Message");
-    const xrayWarning = parseHeaderValue(text, "X-RAY Warning");
+    const xrayWarning = sanitizeWarningValue(parseHeaderValue(text, "X-RAY Warning"));
     const protonMessage = parseHeaderValue(text, "Proton Message");
-    const protonWarning = parseHeaderValue(text, "Proton Warning");
-    const warnings = uniqueWarnings([
-      xrayWarning && xrayWarning.toUpperCase() !== "NONE" ? xrayWarning : undefined,
-      protonWarning && protonWarning.toUpperCase() !== "NONE" ? protonWarning : undefined,
-    ]);
+    const protonWarning = sanitizeWarningValue(parseHeaderValue(text, "Proton Warning"));
+    const warnings = uniqueWarnings([xrayWarning, protonWarning]);
 
     const summaryParts = [xrayMessage, protonMessage].filter(Boolean);
 

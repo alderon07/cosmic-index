@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ArrowRight, Flame, Radar, SunMedium } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { JsonLd } from "@/components/seo/json-ld";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { InfoTooltip, TOOLTIP_CONTENT } from "@/components/info-tooltip";
 import { LearnBlock } from "@/components/space-weather/learn-block";
@@ -12,17 +13,20 @@ import { SPACE_WEATHER_EDUCATION } from "@/lib/space-weather-education";
 import { buildSpaceWeatherSolarSnapshot } from "@/lib/space-weather/solar";
 import { formatSpaceWeatherTimestamp } from "@/lib/space-weather/format";
 import { THEMES } from "@/lib/theme";
+import { buildCollectionPageJsonLd, buildHubMetadata } from "@/lib/seo";
 
 const theme = THEMES["space-weather"];
+const SPACE_WEATHER_SOLAR_DESCRIPTION =
+  "Live solar monitoring with GOES SUVI ultraviolet imagery, D-RAP radio absorption maps, and NOAA 3-day flare forecast probabilities.";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = buildHubMetadata({
   title: "Solar Monitoring",
-  description:
-    "Live solar monitoring with GOES SUVI ultraviolet imagery, D-RAP radio absorption maps, and NOAA 3-day flare forecast probabilities.",
-  alternates: {
-    canonical: "https://cosmicindex.dev/space-weather/solar",
-  },
-};
+  description: SPACE_WEATHER_SOLAR_DESCRIPTION,
+  path: "/space-weather/solar",
+  variantKeys: [],
+  params: {},
+  imageAlt: "Cosmic Index - Solar Monitoring",
+});
 
 function ProbabilityBar({ value, label, colorClass }: { value: number; label: string; colorClass: string }) {
   return (
@@ -43,9 +47,22 @@ function ProbabilityBar({ value, label, colorClass }: { value: number; label: st
 
 export default async function SpaceWeatherSolarPage() {
   const snapshot = await buildSpaceWeatherSolarSnapshot();
+  const collectionPageJsonLd = buildCollectionPageJsonLd({
+    name: "Solar Monitoring",
+    description: SPACE_WEATHER_SOLAR_DESCRIPTION,
+    path: "/space-weather/solar",
+    sourceName: "NOAA SWPC Solar Monitoring Products",
+    sourceUrl: "https://www.swpc.noaa.gov/",
+    sourceDescription:
+      "NOAA SWPC solar monitoring products including GOES SUVI imagery, D-RAP absorption guidance, and flare probability forecasts.",
+    sourceCreatorName: "NOAA Space Weather Prediction Center",
+    sourceCreatorUrl: "https://www.swpc.noaa.gov/",
+  });
 
   return (
-    <div className="shell-container py-8">
+    <>
+      <JsonLd data={collectionPageJsonLd} />
+      <div className="shell-container py-8">
       {/* Header */}
       <section className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div className="space-y-3">
@@ -56,19 +73,20 @@ export default async function SpaceWeatherSolarPage() {
             Solar Monitoring
           </h1>
           <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground/80">
-            Watch the Sun in near-real-time through ultraviolet imagery, track radio absorption conditions,
-            and review the latest flare forecast probabilities. All data sourced from NOAA SWPC.
+            Monitor the Sun with live solar imagery, radio blackout guidance, and short-range solar
+            flare forecast data from NOAA SWPC. This page helps you track active regions, D-region
+            absorption, and flare probabilities that can shape wider space weather conditions.
           </p>
         </div>
         <div className="flex flex-wrap gap-3">
           <Button asChild variant="outline" className="border-aurora-violet/35 bg-black/15">
             <Link href="/space-weather/events">
-              Event browser
+              Browse Space Weather Events
               <ArrowRight className="h-4 w-4" />
             </Link>
           </Button>
           <Button asChild variant="outline" className="border-aurora-violet/35 bg-black/15">
-            <Link href="/space-weather/alerts">Alerts desk</Link>
+            <Link href="/space-weather/alerts">Open Space Weather Alerts</Link>
           </Button>
         </div>
       </section>
@@ -105,6 +123,7 @@ export default async function SpaceWeatherSolarPage() {
               title="What am I looking at?"
               explanation={SPACE_WEATHER_EDUCATION.SUVI.explanation}
               impact={SPACE_WEATHER_EDUCATION.SUVI.impact}
+              theme="space-weather"
             />
           </CardHeader>
           <CardContent>
@@ -165,6 +184,7 @@ export default async function SpaceWeatherSolarPage() {
               title="How does D-RAP affect communications?"
               explanation={SPACE_WEATHER_EDUCATION.DRAP.explanation}
               impact={SPACE_WEATHER_EDUCATION.DRAP.impact}
+              theme="space-weather"
             />
           </CardHeader>
           <CardContent>
@@ -204,8 +224,8 @@ export default async function SpaceWeatherSolarPage() {
         </Card>
       </section>
 
-      {/* Flare Forecast + About This Data */}
-      <section className="mt-4 grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
+      {/* Flare Forecast */}
+      <section className="mt-4">
         <Card className={theme.cardSurface}>
           <CardHeader className="gap-3">
             <CardTitle className="flex items-center gap-2 font-display text-xl">
@@ -222,6 +242,7 @@ export default async function SpaceWeatherSolarPage() {
               explanation={SPACE_WEATHER_EDUCATION.SOLAR_FLARE.explanation}
               impact={SPACE_WEATHER_EDUCATION.SOLAR_FLARE.impact}
               scale={SPACE_WEATHER_EDUCATION.SOLAR_FLARE.scale}
+              theme="space-weather"
             />
           </CardHeader>
           <CardContent>
@@ -280,7 +301,10 @@ export default async function SpaceWeatherSolarPage() {
             )}
           </CardContent>
         </Card>
+      </section>
 
+      {/* About This Data */}
+      <section className="mt-4">
         <Card className={theme.cardSurface}>
           <CardHeader className="gap-3">
             <CardTitle className="font-display text-xl">
@@ -310,6 +334,7 @@ export default async function SpaceWeatherSolarPage() {
           </CardContent>
         </Card>
       </section>
-    </div>
+      </div>
+    </>
   );
 }

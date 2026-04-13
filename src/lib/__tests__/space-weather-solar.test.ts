@@ -67,6 +67,8 @@ describe("space-weather solar adapters", () => {
           "#  X-RAY Warning : NO NEW X-RAY FLUX FOR 2 MINUTES",
           "#",
           "#  Proton Message : Normal Proton Background",
+          "#",
+          "#  Proton Warning : #",
         ].join("\n"),
         { status: 200 },
       );
