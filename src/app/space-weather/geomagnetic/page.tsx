@@ -1,12 +1,17 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Activity, AlertTriangle, ArrowRight, Compass, Waves } from "lucide-react";
+import { Activity, ArrowRight, Compass, Waves } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { InfoTooltip, TOOLTIP_CONTENT } from "@/components/info-tooltip";
+import { LearnBlock } from "@/components/space-weather/learn-block";
+import { SourceAttribution } from "@/components/space-weather/source-attribution";
+import { SPACE_WEATHER_EDUCATION } from "@/lib/space-weather-education";
+import { SPACE_WEATHER_EVENT_ICONS } from "@/lib/space-weather-icons";
 import { getEventTypeLabel } from "@/lib/nasa-donki";
 import { buildSpaceWeatherGeomagneticSnapshot } from "@/lib/space-weather/geomagnetic";
-import type { SpaceWeatherSourceMeta } from "@/lib/types";
+import { formatSpaceWeatherTimestamp } from "@/lib/space-weather/format";
 import { THEMES } from "@/lib/theme";
 
 const theme = THEMES["space-weather"];
@@ -14,34 +19,34 @@ const theme = THEMES["space-weather"];
 export const metadata: Metadata = {
   title: "Geomagnetic Monitoring",
   description:
-    "Geomagnetic monitoring surface for GFZ Hp30, Kyoto AE, and DONKI disturbance context.",
+    "Geomagnetic monitoring with GFZ Hp30 nowcast, Kyoto AE auroral electrojet quicklook, and recent DONKI disturbance events.",
   alternates: {
     canonical: "https://cosmicindex.dev/space-weather/geomagnetic",
   },
 };
 
-function formatTimestamp(value: string | null | undefined): string {
-  if (!value) return "Unavailable";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString("en-US", {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    timeZone: "UTC",
-    timeZoneName: "short",
-  });
-}
+function Hp30ScaleIndicator({ value }: { value: number | null }) {
+  if (value === null) return null;
+  const rounded = Math.round(value);
+  const colorClass =
+    rounded >= 9 ? "text-red-400 border-red-400/30 bg-red-400/10" :
+    rounded >= 7 ? "text-orange-400 border-orange-400/30 bg-orange-400/10" :
+    rounded >= 5 ? "text-amber-400 border-amber-400/30 bg-amber-400/10" :
+    rounded >= 3 ? "text-emerald-400 border-emerald-400/30 bg-emerald-400/10" :
+    "text-muted-foreground border-border/40 bg-black/10";
+  const label =
+    rounded >= 9 ? "Extreme" :
+    rounded >= 8 ? "Severe" :
+    rounded >= 7 ? "Strong" :
+    rounded >= 6 ? "Moderate" :
+    rounded >= 5 ? "Minor storm" :
+    rounded >= 4 ? "Active" :
+    "Quiet";
 
-function SourceMetaBlock({ source }: { source: SpaceWeatherSourceMeta }) {
   return (
-    <div className="mt-3 space-y-1 text-xs text-muted-foreground/75">
-      <p>Source: {source.label}</p>
-      <p>Observed: {formatTimestamp(source.observedAt)}</p>
-      <p>Fetched: {formatTimestamp(source.fetchedAt)}</p>
-      <p className="capitalize">Quality: {source.quality}</p>
-    </div>
+    <span className={`rounded-full border px-2 py-0.5 text-xs font-medium ${colorClass}`}>
+      {label}
+    </span>
   );
 }
 
@@ -50,7 +55,8 @@ export default async function SpaceWeatherGeomagneticPage() {
 
   return (
     <div className="shell-container py-8">
-      <section className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+      {/* Header */}
+      <section className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div className="space-y-3">
           <Badge variant="outline" className={theme.badge}>
             Geomagnetic Surface
@@ -59,25 +65,37 @@ export default async function SpaceWeatherGeomagneticPage() {
             Geomagnetic Monitoring
           </h1>
           <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground/80">
-            Disturbance watch tuned for fast scan: GFZ Hp30 nowcast, Kyoto AE quicklook context, and
-            the DONKI storm/shock lane that links geomagnetic response back to recent space-weather events.
+            Monitor Earth&apos;s magnetic field response to solar activity. This surface combines
+            near-real-time geomagnetic indices with recent storm, shock, and high-speed stream events
+            from NASA DONKI.
           </p>
         </div>
         <div className="flex flex-wrap gap-3">
           <Button asChild variant="outline" className="border-aurora-violet/35 bg-black/15">
             <Link href="/space-weather/events">
-              Open event browser
+              Event browser
               <ArrowRight className="h-4 w-4" />
             </Link>
           </Button>
           <Button asChild variant="outline" className="border-aurora-violet/35 bg-black/15">
-            <Link href="/space-weather/alerts">Open alerts desk</Link>
+            <Link href="/space-weather/alerts">Alerts desk</Link>
           </Button>
         </div>
       </section>
 
+      {/* Educational block */}
+      <section className="mb-6">
+        <LearnBlock
+          title="Understanding geomagnetic activity"
+          explanation={SPACE_WEATHER_EDUCATION.GST.explanation}
+          impact={SPACE_WEATHER_EDUCATION.GST.impact}
+          scale={SPACE_WEATHER_EDUCATION.GST.scale}
+        />
+      </section>
+
+      {/* Warnings */}
       {snapshot.warnings && snapshot.warnings.length > 0 ? (
-        <section className="mb-8 grid gap-3">
+        <section className="mb-6 grid gap-3">
           {snapshot.warnings.map((warning) => (
             <div
               key={warning}
@@ -89,16 +107,26 @@ export default async function SpaceWeatherGeomagneticPage() {
         </section>
       ) : null}
 
-      <section className="grid gap-4 xl:grid-cols-[1fr_1fr]">
+      {/* Hp30 + AE */}
+      <section className="grid gap-4 xl:grid-cols-2">
+        {/* GFZ Hp30 */}
         <Card className={theme.cardSurface}>
           <CardHeader className="gap-3">
             <CardTitle className="flex items-center gap-2 font-display text-xl">
               <Compass className={`h-5 w-5 ${theme.icon}`} />
-              GFZ Hp30
+              <InfoTooltip content={TOOLTIP_CONTENT.HP30} theme="space-weather">
+                GFZ Hp30
+              </InfoTooltip>
             </CardTitle>
             <CardDescription>
-              Half-hour geomagnetic nowcast from GFZ, surfaced as a compact operational trend card.
+              Half-hour geomagnetic nowcast from GFZ Potsdam. Faster than the traditional 3-hour
+              Kp index, giving operators a more timely picture of geomagnetic conditions.
             </CardDescription>
+            <LearnBlock
+              title="What is the Hp30 index?"
+              explanation={SPACE_WEATHER_EDUCATION.HP30.explanation}
+              impact={SPACE_WEATHER_EDUCATION.HP30.impact}
+            />
           </CardHeader>
           <CardContent>
             {snapshot.hp30 ? (
@@ -108,40 +136,49 @@ export default async function SpaceWeatherGeomagneticPage() {
                     <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground/70">
                       Current Hp30
                     </p>
-                    <p className="mt-2 text-3xl font-semibold text-foreground">
-                      {snapshot.hp30.currentValue ?? "Unavailable"}
-                    </p>
+                    <div className="mt-2 flex items-center gap-3">
+                      <p className="text-3xl font-semibold text-foreground">
+                        {snapshot.hp30.currentValue ?? "—"}
+                      </p>
+                      <Hp30ScaleIndicator value={snapshot.hp30.currentValue} />
+                    </div>
                   </div>
                   <div className="rounded-2xl border border-border/45 bg-black/15 p-4">
                     <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground/70">
-                      24h max
+                      24h maximum
                     </p>
-                    <p className="mt-2 text-3xl font-semibold text-foreground">
-                      {snapshot.hp30.maxValue24h ?? "Unavailable"}
-                    </p>
+                    <div className="mt-2 flex items-center gap-3">
+                      <p className="text-3xl font-semibold text-foreground">
+                        {snapshot.hp30.maxValue24h ?? "—"}
+                      </p>
+                      <Hp30ScaleIndicator value={snapshot.hp30.maxValue24h} />
+                    </div>
                   </div>
                 </div>
-                <div className="grid gap-2">
-                  {snapshot.hp30.trend.slice(-8).map((point) => (
-                    <div
-                      key={point.observedAt}
-                      className="grid grid-cols-[1fr_auto_auto] items-center gap-3 rounded-xl border border-border/35 bg-black/10 px-3 py-2 text-sm"
-                    >
-                      <span className="text-muted-foreground/80">{formatTimestamp(point.observedAt)}</span>
-                      <span className="font-medium text-foreground">Hp30 {point.hp30.toFixed(3)}</span>
-                      <span className="text-muted-foreground/70">ap30 {point.ap30}</span>
-                    </div>
-                  ))}
+                <div className="space-y-1">
+                  <p className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground/70">
+                    Recent trend (last 8 readings)
+                  </p>
+                  <div className="grid gap-1.5">
+                    {snapshot.hp30.trend.slice(-8).map((point) => (
+                      <div
+                        key={point.observedAt}
+                        className="grid grid-cols-[1fr_auto_auto] items-center gap-3 rounded-xl border border-border/35 bg-black/10 px-3 py-2 text-sm"
+                      >
+                        <span className="text-muted-foreground/80">
+                          {formatSpaceWeatherTimestamp(point.observedAt)}
+                        </span>
+                        <span className="font-mono font-medium text-foreground">
+                          Hp30 {point.hp30.toFixed(3)}
+                        </span>
+                        <span className="font-mono text-muted-foreground/70">
+                          ap30 {point.ap30}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <SourceMetaBlock source={snapshot.hp30.source} />
-                <a
-                  href={snapshot.hp30.source.sourceUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex text-sm text-aurora-violet underline-offset-4 hover:underline"
-                >
-                  View upstream product
-                </a>
+                <SourceAttribution source={snapshot.hp30.source} />
               </div>
             ) : (
               <p className="text-sm text-muted-foreground/80">
@@ -151,15 +188,24 @@ export default async function SpaceWeatherGeomagneticPage() {
           </CardContent>
         </Card>
 
+        {/* Kyoto AE */}
         <Card className={theme.cardSurface}>
           <CardHeader className="gap-3">
             <CardTitle className="flex items-center gap-2 font-display text-xl">
               <Waves className={`h-5 w-5 ${theme.icon}`} />
-              Kyoto AE
+              <InfoTooltip content={TOOLTIP_CONTENT.AE_INDEX} theme="space-weather">
+                Kyoto AE
+              </InfoTooltip>
             </CardTitle>
             <CardDescription>
-              Quicklook auroral electrojet context from Kyoto WDC, clearly labeled as a lagging provisional feed.
+              Auroral electrojet quicklook data from Kyoto WDC. Note: this data is provisional
+              and can lag real time by up to three weeks.
             </CardDescription>
+            <LearnBlock
+              title="What is the AE index?"
+              explanation={SPACE_WEATHER_EDUCATION.AE_INDEX.explanation}
+              impact={SPACE_WEATHER_EDUCATION.AE_INDEX.impact}
+            />
           </CardHeader>
           <CardContent>
             {snapshot.ae ? (
@@ -170,44 +216,51 @@ export default async function SpaceWeatherGeomagneticPage() {
                       Latest minute
                     </p>
                     <p className="mt-2 text-3xl font-semibold text-foreground">
-                      {snapshot.ae.currentValue ?? "Unavailable"}
+                      {snapshot.ae.currentValue ?? "—"}
                     </p>
+                    <p className="mt-1 text-xs text-muted-foreground/60">nT (nanotesla)</p>
                   </div>
                   <div className="rounded-2xl border border-border/45 bg-black/15 p-4">
                     <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground/70">
                       24h peak
                     </p>
                     <p className="mt-2 text-3xl font-semibold text-foreground">
-                      {snapshot.ae.peakValue24h ?? "Unavailable"}
+                      {snapshot.ae.peakValue24h ?? "—"}
                     </p>
+                    <p className="mt-1 text-xs text-muted-foreground/60">nT (nanotesla)</p>
                   </div>
                 </div>
-                <div className="grid gap-2">
-                  {snapshot.ae.hourlySeries.slice(-8).map((hour) => (
-                    <div
-                      key={hour.hourStart}
-                      className="grid grid-cols-[1fr_auto_auto] items-center gap-3 rounded-xl border border-border/35 bg-black/10 px-3 py-2 text-sm"
-                    >
-                      <span className="text-muted-foreground/80">{formatTimestamp(hour.hourStart)}</span>
-                      <span className="font-medium text-foreground">Mean {hour.meanValue.toFixed(1)}</span>
-                      <span className="text-muted-foreground/70">Peak {hour.peakValue}</span>
-                    </div>
-                  ))}
-                </div>
+
                 {snapshot.ae.warnings?.map((warning) => (
-                  <p key={warning} className="text-sm text-amber-200">
+                  <div key={warning} className="rounded-xl border border-amber-300/25 bg-amber-300/10 p-3 text-xs text-amber-200">
                     {warning}
-                  </p>
+                  </div>
                 ))}
-                <SourceMetaBlock source={snapshot.ae.source} />
-                <a
-                  href={snapshot.ae.source.sourceUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex text-sm text-aurora-violet underline-offset-4 hover:underline"
-                >
-                  View upstream product
-                </a>
+
+                <div className="space-y-1">
+                  <p className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground/70">
+                    Hourly series (last 8 hours)
+                  </p>
+                  <div className="grid gap-1.5">
+                    {snapshot.ae.hourlySeries.slice(-8).map((hour) => (
+                      <div
+                        key={hour.hourStart}
+                        className="grid grid-cols-[1fr_auto_auto] items-center gap-3 rounded-xl border border-border/35 bg-black/10 px-3 py-2 text-sm"
+                      >
+                        <span className="text-muted-foreground/80">
+                          {formatSpaceWeatherTimestamp(hour.hourStart)}
+                        </span>
+                        <span className="font-mono font-medium text-foreground">
+                          Mean {hour.meanValue.toFixed(1)}
+                        </span>
+                        <span className="font-mono text-muted-foreground/70">
+                          Peak {hour.peakValue}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <SourceAttribution source={snapshot.ae.source} />
               </div>
             ) : (
               <p className="text-sm text-muted-foreground/80">
@@ -218,6 +271,7 @@ export default async function SpaceWeatherGeomagneticPage() {
         </Card>
       </section>
 
+      {/* Disturbance Lane + About This Data */}
       <section className="mt-4 grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
         <Card className={theme.cardSurface}>
           <CardHeader className="gap-3">
@@ -226,7 +280,8 @@ export default async function SpaceWeatherGeomagneticPage() {
               Disturbance Lane
             </CardTitle>
             <CardDescription>
-              Recent DONKI geomagnetic storms, interplanetary shocks, and high-speed streams for event follow-up.
+              Recent geomagnetic storms (GST), interplanetary shocks (IPS), and high-speed
+              streams (HSS) from NASA DONKI that relate to the geomagnetic conditions above.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -235,39 +290,67 @@ export default async function SpaceWeatherGeomagneticPage() {
                 No recent geomagnetic-adjacent DONKI events were returned.
               </p>
             ) : null}
-            {snapshot.recentEvents.map((event) => (
-              <div key={event.id} className="rounded-xl border border-border/45 bg-black/15 p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2">
-                    <Activity className={`h-4 w-4 ${theme.icon}`} />
-                    <span className="font-medium text-foreground">{getEventTypeLabel(event.eventType)}</span>
+            {snapshot.recentEvents.map((event) => {
+              const Icon = SPACE_WEATHER_EVENT_ICONS[event.eventType];
+              return (
+                <Link
+                  key={event.id}
+                  href={`/space-weather/${encodeURIComponent(event.id)}`}
+                  className="block rounded-xl border border-border/45 bg-black/15 p-4 transition-colors hover:border-aurora-violet/30"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      {Icon ? <Icon className={`h-4 w-4 ${theme.icon}`} /> : null}
+                      <span className="font-medium text-foreground">
+                        {getEventTypeLabel(event.eventType)}
+                      </span>
+                    </div>
+                    <span className="text-xs text-muted-foreground/70">
+                      {formatSpaceWeatherTimestamp(event.startTime)}
+                    </span>
                   </div>
-                  <span className="text-xs text-muted-foreground/70">{formatTimestamp(event.startTime)}</span>
-                </div>
-                <p className="mt-2 text-sm text-muted-foreground/80">{event.id}</p>
-              </div>
-            ))}
+                  <p className="mt-2 font-mono text-xs text-muted-foreground/60">{event.id}</p>
+                </Link>
+              );
+            })}
           </CardContent>
         </Card>
 
         <Card className={theme.cardSurface}>
           <CardHeader className="gap-3">
-            <CardTitle className="flex items-center gap-2 font-display text-xl">
-              <AlertTriangle className={`h-5 w-5 ${theme.icon}`} />
-              Operator Notes
+            <CardTitle className="font-display text-xl">
+              About This Data
             </CardTitle>
-            <CardDescription>
-              This geomagnetic surface pairs one near-real-time indicator with one lagged quicklook indicator on purpose.
-            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3 text-sm leading-relaxed text-muted-foreground/80">
             <p>
-              GFZ Hp30 gives the faster planetary-activity signal, while Kyoto AE adds auroral electrojet context with a clearly marked lag.
+              <strong className="text-muted-foreground">
+                <InfoTooltip content={TOOLTIP_CONTENT.HP30} theme="space-weather">
+                  GFZ Hp30
+                </InfoTooltip>
+              </strong>{" "}
+              provides the fastest planetary-activity signal, updated every 30 minutes.
+              Values of 5+ correspond to geomagnetic storm conditions (G1+). This is
+              near-real-time data &mdash; much faster than the traditional 3-hour Kp index.
             </p>
             <p>
-              This page favors readable trend slices over dashboard density, which keeps the nowcast/quicklook distinction obvious on both desktop and mobile.
+              <strong className="text-muted-foreground">
+                <InfoTooltip content={TOOLTIP_CONTENT.AE_INDEX} theme="space-weather">
+                  Kyoto AE
+                </InfoTooltip>
+              </strong>{" "}
+              adds auroral zone context but with a clearly marked lag. The AE index measures
+              electrical currents at ~65&ndash;70&deg; latitude. Higher values indicate stronger
+              substorm activity and more visible aurora.
             </p>
-            <p>Snapshot generated: {formatTimestamp(snapshot.generatedAt)}</p>
+            <p>
+              The two indices are shown together by design: Hp30 for fast response, AE for
+              auroral context. Together they give a more complete picture of geomagnetic
+              conditions than either alone.
+            </p>
+            <p className="text-xs text-muted-foreground/60">
+              Snapshot generated: {formatSpaceWeatherTimestamp(snapshot.generatedAt)}
+            </p>
           </CardContent>
         </Card>
       </section>

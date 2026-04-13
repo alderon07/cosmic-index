@@ -1,4 +1,5 @@
 import { describe, expect, it, mock } from "bun:test";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { renderToStaticMarkup } from "react-dom/server";
 
 mock.module("@/lib/space-weather/alerts", () => ({
@@ -65,13 +66,17 @@ const { metadata, default: SpaceWeatherAlertsPage } = await import(
 );
 
 describe("SpaceWeatherAlertsPage", () => {
-  it("renders multi-source alerts after the SWPC adapter lands", async () => {
-    const html = renderToStaticMarkup(await SpaceWeatherAlertsPage());
+  it("renders alerts page with educational context", async () => {
+    const html = renderToStaticMarkup(
+      <QueryClientProvider client={new QueryClient()}>
+        {await SpaceWeatherAlertsPage()}
+      </QueryClientProvider>,
+    );
 
     expect(html).toContain("Space Weather Alerts");
-    expect(html).toContain("Unified Alerts");
-    expect(html).toContain("SWPC");
-    expect(html).toContain("DONKI");
+    expect(html).toContain("What are space weather alerts?");
+    expect(html).toContain("DONKI vs. SWPC");
+    expect(html).toContain("Full event browser");
   });
 
   it("publishes canonical metadata for the alerts route", () => {

@@ -1,12 +1,16 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import { AlertTriangle, ArrowRight, Flame, Radar, SunMedium } from "lucide-react";
+import { ArrowRight, Flame, Radar, SunMedium } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import type { SpaceWeatherSourceMeta } from "@/lib/types";
+import { InfoTooltip, TOOLTIP_CONTENT } from "@/components/info-tooltip";
+import { LearnBlock } from "@/components/space-weather/learn-block";
+import { SourceAttribution } from "@/components/space-weather/source-attribution";
+import { SPACE_WEATHER_EDUCATION } from "@/lib/space-weather-education";
 import { buildSpaceWeatherSolarSnapshot } from "@/lib/space-weather/solar";
+import { formatSpaceWeatherTimestamp } from "@/lib/space-weather/format";
 import { THEMES } from "@/lib/theme";
 
 const theme = THEMES["space-weather"];
@@ -14,33 +18,25 @@ const theme = THEMES["space-weather"];
 export const metadata: Metadata = {
   title: "Solar Monitoring",
   description:
-    "Solar monitoring surface for GOES SUVI imagery, D-RAP absorption guidance, and NOAA flare forecast probabilities.",
+    "Live solar monitoring with GOES SUVI ultraviolet imagery, D-RAP radio absorption maps, and NOAA 3-day flare forecast probabilities.",
   alternates: {
     canonical: "https://cosmicindex.dev/space-weather/solar",
   },
 };
 
-function formatTimestamp(value: string | null | undefined): string {
-  if (!value) return "Unavailable";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString("en-US", {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    timeZone: "UTC",
-    timeZoneName: "short",
-  });
-}
-
-function SourceMetaBlock({ source }: { source: SpaceWeatherSourceMeta }) {
+function ProbabilityBar({ value, label, colorClass }: { value: number; label: string; colorClass: string }) {
   return (
-    <div className="mt-3 space-y-1 text-xs text-muted-foreground/75">
-      <p>Source: {source.label}</p>
-      <p>Observed: {formatTimestamp(source.observedAt)}</p>
-      <p>Fetched: {formatTimestamp(source.fetchedAt)}</p>
-      <p className="capitalize">Quality: {source.quality}</p>
+    <div className="space-y-1">
+      <div className="flex items-center justify-between text-sm">
+        <span className="text-muted-foreground/85">{label}</span>
+        <span className="font-mono font-medium text-foreground">{value}%</span>
+      </div>
+      <div className="h-2 w-full overflow-hidden rounded-full bg-black/20">
+        <div
+          className={`h-full rounded-full transition-all ${colorClass}`}
+          style={{ width: `${Math.min(value, 100)}%` }}
+        />
+      </div>
     </div>
   );
 }
@@ -50,7 +46,8 @@ export default async function SpaceWeatherSolarPage() {
 
   return (
     <div className="shell-container py-8">
-      <section className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+      {/* Header */}
+      <section className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div className="space-y-3">
           <Badge variant="outline" className={theme.badge}>
             Solar Surface
@@ -59,26 +56,26 @@ export default async function SpaceWeatherSolarPage() {
             Solar Monitoring
           </h1>
           <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground/80">
-            Media-first solar watch tuned for fast scan: GOES SUVI quicklook imagery, D-RAP
-            absorption guidance, and NOAA flare probabilities with provenance and freshness on every
-            module.
+            Watch the Sun in near-real-time through ultraviolet imagery, track radio absorption conditions,
+            and review the latest flare forecast probabilities. All data sourced from NOAA SWPC.
           </p>
         </div>
         <div className="flex flex-wrap gap-3">
           <Button asChild variant="outline" className="border-aurora-violet/35 bg-black/15">
             <Link href="/space-weather/events">
-              Open event browser
+              Event browser
               <ArrowRight className="h-4 w-4" />
             </Link>
           </Button>
           <Button asChild variant="outline" className="border-aurora-violet/35 bg-black/15">
-            <Link href="/space-weather/alerts">Open alerts desk</Link>
+            <Link href="/space-weather/alerts">Alerts desk</Link>
           </Button>
         </div>
       </section>
 
+      {/* Warnings */}
       {snapshot.warnings && snapshot.warnings.length > 0 ? (
-        <section className="mb-8 grid gap-3">
+        <section className="mb-6 grid gap-3">
           {snapshot.warnings.map((warning) => (
             <div
               key={warning}
@@ -90,16 +87,25 @@ export default async function SpaceWeatherSolarPage() {
         </section>
       ) : null}
 
+      {/* GOES SUVI */}
       <section className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
         <Card className={theme.cardSurface}>
           <CardHeader className="gap-3">
             <CardTitle className="flex items-center gap-2 font-display text-xl">
               <SunMedium className={`h-5 w-5 ${theme.icon}`} />
-              GOES SUVI
+              <InfoTooltip content={TOOLTIP_CONTENT.SUVI} theme="space-weather">
+                GOES SUVI
+              </InfoTooltip>
             </CardTitle>
             <CardDescription>
-              Quicklook solar imagery cards pulled from the current SWPC GOES SUVI lanes.
+              Real-time solar images from the Solar Ultraviolet Imager aboard NOAA&apos;s GOES satellites.
+              Each wavelength reveals different layers and temperatures of the Sun&apos;s atmosphere.
             </CardDescription>
+            <LearnBlock
+              title="What am I looking at?"
+              explanation={SPACE_WEATHER_EDUCATION.SUVI.explanation}
+              impact={SPACE_WEATHER_EDUCATION.SUVI.impact}
+            />
           </CardHeader>
           <CardContent>
             {snapshot.suvi ? (
@@ -129,15 +135,7 @@ export default async function SpaceWeatherSolarPage() {
                       <p className="mt-2 text-sm leading-relaxed text-muted-foreground/80">
                         {panel.description}
                       </p>
-                      <SourceMetaBlock source={panel.source} />
-                      <a
-                        href={panel.productUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="mt-3 inline-flex text-sm text-aurora-violet underline-offset-4 hover:underline"
-                      >
-                        View upstream product
-                      </a>
+                      <SourceAttribution source={panel.source} className="mt-3" />
                     </div>
                   </article>
                 ))}
@@ -150,15 +148,24 @@ export default async function SpaceWeatherSolarPage() {
           </CardContent>
         </Card>
 
+        {/* D-RAP */}
         <Card className={theme.cardSurface}>
           <CardHeader className="gap-3">
             <CardTitle className="flex items-center gap-2 font-display text-xl">
               <Radar className={`h-5 w-5 ${theme.icon}`} />
-              D-RAP
+              <InfoTooltip content={TOOLTIP_CONTENT.DRAP} theme="space-weather">
+                D-RAP
+              </InfoTooltip>
             </CardTitle>
             <CardDescription>
-              D-region absorption guidance for current radio-blackout context.
+              D-Region Absorption Prediction &mdash; shows where high-frequency radio signals
+              are being absorbed in the ionosphere right now.
             </CardDescription>
+            <LearnBlock
+              title="How does D-RAP affect communications?"
+              explanation={SPACE_WEATHER_EDUCATION.DRAP.explanation}
+              impact={SPACE_WEATHER_EDUCATION.DRAP.impact}
+            />
           </CardHeader>
           <CardContent>
             {snapshot.drap ? (
@@ -186,15 +193,7 @@ export default async function SpaceWeatherSolarPage() {
                     </p>
                   ))}
                 </div>
-                <SourceMetaBlock source={snapshot.drap.source} />
-                <a
-                  href={snapshot.drap.productUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex text-sm text-aurora-violet underline-offset-4 hover:underline"
-                >
-                  View upstream product
-                </a>
+                <SourceAttribution source={snapshot.drap.source} />
               </div>
             ) : (
               <p className="text-sm text-muted-foreground/80">
@@ -205,16 +204,25 @@ export default async function SpaceWeatherSolarPage() {
         </Card>
       </section>
 
+      {/* Flare Forecast + About This Data */}
       <section className="mt-4 grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
         <Card className={theme.cardSurface}>
           <CardHeader className="gap-3">
             <CardTitle className="flex items-center gap-2 font-display text-xl">
               <Flame className={`h-5 w-5 ${theme.icon}`} />
-              Flare Forecast
+              <InfoTooltip content={TOOLTIP_CONTENT.SOLAR_FLARE} theme="space-weather">
+                Flare Forecast
+              </InfoTooltip>
             </CardTitle>
             <CardDescription>
-              NOAA SWPC flare and proton probabilities projected across the next three days.
+              NOAA SWPC&apos;s 3-day solar flare and proton event probabilities.
             </CardDescription>
+            <LearnBlock
+              title="Understanding flare classes"
+              explanation={SPACE_WEATHER_EDUCATION.SOLAR_FLARE.explanation}
+              impact={SPACE_WEATHER_EDUCATION.SOLAR_FLARE.impact}
+              scale={SPACE_WEATHER_EDUCATION.SOLAR_FLARE.scale}
+            />
           </CardHeader>
           <CardContent>
             {snapshot.flareForecast ? (
@@ -222,36 +230,48 @@ export default async function SpaceWeatherSolarPage() {
                 <p className="text-sm text-muted-foreground/80">
                   {snapshot.flareForecast.summary}
                 </p>
-                <div className="grid gap-3 md:grid-cols-3">
+                <div className="grid gap-4 md:grid-cols-3">
                   {snapshot.flareForecast.days.map((day) => (
                     <div
                       key={day.date}
-                      className="rounded-2xl border border-border/45 bg-black/15 p-4"
+                      className="space-y-3 rounded-2xl border border-border/45 bg-black/15 p-4"
                     >
-                      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground/70">
+                      <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground/70">
                         {day.date}
                       </p>
-                      <div className="mt-3 space-y-1 text-sm text-muted-foreground/85">
-                        <p>C-class: {day.cClassProbability}%</p>
-                        <p>M-class: {day.mClassProbability}%</p>
-                        <p>X-class: {day.xClassProbability}%</p>
-                        <p>10 MeV protons: {day.protonProbability}%</p>
-                        <p className="capitalize">
-                          Polar cap absorption: {day.polarCapAbsorption}
-                        </p>
+                      <div className="space-y-2.5">
+                        <ProbabilityBar
+                          label="C-class"
+                          value={day.cClassProbability}
+                          colorClass="bg-emerald-500/80"
+                        />
+                        <ProbabilityBar
+                          label="M-class"
+                          value={day.mClassProbability}
+                          colorClass="bg-amber-400/80"
+                        />
+                        <ProbabilityBar
+                          label="X-class"
+                          value={day.xClassProbability}
+                          colorClass="bg-red-500/80"
+                        />
+                        <ProbabilityBar
+                          label="10 MeV protons"
+                          value={day.protonProbability}
+                          colorClass="bg-aurora-violet/80"
+                        />
+                      </div>
+                      <div className="text-xs text-muted-foreground/70">
+                        <InfoTooltip content={TOOLTIP_CONTENT.POLAR_CAP_ABSORPTION} theme="space-weather">
+                          Polar cap absorption
+                        </InfoTooltip>
+                        :{" "}
+                        <span className="capitalize">{day.polarCapAbsorption}</span>
                       </div>
                     </div>
                   ))}
                 </div>
-                <SourceMetaBlock source={snapshot.flareForecast.source} />
-                <a
-                  href={snapshot.flareForecast.source.sourceUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex text-sm text-aurora-violet underline-offset-4 hover:underline"
-                >
-                  View upstream product
-                </a>
+                <SourceAttribution source={snapshot.flareForecast.source} />
               </div>
             ) : (
               <p className="text-sm text-muted-foreground/80">
@@ -263,29 +283,30 @@ export default async function SpaceWeatherSolarPage() {
 
         <Card className={theme.cardSurface}>
           <CardHeader className="gap-3">
-            <CardTitle className="flex items-center gap-2 font-display text-xl">
-              <AlertTriangle className={`h-5 w-5 ${theme.icon}`} />
-              Operator Notes
+            <CardTitle className="font-display text-xl">
+              About This Data
             </CardTitle>
-            <CardDescription>
-              A compact operations view for current imagery, absorption context, and near-term
-              flare guidance.
-            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3 text-sm leading-relaxed text-muted-foreground/80">
             <p>
-              SUVI stays focused on fast-scan quicklooks: the latest imagery, clear provenance, and
-              a direct upstream link instead of custom playback chrome.
+              <strong className="text-muted-foreground">GOES SUVI</strong> images are &ldquo;quicklook&rdquo;
+              products &mdash; the latest available frame from the satellite, not a processed archive.
+              Each wavelength channel shows different temperatures: 131&#8491; highlights hot flare plasma
+              (~10 million K), while 195&#8491; reveals coronal loops and structures (~1.5 million K).
             </p>
             <p>
-              D-RAP is surfaced as an operations card first, with the current image and status text
-              carried together so degraded radio conditions are readable without leaving the product.
+              <strong className="text-muted-foreground">D-RAP</strong> is an operational product showing
+              current radio absorption conditions. During a solar flare, increased X-ray flux ionizes
+              the D-layer of the ionosphere, absorbing HF (3–30 MHz) radio waves passing through it.
             </p>
             <p>
-              The flare module uses the latest SWPC issuance and expands its 1-day, 2-day, and
-              3-day probabilities into a compact scan card for faster comparison.
+              <strong className="text-muted-foreground">Flare forecast</strong> probabilities are from
+              the latest SWPC issuance, projected across three days. C-class flares are common and minor;
+              M-class can cause brief radio blackouts; X-class are rare and can cause planet-wide disruptions.
             </p>
-            <p>Snapshot generated: {formatTimestamp(snapshot.generatedAt)}</p>
+            <p className="text-xs text-muted-foreground/60">
+              Snapshot generated: {formatSpaceWeatherTimestamp(snapshot.generatedAt)}
+            </p>
           </CardContent>
         </Card>
       </section>

@@ -101,4 +101,20 @@ export const TOOLTIP_CONTENT = {
 
   // Coordinates
   RA_DEC: "Right Ascension (RA) and Declination (Dec): Celestial coordinates, like longitude and latitude for the sky.",
+
+  // Space Weather
+  SOLAR_FLARE: "A sudden flash of increased brightness on the Sun, releasing electromagnetic radiation across the spectrum. Classified as C (small), M (moderate), or X (major).",
+  CME: "Coronal Mass Ejection: A massive burst of solar wind and magnetic field from the Sun. Can carry billions of tons of material and takes 1–3 days to reach Earth.",
+  GEOMAGNETIC_STORM: "A disturbance of Earth's magnetosphere caused by solar wind shock waves. Measured by Kp index on the G1–G5 scale.",
+  IPS: "Interplanetary Shock: A shock wave in the solar wind, often driven by a fast CME. First sign that a geomagnetic storm may be imminent.",
+  HSS: "High-Speed Stream: Fast-flowing solar wind from a coronal hole, reaching 600–800+ km/s. Can cause recurrent geomagnetic disturbance.",
+  SEP: "Solar Energetic Particles: High-energy protons accelerated by flares or CME shocks. Primary radiation concern for astronauts and polar aviation.",
+  KP_INDEX: "Kp Index: A 0–9 scale of global geomagnetic disturbance. Kp 5+ = G1 storm. Higher values mean stronger aurora and greater technology impacts.",
+  SUVI: "Solar Ultraviolet Imager on NOAA's GOES satellites. Different wavelengths show different solar temperatures: 131Å for flare plasma, 195Å for coronal structures.",
+  DRAP: "D-Region Absorption Prediction: Shows where HF radio signals are being absorbed in the ionosphere due to solar flare X-rays or energetic particles.",
+  HP30: "Hp30: A near-real-time geomagnetic index from GFZ Potsdam, updated every 30 minutes. Faster than the traditional 3-hour Kp index.",
+  AE_INDEX: "Auroral Electrojet index: Measures electrical currents at auroral latitudes. High values indicate substorm activity and visible aurora.",
+  DONKI: "NASA's Database Of Notifications, Knowledge, Information. The definitive catalog of space weather events with causality links between related activity.",
+  SWPC: "NOAA's Space Weather Prediction Center: The official U.S. source for space weather forecasts, watches, warnings, and alerts.",
+  POLAR_CAP_ABSORPTION: "Absorption of HF radio over polar regions caused by energetic solar protons. Can force transpolar flights to reroute to lower latitudes.",
 } as const;

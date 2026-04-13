@@ -57,13 +57,17 @@ const { metadata, default: SpaceWeatherGeomagneticPage } = await import(
 );
 
 describe("SpaceWeatherGeomagneticPage", () => {
-  it("renders the live geomagnetic modules instead of placeholder lanes", async () => {
+  it("renders the geomagnetic modules with educational content", async () => {
     const html = renderToStaticMarkup(await SpaceWeatherGeomagneticPage());
 
     expect(html).toContain("Geomagnetic Monitoring");
     expect(html).toContain("GFZ Hp30");
     expect(html).toContain("Kyoto AE");
     expect(html).toContain("404");
+    expect(html).toContain("Understanding geomagnetic activity");
+    expect(html).toContain("What is the Hp30 index?");
+    expect(html).toContain("What is the AE index?");
+    expect(html).toContain("About This Data");
   });
 
   it("publishes canonical metadata for the geomagnetic route", () => {

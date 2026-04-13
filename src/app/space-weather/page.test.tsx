@@ -1,4 +1,5 @@
 import { describe, expect, it, mock } from "bun:test";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { renderToStaticMarkup } from "react-dom/server";
 
 mock.module("@/lib/space-weather/overview", () => ({
@@ -31,17 +32,20 @@ const { metadata, default: SpaceWeatherOverviewPage } = await import(
 );
 
 describe("SpaceWeatherOverviewPage", () => {
-  it("renders the observatory overview with deep links", async () => {
-    const html = renderToStaticMarkup(await SpaceWeatherOverviewPage());
+  it("renders the observatory overview with educational content and deep links", async () => {
+    const html = renderToStaticMarkup(
+      <QueryClientProvider client={new QueryClient()}>
+        {await SpaceWeatherOverviewPage()}
+      </QueryClientProvider>,
+    );
 
     expect(html).toContain("Space Weather Observatory");
     expect(html).toContain("/space-weather/events");
     expect(html).toContain("/space-weather/alerts");
     expect(html).toContain("/space-weather/solar");
     expect(html).toContain("/space-weather/geomagnetic");
-    expect(html).toContain("90-day DONKI event window");
-    expect(html).toContain("GOES SUVI");
-    expect(html).toContain("GFZ Hp30");
+    expect(html).toContain("What is space weather?");
+    expect(html).toContain("About this data");
   });
 
   it("publishes observatory metadata on the root route", () => {

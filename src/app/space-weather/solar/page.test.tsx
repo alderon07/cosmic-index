@@ -77,7 +77,7 @@ const { metadata, default: SpaceWeatherSolarPage } = await import(
 );
 
 describe("SpaceWeatherSolarPage", () => {
-  it("renders the live solar modules instead of the placeholder lanes", async () => {
+  it("renders the solar modules with educational content", async () => {
     const html = renderToStaticMarkup(await SpaceWeatherSolarPage());
 
     expect(html).toContain("Solar Monitoring");
@@ -86,6 +86,9 @@ describe("SpaceWeatherSolarPage", () => {
     expect(html).toContain("Flare Forecast");
     expect(html).toContain("75%");
     expect(html).toContain("https://services.swpc.noaa.gov/images/animations/d-rap/global/latest.png");
+    expect(html).toContain("What am I looking at?");
+    expect(html).toContain("Understanding flare classes");
+    expect(html).toContain("About This Data");
   });
 
   it("publishes canonical metadata for the solar route", () => {
