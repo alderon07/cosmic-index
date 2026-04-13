@@ -4,13 +4,16 @@ import { cache } from "react";
 import { ObjectDetail } from "@/components/object-detail";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { fetchExoplanetBySlug } from "@/lib/nasa-exoplanet";
-import { ExoplanetData } from "@/lib/types";
 import { BASE_URL } from "@/lib/config";
 import { THEMES } from "@/lib/theme";
 import { JsonLd } from "@/components/seo/json-ld";
 import { buildBreadcrumbJsonLd } from "@/lib/seo";
 import { getExoplanetsForHostStar } from "@/lib/exoplanet-index";
 import { getStarByHostname } from "@/lib/star-index";
+import {
+  buildExoplanetJsonLd,
+  buildExoplanetMetaDescription,
+} from "@/lib/exoplanet-detail";
 import { ExoplanetSystemContext } from "./exoplanet-system-context";
 
 interface ExoplanetDetailPageProps {
@@ -34,15 +37,26 @@ export async function generateMetadata({
     return {
       title: "Exoplanet Not Found",
       description: "The requested exoplanet could not be found.",
+      robots: {
+        index: false,
+        follow: false,
+      },
     };
   }
 
   const title = exoplanet.displayName;
-  const description = exoplanet.summary.slice(0, 155);
+  const description = buildExoplanetMetaDescription(exoplanet);
 
   return {
     title,
     description,
+    keywords: [
+      exoplanet.displayName,
+      exoplanet.hostStar,
+      exoplanet.discoveryMethod,
+      "exoplanet",
+      "NASA Exoplanet Archive",
+    ].filter(Boolean),
     openGraph: {
       title: `${title} | Cosmic Index`,
       description,
@@ -69,87 +83,6 @@ export async function generateMetadata({
   };
 }
 
-// Generate JSON-LD structured data for an exoplanet
-// Data comes from trusted NASA API, JSON.stringify safely escapes special characters
-function generateExoplanetJsonLd(exoplanet: ExoplanetData, slug: string) {
-  const additionalProperties = [];
-
-  if (exoplanet.hostStar) {
-    additionalProperties.push({
-      "@type": "PropertyValue",
-      name: "Host Star",
-      value: exoplanet.hostStar,
-    });
-  }
-
-  if (exoplanet.discoveryMethod) {
-    additionalProperties.push({
-      "@type": "PropertyValue",
-      name: "Discovery Method",
-      value: exoplanet.discoveryMethod,
-    });
-  }
-
-  if (exoplanet.radiusEarth !== undefined) {
-    additionalProperties.push({
-      "@type": "PropertyValue",
-      name: "Radius",
-      value: exoplanet.radiusEarth.toFixed(2),
-      unitText: "Earth radii",
-    });
-  }
-
-  if (exoplanet.massEarth !== undefined) {
-    additionalProperties.push({
-      "@type": "PropertyValue",
-      name: exoplanet.massIsEstimated ? "Mass (estimated)" : "Mass",
-      value: exoplanet.massEarth.toFixed(2),
-      unitText: "Earth masses",
-    });
-  }
-
-  if (exoplanet.orbitalPeriodDays !== undefined) {
-    additionalProperties.push({
-      "@type": "PropertyValue",
-      name: "Orbital Period",
-      value: exoplanet.orbitalPeriodDays.toFixed(2),
-      unitText: "days",
-    });
-  }
-
-  if (exoplanet.distanceParsecs !== undefined) {
-    additionalProperties.push({
-      "@type": "PropertyValue",
-      name: "Distance",
-      value: exoplanet.distanceParsecs.toFixed(1),
-      unitText: "parsecs",
-    });
-  }
-
-  if (exoplanet.discoveredYear !== undefined) {
-    additionalProperties.push({
-      "@type": "PropertyValue",
-      name: "Discovery Year",
-      value: exoplanet.discoveredYear.toString(),
-    });
-  }
-
-  return {
-    "@context": "https://schema.org",
-    "@type": "Thing",
-    name: exoplanet.displayName,
-    description: exoplanet.summary,
-    url: `${BASE_URL}/exoplanets/${slug}`,
-    additionalType: "https://schema.org/Thing",
-    additionalProperty: additionalProperties,
-    sameAs: [
-      `https://exoplanetarchive.ipac.caltech.edu/overview/${encodeURIComponent(
-        exoplanet.sourceId
-      )}`,
-    ],
-  };
-}
-
 export default async function ExoplanetDetailPage({
   params,
 }: ExoplanetDetailPageProps) {
@@ -160,7 +93,7 @@ export default async function ExoplanetDetailPage({
     notFound();
   }
 
-  const jsonLd = generateExoplanetJsonLd(exoplanet, id);
+  const jsonLd = buildExoplanetJsonLd(exoplanet, id);
 
   const breadcrumbItems = [
     { label: "Home", href: "/" },

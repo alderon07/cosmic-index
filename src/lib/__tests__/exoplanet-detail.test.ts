@@ -1,6 +1,8 @@
 import { describe, expect, it } from "bun:test";
 import {
   buildExoplanetDetailNarrative,
+  buildExoplanetJsonLd,
+  buildExoplanetMetaDescription,
   getRelatedExoplanets,
 } from "@/lib/exoplanet-detail";
 import type { ExoplanetData } from "@/lib/types";
@@ -61,5 +63,45 @@ describe("exoplanet detail helpers", () => {
     );
 
     expect(related.map((planet) => planet.id)).toEqual(["c", "d"]);
+  });
+
+  it("builds a concise metadata description from the strongest facts", () => {
+    const description = buildExoplanetMetaDescription(
+      makeExoplanet({
+        radiusEarth: 2.38,
+        orbitalPeriodDays: 289.86,
+        distanceParsecs: 190.1,
+      })
+    );
+
+    expect(description).toContain("Kepler-22 b is an exoplanet orbiting Kepler-22.");
+    expect(description).toContain("reported in 2011");
+    expect(description).toContain("via Transit");
+    expect(description).toContain("2.38 Earth radii");
+    expect(description.length).toBeLessThanOrEqual(158);
+  });
+
+  it("builds a graph-based json-ld payload for detail pages", () => {
+    const jsonLd = buildExoplanetJsonLd(
+      makeExoplanet({
+        aliases: ["KOI-087"],
+        radiusEarth: 2.38,
+        massEarth: 6.4,
+        distanceParsecs: 190.1,
+      }),
+      "kepler-22-b"
+    );
+
+    expect(jsonLd["@graph"]).toHaveLength(2);
+    expect(jsonLd["@graph"][0]).toMatchObject({
+      "@type": "WebPage",
+      "@id": "https://cosmicindex.dev/exoplanets/kepler-22-b#webpage",
+    });
+    expect(jsonLd["@graph"][1]).toMatchObject({
+      "@type": "Thing",
+      "@id": "https://cosmicindex.dev/exoplanets/kepler-22-b#exoplanet",
+      identifier: "Kepler-22 b",
+      alternateName: ["KOI-087"],
+    });
   });
 });
