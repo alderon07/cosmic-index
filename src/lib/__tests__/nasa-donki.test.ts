@@ -591,10 +591,39 @@ describe("DONKI upstream failure handling", () => {
     });
 
     expect(requestedUrls).toHaveLength(1);
-    expect(requestedUrls[0]).toContain("startDate=2025-12-19");
-    expect(result.meta.dateRange.start).toBe("2025-12-19");
+    expect(requestedUrls[0]).toContain("startDate=2025-11-19");
+    expect(result.meta.dateRange.start).toBe("2025-11-19");
     expect(result.meta.dateRange.end).toBe("2026-02-17");
-    expect(result.meta.warnings?.some((warning) => warning.includes("limited to 60 days"))).toBe(true);
+    expect(result.meta.warnings?.some((warning) => warning.includes("limited to 90 days"))).toBe(true);
+  });
+
+  it("uses a 90-day default event window when startDate is omitted", async () => {
+    const requestedUrls: string[] = [];
+    globalThis.fetch = async (input: string | URL | Request) => {
+      const url =
+        typeof input === "string"
+          ? input
+          : input instanceof URL
+            ? input.toString()
+            : input.url;
+      requestedUrls.push(url);
+      return new Response(JSON.stringify([]), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    };
+
+    const result = await fetchSpaceWeather({
+      endDate: "2026-02-17",
+      eventTypes: ["FLR"],
+      limit: 21,
+      page: 1,
+    });
+
+    expect(requestedUrls).toHaveLength(1);
+    expect(requestedUrls[0]).toContain("startDate=2025-11-19");
+    expect(result.meta.dateRange.start).toBe("2025-11-19");
+    expect(result.meta.dateRange.end).toBe("2026-02-17");
   });
 
   it("returns partial data with warnings when at least one source succeeds", async () => {

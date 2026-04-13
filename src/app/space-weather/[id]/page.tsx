@@ -111,6 +111,7 @@ export default async function SpaceWeatherDetailPage({
   const breadcrumbItems = [
     { label: "Home", href: "/" },
     { label: "Space Weather", href: "/space-weather" },
+    { label: "Events", href: "/space-weather/events" },
     { label: typeLabel },
   ];
 

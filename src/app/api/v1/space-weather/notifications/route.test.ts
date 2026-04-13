@@ -1,59 +1,20 @@
-import { beforeEach, describe, expect, it, mock } from "bun:test";
+import { afterAll, beforeEach, describe, expect, it, mock } from "bun:test";
 import { NextRequest } from "next/server";
-import type {
-  SpaceWeatherNotificationsListResponse,
-  SpaceWeatherNotificationsQueryParams,
-} from "@/lib/types";
+import { __resetCacheStateForTests } from "@/lib/cache";
+import { __resetDonkiTransientStateForTests, __setDonkiFetchForTests } from "@/lib/nasa-donki";
 
-let lastFetchParams: SpaceWeatherNotificationsQueryParams | null = null;
-let mockFetchResult: SpaceWeatherNotificationsListResponse;
-let fetchCallCount = 0;
+let notificationPayloads: unknown[] = [];
+let seenUrls: string[] = [];
 
-function buildMockResult(
-  overrides: Partial<SpaceWeatherNotificationsListResponse> = {},
-): SpaceWeatherNotificationsListResponse {
-  return {
-    notifications: [
-      {
-        id: "20260216-AL-008",
-        type: "CME",
-        issuedAt: "2026-02-16T22:49Z",
-        url: "https://kauai.ccmc.gsfc.nasa.gov/DONKI/view/Alert/44706/1",
-        body: "Sample notification body",
-        activityIDs: ["2026-02-16T14:08:00-CME-001"],
-      },
-    ],
-    count: 1,
-    totalAvailable: 1,
-    limitApplied: 8,
-    page: 1,
-    meta: {
-      dateRange: {
-        requestedStart: "2026-02-10",
-        requestedEnd: "2026-02-17",
-        effectiveStart: "2026-02-10",
-        effectiveEnd: "2026-02-17",
-      },
-      typeIncluded: "all",
-      totalCapApplied: false,
-      totalCap: 300,
-    },
-    ...overrides,
-  };
+function buildNotificationPayload(count: number, messageType = "CME"): unknown[] {
+  return Array.from({ length: count }, (_, index) => ({
+    messageID: `20260216-AL-${String(index + 1).padStart(3, "0")}`,
+    messageType,
+    messageIssueTime: `2026-02-${String(16 + Math.floor(index / 24)).padStart(2, "0")}T${String(index % 24).padStart(2, "0")}:49Z`,
+    messageURL: `https://kauai.ccmc.gsfc.nasa.gov/DONKI/view/Alert/${44706 + index}/1`,
+    messageBody: "Activity ID: 2026-02-16T14:08:00-CME-001\nSample notification body",
+  }));
 }
-
-mock.module("@/lib/nasa-donki", () => ({
-  fetchSpaceWeather: async () => {
-    throw new Error("Not implemented in notifications route test");
-  },
-  fetchSpaceWeatherNotifications: async (
-    params: SpaceWeatherNotificationsQueryParams,
-  ) => {
-    fetchCallCount += 1;
-    lastFetchParams = params;
-    return mockFetchResult;
-  },
-}));
 
 mock.module("@/lib/api-middleware", () => ({
   initRequest: () => ({ requestId: "req_test_notifications" }),
@@ -82,6 +43,7 @@ mock.module("@/lib/api-middleware", () => ({
 }));
 
 mock.module("@/lib/api-response", () => ({
+  apiSuccess: (data: unknown) => Response.json({ data }, { status: 200 }),
   apiPaginated: (
     data: unknown[],
     pagination: Record<string, unknown>,
@@ -103,9 +65,25 @@ mock.module("@/lib/api-response", () => ({
 const { GET } = await import("@/app/api/v1/space-weather/notifications/route");
 
 beforeEach(() => {
-  lastFetchParams = null;
-  fetchCallCount = 0;
-  mockFetchResult = buildMockResult();
+  notificationPayloads = buildNotificationPayload(1);
+  seenUrls = [];
+  __resetCacheStateForTests();
+  __resetDonkiTransientStateForTests();
+  __setDonkiFetchForTests(async (input) => {
+    const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+    seenUrls.push(url);
+    return new Response(JSON.stringify(notificationPayloads), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+  });
+});
+
+afterAll(() => {
+  __setDonkiFetchForTests(null);
+  __resetDonkiTransientStateForTests();
+  __resetCacheStateForTests();
+  mock.restore();
 });
 
 describe("GET /api/v1/space-weather/notifications", () => {
@@ -119,15 +97,12 @@ describe("GET /api/v1/space-weather/notifications", () => {
     expect(response.status).toBe(200);
     expect(body.pagination.mode).toBe("none");
     expect(body.pagination.hasMore).toBe(false);
-    expect(lastFetchParams?.page).toBeUndefined();
+    expect(seenUrls).toHaveLength(1);
+    expect(seenUrls[0]).toContain("/notifications?");
   });
 
   it("returns pagination mode 'offset' when page is present", async () => {
-    mockFetchResult = buildMockResult({
-      totalAvailable: 30,
-      limitApplied: 8,
-      page: 1,
-    });
+    notificationPayloads = buildNotificationPayload(30);
 
     const request = new NextRequest(
       "http://localhost:3000/api/v1/space-weather/notifications?page=1&limit=8&type=CME",
@@ -141,7 +116,7 @@ describe("GET /api/v1/space-weather/notifications", () => {
     expect(body.pagination.limit).toBe(8);
     expect(body.pagination.total).toBe(30);
     expect(body.pagination.hasMore).toBe(true);
-    expect(lastFetchParams?.type).toBe("CME");
+    expect(seenUrls[0]).toContain("type=CME");
   });
 
   it("returns 400 for invalid type", async () => {
@@ -151,6 +126,6 @@ describe("GET /api/v1/space-weather/notifications", () => {
     const response = await GET(request);
 
     expect(response.status).toBe(400);
-    expect(fetchCallCount).toBe(0);
+    expect(seenUrls).toHaveLength(0);
   });
 });

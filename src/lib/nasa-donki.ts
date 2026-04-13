@@ -22,8 +22,8 @@ const DONKI_CCMC_BASE_URL = "https://kauai.ccmc.gsfc.nasa.gov/DONKI/WS/get";
 const DONKI_NASA_BASE_URL = "https://api.nasa.gov/DONKI";
 
 const API_TIMEOUT_MS = 8000;
-const DEFAULT_DAYS_BACK = 45;
-const MAX_EVENT_WINDOW_DAYS = 60;
+const DEFAULT_DAYS_BACK = 90;
+const MAX_EVENT_WINDOW_DAYS = 90;
 const DEFAULT_NOTIFICATION_DAYS_BACK = 7;
 const NOTIFICATIONS_MAX_WINDOW_DAYS = 30;
 const RETRY_COUNT = 0;
@@ -50,6 +50,7 @@ const SINGLE_FLIGHT = new Map<string, Promise<unknown>>();
 const STALE_EVENTS = new Map<string, StaleEventsEnvelope>();
 const STALE_NOTIFICATIONS = new Map<string, StaleNotificationsEnvelope>();
 const DONKI_BASE_COOLDOWNS = new Map<string, number>();
+let DONKI_FETCH_OVERRIDE_FOR_TESTS: typeof fetch | null = null;
 
 export class DonkiUpstreamUnavailableError extends Error {
   constructor(message: string) {
@@ -673,9 +674,10 @@ interface DonkiFetchWithSourceResult<T> {
 async function fetchWithTimeout<T>(url: string, timeoutMs = API_TIMEOUT_MS): Promise<T> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  const fetchImpl = DONKI_FETCH_OVERRIDE_FOR_TESTS ?? fetch;
 
   try {
-    const response = await fetch(url, {
+    const response = await fetchImpl(url, {
       headers: { Accept: "application/json" },
       signal: controller.signal,
     });
@@ -1574,7 +1576,12 @@ export function __resetDonkiTransientStateForTests(): void {
   STALE_EVENTS.clear();
   STALE_NOTIFICATIONS.clear();
   DONKI_BASE_COOLDOWNS.clear();
+  DONKI_FETCH_OVERRIDE_FOR_TESTS = null;
   hasWarnedMissingNasaApiKey = false;
+}
+
+export function __setDonkiFetchForTests(fetchImpl: typeof fetch | null): void {
+  DONKI_FETCH_OVERRIDE_FOR_TESTS = fetchImpl;
 }
 
 export function parseEventType(eventId: string): SpaceWeatherEventType | null {

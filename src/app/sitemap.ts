@@ -49,6 +49,30 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: "daily",
       priority: 0.8,
     },
+    {
+      url: `${BASE_URL}/space-weather/events`,
+      lastModified: STATIC_SITEMAP_LASTMOD,
+      changeFrequency: "daily",
+      priority: 0.75,
+    },
+    {
+      url: `${BASE_URL}/space-weather/alerts`,
+      lastModified: STATIC_SITEMAP_LASTMOD,
+      changeFrequency: "daily",
+      priority: 0.7,
+    },
+    {
+      url: `${BASE_URL}/space-weather/solar`,
+      lastModified: STATIC_SITEMAP_LASTMOD,
+      changeFrequency: "daily",
+      priority: 0.7,
+    },
+    {
+      url: `${BASE_URL}/space-weather/geomagnetic`,
+      lastModified: STATIC_SITEMAP_LASTMOD,
+      changeFrequency: "daily",
+      priority: 0.7,
+    },
   ];
 
   return staticPages;

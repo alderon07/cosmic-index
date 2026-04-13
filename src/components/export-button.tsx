@@ -40,7 +40,18 @@ type ExportCategory = "exoplanets" | "stars" | "small-bodies" | "saved-objects";
 type ExportFormat = "csv" | "json" | "ndjson";
 type ExportProfile = "basic" | "research";
 type ExportLayout = "wide" | "relational";
-type SavedObjectTypeFilter = "all" | "exoplanet" | "star" | "small-body" | "cme" | "flr" | "gst" | "fireball";
+type SavedObjectTypeFilter =
+  | "all"
+  | "exoplanet"
+  | "star"
+  | "small-body"
+  | "cme"
+  | "flr"
+  | "gst"
+  | "ips"
+  | "hss"
+  | "sep"
+  | "fireball";
 type SavedObjectPayloadFilter = "any" | "with-event" | "without-event";
 
 interface ExportButtonProps {
@@ -449,6 +460,9 @@ export function ExportButton({
                           <SelectItem value="cme" className={theme.selectItemFocus}>CME</SelectItem>
                           <SelectItem value="flr" className={theme.selectItemFocus}>FLR</SelectItem>
                           <SelectItem value="gst" className={theme.selectItemFocus}>GST</SelectItem>
+                          <SelectItem value="ips" className={theme.selectItemFocus}>IPS</SelectItem>
+                          <SelectItem value="hss" className={theme.selectItemFocus}>HSS</SelectItem>
+                          <SelectItem value="sep" className={theme.selectItemFocus}>SEP</SelectItem>
                           <SelectItem value="fireball" className={theme.selectItemFocus}>Fireball</SelectItem>
                         </SelectContent>
                       </Select>

@@ -4,6 +4,13 @@ import { NextRequest } from "next/server";
 let mockObjects = [{ id: "kepler-22-b" }];
 let mockHasMore = false;
 
+class ExoplanetIndexUnavailableError extends Error {
+  constructor(message = "Index is temporarily unavailable.") {
+    super(message);
+    this.name = "ExoplanetIndexUnavailableError";
+  }
+}
+
 mock.module("@/lib/exoplanet-index", () => ({
   searchExoplanets: async () => ({
     objects: mockObjects,
@@ -13,6 +20,8 @@ mock.module("@/lib/exoplanet-index", () => ({
     hasMore: mockHasMore,
     usedCursor: false,
   }),
+  getExoplanetBySlug: async () => null,
+  ExoplanetIndexUnavailableError,
 }));
 
 const { GET } = await import("@/app/sitemap-exoplanets/route");

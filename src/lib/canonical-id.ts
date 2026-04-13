@@ -28,7 +28,10 @@ export type EventObjectType =
   | "close-approach"
   | "flr"
   | "cme"
-  | "gst";
+  | "gst"
+  | "ips"
+  | "hss"
+  | "sep";
 export type CanonicalObjectType = CatalogObjectType | EventObjectType;
 
 /**
@@ -103,6 +106,9 @@ export function parseCanonicalId(canonicalId: string): {
     "flr",
     "cme",
     "gst",
+    "ips",
+    "hss",
+    "sep",
   ];
 
   if (!validTypes.includes(type)) return null;
@@ -125,7 +131,7 @@ export function isCatalogObject(canonicalId: string): boolean {
 export function isEventObject(canonicalId: string): boolean {
   const parsed = parseCanonicalId(canonicalId);
   if (!parsed) return false;
-  return ["fireball", "close-approach", "flr", "cme", "gst"].includes(
+  return ["fireball", "close-approach", "flr", "cme", "gst", "ips", "hss", "sep"].includes(
     parsed.type
   );
 }

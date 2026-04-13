@@ -277,6 +277,12 @@ mock.module("@/lib/exoplanet-index", () => ({
 
     return null;
   },
+  ExoplanetIndexUnavailableError: class ExoplanetIndexUnavailableError extends Error {
+    constructor(message = "Index is temporarily unavailable.") {
+      super(message);
+      this.name = "ExoplanetIndexUnavailableError";
+    }
+  },
 }));
 
 mock.module("@/lib/nasa-exoplanet", () => ({
@@ -287,6 +293,27 @@ mock.module("@/lib/star-index", () => ({
   searchStars: async () => ({ objects: [], hasMore: false, nextCursor: null, usedCursor: true, limit: 1, page: 1, total: 0 }),
   getStarBySlug: async () => null,
 }));
+
+function isContractMismatch(error: unknown): boolean {
+  return error instanceof Error
+    && (
+      error.message.includes("400")
+      || error.message.includes("422")
+      || error.message.includes("Invalid")
+      || error.message.includes("parse")
+    );
+}
+
+function isUpstreamFailure(error: unknown): boolean {
+  return error instanceof Error
+    && (
+      error.message.includes("timed out")
+      || error.message.includes("500")
+      || error.message.includes("502")
+      || error.message.includes("503")
+      || error.message.includes("504")
+    );
+}
 
 mock.module("@/lib/jpl-sbdb", () => ({
   fetchSmallBodies: async () => ({
@@ -315,7 +342,10 @@ mock.module("@/lib/jpl-sbdb", () => ({
     ],
     hasMore: false,
   }),
+  fetchSmallBodyByIdentifier: async () => null,
   fetchSmallBodyBySlug: async () => null,
+  isContractMismatch,
+  isUpstreamFailure,
 }));
 
 const { POST } = await import("@/app/api/user/export/route");

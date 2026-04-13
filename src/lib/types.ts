@@ -841,6 +841,71 @@ export interface SpaceWeatherNotificationsListResponse {
   };
 }
 
+export const SPACE_WEATHER_ALERT_SOURCES = ["donki", "swpc"] as const;
+export type SpaceWeatherAlertSource = (typeof SPACE_WEATHER_ALERT_SOURCES)[number];
+
+export const SPACE_WEATHER_ALERT_CATEGORIES = [
+  "flr",
+  "sep",
+  "cme",
+  "ips",
+  "gst",
+  "other",
+] as const;
+export type SpaceWeatherAlertCategory = (typeof SPACE_WEATHER_ALERT_CATEGORIES)[number];
+
+export interface SpaceWeatherAlertRelatedEvent {
+  id: string;
+  eventType: SpaceWeatherEventType;
+  typeLabel: string;
+  severity: SpaceWeatherSeverity;
+  startTime: string;
+}
+
+export interface SpaceWeatherAlert {
+  id: string;
+  source: SpaceWeatherAlertSource;
+  category: SpaceWeatherAlertCategory;
+  title: string;
+  summary: string;
+  severity: SpaceWeatherSeverity;
+  issuedAt: string;
+  sourceUrl?: string;
+  activityCount: number;
+  relatedEventIds: string[];
+  relatedEvents: SpaceWeatherAlertRelatedEvent[];
+}
+
+export interface SpaceWeatherAlertsQueryParams {
+  startDate?: string; // YYYY-MM-DD
+  endDate?: string; // YYYY-MM-DD
+  type?: SpaceWeatherNotificationFilterType;
+  page?: number;
+  limit?: number;
+}
+
+export interface SpaceWeatherAlertsListResponse {
+  alerts: SpaceWeatherAlert[];
+  count: number;
+  totalAvailable: number;
+  limitApplied: number;
+  page?: number;
+  meta: {
+    dateRange: {
+      requestedStart: string;
+      requestedEnd: string;
+      effectiveStart: string;
+      effectiveEnd: string;
+    };
+    typeIncluded: SpaceWeatherNotificationFilterType;
+    sourcesIncluded: SpaceWeatherAlertSource[];
+    relatedEventsResolved: number;
+    warnings?: string[];
+    totalCapApplied: boolean;
+    totalCap: number;
+  };
+}
+
 // Zod schema for Space Weather query validation
 export const SpaceWeatherQuerySchema = z
   .object({
@@ -866,6 +931,116 @@ export const SpaceWeatherQuerySchema = z
     }
   });
 
+export const SPACE_WEATHER_DATA_QUALITIES = [
+  "realtime",
+  "quicklook",
+  "forecast",
+  "operational",
+  "provisional",
+] as const;
+export type SpaceWeatherDataQuality = (typeof SPACE_WEATHER_DATA_QUALITIES)[number];
+
+export interface SpaceWeatherSourceMeta {
+  label: string;
+  sourceUrl: string;
+  observedAt: string | null;
+  fetchedAt: string;
+  quality: SpaceWeatherDataQuality;
+}
+
+export const SPACE_WEATHER_SOLAR_SUVI_VARIANTS = ["131", "195", "map"] as const;
+export type SpaceWeatherSolarSuviVariant =
+  (typeof SPACE_WEATHER_SOLAR_SUVI_VARIANTS)[number];
+
+export interface SpaceWeatherSolarSuviPanel {
+  id: string;
+  variant: SpaceWeatherSolarSuviVariant;
+  title: string;
+  description: string;
+  imageUrl: string;
+  productUrl: string;
+  altText: string;
+  source: SpaceWeatherSourceMeta;
+}
+
+export interface SpaceWeatherSolarSuviSnapshot {
+  panels: SpaceWeatherSolarSuviPanel[];
+  warnings?: string[];
+}
+
+export interface SpaceWeatherSolarDrapSnapshot {
+  imageUrl: string;
+  productUrl: string;
+  summary: string;
+  estimatedRecoveryTime?: string;
+  xrayMessage?: string;
+  xrayWarning?: string;
+  protonMessage?: string;
+  protonWarning?: string;
+  source: SpaceWeatherSourceMeta;
+  warnings?: string[];
+}
+
+export interface SpaceWeatherSolarFlareForecastDay {
+  date: string;
+  cClassProbability: number;
+  mClassProbability: number;
+  xClassProbability: number;
+  protonProbability: number;
+  polarCapAbsorption: string;
+}
+
+export interface SpaceWeatherSolarFlareForecastSnapshot {
+  summary: string;
+  days: SpaceWeatherSolarFlareForecastDay[];
+  source: SpaceWeatherSourceMeta;
+  warnings?: string[];
+}
+
+export interface SpaceWeatherSolarSnapshot {
+  generatedAt: string;
+  suvi: SpaceWeatherSolarSuviSnapshot | null;
+  drap: SpaceWeatherSolarDrapSnapshot | null;
+  flareForecast: SpaceWeatherSolarFlareForecastSnapshot | null;
+  warnings?: string[];
+}
+
+export interface SpaceWeatherGeomagneticHp30Point {
+  observedAt: string;
+  hp30: number;
+  ap30: number;
+}
+
+export interface SpaceWeatherGeomagneticHp30Snapshot {
+  currentValue: number | null;
+  maxValue24h: number | null;
+  trend: SpaceWeatherGeomagneticHp30Point[];
+  source: SpaceWeatherSourceMeta;
+  warnings?: string[];
+}
+
+export interface SpaceWeatherGeomagneticAeHour {
+  hourStart: string;
+  meanValue: number;
+  peakValue: number;
+}
+
+export interface SpaceWeatherGeomagneticAeSnapshot {
+  currentValue: number | null;
+  peakValue24h: number | null;
+  hourlySeries: SpaceWeatherGeomagneticAeHour[];
+  source: SpaceWeatherSourceMeta;
+  warnings?: string[];
+}
+
+export interface SpaceWeatherGeomagneticSnapshot {
+  generatedAt: string;
+  hp30: SpaceWeatherGeomagneticHp30Snapshot | null;
+  ae: SpaceWeatherGeomagneticAeSnapshot | null;
+  warnings?: string[];
+  recentEvents: AnySpaceWeatherEvent[];
+}
+
 export const SpaceWeatherNotificationsQuerySchema = z
   .object({
     startDate: z
@@ -879,6 +1054,30 @@ export const SpaceWeatherNotificationsQuerySchema = z
     type: z.enum(SPACE_WEATHER_NOTIFICATION_FILTER_TYPES).optional(),
     page: z.coerce.number().int().min(1).optional(),
     limit: z.coerce.number().int().min(1).max(200).default(20),
+  })
+  .superRefine((value, ctx) => {
+    if (value.startDate && value.endDate && value.startDate > value.endDate) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["startDate"],
+        message: "startDate must be before or equal to endDate",
+      });
+    }
+  });
+
+export const SpaceWeatherAlertsQuerySchema = z
+  .object({
+    startDate: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/)
+      .optional(),
+    endDate: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/)
+      .optional(),
+    type: z.enum(SPACE_WEATHER_NOTIFICATION_FILTER_TYPES).optional(),
+    page: z.coerce.number().int().min(1).optional(),
+    limit: z.coerce.number().int().min(1).max(100).default(20),
   })
   .superRefine((value, ctx) => {
     if (value.startDate && value.endDate && value.startDate > value.endDate) {

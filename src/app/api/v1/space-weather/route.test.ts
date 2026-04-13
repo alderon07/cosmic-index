@@ -1,45 +1,44 @@
-import { beforeEach, describe, expect, it, mock } from "bun:test";
+import { afterAll, beforeEach, describe, expect, it, mock } from "bun:test";
 import { NextRequest } from "next/server";
-import type { SpaceWeatherListResponse, SpaceWeatherQueryParams } from "@/lib/types";
+import { __resetCacheStateForTests } from "@/lib/cache";
+import { __resetDonkiTransientStateForTests, __setDonkiFetchForTests } from "@/lib/nasa-donki";
 
-let lastFetchParams: SpaceWeatherQueryParams | null = null;
-let mockFetchResult: SpaceWeatherListResponse;
-let fetchCallCount = 0;
+let seenEndpoints: string[] = [];
+let endpointPayloads: Record<string, unknown[]> = {};
 
-function buildMockResult(overrides: Partial<SpaceWeatherListResponse> = {}): SpaceWeatherListResponse {
-  return {
-    events: [
-      {
-        id: "2026-02-16T04:24:00-CME-001",
-        eventType: "CME",
-        startTime: "2026-02-16T04:24:00Z",
-        speed: 1200,
-      },
-    ],
-    count: 1,
-    totalAvailable: 1,
-    limitApplied: 21,
-    page: 1,
-    meta: {
-      dateRange: { start: "2025-11-19", end: "2026-02-17" },
-      typesIncluded: ["CME"],
-      totalCapApplied: false,
-      totalCap: 420,
-    },
-    ...overrides,
-  };
+function buildCmePayload(count: number): unknown[] {
+  return Array.from({ length: count }, (_, index) => ({
+    activityID: `2026-02-${String(16 + Math.floor(index / 24)).padStart(2, "0")}T${String(index % 24).padStart(2, "0")}:24:00-CME-${String(index + 1).padStart(3, "0")}`,
+    startTime: `2026-02-${String(16 + Math.floor(index / 24)).padStart(2, "0")}T${String(index % 24).padStart(2, "0")}:24:00Z`,
+    sourceLocation: "N12W22",
+    cmeAnalyses: [{ speed: 1200, halfAngle: 45, type: "H", isMostAccurate: true }],
+  }));
 }
 
-mock.module("@/lib/nasa-donki", () => ({
-  fetchSpaceWeather: async (params: SpaceWeatherQueryParams) => {
-    fetchCallCount += 1;
-    lastFetchParams = params;
-    return mockFetchResult;
-  },
-  fetchSpaceWeatherNotifications: async () => {
-    throw new Error("Not implemented in space-weather route test");
-  },
-}));
+function buildIpsPayload(id: string): unknown[] {
+  return [{
+    activityID: id,
+    eventTime: "2026-02-16T04:24:00Z",
+    location: "Earth",
+    instruments: [{ displayName: "ACE: MAG" }],
+  }];
+}
+
+function buildHssPayload(id: string): unknown[] {
+  return [{
+    hssID: id,
+    eventTime: "2026-02-16T04:24:00Z",
+    instruments: [{ displayName: "ACE: SWEPAM" }],
+  }];
+}
+
+function buildSepPayload(id: string): unknown[] {
+  return [{
+    sepID: id,
+    eventTime: "2026-02-16T04:24:00Z",
+    instruments: [{ displayName: "SOHO: COSTEP" }],
+  }];
+}
 
 mock.module("@/lib/api-middleware", () => ({
   initRequest: () => ({ requestId: "req_test_space_weather" }),
@@ -68,6 +67,7 @@ mock.module("@/lib/api-middleware", () => ({
 }));
 
 mock.module("@/lib/api-response", () => ({
+  apiSuccess: (data: unknown) => Response.json({ data }, { status: 200 }),
   apiPaginated: (
     data: unknown[],
     pagination: Record<string, unknown>,
@@ -89,9 +89,33 @@ mock.module("@/lib/api-response", () => ({
 const { GET } = await import("@/app/api/v1/space-weather/route");
 
 beforeEach(() => {
-  lastFetchParams = null;
-  fetchCallCount = 0;
-  mockFetchResult = buildMockResult();
+  seenEndpoints = [];
+  endpointPayloads = {
+    FLR: [],
+    CME: buildCmePayload(1),
+    GST: [],
+    IPS: [],
+    HSS: [],
+    SEP: [],
+  };
+  __resetCacheStateForTests();
+  __resetDonkiTransientStateForTests();
+  __setDonkiFetchForTests(async (input) => {
+    const url = new URL(typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url);
+    const endpoint = url.pathname.split("/").pop() ?? "";
+    seenEndpoints.push(endpoint);
+    return new Response(JSON.stringify(endpointPayloads[endpoint] ?? []), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+  });
+});
+
+afterAll(() => {
+  __setDonkiFetchForTests(null);
+  __resetDonkiTransientStateForTests();
+  __resetCacheStateForTests();
+  mock.restore();
 });
 
 describe("GET /api/v1/space-weather", () => {
@@ -104,15 +128,11 @@ describe("GET /api/v1/space-weather", () => {
     expect(body.pagination.mode).toBe("none");
     expect(body.pagination.hasMore).toBe(false);
     expect(body.meta.totalAvailable).toBe(1);
-    expect(lastFetchParams?.page).toBeUndefined();
+    expect(seenEndpoints.sort()).toEqual(["CME", "FLR", "GST", "HSS", "IPS", "SEP"]);
   });
 
   it("returns pagination mode 'offset' when page is present", async () => {
-    mockFetchResult = buildMockResult({
-      totalAvailable: 30,
-      limitApplied: 21,
-      page: 1,
-    });
+    endpointPayloads.CME = buildCmePayload(30);
 
     const request = new NextRequest("http://localhost:3000/api/v1/space-weather?page=1&limit=21");
     const response = await GET(request);
@@ -131,7 +151,7 @@ describe("GET /api/v1/space-weather", () => {
     const response = await GET(request);
 
     expect(response.status).toBe(400);
-    expect(fetchCallCount).toBe(0);
+    expect(seenEndpoints).toHaveLength(0);
   });
 
   it("returns 400 when startDate is after endDate", async () => {
@@ -141,17 +161,11 @@ describe("GET /api/v1/space-weather", () => {
     const response = await GET(request);
 
     expect(response.status).toBe(400);
-    expect(fetchCallCount).toBe(0);
+    expect(seenEndpoints).toHaveLength(0);
   });
 
   it("returns hasMore false for out-of-range pages", async () => {
-    mockFetchResult = buildMockResult({
-      events: [],
-      count: 0,
-      totalAvailable: 40,
-      limitApplied: 21,
-      page: 3,
-    });
+    endpointPayloads.CME = buildCmePayload(40);
 
     const request = new NextRequest("http://localhost:3000/api/v1/space-weather?page=3&limit=21");
     const response = await GET(request);
@@ -165,12 +179,21 @@ describe("GET /api/v1/space-weather", () => {
   });
 
   it("accepts IPS/HSS/SEP in eventTypes filter", async () => {
+    endpointPayloads = {
+      FLR: [],
+      CME: [],
+      GST: [],
+      IPS: buildIpsPayload("2026-02-16T04:24:00-IPS-001"),
+      HSS: buildHssPayload("2026-02-16T05:24:00-HSS-001"),
+      SEP: buildSepPayload("2026-02-16T06:24:00-SEP-001"),
+    };
+
     const request = new NextRequest(
       "http://localhost:3000/api/v1/space-weather?eventTypes=IPS,HSS,SEP&limit=21"
     );
     const response = await GET(request);
 
     expect(response.status).toBe(200);
-    expect(lastFetchParams?.eventTypes).toEqual(["IPS", "HSS", "SEP"]);
+    expect(seenEndpoints.sort()).toEqual(["HSS", "IPS", "SEP"]);
   });
 });

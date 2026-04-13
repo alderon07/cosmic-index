@@ -37,6 +37,14 @@ const nextConfig: NextConfig = {
       { source: '/api/apod', destination: '/api/v1/apod' },
       { source: '/api/fireballs', destination: '/api/v1/fireballs' },
       { source: '/api/space-weather', destination: '/api/v1/space-weather' },
+      { source: '/api/space-weather/overview', destination: '/api/v1/space-weather/overview' },
+      { source: '/api/space-weather/alerts', destination: '/api/v1/space-weather/alerts' },
+      { source: '/api/space-weather/notifications', destination: '/api/v1/space-weather/notifications' },
+      { source: '/api/space-weather/solar/suvi', destination: '/api/v1/space-weather/solar/suvi' },
+      { source: '/api/space-weather/solar/drap', destination: '/api/v1/space-weather/solar/drap' },
+      { source: '/api/space-weather/solar/flare-forecast', destination: '/api/v1/space-weather/solar/flare-forecast' },
+      { source: '/api/space-weather/geomagnetic/hp30', destination: '/api/v1/space-weather/geomagnetic/hp30' },
+      { source: '/api/space-weather/geomagnetic/ae', destination: '/api/v1/space-weather/geomagnetic/ae' },
       { source: '/api/space-weather/:id', destination: '/api/v1/space-weather/:id' },
       { source: '/api/images/object', destination: '/api/v1/images/object' },
     ];
@@ -72,6 +80,10 @@ const nextConfig: NextConfig = {
       {
         protocol: 'https',
         hostname: '*.nasa.gov',
+      },
+      {
+        protocol: 'https',
+        hostname: 'services.swpc.noaa.gov',
       },
       // YouTube thumbnails for video APODs
       {

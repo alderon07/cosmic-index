@@ -634,7 +634,7 @@ export function SpaceWeatherPageClient({
             <Sun className={`w-5 h-5 ${theme.icon}`} />
           </div>
           <h1 className="font-display text-3xl md:text-4xl text-foreground">
-            Space Weather
+            Space Weather Events
           </h1>
         </div>
         <p className="text-[0.94rem] leading-relaxed text-muted-foreground mb-2">
@@ -642,7 +642,7 @@ export function SpaceWeatherPageClient({
           affect satellites, radio communication, navigation, and power systems on Earth.
         </p>
         <p className="text-[0.9rem] leading-relaxed text-muted-foreground/85 mb-3">
-          This page shows a 90-day slice of NASA DONKI events: solar flares (FLR), coronal mass
+          This route shows a 90-day slice of NASA DONKI events: solar flares (FLR), coronal mass
           ejections (CME), geomagnetic storms (GST), interplanetary shocks (IPS), high-speed streams
           (HSS), and solar energetic particle events (SEP). Cards surface the most useful metric per
           event type (for example flare class, CME speed, Kp index, shock location, or observing
@@ -1076,7 +1076,7 @@ export function SpaceWeatherLoadingSkeleton() {
             <Sun className={`w-5 h-5 ${theme.icon}`} />
           </div>
           <h1 className="font-display text-3xl md:text-4xl text-foreground">
-            Space Weather
+            Space Weather Events
           </h1>
         </div>
       </div>

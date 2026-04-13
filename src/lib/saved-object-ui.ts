@@ -11,6 +11,9 @@ export const SAVED_OBJECT_TYPE_ORDER: SavedObjectUiType[] = [
   "flr",
   "cme",
   "gst",
+  "ips",
+  "hss",
+  "sep",
   "unknown",
 ];
 
@@ -23,6 +26,9 @@ export const SAVED_OBJECT_TYPE_LABELS: Record<SavedObjectUiType, string> = {
   flr: "Solar Flares",
   cme: "CMEs",
   gst: "Geomagnetic Storms",
+  ips: "Interplanetary Shocks",
+  hss: "High-Speed Streams",
+  sep: "Solar Energetic Particles",
   unknown: "Unknown",
 };
 
@@ -35,6 +41,9 @@ export const SAVED_OBJECT_TYPE_BADGE_LABELS: Record<SavedObjectUiType, string> =
   flr: "Solar Flare",
   cme: "CME",
   gst: "Geomagnetic Storm",
+  ips: "Interplanetary Shock",
+  hss: "High-Speed Stream",
+  sep: "SEP",
   unknown: "Unknown",
 };
 
@@ -47,6 +56,9 @@ export const EMPTY_SAVED_OBJECT_TYPE_COUNTS: Record<SavedObjectUiType, number> =
   flr: 0,
   cme: 0,
   gst: 0,
+  ips: 0,
+  hss: 0,
+  sep: 0,
   unknown: 0,
 };
 
@@ -71,8 +83,15 @@ export function resolveSavedObjectHref(canonicalId: string): string | null {
   if (parsed.type === "small-body") return `/small-bodies/${parsed.id}`;
   if (parsed.type === "close-approach") return "/close-approaches";
   if (parsed.type === "fireball") return "/fireballs";
-  if (parsed.type === "flr" || parsed.type === "cme" || parsed.type === "gst") {
-    return "/space-weather";
+  if (
+    parsed.type === "flr" ||
+    parsed.type === "cme" ||
+    parsed.type === "gst" ||
+    parsed.type === "ips" ||
+    parsed.type === "hss" ||
+    parsed.type === "sep"
+  ) {
+    return "/space-weather/events";
   }
 
   return null;

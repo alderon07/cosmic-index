@@ -2,21 +2,17 @@ import { afterAll, beforeEach, describe, expect, it, mock } from "bun:test";
 
 const redisStore = new Map<string, unknown>();
 
-mock.module("@upstash/redis", () => ({
-  Redis: class Redis {
-    async get<T>(key: string): Promise<T | null> {
-      return (redisStore.get(key) as T | undefined) ?? null;
-    }
-
-    async set<T>(key: string, value: T): Promise<void> {
-      redisStore.set(key, value);
-    }
-
-    async del(key: string): Promise<void> {
-      redisStore.delete(key);
-    }
+const testRedisClient = {
+  async get<T>(key: string): Promise<T | null> {
+    return (redisStore.get(key) as T | undefined) ?? null;
   },
-}));
+  async set<T>(key: string, value: T): Promise<void> {
+    redisStore.set(key, value);
+  },
+  async del(key: string): Promise<void> {
+    redisStore.delete(key);
+  },
+};
 
 function buildFlrStaleKey(startDate: string, endDate: string): string {
   const env = process.env.NODE_ENV || "unknown";
@@ -25,24 +21,24 @@ function buildFlrStaleKey(startDate: string, endDate: string): string {
 }
 
 describe("DONKI distributed stale fallback", () => {
-  const originalFetch = globalThis.fetch;
   const originalRedisUrl = process.env.UPSTASH_REDIS_REST_URL;
   const originalRedisToken = process.env.UPSTASH_REDIS_REST_TOKEN;
   const originalNasaApiKey = process.env.NASA_API_KEY;
 
   beforeEach(async () => {
+    mock.restore();
     redisStore.clear();
     process.env.UPSTASH_REDIS_REST_URL = "https://redis.example.test";
     process.env.UPSTASH_REDIS_REST_TOKEN = "token";
     process.env.NASA_API_KEY = "test_nasa_key";
-    globalThis.fetch = originalFetch;
+    const { __resetCacheStateForTests, __setRedisClientForTests } = await import("../cache");
+    __resetCacheStateForTests();
+    __setRedisClientForTests(testRedisClient as never);
     const { __resetDonkiTransientStateForTests } = await import("../nasa-donki");
     __resetDonkiTransientStateForTests();
   });
 
-  afterAll(() => {
-    globalThis.fetch = originalFetch;
-
+  afterAll(async () => {
     if (originalRedisUrl) {
       process.env.UPSTASH_REDIS_REST_URL = originalRedisUrl;
     } else {
@@ -60,10 +56,14 @@ describe("DONKI distributed stale fallback", () => {
     } else {
       delete process.env.NASA_API_KEY;
     }
+
+    const { __resetCacheStateForTests, __setRedisClientForTests } = await import("../cache");
+    __resetCacheStateForTests();
+    __setRedisClientForTests(null);
   });
 
   it("uses Redis stale fallback when DONKI fetch fails", async () => {
-    const { fetchSpaceWeather } = await import("../nasa-donki");
+    const { fetchSpaceWeather, __setDonkiFetchForTests } = await import("../nasa-donki");
     const { setCached, CACHE_TTL } = await import("../cache");
 
     const startDate = "2024-07-03";
@@ -86,9 +86,9 @@ describe("DONKI distributed stale fallback", () => {
       CACHE_TTL.SPACE_WEATHER * 4,
     );
 
-    globalThis.fetch = async () => {
+    __setDonkiFetchForTests(async () => {
       throw new TypeError("fetch failed");
-    };
+    });
 
     const result = await fetchSpaceWeather({
       startDate,
@@ -108,7 +108,11 @@ describe("DONKI distributed stale fallback", () => {
   });
 
   it("does not use stale fallback older than the max stale age", async () => {
-    const { fetchSpaceWeather, DonkiUpstreamUnavailableError } = await import("../nasa-donki");
+    const {
+      fetchSpaceWeather,
+      DonkiUpstreamUnavailableError,
+      __setDonkiFetchForTests,
+    } = await import("../nasa-donki");
     const { setCached, CACHE_TTL } = await import("../cache");
 
     const startDate = "2024-07-03";
@@ -131,9 +135,9 @@ describe("DONKI distributed stale fallback", () => {
       CACHE_TTL.SPACE_WEATHER * 4,
     );
 
-    globalThis.fetch = async () => {
+    __setDonkiFetchForTests(async () => {
       throw new TypeError("fetch failed");
-    };
+    });
 
     await expect(
       fetchSpaceWeather({

@@ -13,6 +13,7 @@ mock.module("@/lib/star-index", () => ({
     hasMore: mockHasMore,
     usedCursor: false,
   }),
+  getStarBySlug: async () => null,
 }));
 
 const { GET } = await import("@/app/sitemap-stars/route");

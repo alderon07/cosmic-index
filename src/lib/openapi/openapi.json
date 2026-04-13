@@ -1037,7 +1037,7 @@
       "get": {
         "operationId": "listSpaceWeather",
         "summary": "List space weather events",
-        "description": "Retrieve recent space weather events from NASA DONKI, including solar flares (FLR), coronal mass ejections (CME), geomagnetic storms (GST), interplanetary shocks (IPS), high-speed streams (HSS), and solar energetic particle events (SEP). If `startDate` and `endDate` are omitted, the default search window is the last 45 days. Event queries are capped to a maximum 60-day window and may be normalized (with details surfaced in `meta.warnings`). The backend automatically attempts DONKI base failover (NASA gateway ↔ CCMC) when retryable upstream failures occur. When `page` is omitted, this endpoint returns legacy `pagination.mode = \"none\"`. When `page` is provided, the endpoint returns offset pagination metadata. Result sets are deduplicated by event id and capped to a maximum of 420 events before pagination is applied. Partial failures (e.g., one endpoint unavailable) are reported in `meta.warnings`; if all requested event type sources are unavailable, the endpoint returns `503 UPSTREAM_UNAVAILABLE`.",
+        "description": "Retrieve recent space weather events from NASA DONKI, including solar flares (FLR), coronal mass ejections (CME), geomagnetic storms (GST), interplanetary shocks (IPS), high-speed streams (HSS), and solar energetic particle events (SEP). If `startDate` and `endDate` are omitted, the default search window is the last 90 days. Event queries are capped to a maximum 90-day window and may be normalized (with details surfaced in `meta.warnings`). The backend automatically attempts DONKI base failover (NASA gateway ↔ CCMC) when retryable upstream failures occur. When `page` is omitted, this endpoint returns legacy `pagination.mode = \"none\"`. When `page` is provided, the endpoint returns offset pagination metadata. Result sets are deduplicated by event id and capped to a maximum of 420 events before pagination is applied. Partial failures (e.g., one endpoint unavailable) are reported in `meta.warnings`; if all requested event type sources are unavailable, the endpoint returns `503 UPSTREAM_UNAVAILABLE`.",
         "tags": [
           "Space Weather"
         ],
@@ -1045,7 +1045,7 @@
           {
             "name": "startDate",
             "in": "query",
-            "description": "Start date for the search window (YYYY-MM-DD). Defaults to 45 days before the effective end date when omitted. Requests older than 60 days are clamped.",
+            "description": "Start date for the search window (YYYY-MM-DD). Defaults to 90 days before the effective end date when omitted. Requests older than 90 days are clamped.",
             "schema": {
               "type": "string",
               "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
@@ -2269,6 +2269,502 @@
         }
       }
     },
+    "/space-weather/overview": {
+      "get": {
+        "operationId": "getSpaceWeatherOverview",
+        "summary": "Get observatory overview snapshot",
+        "description": "Retrieve the server-composed overview snapshot that powers the space weather observatory dashboard. The response combines the latest DONKI event summary with the current multi-source alert summary so clients can render the top-level scan view without issuing multiple first-load requests.",
+        "tags": [
+          "Space Weather"
+        ],
+        "responses": {
+          "200": {
+            "description": "Current observatory overview snapshot.",
+            "headers": {
+              "$ref": "#/components/headers/StandardResponseHeaders"
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/DetailEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/SpaceWeatherOverviewSnapshot"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimitExceeded"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/UpstreamUnavailable"
+          }
+        }
+      }
+    },
+    "/space-weather/alerts": {
+      "get": {
+        "operationId": "listSpaceWeatherAlerts",
+        "summary": "List normalized space weather alerts",
+        "description": "Retrieve normalized space weather alerts from the observatory alert lane. The feed combines DONKI notifications with NOAA SWPC operational alerts while keeping source provenance visible. DONKI items are enriched with related-event context when corresponding DONKI events can be resolved. If `startDate` and `endDate` are omitted, the default search window follows the DONKI notifications feed (last 7 days). Notification queries are limited to a 30-day range, and source-specific degradation is surfaced in `meta.warnings`.",
+        "tags": [
+          "Space Weather"
+        ],
+        "parameters": [
+          {
+            "name": "startDate",
+            "in": "query",
+            "description": "Start date for alert search (YYYY-MM-DD). Defaults to 7 days before endDate when omitted.",
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            }
+          },
+          {
+            "name": "endDate",
+            "in": "query",
+            "description": "End date for alert search (YYYY-MM-DD). Defaults to today when omitted.",
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "description": "Alert type filter. Supported values are all, FLR, SEP, CME, IPS, GST.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "all",
+                "FLR",
+                "SEP",
+                "CME",
+                "IPS",
+                "GST"
+              ],
+              "default": "all"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Offset page number. When provided (including `1`), response pagination mode is `offset`.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Maximum number of alerts per response page (default: 20).",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of normalized space weather alerts.",
+            "headers": {
+              "$ref": "#/components/headers/StandardResponseHeaders"
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data",
+                    "pagination",
+                    "meta"
+                  ],
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/SpaceWeatherAlert"
+                      }
+                    },
+                    "pagination": {
+                      "oneOf": [
+                        {
+                          "$ref": "#/components/schemas/NonePagination"
+                        },
+                        {
+                          "$ref": "#/components/schemas/OffsetPagination"
+                        }
+                      ]
+                    },
+                    "meta": {
+                      "allOf": [
+                        {
+                          "$ref": "#/components/schemas/ApiMeta"
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "count": {
+                              "type": "integer",
+                              "description": "Number of alerts returned."
+                            },
+                            "limitApplied": {
+                              "type": "integer",
+                              "description": "The effective limit used."
+                            },
+                            "totalAvailable": {
+                              "type": "integer",
+                              "description": "Total alerts available after applying the hard result cap."
+                            },
+                            "totalCapApplied": {
+                              "type": "boolean",
+                              "description": "Whether the hard cap was applied before pagination."
+                            },
+                            "totalCap": {
+                              "type": "integer",
+                              "description": "Hard maximum number of alerts that can be paged through in a single query."
+                            },
+                            "dateRange": {
+                              "type": "object",
+                              "required": [
+                                "requestedStart",
+                                "requestedEnd",
+                                "effectiveStart",
+                                "effectiveEnd"
+                              ],
+                              "properties": {
+                                "requestedStart": {
+                                  "type": "string",
+                                  "description": "Requested start date before normalization."
+                                },
+                                "requestedEnd": {
+                                  "type": "string",
+                                  "description": "Requested end date before normalization."
+                                },
+                                "effectiveStart": {
+                                  "type": "string",
+                                  "description": "Effective start date after normalization/clamping."
+                                },
+                                "effectiveEnd": {
+                                  "type": "string",
+                                  "description": "Effective end date after normalization/clamping."
+                                }
+                              }
+                            },
+                            "typeIncluded": {
+                              "type": "string",
+                              "description": "The normalized alert type filter used."
+                            },
+                            "sourcesIncluded": {
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "enum": [
+                                  "donki",
+                                  "swpc"
+                                ]
+                              },
+                              "description": "Alert sources represented in this response."
+                            },
+                            "relatedEventsResolved": {
+                              "type": "integer",
+                              "description": "Number of related DONKI events resolved and attached to alerts."
+                            },
+                            "warnings": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              },
+                              "description": "Normalization or upstream degradation warnings."
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid query parameters.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "One or more upstream alert sources are unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/space-weather/solar/suvi": {
+      "get": {
+        "operationId": "getSpaceWeatherSolarSuvi",
+        "summary": "Get latest GOES SUVI quicklook panels",
+        "description": "Retrieve the current GOES SUVI quicklook media cards used by the solar monitoring surface. The response includes the latest 131A, 195A, and thematic-map panels with source provenance and observed/fetched timestamps.",
+        "tags": [
+          "Space Weather"
+        ],
+        "responses": {
+          "200": {
+            "description": "Latest SUVI quicklook panels.",
+            "headers": {
+              "$ref": "#/components/headers/StandardResponseHeaders"
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/DetailEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/SpaceWeatherSolarSuviSnapshot"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimitExceeded"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/UpstreamUnavailable"
+          }
+        }
+      }
+    },
+    "/space-weather/solar/drap": {
+      "get": {
+        "operationId": "getSpaceWeatherSolarDrap",
+        "summary": "Get current D-RAP absorption guidance",
+        "description": "Retrieve the current D-RAP quicklook module used on the solar monitoring surface. The response includes the latest global image, parsed SWPC status text, recovery estimate, and source freshness metadata.",
+        "tags": [
+          "Space Weather"
+        ],
+        "responses": {
+          "200": {
+            "description": "Current D-RAP guidance snapshot.",
+            "headers": {
+              "$ref": "#/components/headers/StandardResponseHeaders"
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/DetailEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/SpaceWeatherSolarDrapSnapshot"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimitExceeded"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/UpstreamUnavailable"
+          }
+        }
+      }
+    },
+    "/space-weather/solar/flare-forecast": {
+      "get": {
+        "operationId": "getSpaceWeatherSolarFlareForecast",
+        "summary": "Get NOAA solar flare forecast probabilities",
+        "description": "Retrieve the current SWPC flare-forecast snapshot used by the solar monitoring surface. The endpoint expands the latest SWPC issuance into day 1, day 2, and day 3 flare and proton probabilities with source provenance metadata.",
+        "tags": [
+          "Space Weather"
+        ],
+        "responses": {
+          "200": {
+            "description": "Current flare forecast snapshot.",
+            "headers": {
+              "$ref": "#/components/headers/StandardResponseHeaders"
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/DetailEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/SpaceWeatherSolarFlareForecastSnapshot"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimitExceeded"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/UpstreamUnavailable"
+          }
+        }
+      }
+    },
+    "/space-weather/geomagnetic/hp30": {
+      "get": {
+        "operationId": "getSpaceWeatherGeomagneticHp30",
+        "summary": "Get current GFZ Hp30 nowcast",
+        "description": "Retrieve the current GFZ Hp30 geomagnetic nowcast snapshot used by the geomagnetic monitoring surface. The response includes the latest Hp30/ap30 trend points, current value, 24-hour max, and source freshness metadata.",
+        "tags": [
+          "Space Weather"
+        ],
+        "responses": {
+          "200": {
+            "description": "Current GFZ Hp30 snapshot.",
+            "headers": {
+              "$ref": "#/components/headers/StandardResponseHeaders"
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/DetailEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/SpaceWeatherGeomagneticHp30Snapshot"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimitExceeded"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/UpstreamUnavailable"
+          }
+        }
+      }
+    },
+    "/space-weather/geomagnetic/ae": {
+      "get": {
+        "operationId": "getSpaceWeatherGeomagneticAe",
+        "summary": "Get current Kyoto AE quicklook snapshot",
+        "description": "Retrieve the current Kyoto AE quicklook snapshot used by the geomagnetic monitoring surface. The response includes hourly AE buckets, the latest minute value, the 24-hour peak, and source freshness metadata with explicit quicklook/provisional labeling.",
+        "tags": [
+          "Space Weather"
+        ],
+        "responses": {
+          "200": {
+            "description": "Current Kyoto AE snapshot.",
+            "headers": {
+              "$ref": "#/components/headers/StandardResponseHeaders"
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/DetailEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/SpaceWeatherGeomagneticAeSnapshot"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimitExceeded"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/UpstreamUnavailable"
+          }
+        }
+      }
+    },
     "/space-weather/notifications": {
       "get": {
         "operationId": "listSpaceWeatherNotifications",
@@ -2299,7 +2795,7 @@
           {
             "name": "type",
             "in": "query",
-            "description": "Notification type filter. MVP supports all, FLR, SEP, CME, IPS, GST.",
+            "description": "Notification type filter. Supported values: all, FLR, SEP, CME, IPS, GST.",
             "schema": {
               "type": "string",
               "enum": [
@@ -3882,6 +4378,580 @@
               "type": "string"
             },
             "description": "Activity IDs extracted from the message body."
+          }
+        }
+      },
+      "SpaceWeatherOverviewEventSummary": {
+        "type": "object",
+        "required": [
+          "total",
+          "dominantType",
+          "windowDays",
+          "warning"
+        ],
+        "properties": {
+          "total": {
+            "type": "integer"
+          },
+          "dominantType": {
+            "oneOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "FLR",
+                  "CME",
+                  "GST",
+                  "IPS",
+                  "HSS",
+                  "SEP"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "windowDays": {
+            "type": "integer"
+          },
+          "warning": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "SpaceWeatherOverviewNotificationSummary": {
+        "type": "object",
+        "required": [
+          "total",
+          "latestIssuedAt",
+          "warning"
+        ],
+        "properties": {
+          "total": {
+            "type": "integer"
+          },
+          "latestIssuedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "warning": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "sourcesIncluded": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "donki",
+                "swpc"
+              ]
+            }
+          }
+        }
+      },
+      "SpaceWeatherOverviewSnapshot": {
+        "type": "object",
+        "required": [
+          "generatedAt",
+          "latestEvent",
+          "eventSummary",
+          "notificationSummary"
+        ],
+        "properties": {
+          "generatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "latestEvent": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/AnySpaceWeatherEvent"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "eventSummary": {
+            "$ref": "#/components/schemas/SpaceWeatherOverviewEventSummary"
+          },
+          "notificationSummary": {
+            "$ref": "#/components/schemas/SpaceWeatherOverviewNotificationSummary"
+          }
+        }
+      },
+      "SpaceWeatherAlertRelatedEvent": {
+        "type": "object",
+        "required": [
+          "id",
+          "eventType",
+          "typeLabel",
+          "severity",
+          "startTime"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Canonical DONKI event ID."
+          },
+          "eventType": {
+            "type": "string",
+            "enum": [
+              "FLR",
+              "CME",
+              "GST",
+              "IPS",
+              "HSS",
+              "SEP"
+            ]
+          },
+          "typeLabel": {
+            "type": "string",
+            "description": "Human-readable event type label."
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "minor",
+              "moderate",
+              "strong",
+              "severe",
+              "extreme"
+            ]
+          },
+          "startTime": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Start timestamp for the related event."
+          }
+        }
+      },
+      "SpaceWeatherAlert": {
+        "type": "object",
+        "required": [
+          "id",
+          "source",
+          "category",
+          "title",
+          "summary",
+          "severity",
+          "issuedAt",
+          "activityCount",
+          "relatedEventIds",
+          "relatedEvents"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Upstream alert identifier."
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "donki",
+              "swpc"
+            ],
+            "description": "Upstream source for the alert."
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "flr",
+              "sep",
+              "cme",
+              "ips",
+              "gst",
+              "other"
+            ],
+            "description": "Normalized alert category used by the observatory."
+          },
+          "title": {
+            "type": "string",
+            "description": "Short alert title for list rendering."
+          },
+          "summary": {
+            "type": "string",
+            "description": "Condensed alert summary text."
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "minor",
+              "moderate",
+              "strong",
+              "severe",
+              "extreme"
+            ]
+          },
+          "issuedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Alert issue timestamp."
+          },
+          "sourceUrl": {
+            "type": "string",
+            "format": "uri",
+            "description": "Link to the upstream alert when available."
+          },
+          "activityCount": {
+            "type": "integer",
+            "description": "Number of activity IDs attached to the upstream alert."
+          },
+          "relatedEventIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Activity IDs extracted from the upstream alert."
+          },
+          "relatedEvents": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SpaceWeatherAlertRelatedEvent"
+            },
+            "description": "Resolved related DONKI events attached to this alert."
+          }
+        }
+      },
+      "SpaceWeatherSourceMeta": {
+        "type": "object",
+        "required": [
+          "label",
+          "sourceUrl",
+          "observedAt",
+          "fetchedAt",
+          "quality"
+        ],
+        "properties": {
+          "label": {
+            "type": "string",
+            "description": "Human-readable upstream source label."
+          },
+          "sourceUrl": {
+            "type": "string",
+            "format": "uri",
+            "description": "Canonical upstream product URL."
+          },
+          "observedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "Observed or issued timestamp from the upstream product when available."
+          },
+          "fetchedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp when Cosmic Index fetched the product."
+          },
+          "quality": {
+            "type": "string",
+            "enum": [
+              "realtime",
+              "quicklook",
+              "forecast",
+              "operational",
+              "provisional"
+            ],
+            "description": "Data quality/state classification for the product."
+          }
+        }
+      },
+      "SpaceWeatherSolarSuviPanel": {
+        "type": "object",
+        "required": [
+          "id",
+          "variant",
+          "title",
+          "description",
+          "imageUrl",
+          "productUrl",
+          "altText",
+          "source"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "variant": {
+            "type": "string",
+            "enum": [
+              "131",
+              "195",
+              "map"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "imageUrl": {
+            "type": "string",
+            "format": "uri"
+          },
+          "productUrl": {
+            "type": "string",
+            "format": "uri"
+          },
+          "altText": {
+            "type": "string"
+          },
+          "source": {
+            "$ref": "#/components/schemas/SpaceWeatherSourceMeta"
+          }
+        }
+      },
+      "SpaceWeatherSolarSuviSnapshot": {
+        "type": "object",
+        "required": [
+          "panels"
+        ],
+        "properties": {
+          "panels": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SpaceWeatherSolarSuviPanel"
+            }
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "SpaceWeatherSolarDrapSnapshot": {
+        "type": "object",
+        "required": [
+          "imageUrl",
+          "productUrl",
+          "summary",
+          "source"
+        ],
+        "properties": {
+          "imageUrl": {
+            "type": "string",
+            "format": "uri"
+          },
+          "productUrl": {
+            "type": "string",
+            "format": "uri"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "estimatedRecoveryTime": {
+            "type": "string"
+          },
+          "xrayMessage": {
+            "type": "string"
+          },
+          "xrayWarning": {
+            "type": "string"
+          },
+          "protonMessage": {
+            "type": "string"
+          },
+          "protonWarning": {
+            "type": "string"
+          },
+          "source": {
+            "$ref": "#/components/schemas/SpaceWeatherSourceMeta"
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "SpaceWeatherSolarFlareForecastDay": {
+        "type": "object",
+        "required": [
+          "date",
+          "cClassProbability",
+          "mClassProbability",
+          "xClassProbability",
+          "protonProbability",
+          "polarCapAbsorption"
+        ],
+        "properties": {
+          "date": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          },
+          "cClassProbability": {
+            "type": "number"
+          },
+          "mClassProbability": {
+            "type": "number"
+          },
+          "xClassProbability": {
+            "type": "number"
+          },
+          "protonProbability": {
+            "type": "number"
+          },
+          "polarCapAbsorption": {
+            "type": "string"
+          }
+        }
+      },
+      "SpaceWeatherSolarFlareForecastSnapshot": {
+        "type": "object",
+        "required": [
+          "summary",
+          "days",
+          "source"
+        ],
+        "properties": {
+          "summary": {
+            "type": "string"
+          },
+          "days": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SpaceWeatherSolarFlareForecastDay"
+            }
+          },
+          "source": {
+            "$ref": "#/components/schemas/SpaceWeatherSourceMeta"
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "SpaceWeatherGeomagneticHp30Point": {
+        "type": "object",
+        "required": [
+          "observedAt",
+          "hp30",
+          "ap30"
+        ],
+        "properties": {
+          "observedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "hp30": {
+            "type": "number"
+          },
+          "ap30": {
+            "type": "number"
+          }
+        }
+      },
+      "SpaceWeatherGeomagneticHp30Snapshot": {
+        "type": "object",
+        "required": [
+          "currentValue",
+          "maxValue24h",
+          "trend",
+          "source"
+        ],
+        "properties": {
+          "currentValue": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "maxValue24h": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "trend": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SpaceWeatherGeomagneticHp30Point"
+            }
+          },
+          "source": {
+            "$ref": "#/components/schemas/SpaceWeatherSourceMeta"
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "SpaceWeatherGeomagneticAeHour": {
+        "type": "object",
+        "required": [
+          "hourStart",
+          "meanValue",
+          "peakValue"
+        ],
+        "properties": {
+          "hourStart": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "meanValue": {
+            "type": "number"
+          },
+          "peakValue": {
+            "type": "number"
+          }
+        }
+      },
+      "SpaceWeatherGeomagneticAeSnapshot": {
+        "type": "object",
+        "required": [
+          "currentValue",
+          "peakValue24h",
+          "hourlySeries",
+          "source"
+        ],
+        "properties": {
+          "currentValue": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "peakValue24h": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "hourlySeries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SpaceWeatherGeomagneticAeHour"
+            }
+          },
+          "source": {
+            "$ref": "#/components/schemas/SpaceWeatherSourceMeta"
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         }
       }

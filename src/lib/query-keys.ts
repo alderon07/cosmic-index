@@ -10,6 +10,18 @@ export const queryKeys = {
     ["events", "space-weather", fetchKey] as const,
   spaceWeatherNotifications: (fetchKey: string) =>
     ["events", "space-weather", "notifications", fetchKey] as const,
+  spaceWeatherOverview: (fetchKey: string) =>
+    ["events", "space-weather", "overview", fetchKey] as const,
+  spaceWeatherSolarSuvi: (fetchKey: string) =>
+    ["events", "space-weather", "solar", "suvi", fetchKey] as const,
+  spaceWeatherSolarDrap: (fetchKey: string) =>
+    ["events", "space-weather", "solar", "drap", fetchKey] as const,
+  spaceWeatherSolarFlareForecast: (fetchKey: string) =>
+    ["events", "space-weather", "solar", "flare-forecast", fetchKey] as const,
+  spaceWeatherGeomagneticHp30: (fetchKey: string) =>
+    ["events", "space-weather", "geomagnetic", "hp30", fetchKey] as const,
+  spaceWeatherGeomagneticAe: (fetchKey: string) =>
+    ["events", "space-weather", "geomagnetic", "ae", fetchKey] as const,
   savedObjects: (limit = 100) =>
     ["user", "saved-objects", "cursor", limit] as const,
   collections: () => ["user", "collections", "cursor"] as const,
