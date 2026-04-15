@@ -132,15 +132,16 @@ function buildSourceMeta(
 async function fetchWithTimeout(input: string, init?: RequestInit): Promise<Response> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), SOLAR_FETCH_TIMEOUT_MS);
+  const headers = new Headers(init?.headers);
+  if (!headers.has("accept")) {
+    headers.set("accept", "*/*");
+  }
 
   try {
     const response = await fetch(input, {
       ...init,
       signal: controller.signal,
-      headers: {
-        accept: init?.headers ? undefined : "*/*",
-        ...init?.headers,
-      },
+      headers,
     });
 
     if (!response.ok) {

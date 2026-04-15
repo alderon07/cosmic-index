@@ -84,7 +84,8 @@ describe("SpaceWeatherEventsPage", () => {
     expect(html).toContain("Space weather event browser");
     expect(html).toContain('data-fetch-key="v=2&amp;limit=21&amp;page=1"');
     expect(html).toContain('data-total="2"');
-    expect(seenEndpoints.sort()).toEqual(["CME", "FLR", "GST", "HSS", "IPS", "SEP"]);
+    expect([...new Set(seenEndpoints)].sort()).toEqual(["CME", "FLR", "GST", "HSS", "IPS", "SEP"]);
+    expect(seenEndpoints.filter((endpoint) => endpoint === "CME").length).toBeGreaterThan(1);
   });
 
   it("publishes canonical metadata for the events route", async () => {

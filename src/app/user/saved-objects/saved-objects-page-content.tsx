@@ -75,6 +75,9 @@ const TYPE_ACCENTS: Record<SavedObjectType, string> = {
   flr: "hsl(35 100% 62%)",
   cme: "hsl(270 70% 65%)",
   gst: "hsl(82 100% 67%)",
+  ips: "hsl(194 100% 62%)",
+  hss: "hsl(150 82% 58%)",
+  sep: "hsl(48 100% 62%)",
   unknown: "hsl(35 10% 65%)",
 };
 

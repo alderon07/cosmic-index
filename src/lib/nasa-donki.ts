@@ -25,6 +25,9 @@ const API_TIMEOUT_MS = 8000;
 // The 90-day CME payload is materially larger than the other DONKI event feeds,
 // so it needs a longer budget to avoid false "temporarily unavailable" warnings.
 const CME_TIMEOUT_MS = 25000;
+const CME_SHARD_TIMEOUT_MS = 12000;
+const CME_SHARD_WINDOW_DAYS = 14;
+const CME_SHARD_FETCH_CONCURRENCY = 2;
 const DEFAULT_DAYS_BACK = 90;
 const MAX_EVENT_WINDOW_DAYS = 90;
 const DEFAULT_NOTIFICATION_DAYS_BACK = 7;
@@ -70,6 +73,11 @@ interface DonkiTypeFetchResult {
   failed: boolean;
   failureMessage?: string;
   staleFallback?: boolean;
+}
+
+interface CmeShardFetchResult {
+  events: CMEEvent[];
+  staleFallback: boolean;
 }
 
 interface RawLinkedEvent {
@@ -541,6 +549,27 @@ function addDaysUtc(date: string, days: number): string {
   return toUtcDateString(d);
 }
 
+function minUtcDateString(first: string, second: string): string {
+  return first <= second ? first : second;
+}
+
+function buildDateShards(
+  startDate: string,
+  endDate: string,
+  maxWindowDays: number,
+): Array<{ startDate: string; endDate: string }> {
+  const shards: Array<{ startDate: string; endDate: string }> = [];
+  let cursor = startDate;
+
+  while (cursor <= endDate) {
+    const shardEnd = minUtcDateString(addDaysUtc(cursor, maxWindowDays - 1), endDate);
+    shards.push({ startDate: cursor, endDate: shardEnd });
+    cursor = addDaysUtc(shardEnd, 1);
+  }
+
+  return shards;
+}
+
 function getTodayUtcDate(): string {
   return toUtcDateString(new Date());
 }
@@ -639,13 +668,15 @@ function finalizeWarnings(warnings: string[]): string[] | undefined {
 }
 
 function buildSpaceWeatherQueryCacheKey(
+  requestedStart: string,
+  requestedEnd: string,
   startDate: string,
   endDate: string,
   requestedTypes: SpaceWeatherEventType[],
   limit: number,
   page?: number,
 ): string {
-  return `${CACHE_KEYS.SPACE_WEATHER_QUERY}:v${CACHE_VERSION}:${getCacheContext()}:${startDate}:${endDate}:${requestedTypes.join(",")}:limit=${limit}:page=${page ?? 0}`;
+  return `${CACHE_KEYS.SPACE_WEATHER_QUERY}:v${CACHE_VERSION}:${getCacheContext()}:requested=${requestedStart}:${requestedEnd}:effective=${startDate}:${endDate}:${requestedTypes.join(",")}:limit=${limit}:page=${page ?? 0}`;
 }
 
 async function runWithConcurrencyLimit<T>(
@@ -1014,10 +1045,29 @@ async function fetchSolarFlaresRaw(startDate: string, endDate: string): Promise<
   }
 }
 
-async function fetchCMEsRaw(startDate: string, endDate: string): Promise<DonkiTypeFetchResult> {
-  const cacheKey = `${CACHE_KEYS.SPACE_WEATHER_CME}:v${CACHE_VERSION}:${getCacheContext()}:${startDate}:${endDate}`;
-  const startedAt = Date.now();
+function mapRawCMEToEvent(cme: RawCME): CMEEvent {
+  const analyses = normalizeNullableArray(cme.cmeAnalyses) ?? [];
+  const analysis = analyses.find((item) => item.isMostAccurate) ?? analyses[0];
 
+  return {
+    id: cme.activityID,
+    eventType: "CME",
+    startTime: cme.startTime,
+    sourceLocation: cme.sourceLocation,
+    activeRegionNum: cme.activeRegionNum,
+    speed: analysis?.speed,
+    halfAngle: analysis?.halfAngle,
+    cmeType: analysis?.type,
+    linkedEvents: normalizeNullableArray(cme.linkedEvents),
+  };
+}
+
+async function fetchCMEWindowEvents(
+  startDate: string,
+  endDate: string,
+  cacheKey: string,
+  timeoutMs: number,
+): Promise<CmeShardFetchResult> {
   try {
     const events = await withSingleFlight(
       cacheKey,
@@ -1028,7 +1078,7 @@ async function fetchCMEsRaw(startDate: string, endDate: string): Promise<DonkiTy
             startDate,
             endDate,
             undefined,
-            { timeoutMs: CME_TIMEOUT_MS },
+            { timeoutMs },
           );
           const data = fetched.data;
           if (fetched.usedFallbackBase) {
@@ -1040,30 +1090,62 @@ async function fetchCMEsRaw(startDate: string, endDate: string): Promise<DonkiTy
             return [];
           }
 
-          return data.map((cme): CMEEvent => {
-            const analyses = normalizeNullableArray(cme.cmeAnalyses) ?? [];
-            const analysis = analyses.find((item) => item.isMostAccurate) ?? analyses[0];
-
-            return {
-              id: cme.activityID,
-              eventType: "CME",
-              startTime: cme.startTime,
-              sourceLocation: cme.sourceLocation,
-              activeRegionNum: cme.activeRegionNum,
-              speed: analysis?.speed,
-              halfAngle: analysis?.halfAngle,
-              cmeType: analysis?.type,
-              linkedEvents: normalizeNullableArray(cme.linkedEvents),
-            };
-          });
+          return data.map(mapRawCMEToEvent);
         }),
     );
 
     const cachedAt = Date.now();
     writeStaleEvents(cacheKey, events, cachedAt);
     void writeDistributedStaleEvents(cacheKey, events, cachedAt);
+    return { events, staleFallback: false };
+  } catch (error) {
+    const staleEvents = await getStaleFallback<CMEEvent>(cacheKey);
+    if (staleEvents) {
+      console.warn(`[DONKI] Using stale CME cache for ${startDate} to ${endDate} after upstream failure.`);
+      return { events: staleEvents, staleFallback: true };
+    }
+
+    throw error;
+  }
+}
+
+async function fetchCMEsRaw(startDate: string, endDate: string): Promise<DonkiTypeFetchResult> {
+  const cacheKey = `${CACHE_KEYS.SPACE_WEATHER_CME}:v${CACHE_VERSION}:${getCacheContext()}:${startDate}:${endDate}`;
+  const startedAt = Date.now();
+
+  try {
+    const shardWindows = buildDateShards(startDate, endDate, CME_SHARD_WINDOW_DAYS);
+    const shardResults = await withSingleFlight(
+      `${cacheKey}:aggregate`,
+      async () => {
+        if (shardWindows.length === 1) {
+          return [
+            await fetchCMEWindowEvents(startDate, endDate, cacheKey, CME_TIMEOUT_MS),
+          ];
+        }
+
+        return runWithConcurrencyLimit(
+          shardWindows.map((shard) => {
+            const shardCacheKey = `${CACHE_KEYS.SPACE_WEATHER_CME}:v${CACHE_VERSION}:${getCacheContext()}:${shard.startDate}:${shard.endDate}`;
+            return () => fetchCMEWindowEvents(
+              shard.startDate,
+              shard.endDate,
+              shardCacheKey,
+              CME_SHARD_TIMEOUT_MS,
+            );
+          }),
+          CME_SHARD_FETCH_CONCURRENCY,
+        );
+      },
+    );
+    const events = shardResults.flatMap((result) => result.events);
+    const usedStaleShard = shardResults.some((result) => result.staleFallback);
+
+    const cachedAt = Date.now();
+    writeStaleEvents(cacheKey, events, cachedAt);
+    void writeDistributedStaleEvents(cacheKey, events, cachedAt);
     logSourceFetch("CME", startedAt, events.length);
-    return { type: "CME", events, failed: false };
+    return { type: "CME", events, failed: false, staleFallback: usedStaleShard };
   } catch (error) {
     const staleEvents = await getStaleFallback<CMEEvent>(cacheKey);
     if (staleEvents) {
@@ -1668,6 +1750,8 @@ export async function fetchSpaceWeather(
   const requestedTypeSet = new Set<SpaceWeatherEventType>(requestedTypesSource);
   const requestedTypes = SPACE_WEATHER_EVENT_TYPES.filter((type) => requestedTypeSet.has(type));
   const queryCacheKey = buildSpaceWeatherQueryCacheKey(
+    window.requestedStart,
+    window.requestedEnd,
     startDate,
     endDate,
     requestedTypes,

@@ -237,7 +237,7 @@ async function fetchSwpcSpaceWeatherAlerts(
   const endTime = new Date(`${effectiveEnd}T23:59:59.999Z`).getTime();
 
   return rawAlerts
-    .map((alert) => {
+    .map((alert): SpaceWeatherAlert | null => {
       const issuedAt = toIsoDateTime(alert.issue_datetime);
       if (!issuedAt || !alert.message || !alert.product_id) return null;
 

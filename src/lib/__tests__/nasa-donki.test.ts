@@ -638,6 +638,45 @@ describe("DONKI upstream failure handling", () => {
     expect(result.meta.warnings?.some((warning) => warning.includes("limited to 90 days"))).toBe(true);
   });
 
+  it("does not reuse clamped-window warnings for valid requests with the same effective range", async () => {
+    const requestedUrls: string[] = [];
+    globalThis.fetch = async (input: string | URL | Request) => {
+      const url =
+        typeof input === "string"
+          ? input
+          : input instanceof URL
+            ? input.toString()
+            : input.url;
+      requestedUrls.push(url);
+      return new Response(JSON.stringify([]), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    };
+
+    const clamped = await fetchSpaceWeather({
+      startDate: "2025-01-01",
+      endDate: "2026-02-17",
+      eventTypes: ["FLR"],
+      limit: 21,
+      page: 1,
+    });
+    expect(clamped.meta.dateRange.start).toBe("2025-11-19");
+    expect(clamped.meta.warnings?.some((warning) => warning.includes("limited to 90 days"))).toBe(true);
+
+    const valid = await fetchSpaceWeather({
+      startDate: "2025-11-19",
+      endDate: "2026-02-17",
+      eventTypes: ["FLR"],
+      limit: 21,
+      page: 1,
+    });
+
+    expect(valid.meta.dateRange.start).toBe("2025-11-19");
+    expect(valid.meta.warnings?.some((warning) => warning.includes("limited to 90 days"))).not.toBe(true);
+    expect(requestedUrls).toHaveLength(2);
+  });
+
   it("uses a 90-day default event window when startDate is omitted", async () => {
     const requestedUrls: string[] = [];
     globalThis.fetch = async (input: string | URL | Request) => {
@@ -791,6 +830,55 @@ describe("DONKI upstream failure handling", () => {
     expect(result.meta.typesIncluded).toEqual(["CME"]);
     expect(result.meta.warnings).toBeUndefined();
   }, 15_000);
+
+  it("fetches large CME windows in smaller cached shards", async () => {
+    const requestedRanges: string[] = [];
+
+    globalThis.fetch = async (input: string | URL | Request) => {
+      const url =
+        typeof input === "string"
+          ? input
+          : input instanceof URL
+            ? input.toString()
+            : input.url;
+
+      if (!url.includes("/CME")) {
+        throw new Error(`Unexpected endpoint requested during CME shard test: ${url}`);
+      }
+
+      const parsed = new URL(url);
+      const startDate = parsed.searchParams.get("startDate");
+      const endDate = parsed.searchParams.get("endDate");
+      requestedRanges.push(`${startDate}:${endDate}`);
+
+      return new Response(
+        JSON.stringify([
+          {
+            activityID: `${startDate}T00:00:00-CME-001`,
+            startTime: `${startDate}T00:00:00Z`,
+            cmeAnalyses: [{ speed: 600, isMostAccurate: true }],
+          },
+        ]),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      );
+    };
+
+    const result = await fetchSpaceWeather({
+      startDate: "2026-01-01",
+      endDate: "2026-02-01",
+      eventTypes: ["CME"],
+      limit: 21,
+      page: 1,
+    });
+
+    expect(requestedRanges).toEqual([
+      "2026-01-01:2026-01-14",
+      "2026-01-15:2026-01-28",
+      "2026-01-29:2026-02-01",
+    ]);
+    expect(result.events).toHaveLength(3);
+    expect(result.meta.typesIncluded).toEqual(["CME"]);
+  });
 
   it("restores a complete multi-type result from stale per-type caches after the exact-query cache ages out", async () => {
     let mode: "success" | "fail" = "success";

@@ -464,5 +464,7 @@ export const SPACE_WEATHER_NOTIFICATION_BADGES: Record<
   GST: "border-aurora-violet/40 text-aurora-violet bg-aurora-violet/10",
   IPS: "border-aurora-violet/40 text-aurora-violet bg-aurora-violet/10",
   SEP: "border-aurora-violet/40 text-aurora-violet bg-aurora-violet/10",
+  RBE: "border-aurora-violet/40 text-aurora-violet bg-aurora-violet/10",
+  MPC: "border-aurora-violet/40 text-aurora-violet bg-aurora-violet/10",
   other: "border-muted-foreground/40 text-muted-foreground bg-muted/10",
 };

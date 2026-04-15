@@ -1,9 +1,10 @@
+import type { NextRequest } from "next/server";
 import { getCacheControlHeader, CACHE_TTL } from "@/lib/cache";
 import { initRequest, withRateLimit } from "@/lib/api-middleware";
 import { apiSuccess, handleRouteError } from "@/lib/api-response";
 import { buildSpaceWeatherOverviewSnapshot } from "@/lib/space-weather/overview";
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   const { requestId } = initRequest();
 
   const rateLimit = await withRateLimit(request, "BROWSE", requestId);
