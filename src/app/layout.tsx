@@ -226,7 +226,7 @@ export default function RootLayout({
                       </NavigationMenuTrigger>
                       <NavigationMenuContent className="!top-full !right-0 !left-auto !mt-2.5 !w-[min(31rem,calc(100vw-2rem))] rounded-lg border border-border/50 bg-[#160f0b]/97 p-3.5 shadow-[0_12px_36px_rgba(0,0,0,0.45)] backdrop-blur-md">
                         <ul className="grid grid-cols-2 gap-2">
-                          <li className="col-span-2">
+                          <li>
                             <NavigationMenuLink
                               className="!p-0 data-[active]:!bg-transparent data-[active]:!text-inherit hover:!bg-transparent hover:!text-inherit focus:!bg-transparent focus:!text-inherit"
                               asChild
