@@ -326,7 +326,7 @@ export default function RootLayout({
                       >
                         Weather
                       </NavigationMenuTrigger>
-                      <NavigationMenuContent className="!top-full !right-0 !left-auto !mt-2.5 !w-[31rem] rounded-lg border border-border/50 bg-[#160f0b]/97 p-3.5 shadow-[0_12px_36px_rgba(0,0,0,0.45)] backdrop-blur-md">
+                      <NavigationMenuContent className="!top-full !right-0 !left-auto !mt-2.5 !w-[min(31rem,calc(100vw-2rem))] rounded-lg border border-border/50 bg-[#160f0b]/97 p-3.5 shadow-[0_12px_36px_rgba(0,0,0,0.45)] backdrop-blur-md">
                         <ul className="grid grid-flow-row-dense grid-cols-2 gap-2">
                           <li className="col-span-2">
                             <NavigationMenuLink
