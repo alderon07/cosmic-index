@@ -2,6 +2,7 @@ import { describe, expect, it } from "bun:test";
 import {
   buildBreadcrumbJsonLd,
   buildCollectionPageJsonLd,
+  buildFaqPageJsonLd,
   buildHubMetadata,
   toSingleValueParams,
 } from "@/lib/seo";
@@ -106,6 +107,35 @@ describe("seo helpers", () => {
     expect(jsonLd.itemListElement[2]).toMatchObject({
       position: 3,
       name: "TRAPPIST-1",
+    });
+  });
+
+  it("builds faq page json-ld with question and answer entries", () => {
+    const jsonLd = buildFaqPageJsonLd({
+      name: "FAQ",
+      description: "Frequently asked questions.",
+      path: "/faq",
+      questions: [
+        {
+          question: "Where does the data come from?",
+          answer: "From public datasets and operational sources.",
+        },
+      ],
+    });
+
+    expect(jsonLd).toMatchObject({
+      "@type": "FAQPage",
+      url: "https://cosmicindex.dev/faq",
+      mainEntity: [
+        {
+          "@type": "Question",
+          name: "Where does the data come from?",
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: "From public datasets and operational sources.",
+          },
+        },
+      ],
     });
   });
 });

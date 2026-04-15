@@ -120,6 +120,26 @@ export const SPACE_WEATHER_EDUCATION: Record<string, SpaceWeatherTerm> = {
       "D-RAP is critical for aviation and maritime communications that rely on HF radio. When absorption is elevated, pilots and mariners may need to switch to satellite communications. It also affects amateur radio operators and emergency communications networks.",
   },
 
+  SOLAR_WIND: {
+    term: "Solar Wind",
+    brief:
+      "A continuous stream of charged particles flowing outward from the Sun through interplanetary space.",
+    explanation:
+      "The solar wind is a plasma of electrons and ions constantly escaping the Sun's outer atmosphere. Typical speeds range from about 300 to 800 km/s, but both the speed and density can change abruptly when high-speed streams or CME-driven structures sweep past Earth.",
+    impact:
+      "Solar wind sets the background conditions for space weather near Earth. Faster, denser wind can compress the magnetosphere, while changes in the embedded magnetic field determine how efficiently energy can couple into Earth's magnetic environment.",
+  },
+
+  IMF_BZ: {
+    term: "IMF Bz",
+    brief:
+      "The north-south component of the interplanetary magnetic field, one of the most important inputs for geomagnetic storm potential.",
+    explanation:
+      "Bz measures whether the magnetic field carried by the solar wind points northward or southward relative to Earth's field. Southward Bz allows solar-wind magnetic field lines to reconnect more easily with Earth's magnetosphere, opening the door to stronger energy transfer.",
+    impact:
+      "When Bz turns strongly southward, geomagnetic coupling becomes much more efficient. That can intensify aurora, increase substorm activity, and raise the chance that a solar-wind disturbance will become a meaningful geomagnetic storm.",
+  },
+
   HP30: {
     term: "Hp30 Index",
     brief:

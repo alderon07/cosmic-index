@@ -22,6 +22,9 @@ const DONKI_CCMC_BASE_URL = "https://kauai.ccmc.gsfc.nasa.gov/DONKI/WS/get";
 const DONKI_NASA_BASE_URL = "https://api.nasa.gov/DONKI";
 
 const API_TIMEOUT_MS = 8000;
+// The 90-day CME payload is materially larger than the other DONKI event feeds,
+// so it needs a longer budget to avoid false "temporarily unavailable" warnings.
+const CME_TIMEOUT_MS = 25000;
 const DEFAULT_DAYS_BACK = 90;
 const MAX_EVENT_WINDOW_DAYS = 90;
 const DEFAULT_NOTIFICATION_DAYS_BACK = 7;
@@ -31,6 +34,7 @@ const RETRY_BASE_DELAY_MS = 300;
 const RETRY_JITTER_MS = 250;
 const STALE_EVENT_MAX_AGE_SECONDS = CACHE_TTL.SPACE_WEATHER * 4;
 const STALE_EVENT_MAX_AGE_MS = STALE_EVENT_MAX_AGE_SECONDS * 1000;
+const SPACE_WEATHER_QUERY_FRESH_AGE_MS = CACHE_TTL.SPACE_WEATHER * 1000;
 const STALE_NOTIFICATION_MAX_AGE_SECONDS = CACHE_TTL.SPACE_WEATHER_NOTIFICATIONS * 6;
 const STALE_NOTIFICATION_MAX_AGE_MS = STALE_NOTIFICATION_MAX_AGE_SECONDS * 1000;
 const NOTIFICATIONS_TIMEOUT_MS = 6000;
@@ -48,6 +52,7 @@ const CACHE_VERSION = 3;
 
 const SINGLE_FLIGHT = new Map<string, Promise<unknown>>();
 const STALE_EVENTS = new Map<string, StaleEventsEnvelope>();
+const SPACE_WEATHER_QUERY_RESULTS = new Map<string, SpaceWeatherQueryEnvelope>();
 const STALE_NOTIFICATIONS = new Map<string, StaleNotificationsEnvelope>();
 const DONKI_BASE_COOLDOWNS = new Map<string, number>();
 let DONKI_FETCH_OVERRIDE_FOR_TESTS: typeof fetch | null = null;
@@ -159,6 +164,12 @@ interface RawNotification {
   messageURL?: string;
   messageIssueTime?: string;
   messageBody?: string;
+  notification_id?: string;
+  message_type?: string;
+  message_url?: string;
+  message_issue_time?: string;
+  message_body?: string;
+  created_at?: string;
 }
 
 interface NotificationWindow {
@@ -190,6 +201,11 @@ interface StaleEventsEnvelope {
 interface StaleNotificationsEnvelope {
   cachedAt: number;
   value: NotificationCacheValue;
+}
+
+interface SpaceWeatherQueryEnvelope {
+  cachedAt: number;
+  response: SpaceWeatherListResponse;
 }
 
 function randomJitterMs(): number {
@@ -244,6 +260,39 @@ function writeStaleEvents<T extends AnySpaceWeatherEvent>(key: string, events: T
   });
 }
 
+function readCachedSpaceWeatherQueryResponse(
+  key: string,
+  maxAgeMs: number,
+): SpaceWeatherListResponse | null {
+  const cached = SPACE_WEATHER_QUERY_RESULTS.get(key);
+  if (!cached) return null;
+
+  if (isEnvelopeExpired(cached.cachedAt, maxAgeMs)) {
+    SPACE_WEATHER_QUERY_RESULTS.delete(key);
+    return null;
+  }
+
+  return cached.response;
+}
+
+function writeCachedSpaceWeatherQueryResponse(
+  key: string,
+  response: SpaceWeatherListResponse,
+  cachedAt = Date.now(),
+): void {
+  const now = Date.now();
+  for (const [cacheKey, cached] of SPACE_WEATHER_QUERY_RESULTS.entries()) {
+    if (now - cached.cachedAt > STALE_EVENT_MAX_AGE_MS) {
+      SPACE_WEATHER_QUERY_RESULTS.delete(cacheKey);
+    }
+  }
+
+  SPACE_WEATHER_QUERY_RESULTS.set(key, {
+    cachedAt,
+    response,
+  });
+}
+
 function toDistributedStaleCacheKey(key: string): string {
   return `${key}:stale`;
 }
@@ -268,6 +317,32 @@ function coerceStaleEventsEnvelope(
   return value;
 }
 
+function coerceSpaceWeatherQueryEnvelope(
+  value: SpaceWeatherQueryEnvelope | null,
+  maxAgeMs: number,
+): SpaceWeatherQueryEnvelope | null {
+  if (!value) return null;
+
+  if (
+    typeof value.cachedAt !== "number" ||
+    !value.response ||
+    !Array.isArray(value.response.events) ||
+    typeof value.response.count !== "number" ||
+    typeof value.response.totalAvailable !== "number" ||
+    typeof value.response.limitApplied !== "number" ||
+    !value.response.meta ||
+    !Array.isArray(value.response.meta.typesIncluded)
+  ) {
+    return null;
+  }
+
+  if (isEnvelopeExpired(value.cachedAt, maxAgeMs)) {
+    return null;
+  }
+
+  return value;
+}
+
 async function readDistributedStaleEventsEnvelope(key: string): Promise<StaleEventsEnvelope | null> {
   const cached = await getCached<StaleEventsEnvelope | AnySpaceWeatherEvent[]>(toDistributedStaleCacheKey(key));
   return coerceStaleEventsEnvelope(cached);
@@ -285,6 +360,31 @@ async function writeDistributedStaleEvents<T extends AnySpaceWeatherEvent>(
   );
 }
 
+async function readDistributedSpaceWeatherQueryEnvelope(
+  key: string,
+  maxAgeMs: number,
+): Promise<SpaceWeatherQueryEnvelope | null> {
+  const cached = await getCached<SpaceWeatherQueryEnvelope>(key);
+  return coerceSpaceWeatherQueryEnvelope(cached, maxAgeMs);
+}
+
+async function writeDistributedSpaceWeatherQueryResponse(
+  key: string,
+  response: SpaceWeatherListResponse,
+  cachedAt = Date.now(),
+): Promise<void> {
+  await setCached(
+    key,
+    { cachedAt, response } satisfies SpaceWeatherQueryEnvelope,
+    CACHE_TTL.SPACE_WEATHER,
+  );
+  await setCached(
+    toDistributedStaleCacheKey(key),
+    { cachedAt, response } satisfies SpaceWeatherQueryEnvelope,
+    STALE_EVENT_MAX_AGE_SECONDS,
+  );
+}
+
 async function getStaleFallback<T extends AnySpaceWeatherEvent>(key: string): Promise<T[] | null> {
   const inMemory = readStaleEvents<T>(key);
   if (inMemory) return inMemory;
@@ -293,6 +393,42 @@ async function getStaleFallback<T extends AnySpaceWeatherEvent>(key: string): Pr
   if (distributed) {
     writeStaleEvents(key, distributed.events as T[], distributed.cachedAt);
     return distributed.events as T[];
+  }
+
+  return null;
+}
+
+async function getFreshSpaceWeatherQueryFallback(
+  key: string,
+): Promise<SpaceWeatherListResponse | null> {
+  const inMemory = readCachedSpaceWeatherQueryResponse(key, SPACE_WEATHER_QUERY_FRESH_AGE_MS);
+  if (inMemory) return inMemory;
+
+  const distributed = await readDistributedSpaceWeatherQueryEnvelope(
+    key,
+    SPACE_WEATHER_QUERY_FRESH_AGE_MS,
+  );
+  if (distributed) {
+    writeCachedSpaceWeatherQueryResponse(key, distributed.response, distributed.cachedAt);
+    return distributed.response;
+  }
+
+  return null;
+}
+
+async function getStaleSpaceWeatherQueryFallback(
+  key: string,
+): Promise<SpaceWeatherListResponse | null> {
+  const inMemory = readCachedSpaceWeatherQueryResponse(key, STALE_EVENT_MAX_AGE_MS);
+  if (inMemory) return inMemory;
+
+  const distributed = await readDistributedSpaceWeatherQueryEnvelope(
+    toDistributedStaleCacheKey(key),
+    STALE_EVENT_MAX_AGE_MS,
+  );
+  if (distributed) {
+    writeCachedSpaceWeatherQueryResponse(key, distributed.response, distributed.cachedAt);
+    return distributed.response;
   }
 
   return null;
@@ -500,6 +636,16 @@ function finalizeWarnings(warnings: string[]): string[] | undefined {
   }
 
   return normalized.length > 0 ? normalized : undefined;
+}
+
+function buildSpaceWeatherQueryCacheKey(
+  startDate: string,
+  endDate: string,
+  requestedTypes: SpaceWeatherEventType[],
+  limit: number,
+  page?: number,
+): string {
+  return `${CACHE_KEYS.SPACE_WEATHER_QUERY}:v${CACHE_VERSION}:${getCacheContext()}:${startDate}:${endDate}:${requestedTypes.join(",")}:limit=${limit}:page=${page ?? 0}`;
 }
 
 async function runWithConcurrencyLimit<T>(
@@ -882,6 +1028,7 @@ async function fetchCMEsRaw(startDate: string, endDate: string): Promise<DonkiTy
             startDate,
             endDate,
             undefined,
+            { timeoutMs: CME_TIMEOUT_MS },
           );
           const data = fetched.data;
           if (fetched.usedFallbackBase) {
@@ -1255,20 +1402,41 @@ function resolveNotificationWindow(startDate?: string, endDate?: string): Notifi
 }
 
 function normalizeNotificationType(value: string | undefined): SpaceWeatherNotification["type"] {
-  switch (value?.toUpperCase()) {
-    case "FLR":
-      return "FLR";
-    case "SEP":
-      return "SEP";
-    case "CME":
-      return "CME";
-    case "IPS":
-      return "IPS";
-    case "GST":
-      return "GST";
-    default:
-      return "other";
+  const normalized = value?.trim().toUpperCase();
+  if (!normalized) return "other";
+
+  const tokens = normalized.split(/[^A-Z0-9]+/).filter(Boolean);
+  const tokenSet = new Set(tokens);
+
+  if (tokenSet.has("FLR") || (tokenSet.has("SOLAR") && tokenSet.has("FLARE"))) {
+    return "FLR";
   }
+  if (tokenSet.has("SEP") || (tokenSet.has("SOLAR") && tokenSet.has("ENERGETIC") && tokenSet.has("PARTICLE"))) {
+    return "SEP";
+  }
+  if (tokenSet.has("CME")) {
+    return "CME";
+  }
+  if (tokenSet.has("IPS") || (tokenSet.has("INTERPLANETARY") && tokenSet.has("SHOCK"))) {
+    return "IPS";
+  }
+  if (tokenSet.has("GST") || (tokenSet.has("GEOMAGNETIC") && tokenSet.has("STORM"))) {
+    return "GST";
+  }
+  if (
+    tokenSet.has("RBE")
+    || (tokenSet.has("RADIATION") && tokenSet.has("BELT") && tokenSet.has("ENHANCEMENT"))
+  ) {
+    return "RBE";
+  }
+  if (
+    tokenSet.has("MPC")
+    || (tokenSet.has("MAGNETOPAUSE") && tokenSet.has("CROSSING"))
+  ) {
+    return "MPC";
+  }
+
+  return "other";
 }
 
 function extractActivityIDs(messageBody: string): string[] {
@@ -1327,11 +1495,11 @@ export async function fetchSpaceWeatherNotifications(
           let sawUnknownType = false;
 
           for (const entry of data) {
-            const messageID = entry.messageID?.trim();
+            const messageID = entry.messageID?.trim() ?? entry.notification_id?.trim();
             if (!messageID) continue;
 
-            const body = entry.messageBody?.trim() ?? "";
-            const normalizedType = normalizeNotificationType(entry.messageType);
+            const body = entry.messageBody?.trim() ?? entry.message_body?.trim() ?? "";
+            const normalizedType = normalizeNotificationType(entry.messageType ?? entry.message_type);
             if (normalizedType === "other") {
               sawUnknownType = true;
             }
@@ -1339,8 +1507,8 @@ export async function fetchSpaceWeatherNotifications(
             notifications.push({
               id: messageID,
               type: normalizedType,
-              issuedAt: entry.messageIssueTime ?? "",
-              url: sanitizeExternalHttpUrl(entry.messageURL),
+              issuedAt: entry.messageIssueTime ?? entry.message_issue_time ?? entry.created_at ?? "",
+              url: sanitizeExternalHttpUrl(entry.messageURL ?? entry.message_url),
               body,
               activityIDs: extractActivityIDs(body),
             });
@@ -1376,7 +1544,7 @@ export async function fetchSpaceWeatherNotifications(
   }
 
   if (cachedResult.sawUnknownType) {
-    warnings.push("Some notification types were returned as 'other' because they are not enabled in this MVP.");
+    warnings.push("Some notification types were returned as 'other' because they are not yet supported by the app.");
   }
 
   const normalizedWarnings = finalizeWarnings(warnings);
@@ -1499,6 +1667,18 @@ export async function fetchSpaceWeather(
     : [...SPACE_WEATHER_EVENT_TYPES];
   const requestedTypeSet = new Set<SpaceWeatherEventType>(requestedTypesSource);
   const requestedTypes = SPACE_WEATHER_EVENT_TYPES.filter((type) => requestedTypeSet.has(type));
+  const queryCacheKey = buildSpaceWeatherQueryCacheKey(
+    startDate,
+    endDate,
+    requestedTypes,
+    limit,
+    page,
+  );
+
+  const freshExactQueryResult = await getFreshSpaceWeatherQueryFallback(queryCacheKey);
+  if (freshExactQueryResult) {
+    return freshExactQueryResult;
+  }
 
   const warnings: string[] = [...window.warnings];
   const typesIncluded: SpaceWeatherEventType[] = [];
@@ -1523,6 +1703,7 @@ export async function fetchSpaceWeather(
 
   const results = await runWithConcurrencyLimit(fetchTasks, SPACE_WEATHER_FETCH_CONCURRENCY);
   let failedTypeCount = 0;
+  let usedPerTypeStaleFallback = false;
 
   for (const result of results) {
     if (result.failed) {
@@ -1533,10 +1714,28 @@ export async function fetchSpaceWeather(
 
     typesIncluded.push(result.type);
     if (result.staleFallback) {
+      usedPerTypeStaleFallback = true;
       warnings.push(`${getEventTypeLabel(result.type)} is using stale cached data due to DONKI unavailability.`);
     }
     if (result.events.length > 0) {
       allEvents = allEvents.concat(result.events);
+    }
+  }
+
+  if (failedTypeCount > 0 && requestedTypes.length > 1) {
+    const staleExactQueryResult = await getStaleSpaceWeatherQueryFallback(queryCacheKey);
+    if (staleExactQueryResult) {
+      return {
+        ...staleExactQueryResult,
+        meta: {
+          ...staleExactQueryResult.meta,
+          warnings: finalizeWarnings([
+            ...(staleExactQueryResult.meta.warnings ?? []),
+            ...warnings,
+            "Showing the last complete cached event result due to temporary DONKI unavailability.",
+          ]),
+        },
+      };
     }
   }
 
@@ -1555,7 +1754,7 @@ export async function fetchSpaceWeather(
 
   const normalizedWarnings = finalizeWarnings(warnings);
 
-  return {
+  const response: SpaceWeatherListResponse = {
     events: normalizedResult.events,
     count: normalizedResult.events.length,
     totalAvailable: normalizedResult.totalAvailable,
@@ -1569,11 +1768,20 @@ export async function fetchSpaceWeather(
       totalCap: SPACE_WEATHER_MAX_TOTAL_RESULTS,
     },
   };
+
+  if (failedTypeCount === 0 && !usedPerTypeStaleFallback) {
+    const cachedAt = Date.now();
+    writeCachedSpaceWeatherQueryResponse(queryCacheKey, response, cachedAt);
+    void writeDistributedSpaceWeatherQueryResponse(queryCacheKey, response, cachedAt);
+  }
+
+  return response;
 }
 
 export function __resetDonkiTransientStateForTests(): void {
   SINGLE_FLIGHT.clear();
   STALE_EVENTS.clear();
+  SPACE_WEATHER_QUERY_RESULTS.clear();
   STALE_NOTIFICATIONS.clear();
   DONKI_BASE_COOLDOWNS.clear();
   DONKI_FETCH_OVERRIDE_FOR_TESTS = null;

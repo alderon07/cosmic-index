@@ -27,6 +27,14 @@ interface AlertsDeskClientProps {
   generatedAt: string;
 }
 
+export function resolveAlertsDeskFreshnessTimestamp(generatedAt: string, dataUpdatedAt: number): string {
+  if (dataUpdatedAt <= 0) {
+    return generatedAt;
+  }
+
+  return new Date(dataUpdatedAt).toISOString();
+}
+
 async function fetchAlerts(signal?: AbortSignal): Promise<AlertsPaginatedResultParsed> {
   const raw = await apiFetchPaginated<unknown>("/space-weather/alerts?limit=10&page=1", {
     signal,
@@ -48,7 +56,11 @@ export function AlertsDeskClient({
 }: AlertsDeskClientProps) {
   const parsedInitialAlerts = AlertsPaginatedResultSchema.parse(initialAlerts);
 
-  const { data: alertsResult, isFetching } = useQuery<AlertsPaginatedResultParsed>({
+  const {
+    data: alertsResult,
+    isFetching,
+    dataUpdatedAt,
+  } = useQuery<AlertsPaginatedResultParsed>({
     queryKey: queryKeys.spaceWeatherNotifications("alerts-desk"),
     queryFn: ({ signal }) => fetchAlerts(signal),
     initialData: parsedInitialAlerts,
@@ -59,12 +71,13 @@ export function AlertsDeskClient({
 
   const alerts = alertsResult.objects;
   const relatedEvents = alerts.flatMap((alert) => alert.relatedEvents);
+  const freshnessTimestamp = resolveAlertsDeskFreshnessTimestamp(generatedAt, dataUpdatedAt);
 
   return (
     <>
       <section className="mb-6 flex flex-wrap items-center gap-3">
         <DataFreshnessBadge
-          generatedAt={generatedAt}
+          generatedAt={freshnessTimestamp}
           isFetching={isFetching}
         />
         <span className="rounded-full border border-border/40 bg-black/15 px-3 py-1.5 text-xs text-muted-foreground/80">

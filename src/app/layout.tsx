@@ -14,6 +14,7 @@ import {
   ShieldAlert,
   Sun,
   Waves,
+  Wind,
 } from "lucide-react";
 import { THEMES } from "@/lib/theme";
 import { Analytics } from "@vercel/analytics/react";
@@ -223,24 +224,24 @@ export default function RootLayout({
                       >
                         Small-Bodies
                       </NavigationMenuTrigger>
-                      <NavigationMenuContent className="!top-full !right-auto !left-0 !mt-2.5 !w-[28rem] rounded-lg border border-border/50 bg-[#160f0b]/97 p-3.5 shadow-[0_12px_36px_rgba(0,0,0,0.45)] backdrop-blur-md">
+                      <NavigationMenuContent className="!top-full !right-0 !left-auto !mt-2.5 !w-[min(31rem,calc(100vw-2rem))] rounded-lg border border-border/50 bg-[#160f0b]/97 p-3.5 shadow-[0_12px_36px_rgba(0,0,0,0.45)] backdrop-blur-md">
                         <ul className="grid grid-cols-2 gap-2">
-                          <li>
+                          <li className="col-span-2">
                             <NavigationMenuLink
                               className="!p-0 data-[active]:!bg-transparent data-[active]:!text-inherit hover:!bg-transparent hover:!text-inherit focus:!bg-transparent focus:!text-inherit"
                               asChild
                             >
                               <Link
                                 href="/small-bodies"
-                                className="group flex h-full flex-col justify-start rounded-md border border-border/40 bg-card/50 text-left transition-colors hover:border-secondary/35 hover:bg-secondary/8"
+                                className="group flex h-full flex-col justify-start rounded-md border border-secondary/25 bg-secondary/6 text-left transition-colors hover:border-secondary/45 hover:bg-secondary/10"
                               >
                                 <div className="px-4 py-3.5">
                                   <div className="flex items-center gap-2 text-orange-100/85 group-hover:text-secondary">
                                     <CircleDot className="w-4 h-4 shrink-0" />
-                                    <span className="font-display text-[0.82rem] tracking-wide">Browse Small Bodies</span>
+                                    <span className="font-display text-[0.82rem] tracking-wide">Small Bodies</span>
                                   </div>
                                   <p className="mt-2 font-sans text-xs leading-[1.5] text-orange-100/50 group-hover:text-secondary/75">
-                                    Asteroids and comets catalog for discovery and detail views.
+                                    Browse asteroid and comet records with search, filtering, and direct paths into detail pages.
                                   </p>
                                 </div>
                               </Link>
@@ -267,6 +268,27 @@ export default function RootLayout({
                               </Link>
                             </NavigationMenuLink>
                           </li>
+                          <li>
+                            <NavigationMenuLink
+                              className="!p-0 data-[active]:!bg-transparent data-[active]:!text-inherit hover:!bg-transparent hover:!text-inherit focus:!bg-transparent focus:!text-inherit"
+                              asChild
+                            >
+                              <Link
+                                href="/fireballs"
+                                className="group flex h-full flex-col justify-start rounded-md border border-border/40 bg-card/50 text-left transition-colors hover:border-radium-teal/35 hover:bg-radium-teal/8"
+                              >
+                                <div className="px-4 py-3.5">
+                                  <div className="flex items-center gap-2 text-orange-100/85 group-hover:text-radium-teal">
+                                    <Flame className="w-4 h-4 shrink-0" />
+                                    <span className="font-display text-[0.82rem] tracking-wide">Fireballs</span>
+                                  </div>
+                                  <p className="mt-2 font-sans text-xs leading-[1.5] text-orange-100/50 group-hover:text-radium-teal/75">
+                                    Review reported atmospheric fireball events with energy, speed, and impact context.
+                                  </p>
+                                </div>
+                              </Link>
+                            </NavigationMenuLink>
+                          </li>
                         </ul>
                       </NavigationMenuContent>
                       </NavigationMenuItem>
@@ -282,7 +304,7 @@ export default function RootLayout({
                 </Link>
                 <Link
                   href="/fireballs"
-                  className={`font-display text-sm tracking-wide text-orange-100/75 transition-colors ${THEMES.fireballs.hoverText}`}
+                  className={`font-display text-sm tracking-wide text-orange-100/75 transition-colors lg:hidden ${THEMES.fireballs.hoverText}`}
                   title="Fireballs"
                 >
                   <Flame className="w-5 h-5 lg:hidden" />
@@ -343,6 +365,27 @@ export default function RootLayout({
                                   </div>
                                   <p className="mt-2 font-sans text-xs leading-[1.5] text-orange-100/50 group-hover:text-aurora-violet/75">
                                     Browse NASA event reports across flares, CMEs, geomagnetic storms, and more.
+                                  </p>
+                                </div>
+                              </Link>
+                            </NavigationMenuLink>
+                          </li>
+                          <li>
+                            <NavigationMenuLink
+                              className="!p-0 data-[active]:!bg-transparent data-[active]:!text-inherit hover:!bg-transparent hover:!text-inherit focus:!bg-transparent focus:!text-inherit"
+                              asChild
+                            >
+                              <Link
+                                href="/space-weather/solar-wind"
+                                className="group flex h-full flex-col justify-start rounded-md border border-border/40 bg-card/50 text-left transition-colors hover:border-violet-300/35 hover:bg-violet-300/8"
+                              >
+                                <div className="px-4 py-3.5">
+                                  <div className="flex items-center gap-2 text-orange-100/85 group-hover:text-violet-300">
+                                    <Wind className="w-4 h-4 shrink-0" />
+                                    <span className="font-display text-[0.82rem] tracking-wide">Solar Wind</span>
+                                  </div>
+                                  <p className="mt-2 font-sans text-xs leading-[1.5] text-orange-100/50 group-hover:text-violet-300/75">
+                                    Watch upstream plasma flow and IMF orientation before it couples into Earth&apos;s magnetosphere.
                                   </p>
                                 </div>
                               </Link>
@@ -437,30 +480,37 @@ export default function RootLayout({
                     Cosmic Index
                   </span>
                 </div>
-                <div className="text-center md:text-right">
+                <div className="text-center">
                   <p className="text-xs text-orange-100/65">
                     Data sourced from{" "}
                     <Link
-                      href="https://exoplanetarchive.ipac.caltech.edu/"
+                      href="https://www.nasa.gov/"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-orange-300 hover:underline"
                     >
-                      NASA Exoplanet Archive
+                      NASA
                     </Link>{" "}
                     and{" "}
                     <Link
-                      href="https://ssd.jpl.nasa.gov/tools/sbdb_lookup.html"
+                      href="https://www.swpc.noaa.gov/"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-orange-300 hover:underline"
                     >
-                      JPL Small-Body Database
+                      NOAA SWPC
                     </Link>
+                    , including public archives and operational datasets from JPL and other research providers.
                   </p>
                   <p className="mt-1 text-[11px] text-orange-100/45">
-                    Cosmic Index is not affiliated with, endorsed by, or sponsored by NASA or JPL.
+                    Cosmic Index is not affiliated with, endorsed by, or sponsored by NASA, JPL, NOAA, or other upstream data providers.
                   </p>
+                  <div className="mt-2 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[11px] text-orange-100/50">
+                    <span className="text-orange-100/35">Help &amp; trust</span>
+                    <Link href="/faq" className="text-orange-300 hover:underline">
+                      FAQ
+                    </Link>
+                  </div>
                 </div>
                 <div className="flex items-center gap-4">
                   <span className="hidden sm:flex items-center gap-1.5 text-xs text-orange-100/55">

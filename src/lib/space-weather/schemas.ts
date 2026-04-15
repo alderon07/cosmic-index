@@ -42,7 +42,7 @@ const AlertRelatedEventSchema = z.object({
 const AlertSchema = z.object({
   id: z.string(),
   source: z.enum(["donki", "swpc"]),
-  category: z.enum(["flr", "sep", "cme", "ips", "gst", "other"]),
+  category: z.enum(["flr", "sep", "cme", "ips", "gst", "rbe", "mpc", "other"]),
   title: z.string(),
   summary: z.string(),
   severity: z.enum(["minor", "moderate", "strong", "severe", "extreme"]),

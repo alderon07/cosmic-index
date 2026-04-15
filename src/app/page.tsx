@@ -73,6 +73,13 @@ export default function HomePage() {
                 An observatory for exoplanets, stars, small bodies,
                 and live space data from NASA and JPL.
               </p>
+              <p className="mt-3 text-sm text-orange-100/65">
+                New here?{" "}
+                <Link href="/faq" className="text-orange-300 underline-offset-4 hover:underline">
+                  Read the FAQ
+                </Link>{" "}
+                for data-source notes, space weather basics, and catalog definitions.
+              </p>
 
               <div className="mt-6 sm:mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
                 <Button asChild size="lg" className="bg-orange-500 text-black hover:bg-orange-400 glow-orange">
@@ -191,6 +198,13 @@ export default function HomePage() {
           </h2>
           <p className="mx-auto mt-2 sm:mt-3 max-w-2xl text-sm text-orange-100/70 md:text-base px-1">
             Begin exploration across Cosmic Index.
+          </p>
+          <p className="mx-auto mt-2 max-w-2xl text-xs text-orange-100/55">
+            Need definitions first?{" "}
+            <Link href="/faq" className="text-orange-300 underline-offset-4 hover:underline">
+              Visit the FAQ
+            </Link>
+            .
           </p>
           <div className="mt-4 sm:mt-6 flex flex-col items-stretch sm:items-center justify-center gap-3 sm:flex-row">
             <Button asChild className="w-full sm:w-auto bg-orange-500 text-black hover:bg-orange-400 text-sm sm:text-base">

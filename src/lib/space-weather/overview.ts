@@ -1,5 +1,5 @@
 import { CACHE_KEYS, CACHE_TTL, withCache } from "@/lib/cache";
-import { fetchSpaceWeather } from "@/lib/nasa-donki";
+import { fetchSpaceWeather, SPACE_WEATHER_MAX_TOTAL_RESULTS } from "@/lib/nasa-donki";
 import { fetchUnifiedSpaceWeatherAlerts } from "@/lib/space-weather/alerts";
 import { SPACE_WEATHER_EVENT_TYPES, type AnySpaceWeatherEvent } from "@/lib/types";
 import type { SpaceWeatherOverviewSnapshot } from "@/lib/space-weather/models";
@@ -43,7 +43,7 @@ export async function buildSpaceWeatherOverviewSnapshot(): Promise<SpaceWeatherO
       const [eventsResult, alertsResult] = await Promise.allSettled([
         fetchSpaceWeather({
           eventTypes: [...SPACE_WEATHER_EVENT_TYPES],
-          limit: 12,
+          limit: SPACE_WEATHER_MAX_TOTAL_RESULTS,
           page: 1,
         }),
         fetchUnifiedSpaceWeatherAlerts({

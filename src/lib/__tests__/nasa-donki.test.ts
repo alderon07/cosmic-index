@@ -388,14 +388,21 @@ describe("notifications integration", () => {
     expect(result.meta.warnings?.length).toBeGreaterThan(0);
   });
 
-  it("maps unsupported notification messageType values to 'other'", async () => {
+  it("maps RBE and MPC notification messageType values without falling back to 'other'", async () => {
     globalThis.fetch = async () =>
       new Response(
         JSON.stringify([
           {
-            messageType: "MPC",
+            messageType: "RBE",
             messageID: "20260120-AL-001",
             messageIssueTime: "2026-01-20T20:00Z",
+            messageBody:
+              "Activity ID: 2026-01-19T22:49:00-RBE-001\\nAdditional message body",
+          },
+          {
+            messageType: "MPC",
+            messageID: "20260120-AL-002",
+            messageIssueTime: "2026-01-20T19:00Z",
             messageBody:
               "Activity ID: 2026-01-19T22:49:00-MPC-001\\nAdditional message body",
           },
@@ -410,9 +417,43 @@ describe("notifications integration", () => {
       page: 1,
     });
 
+    expect(result.notifications).toHaveLength(2);
+    expect(result.notifications.map((notification) => notification.type)).toEqual(["RBE", "MPC"]);
+    expect(result.meta.warnings).toBeUndefined();
+  });
+
+  it("accepts snake_case DONKI notification payloads and preserves CME entries", async () => {
+    globalThis.fetch = async () =>
+      new Response(
+        JSON.stringify([
+          {
+            notification_id: "20260414-AL-001",
+            message_type: "CME",
+            message_issue_time: "2026-04-14T00:03:00+00:00",
+            message_body:
+              "## Message Type: Space Weather Notification - CME (Mars)\nActivity ID: 2026-04-13T18:24:00-CME-001",
+            message_url: "https://kauai.ccmc.gsfc.nasa.gov/DONKI/view/Alert/45655/1",
+            created_at: "2026-04-14T00:30:03.224651+00:00",
+          },
+        ]),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      );
+
+    const result = await fetchSpaceWeatherNotifications({
+      endDate: "2026-04-14",
+      type: "all",
+      limit: 8,
+      page: 1,
+    });
+
     expect(result.notifications).toHaveLength(1);
-    expect(result.notifications[0].type).toBe("other");
-    expect(result.meta.warnings?.some((warning) => warning.includes("other"))).toBe(true);
+    expect(result.notifications[0]).toMatchObject({
+      id: "20260414-AL-001",
+      type: "CME",
+      issuedAt: "2026-04-14T00:03:00+00:00",
+      url: "https://kauai.ccmc.gsfc.nasa.gov/DONKI/view/Alert/45655/1",
+      activityIDs: ["2026-04-13T18:24:00-CME-001"],
+    });
   });
 
   it("uses stale notifications when DONKI notifications are temporarily unavailable", async () => {
@@ -662,6 +703,180 @@ describe("DONKI upstream failure handling", () => {
     expect(result.meta.warnings?.length).toBe(2);
   });
 
+  it("reuses a cached exact-query event result for identical repeated requests", async () => {
+    let fetchCallCount = 0;
+
+    globalThis.fetch = async (input: string | URL | Request) => {
+      const url =
+        typeof input === "string"
+          ? input
+          : input instanceof URL
+            ? input.toString()
+            : input.url;
+
+      fetchCallCount += 1;
+
+      if (!url.includes("/FLR")) {
+        throw new Error(`Unexpected endpoint requested during exact-query cache test: ${url}`);
+      }
+
+      return new Response(
+        JSON.stringify([
+          {
+            flrID: "2026-02-16T04:24:00-FLR-001",
+            beginTime: "2026-02-16T04:24:00Z",
+            classType: "M1.0",
+          },
+        ]),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      );
+    };
+
+    const first = await fetchSpaceWeather({
+      startDate: "2026-02-01",
+      endDate: "2026-02-02",
+      eventTypes: ["FLR"],
+      limit: 21,
+      page: 1,
+    });
+    const second = await fetchSpaceWeather({
+      startDate: "2026-02-01",
+      endDate: "2026-02-02",
+      eventTypes: ["FLR"],
+      limit: 21,
+      page: 1,
+    });
+
+    expect(first.events).toHaveLength(1);
+    expect(second.events).toHaveLength(1);
+    expect(fetchCallCount).toBe(1);
+  });
+
+  it("allows slower CME responses without marking the source unavailable", async () => {
+    globalThis.fetch = async (input: string | URL | Request) => {
+      const url =
+        typeof input === "string"
+          ? input
+          : input instanceof URL
+            ? input.toString()
+            : input.url;
+
+      if (!url.includes("/CME")) {
+        throw new Error(`Unexpected endpoint requested during CME timeout test: ${url}`);
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 8_500));
+
+      return new Response(
+        JSON.stringify([
+          {
+            activityID: "2026-04-14T19:12:00-CME-001",
+            startTime: "2026-04-14T19:12:00Z",
+            cmeAnalyses: [{ speed: 580, isMostAccurate: true }],
+          },
+        ]),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      );
+    };
+
+    const result = await fetchSpaceWeather({
+      startDate: "2026-04-14",
+      endDate: "2026-04-15",
+      eventTypes: ["CME"],
+      limit: 21,
+      page: 1,
+    });
+
+    expect(result.events).toHaveLength(1);
+    expect(result.meta.typesIncluded).toEqual(["CME"]);
+    expect(result.meta.warnings).toBeUndefined();
+  }, 15_000);
+
+  it("restores a complete multi-type result from stale per-type caches after the exact-query cache ages out", async () => {
+    let mode: "success" | "fail" = "success";
+    const originalDateNow = Date.now;
+
+    globalThis.fetch = async (input: string | URL | Request) => {
+      const url =
+        typeof input === "string"
+          ? input
+          : input instanceof URL
+            ? input.toString()
+            : input.url;
+
+      if (mode === "fail") {
+        throw new TypeError("fetch failed");
+      }
+
+      if (url.includes("/FLR")) {
+        return new Response(
+          JSON.stringify([
+            {
+              flrID: "2026-02-16T04:24:00-FLR-001",
+              beginTime: "2026-02-16T04:24:00Z",
+              classType: "M1.0",
+            },
+          ]),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      if (url.includes("/CME")) {
+        return new Response(
+          JSON.stringify([
+            {
+              activityID: "2026-02-16T05:00:00-CME-001",
+              startTime: "2026-02-16T05:00:00Z",
+              cmeAnalyses: [{ speed: 900, isMostAccurate: true }],
+            },
+          ]),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      throw new Error(`Unexpected endpoint requested during exact-query stale fallback test: ${url}`);
+    };
+
+    const initial = await fetchSpaceWeather({
+      startDate: "2026-02-01",
+      endDate: "2026-02-02",
+      eventTypes: ["FLR", "CME"],
+      limit: 21,
+      page: 1,
+    });
+
+    expect(initial.events.map((event) => event.id)).toEqual([
+      "2026-02-16T05:00:00-CME-001",
+      "2026-02-16T04:24:00-FLR-001",
+    ]);
+
+    mode = "fail";
+    Date.now = () => originalDateNow() + (31 * 60 * 1000);
+
+    try {
+      const fallback = await fetchSpaceWeather({
+        startDate: "2026-02-01",
+        endDate: "2026-02-02",
+        eventTypes: ["FLR", "CME"],
+        limit: 21,
+        page: 1,
+      });
+
+      expect(fallback.events.map((event) => event.id)).toEqual([
+        "2026-02-16T05:00:00-CME-001",
+        "2026-02-16T04:24:00-FLR-001",
+      ]);
+      expect(fallback.meta.typesIncluded).toEqual(["FLR", "CME"]);
+      expect(
+        fallback.meta.warnings?.some((warning) =>
+          warning.includes("stale cached data due to DONKI unavailability"),
+        ),
+      ).toBe(true);
+    } finally {
+      Date.now = originalDateNow;
+    }
+  });
+
   it("throws DonkiUpstreamUnavailableError for detail lookup when upstream fetch fails", async () => {
     globalThis.fetch = async () => {
       throw new TypeError("fetch failed");
@@ -674,6 +889,7 @@ describe("DONKI upstream failure handling", () => {
 
   it("falls back to stale per-type data when DONKI temporarily fails", async () => {
     let mode: "success" | "fail" = "success";
+    const originalDateNow = Date.now;
 
     globalThis.fetch = async () => {
       if (mode === "fail") {
@@ -702,20 +918,25 @@ describe("DONKI upstream failure handling", () => {
     expect(initial.meta.warnings).toBeUndefined();
 
     mode = "fail";
+    Date.now = () => originalDateNow() + (31 * 60 * 1000);
 
-    const fallback = await fetchSpaceWeather({
-      startDate: "2026-02-01",
-      endDate: "2026-02-02",
-      eventTypes: ["FLR"],
-      limit: 21,
-      page: 1,
-    });
+    try {
+      const fallback = await fetchSpaceWeather({
+        startDate: "2026-02-01",
+        endDate: "2026-02-02",
+        eventTypes: ["FLR"],
+        limit: 21,
+        page: 1,
+      });
 
-    expect(fallback.events).toHaveLength(1);
-    expect(fallback.meta.typesIncluded).toEqual(["FLR"]);
-    expect(
-      fallback.meta.warnings?.some((warning) => warning.includes("stale cached data due to DONKI unavailability")),
-    ).toBe(true);
+      expect(fallback.events).toHaveLength(1);
+      expect(fallback.meta.typesIncluded).toEqual(["FLR"]);
+      expect(
+        fallback.meta.warnings?.some((warning) => warning.includes("stale cached data due to DONKI unavailability")),
+      ).toBe(true);
+    } finally {
+      Date.now = originalDateNow;
+    }
   });
 
   it("prefers the CCMC DONKI gateway when NASA_API_KEY is set", async () => {

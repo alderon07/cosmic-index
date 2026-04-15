@@ -152,9 +152,21 @@ describe("GET /api/v1/space-weather/alerts", () => {
     expect(lastFetchParams?.type).toBe("CME");
   });
 
+  it("accepts newly supported alert filter types", async () => {
+    const request = new NextRequest(
+      "http://localhost:3000/api/v1/space-weather/alerts?type=RBE&limit=8",
+    );
+    const response = await GET(request);
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.pagination.mode).toBe("none");
+    expect(lastFetchParams?.type).toBe("RBE");
+  });
+
   it("returns 400 for invalid type", async () => {
     const request = new NextRequest(
-      "http://localhost:3000/api/v1/space-weather/alerts?type=MPC",
+      "http://localhost:3000/api/v1/space-weather/alerts?type=Report",
     );
     const response = await GET(request);
 

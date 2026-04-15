@@ -2319,7 +2319,7 @@
       "get": {
         "operationId": "listSpaceWeatherAlerts",
         "summary": "List normalized space weather alerts",
-        "description": "Retrieve normalized space weather alerts from the observatory alert lane. The feed combines DONKI notifications with NOAA SWPC operational alerts while keeping source provenance visible. DONKI items are enriched with related-event context when corresponding DONKI events can be resolved. If `startDate` and `endDate` are omitted, the default search window follows the DONKI notifications feed (last 7 days). Notification queries are limited to a 30-day range, and source-specific degradation is surfaced in `meta.warnings`.",
+        "description": "Retrieve normalized space weather alerts from the observatory alert lane. The feed combines DONKI notifications with NOAA SWPC operational alerts while keeping source provenance visible. DONKI items are enriched with related-event context when corresponding DONKI events can be resolved. Weekly DONKI summary reports are excluded from this live alert lane. If `startDate` and `endDate` are omitted, the default search window follows the DONKI notifications feed (last 7 days). Notification queries are limited to a 30-day range, and source-specific degradation is surfaced in `meta.warnings`.",
         "tags": [
           "Space Weather"
         ],
@@ -2345,7 +2345,7 @@
           {
             "name": "type",
             "in": "query",
-            "description": "Alert type filter. Supported values are all, FLR, SEP, CME, IPS, GST.",
+            "description": "Alert type filter. Supported values are all, FLR, SEP, CME, IPS, GST, RBE, MPC.",
             "schema": {
               "type": "string",
               "enum": [
@@ -2354,7 +2354,9 @@
                 "SEP",
                 "CME",
                 "IPS",
-                "GST"
+                "GST",
+                "RBE",
+                "MPC"
               ],
               "default": "all"
             }
@@ -2673,6 +2675,52 @@
         }
       }
     },
+    "/space-weather/solar-wind": {
+      "get": {
+        "operationId": "getSpaceWeatherSolarWind",
+        "summary": "Get the composed solar-wind and IMF monitoring snapshot",
+        "description": "Retrieve the NOAA SWPC solar-wind monitoring snapshot used by the Solar Wind & IMF surface. The response combines upstream plasma, interplanetary magnetic field, and propagated geospace context into one page-ready payload with source provenance and interpretation metadata.",
+        "tags": [
+          "Space Weather"
+        ],
+        "responses": {
+          "200": {
+            "description": "Composed solar-wind monitoring snapshot.",
+            "headers": {
+              "$ref": "#/components/headers/StandardResponseHeaders"
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/DetailEnvelope"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/SpaceWeatherSolarWindPageSnapshot"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimitExceeded"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/UpstreamUnavailable"
+          }
+        }
+      }
+    },
     "/space-weather/geomagnetic/hp30": {
       "get": {
         "operationId": "getSpaceWeatherGeomagneticHp30",
@@ -2795,7 +2843,7 @@
           {
             "name": "type",
             "in": "query",
-            "description": "Notification type filter. Supported values: all, FLR, SEP, CME, IPS, GST.",
+            "description": "Notification type filter. Supported values: all, FLR, SEP, CME, IPS, GST, RBE, MPC.",
             "schema": {
               "type": "string",
               "enum": [
@@ -2804,7 +2852,9 @@
                 "SEP",
                 "CME",
                 "IPS",
-                "GST"
+                "GST",
+                "RBE",
+                "MPC"
               ],
               "default": "all"
             }
@@ -4355,6 +4405,8 @@
               "CME",
               "IPS",
               "GST",
+              "RBE",
+              "MPC",
               "other"
             ],
             "description": "Normalized notification type used by the API."
@@ -4570,6 +4622,8 @@
               "cme",
               "ips",
               "gst",
+              "rbe",
+              "mpc",
               "other"
             ],
             "description": "Normalized alert category used by the observatory."
@@ -4830,6 +4884,421 @@
           },
           "source": {
             "$ref": "#/components/schemas/SpaceWeatherSourceMeta"
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "SpaceWeatherSolarWindPoint": {
+        "type": "object",
+        "required": [
+          "observedAt",
+          "speedKms",
+          "densityPerCc",
+          "temperatureK"
+        ],
+        "properties": {
+          "observedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "speedKms": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "densityPerCc": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "temperatureK": {
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        }
+      },
+      "SpaceWeatherSolarWindPlasmaSnapshot": {
+        "type": "object",
+        "required": [
+          "currentValue",
+          "trend",
+          "source"
+        ],
+        "properties": {
+          "currentValue": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SpaceWeatherSolarWindPoint"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "trend": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SpaceWeatherSolarWindPoint"
+            }
+          },
+          "source": {
+            "$ref": "#/components/schemas/SpaceWeatherSourceMeta"
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "SpaceWeatherSolarWindImfPoint": {
+        "type": "object",
+        "required": [
+          "observedAt",
+          "bxNt",
+          "byNt",
+          "bzNt",
+          "btNt",
+          "lonGsmDeg",
+          "latGsmDeg"
+        ],
+        "properties": {
+          "observedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "bxNt": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "byNt": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "bzNt": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "btNt": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "lonGsmDeg": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "latGsmDeg": {
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        }
+      },
+      "SpaceWeatherSolarWindImfSnapshot": {
+        "type": "object",
+        "required": [
+          "currentValue",
+          "trend",
+          "source"
+        ],
+        "properties": {
+          "currentValue": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SpaceWeatherSolarWindImfPoint"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "trend": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SpaceWeatherSolarWindImfPoint"
+            }
+          },
+          "source": {
+            "$ref": "#/components/schemas/SpaceWeatherSourceMeta"
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "SpaceWeatherSolarWindPropagatedPoint": {
+        "type": "object",
+        "required": [
+          "observedAt",
+          "propagatedAt",
+          "speedKms",
+          "densityPerCc",
+          "temperatureK",
+          "bxNt",
+          "byNt",
+          "bzNt",
+          "btNt"
+        ],
+        "properties": {
+          "observedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "propagatedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "speedKms": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "densityPerCc": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "temperatureK": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "bxNt": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "byNt": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "bzNt": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "btNt": {
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        }
+      },
+      "SpaceWeatherSolarWindPropagatedSnapshot": {
+        "type": "object",
+        "required": [
+          "currentValue",
+          "trend",
+          "source"
+        ],
+        "properties": {
+          "currentValue": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SpaceWeatherSolarWindPropagatedPoint"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "trend": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SpaceWeatherSolarWindPropagatedPoint"
+            }
+          },
+          "source": {
+            "$ref": "#/components/schemas/SpaceWeatherSourceMeta"
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "SpaceWeatherSolarWindInterpretation": {
+        "type": "object",
+        "required": [
+          "bzState",
+          "couplingRisk",
+          "summary"
+        ],
+        "properties": {
+          "bzState": {
+            "type": "string",
+            "enum": [
+              "southward",
+              "northward",
+              "mixed",
+              "unknown"
+            ]
+          },
+          "couplingRisk": {
+            "type": "string",
+            "enum": [
+              "quiet",
+              "watch",
+              "elevated",
+              "storm-favorable",
+              "unknown"
+            ]
+          },
+          "summary": {
+            "type": "string"
+          }
+        }
+      },
+      "SpaceWeatherSolarWindSnapshot": {
+        "type": "object",
+        "required": [
+          "current",
+          "plasma",
+          "imf",
+          "propagated",
+          "interpretation"
+        ],
+        "properties": {
+          "current": {
+            "type": "object",
+            "required": [
+              "speedKms",
+              "densityPerCc",
+              "temperatureK",
+              "btNt",
+              "bzNt"
+            ],
+            "properties": {
+              "speedKms": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "densityPerCc": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "temperatureK": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "btNt": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "bzNt": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              }
+            }
+          },
+          "plasma": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SpaceWeatherSolarWindPlasmaSnapshot"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "imf": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SpaceWeatherSolarWindImfSnapshot"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "propagated": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SpaceWeatherSolarWindPropagatedSnapshot"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "interpretation": {
+            "$ref": "#/components/schemas/SpaceWeatherSolarWindInterpretation"
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "SpaceWeatherSolarWindPageSnapshot": {
+        "type": "object",
+        "required": [
+          "generatedAt",
+          "snapshot"
+        ],
+        "properties": {
+          "generatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "snapshot": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SpaceWeatherSolarWindSnapshot"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "warnings": {
             "type": "array",

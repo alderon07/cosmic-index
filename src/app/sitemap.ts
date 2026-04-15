@@ -44,6 +44,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.8,
     },
     {
+      url: `${BASE_URL}/faq`,
+      lastModified: STATIC_SITEMAP_LASTMOD,
+      changeFrequency: "monthly",
+      priority: 0.6,
+    },
+    {
       url: `${BASE_URL}/space-weather`,
       lastModified: STATIC_SITEMAP_LASTMOD,
       changeFrequency: "daily",
@@ -63,6 +69,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
     },
     {
       url: `${BASE_URL}/space-weather/solar`,
+      lastModified: STATIC_SITEMAP_LASTMOD,
+      changeFrequency: "daily",
+      priority: 0.7,
+    },
+    {
+      url: `${BASE_URL}/space-weather/solar-wind`,
       lastModified: STATIC_SITEMAP_LASTMOD,
       changeFrequency: "daily",
       priority: 0.7,

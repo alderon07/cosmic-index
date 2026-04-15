@@ -46,6 +46,19 @@ beforeEach(() => {
       });
     }
 
+    if (endpoint === "CME") {
+      return new Response(JSON.stringify([
+        {
+          activityID: "2026-04-12T08:00:00-CME-001",
+          startTime: "2026-04-12T08:00:00Z",
+          cmeAnalyses: [{ speed: 980, isMostAccurate: true }],
+        },
+      ]), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    }
+
     return new Response(JSON.stringify([]), {
       status: 200,
       headers: { "content-type": "application/json" },
@@ -70,8 +83,8 @@ describe("SpaceWeatherEventsPage", () => {
 
     expect(html).toContain("Space weather event browser");
     expect(html).toContain('data-fetch-key="v=2&amp;limit=21&amp;page=1"');
-    expect(html).toContain('data-total="1"');
-    expect(seenEndpoints.sort()).toEqual(["FLR", "GST", "HSS", "IPS", "SEP"]);
+    expect(html).toContain('data-total="2"');
+    expect(seenEndpoints.sort()).toEqual(["CME", "FLR", "GST", "HSS", "IPS", "SEP"]);
   });
 
   it("publishes canonical metadata for the events route", async () => {

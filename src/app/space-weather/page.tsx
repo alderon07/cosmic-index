@@ -38,6 +38,7 @@ export default async function SpaceWeatherPage() {
       { name: "Space Weather Events", path: "/space-weather/events" },
       { name: "Space Weather Alerts", path: "/space-weather/alerts" },
       { name: "Solar Monitoring", path: "/space-weather/solar" },
+      { name: "Solar Wind & IMF", path: "/space-weather/solar-wind" },
       { name: "Geomagnetic Monitoring", path: "/space-weather/geomagnetic" },
     ],
   });
@@ -121,6 +122,13 @@ export default async function SpaceWeatherPage() {
                 NOAA SWPC
               </a>
               . Data refreshes automatically while this page is open.
+            </p>
+            <p>
+              Need a plain-language primer on terms like CME, geomagnetic storm, or southward Bz?{" "}
+              <Link href="/faq" className="text-aurora-violet underline-offset-4 hover:underline">
+                Read the FAQ
+              </Link>
+              .
             </p>
           </div>
         </section>

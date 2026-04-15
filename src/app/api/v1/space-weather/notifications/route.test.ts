@@ -119,9 +119,21 @@ describe("GET /api/v1/space-weather/notifications", () => {
     expect(seenUrls[0]).toContain("type=CME");
   });
 
+  it("accepts newly supported notification filter types", async () => {
+    const request = new NextRequest(
+      "http://localhost:3000/api/v1/space-weather/notifications?type=MPC&limit=8",
+    );
+    const response = await GET(request);
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.pagination.mode).toBe("none");
+    expect(seenUrls[0]).toContain("type=MPC");
+  });
+
   it("returns 400 for invalid type", async () => {
     const request = new NextRequest(
-      "http://localhost:3000/api/v1/space-weather/notifications?type=MPC",
+      "http://localhost:3000/api/v1/space-weather/notifications?type=Report",
     );
     const response = await GET(request);
 

@@ -8,6 +8,7 @@ import {
   ShieldAlert,
   Sun,
   Waves,
+  Wind,
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -214,6 +215,14 @@ export function ObservatoryDashboardClient({
           icon={Sun}
           description="Live GOES SUVI imagery, D-RAP absorption guidance, and NOAA flare probabilities. Track the Sun in real time with imagery, radio absorption maps, and the 3-day flare forecast."
           accent="text-orange-400"
+        />
+        <OverviewLinkCard
+          href="/space-weather/solar-wind"
+          eyebrow="Solar Wind Stream"
+          title="Solar Wind & IMF"
+          icon={Wind}
+          description="Track upstream plasma speed, density, and IMF orientation before conditions couple into Earth's magnetosphere. Follow the solar-wind bridge between solar activity and geomagnetic response."
+          accent="text-violet-300"
         />
         <OverviewLinkCard
           href="/space-weather/geomagnetic"

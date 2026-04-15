@@ -8,6 +8,7 @@ import type {
 let seenDonkiEndpoints: string[] = [];
 let notificationType: SpaceWeatherNotificationType | "other" = "CME";
 let notificationBody = "Activity ID: 2026-04-12T09:00:00-CME-001\nCME watch remains elevated.";
+let rawNotifications: Array<Record<string, string>> = [];
 let eventPayloads: Record<string, unknown[]> = {};
 const originalFetch = globalThis.fetch;
 
@@ -17,6 +18,27 @@ beforeEach(() => {
   seenDonkiEndpoints = [];
   notificationType = "CME";
   notificationBody = "Activity ID: 2026-04-12T09:00:00-CME-001\nCME watch remains elevated.";
+  rawNotifications = [
+    {
+      messageID: "20260412-AL-001",
+      messageType: notificationType,
+      messageIssueTime: "2026-04-12T12:00:00Z",
+      messageURL: "https://example.com/donki/alert/1",
+      messageBody: notificationBody,
+    },
+    {
+      messageID: "20260412-AL-002",
+      messageType: "MPC",
+      messageIssueTime: "2026-04-12T08:30:00Z",
+      messageBody: "Activity ID: 2026-04-12T07:45:00-MPC-001\nGeneral operational notice.",
+    },
+    {
+      messageID: "20260412-AL-003",
+      messageType: "Report",
+      messageIssueTime: "2026-04-12T06:30:00Z",
+      messageBody: "## Message Type: Weekly Space Weather Summary Report for April 05, 2026 - April 11, 2026",
+    },
+  ];
   eventPayloads = {
     CME: [
       {
@@ -36,21 +58,7 @@ beforeEach(() => {
 
     if (endpoint === "notifications") {
       return new Response(
-        JSON.stringify([
-          {
-            messageID: "20260412-AL-001",
-            messageType: notificationType,
-            messageIssueTime: "2026-04-12T12:00:00Z",
-            messageURL: "https://example.com/donki/alert/1",
-            messageBody: notificationBody,
-          },
-          {
-            messageID: "20260412-AL-002",
-            messageType: "MPC",
-            messageIssueTime: "2026-04-12T08:30:00Z",
-            messageBody: "General operational notice.",
-          },
-        ]),
+        JSON.stringify(rawNotifications),
         { status: 200, headers: { "content-type": "application/json" } },
       );
     }
@@ -92,6 +100,7 @@ describe("fetchUnifiedSpaceWeatherAlerts", () => {
     expect(result.alerts).toHaveLength(3);
     const donkiAlert = result.alerts.find((alert) => alert.id === "20260412-AL-001");
     const secondaryDonkiAlert = result.alerts.find((alert) => alert.id === "20260412-AL-002");
+    const reportAlert = result.alerts.find((alert) => alert.id === "20260412-AL-003");
 
     expect(donkiAlert).toMatchObject({
       id: "20260412-AL-001",
@@ -107,10 +116,11 @@ describe("fetchUnifiedSpaceWeatherAlerts", () => {
     });
     expect(secondaryDonkiAlert).toMatchObject({
       id: "20260412-AL-002",
-      category: "other",
+      category: "mpc",
       severity: "minor",
-      activityCount: 0,
+      activityCount: 1,
     });
+    expect(reportAlert).toBeUndefined();
     expect(seenDonkiEndpoints).toContain("notifications");
     expect(seenDonkiEndpoints).toContain("CME");
   });
@@ -118,6 +128,18 @@ describe("fetchUnifiedSpaceWeatherAlerts", () => {
   it("preserves upstream warnings and unresolved activity notices", async () => {
     notificationType = "FLR";
     notificationBody = "Activity ID: 2026-04-12T05:30:00-FLR-999";
+    rawNotifications = [
+      {
+        ...rawNotifications[0],
+        messageType: notificationType,
+        messageBody: notificationBody,
+      },
+      {
+        ...rawNotifications[1]!,
+        messageType: "RBE",
+        messageBody: "Activity ID: 2026-04-12T04:00:00-RBE-001\nRadiation belt conditions remain elevated.",
+      },
+    ];
     eventPayloads = {
       CME: [],
       FLR: [],
@@ -127,7 +149,7 @@ describe("fetchUnifiedSpaceWeatherAlerts", () => {
 
     expect(result.alerts[0].relatedEvents).toHaveLength(0);
     expect(result.meta.warnings?.some((warning) => warning.includes("could not be resolved"))).toBe(true);
-    expect(result.meta.warnings?.some((warning) => warning.includes("returned as 'other'"))).toBe(true);
+    expect(result.meta.warnings?.some((warning) => warning.includes("returned as 'other'"))).toBe(false);
     expect(seenDonkiEndpoints).toContain("FLR");
   });
 
@@ -140,5 +162,25 @@ describe("fetchUnifiedSpaceWeatherAlerts", () => {
       category: "gst",
       severity: "minor",
     });
+  });
+
+  it("paginates the merged DONKI and SWPC alerts only once", async () => {
+    rawNotifications = Array.from({ length: 12 }, (_, index) => ({
+      messageID: `20260412-AL-${String(index + 1).padStart(3, "0")}`,
+      messageType: "CME",
+      messageIssueTime: new Date(Date.UTC(2026, 3, 12, 12, 0 - index, 0)).toISOString(),
+      messageURL: `https://example.com/donki/alert/${index + 1}`,
+      messageBody: `Operational notice ${index + 1}.`,
+    }));
+
+    const result = await fetchUnifiedSpaceWeatherAlerts({ type: "all", limit: 10, page: 2 });
+
+    expect(result.totalAvailable).toBe(13);
+    expect(result.count).toBe(3);
+    expect(result.alerts.map((alert) => alert.id)).toEqual([
+      "20260412-AL-011",
+      "20260412-AL-012",
+      expect.stringContaining("swpc:K05W"),
+    ]);
   });
 });

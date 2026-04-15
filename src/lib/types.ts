@@ -699,6 +699,8 @@ export const SPACE_WEATHER_NOTIFICATION_FILTER_TYPES = [
   "CME",
   "IPS",
   "GST",
+  "RBE",
+  "MPC",
 ] as const;
 
 export type SpaceWeatherNotificationFilterType =
@@ -850,6 +852,8 @@ export const SPACE_WEATHER_ALERT_CATEGORIES = [
   "cme",
   "ips",
   "gst",
+  "rbe",
+  "mpc",
   "other",
 ] as const;
 export type SpaceWeatherAlertCategory = (typeof SPACE_WEATHER_ALERT_CATEGORIES)[number];
@@ -1002,6 +1006,96 @@ export interface SpaceWeatherSolarSnapshot {
   suvi: SpaceWeatherSolarSuviSnapshot | null;
   drap: SpaceWeatherSolarDrapSnapshot | null;
   flareForecast: SpaceWeatherSolarFlareForecastSnapshot | null;
+  warnings?: string[];
+}
+
+export interface SpaceWeatherSolarWindPoint {
+  observedAt: string;
+  speedKms: number | null;
+  densityPerCc: number | null;
+  temperatureK: number | null;
+}
+
+export interface SpaceWeatherSolarWindPlasmaSnapshot {
+  currentValue: SpaceWeatherSolarWindPoint | null;
+  trend: SpaceWeatherSolarWindPoint[];
+  source: SpaceWeatherSourceMeta;
+  warnings?: string[];
+}
+
+export interface SpaceWeatherSolarWindImfPoint {
+  observedAt: string;
+  bxNt: number | null;
+  byNt: number | null;
+  bzNt: number | null;
+  btNt: number | null;
+  lonGsmDeg: number | null;
+  latGsmDeg: number | null;
+}
+
+export interface SpaceWeatherSolarWindImfSnapshot {
+  currentValue: SpaceWeatherSolarWindImfPoint | null;
+  trend: SpaceWeatherSolarWindImfPoint[];
+  source: SpaceWeatherSourceMeta;
+  warnings?: string[];
+}
+
+export interface SpaceWeatherSolarWindPropagatedPoint {
+  observedAt: string;
+  propagatedAt: string | null;
+  speedKms: number | null;
+  densityPerCc: number | null;
+  temperatureK: number | null;
+  bxNt: number | null;
+  byNt: number | null;
+  bzNt: number | null;
+  btNt: number | null;
+}
+
+export interface SpaceWeatherSolarWindPropagatedSnapshot {
+  currentValue: SpaceWeatherSolarWindPropagatedPoint | null;
+  trend: SpaceWeatherSolarWindPropagatedPoint[];
+  source: SpaceWeatherSourceMeta;
+  warnings?: string[];
+}
+
+export type SpaceWeatherSolarWindBzState =
+  | "southward"
+  | "northward"
+  | "mixed"
+  | "unknown";
+
+export type SpaceWeatherSolarWindCouplingRisk =
+  | "quiet"
+  | "watch"
+  | "elevated"
+  | "storm-favorable"
+  | "unknown";
+
+export interface SpaceWeatherSolarWindInterpretation {
+  bzState: SpaceWeatherSolarWindBzState;
+  couplingRisk: SpaceWeatherSolarWindCouplingRisk;
+  summary: string;
+}
+
+export interface SpaceWeatherSolarWindSnapshot {
+  current: {
+    speedKms: number | null;
+    densityPerCc: number | null;
+    temperatureK: number | null;
+    btNt: number | null;
+    bzNt: number | null;
+  };
+  plasma: SpaceWeatherSolarWindPlasmaSnapshot | null;
+  imf: SpaceWeatherSolarWindImfSnapshot | null;
+  propagated: SpaceWeatherSolarWindPropagatedSnapshot | null;
+  interpretation: SpaceWeatherSolarWindInterpretation;
+  warnings?: string[];
+}
+
+export interface SpaceWeatherSolarWindPageSnapshot {
+  generatedAt: string;
+  snapshot: SpaceWeatherSolarWindSnapshot | null;
   warnings?: string[];
 }
 

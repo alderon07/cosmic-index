@@ -96,6 +96,9 @@ export const CACHE_TTL = {
   SPACE_WEATHER_SOLAR_SUVI: 15 * 60, // 15 minutes (quicklook imagery)
   SPACE_WEATHER_SOLAR_DRAP: 5 * 60, // 5 minutes (rapidly updating absorption model)
   SPACE_WEATHER_SOLAR_FLARE_FORECAST: 60 * 60, // 1 hour (forecast product)
+  SPACE_WEATHER_SOLAR_WIND_PLASMA: 5 * 60, // 5 minutes (near-real-time plasma)
+  SPACE_WEATHER_SOLAR_WIND_IMF: 5 * 60, // 5 minutes (near-real-time magnetic field)
+  SPACE_WEATHER_SOLAR_WIND_PROPAGATED: 10 * 60, // 10 minutes (modeled geospace context)
   SPACE_WEATHER_GEOMAGNETIC_HP30: 30 * 60, // 30 minutes (near real-time nowcast)
   SPACE_WEATHER_GEOMAGNETIC_AE: 60 * 60, // 1 hour (quicklook/provisional feed with lag)
 } as const;
@@ -120,11 +123,15 @@ export const CACHE_KEYS = {
   SPACE_WEATHER_IPS: "sw:ips",
   SPACE_WEATHER_HSS: "sw:hss",
   SPACE_WEATHER_SEP: "sw:sep",
+  SPACE_WEATHER_QUERY: "sw:query",
   SPACE_WEATHER_NOTIFICATIONS: "sw:notifications",
   SPACE_WEATHER_OVERVIEW: "sw:overview",
   SPACE_WEATHER_SOLAR_SUVI: "sw:solar:suvi",
   SPACE_WEATHER_SOLAR_DRAP: "sw:solar:drap",
   SPACE_WEATHER_SOLAR_FLARE_FORECAST: "sw:solar:flare-forecast",
+  SPACE_WEATHER_SOLAR_WIND_PLASMA: "sw:solar-wind:plasma",
+  SPACE_WEATHER_SOLAR_WIND_IMF: "sw:solar-wind:imf",
+  SPACE_WEATHER_SOLAR_WIND_PROPAGATED: "sw:solar-wind:propagated",
   SPACE_WEATHER_GEOMAGNETIC_HP30: "sw:geomagnetic:hp30",
   SPACE_WEATHER_GEOMAGNETIC_AE: "sw:geomagnetic:ae",
 } as const;

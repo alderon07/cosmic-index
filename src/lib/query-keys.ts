@@ -18,6 +18,8 @@ export const queryKeys = {
     ["events", "space-weather", "solar", "drap", fetchKey] as const,
   spaceWeatherSolarFlareForecast: (fetchKey: string) =>
     ["events", "space-weather", "solar", "flare-forecast", fetchKey] as const,
+  spaceWeatherSolarWind: (fetchKey: string) =>
+    ["events", "space-weather", "solar-wind", fetchKey] as const,
   spaceWeatherGeomagneticHp30: (fetchKey: string) =>
     ["events", "space-weather", "geomagnetic", "hp30", fetchKey] as const,
   spaceWeatherGeomagneticAe: (fetchKey: string) =>

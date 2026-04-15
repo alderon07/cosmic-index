@@ -70,29 +70,15 @@ export default async function SpaceWeatherEventsPage({
     const page = parsed.data.page ?? 1;
     const limit = SPACE_WEATHER_UI_PAGE_SIZE;
     const eventTypes = parseEventTypesParam(parsed.data.eventTypes);
-    const shouldDeferCmeForInitialRender =
-      page === 1 &&
-      eventTypes.includes("CME") &&
-      eventTypes.length > 1;
-    const serverEventTypes = shouldDeferCmeForInitialRender
-      ? eventTypes.filter((eventType) => eventType !== "CME")
-      : eventTypes;
 
     initialFetchKey = buildSpaceWeatherFetchKey(eventTypes, limit, page);
 
     try {
       const result = await fetchSpaceWeather({
-        eventTypes: serverEventTypes,
+        eventTypes,
         limit,
         page,
       });
-      const initialWarnings = [...(result.meta.warnings ?? [])];
-      if (shouldDeferCmeForInitialRender) {
-        initialWarnings.unshift(
-          "Coronal Mass Ejection data is loading in the background to speed up the initial page render.",
-        );
-      }
-
       initialData = {
         objects: result.events,
         total: result.totalAvailable,
@@ -105,7 +91,6 @@ export default async function SpaceWeatherEventsPage({
           limitApplied: result.limitApplied,
           totalAvailable: result.totalAvailable,
           ...result.meta,
-          ...(initialWarnings.length > 0 ? { warnings: initialWarnings } : {}),
         },
       };
     } catch (error) {
@@ -129,12 +114,6 @@ export default async function SpaceWeatherEventsPage({
           initialData={initialData}
           initialError={initialError}
           initialFetchKey={initialFetchKey}
-          forceBackgroundRefresh={
-            parsed.success &&
-            (parsed.data.page ?? 1) === 1 &&
-            parseEventTypesParam(parsed.data.eventTypes).includes("CME") &&
-            parseEventTypesParam(parsed.data.eventTypes).length > 1
-          }
         />
       </Suspense>
     </>

@@ -5,6 +5,7 @@ import {
   getEventSeverity,
   getEventTypeLabel,
   parseEventType,
+  SPACE_WEATHER_NOTIFICATIONS_MAX_TOTAL_RESULTS,
 } from "@/lib/nasa-donki";
 import type {
   AnySpaceWeatherEvent,
@@ -20,6 +21,7 @@ import type {
 
 const SWPC_ALERTS_URL = "https://services.swpc.noaa.gov/products/alerts.json";
 const ALERTS_FETCH_TIMEOUT_MS = 8_000;
+const DEFAULT_UNIFIED_ALERTS_LIMIT = 20;
 
 interface RawSwpcAlert {
   product_id?: string;
@@ -44,9 +46,17 @@ function toAlertCategory(type: SpaceWeatherNotificationType): SpaceWeatherAlertC
       return "ips";
     case "GST":
       return "gst";
+    case "RBE":
+      return "rbe";
+    case "MPC":
+      return "mpc";
     default:
       return "other";
   }
+}
+
+function isWeeklyDonkiReport(notification: SpaceWeatherNotification): boolean {
+  return notification.type === "other" && /weekly space weather summary report/i.test(notification.body);
 }
 
 function buildAlertSummary(notification: SpaceWeatherNotification): string {
@@ -79,6 +89,10 @@ function buildAlertTitle(
       return "Interplanetary Shock alert";
     case "GST":
       return "Geomagnetic Storm alert";
+    case "RBE":
+      return "Radiation Belt Enhancement alert";
+    case "MPC":
+      return "Magnetopause Crossing alert";
     default:
       return "General space weather alert";
   }
@@ -203,6 +217,10 @@ function toNotificationFilter(category: SpaceWeatherAlertCategory): SpaceWeather
       return "IPS";
     case "gst":
       return "GST";
+    case "rbe":
+      return "RBE";
+    case "mpc":
+      return "MPC";
     default:
       return "all";
   }
@@ -256,11 +274,18 @@ async function fetchSwpcSpaceWeatherAlerts(
 export async function fetchUnifiedSpaceWeatherAlerts(
   params: SpaceWeatherAlertsQueryParams = {},
 ): Promise<SpaceWeatherAlertsListResponse> {
-  const notificationsResult = await fetchSpaceWeatherNotifications(params);
+  const notificationsResult = await fetchSpaceWeatherNotifications({
+    ...params,
+    page: undefined,
+    limit: SPACE_WEATHER_NOTIFICATIONS_MAX_TOTAL_RESULTS,
+  });
   const warnings = [...(notificationsResult.meta.warnings ?? [])];
+  const alertableNotifications = notificationsResult.notifications.filter(
+    (notification) => !isWeeklyDonkiReport(notification),
+  );
 
   const uniqueActivityIds = Array.from(
-    new Set(notificationsResult.notifications.flatMap((notification) => notification.activityIDs)),
+    new Set(alertableNotifications.flatMap((notification) => notification.activityIDs)),
   );
   const eventTypes = Array.from(
     new Set(uniqueActivityIds.map((activityId) => parseEventType(activityId)).filter(Boolean)),
@@ -290,7 +315,7 @@ export async function fetchUnifiedSpaceWeatherAlerts(
   }
 
   let relatedEventsResolved = 0;
-  const donkiAlerts: SpaceWeatherAlert[] = notificationsResult.notifications.map((notification) => {
+  const donkiAlerts: SpaceWeatherAlert[] = alertableNotifications.map((notification) => {
     const relatedEvents = notification.activityIDs.flatMap((activityId) => {
       const event = eventsById.get(activityId);
       if (!event) return [];
@@ -346,7 +371,7 @@ export async function fetchUnifiedSpaceWeatherAlerts(
     right.issuedAt.localeCompare(left.issuedAt),
   );
 
-  const limitApplied = params.limit ?? notificationsResult.limitApplied;
+  const limitApplied = params.limit ?? DEFAULT_UNIFIED_ALERTS_LIMIT;
   const currentPage = params.page;
   const pagedAlerts = typeof currentPage === "number"
     ? mergedAlerts.slice((currentPage - 1) * limitApplied, currentPage * limitApplied)
