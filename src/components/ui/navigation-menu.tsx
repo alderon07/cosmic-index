@@ -90,7 +90,10 @@ function NavigationMenuContent({
     <NavigationMenuPrimitive.Content
       data-slot="navigation-menu-content"
       className={cn(
-        "data-[motion^=from-]:animate-in data-[motion^=to-]:animate-out data-[motion^=from-]:fade-in data-[motion^=to-]:fade-out data-[motion=from-end]:slide-in-from-right-24 data-[motion=from-start]:slide-in-from-left-24 data-[motion=to-end]:slide-out-to-right-24 data-[motion=to-start]:slide-out-to-left-24 absolute top-0 left-0 w-full md:w-auto",
+        // Fade only: slide-in utilities set --tw-enter-translate-x and the shared `enter`
+        // keyframe animates `transform`, which conflicts with positioning that also uses
+        // `transform` (e.g. `-translate-x-1/2` on the same node).
+        "data-[motion^=from-]:animate-in data-[motion^=to-]:animate-out data-[motion^=from-]:fade-in data-[motion^=to-]:fade-out absolute top-0 left-0 w-full md:w-auto",
         className
       )}
       {...props}
