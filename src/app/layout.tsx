@@ -328,8 +328,9 @@ export default function RootLayout({
                       </NavigationMenuTrigger>
                       {/* right-0 + w-max item: anchor to trigger; 100dvw avoids 100vw+scrollbar overflow with scrollbar-gutter: stable */}
                       <NavigationMenuContent className="!top-full !right-0 !left-auto !z-50 !mt-2.5 !w-[min(31rem,calc(100dvw-2rem))] rounded-lg border border-border/50 bg-[#160f0b]/97 p-3.5 shadow-[0_12px_36px_rgba(0,0,0,0.45)] backdrop-blur-md">
-                        <ul className="grid grid-cols-2 gap-2">
-                          <li className="col-span-2">
+                        {/* div grid (not ul/li): nested list + Radix Link/slot merging can yield bogus empty <li> in some engines. */}
+                        <div className="grid grid-flow-row grid-cols-2 gap-2" role="list">
+                          <div className="col-span-2 row-start-1 min-w-0" role="listitem">
                             <NavigationMenuLink
                               className="!p-0 data-[active]:!bg-transparent data-[active]:!text-inherit hover:!bg-transparent hover:!text-inherit focus:!bg-transparent focus:!text-inherit"
                               asChild
@@ -349,8 +350,8 @@ export default function RootLayout({
                                 </div>
                               </Link>
                             </NavigationMenuLink>
-                          </li>
-                          <li>
+                          </div>
+                          <div className="col-start-1 row-start-2 min-w-0" role="listitem">
                             <NavigationMenuLink
                               className="!p-0 data-[active]:!bg-transparent data-[active]:!text-inherit hover:!bg-transparent hover:!text-inherit focus:!bg-transparent focus:!text-inherit"
                               asChild
@@ -370,8 +371,8 @@ export default function RootLayout({
                                 </div>
                               </Link>
                             </NavigationMenuLink>
-                          </li>
-                          <li>
+                          </div>
+                          <div className="col-start-2 row-start-2 min-w-0" role="listitem">
                             <NavigationMenuLink
                               className="!p-0 data-[active]:!bg-transparent data-[active]:!text-inherit hover:!bg-transparent hover:!text-inherit focus:!bg-transparent focus:!text-inherit"
                               asChild
@@ -391,8 +392,8 @@ export default function RootLayout({
                                 </div>
                               </Link>
                             </NavigationMenuLink>
-                          </li>
-                          <li>
+                          </div>
+                          <div className="col-start-1 row-start-3 min-w-0" role="listitem">
                             <NavigationMenuLink
                               className="!p-0 data-[active]:!bg-transparent data-[active]:!text-inherit hover:!bg-transparent hover:!text-inherit focus:!bg-transparent focus:!text-inherit"
                               asChild
@@ -412,8 +413,8 @@ export default function RootLayout({
                                 </div>
                               </Link>
                             </NavigationMenuLink>
-                          </li>
-                          <li>
+                          </div>
+                          <div className="col-start-2 row-start-3 min-w-0" role="listitem">
                             <NavigationMenuLink
                               className="!p-0 data-[active]:!bg-transparent data-[active]:!text-inherit hover:!bg-transparent hover:!text-inherit focus:!bg-transparent focus:!text-inherit"
                               asChild
@@ -433,8 +434,8 @@ export default function RootLayout({
                                 </div>
                               </Link>
                             </NavigationMenuLink>
-                          </li>
-                          <li>
+                          </div>
+                          <div className="col-span-2 row-start-4 min-w-0" role="listitem">
                             <NavigationMenuLink
                               className="!p-0 data-[active]:!bg-transparent data-[active]:!text-inherit hover:!bg-transparent hover:!text-inherit focus:!bg-transparent focus:!text-inherit"
                               asChild
@@ -454,8 +455,8 @@ export default function RootLayout({
                                 </div>
                               </Link>
                             </NavigationMenuLink>
-                          </li>
-                        </ul>
+                          </div>
+                        </div>
                       </NavigationMenuContent>
                     </NavigationMenuItem>
                   </NavigationMenuList>
