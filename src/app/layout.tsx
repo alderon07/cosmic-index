@@ -218,13 +218,13 @@ export default function RootLayout({
                   className="hidden lg:flex"
                 >
                   <NavigationMenuList>
-                    <NavigationMenuItem>
+                    <NavigationMenuItem className="w-max shrink-0">
                       <NavigationMenuTrigger
                         className={`font-display text-sm tracking-wide text-orange-100/75 transition-colors ${THEMES["small-bodies"].hoverText} bg-transparent p-0 h-auto hover:!bg-transparent hover:!text-secondary focus:!bg-transparent focus:!text-secondary focus-visible:!text-secondary data-[state=open]:!bg-transparent data-[state=open]:!text-secondary data-[state=closed]:text-orange-100/75`}
                       >
                         Small-Bodies
                       </NavigationMenuTrigger>
-                      <NavigationMenuContent className="!top-full !right-0 !left-auto !mt-2.5 !w-[min(31rem,calc(100vw-2rem))] rounded-lg border border-border/50 bg-[#160f0b]/97 p-3.5 shadow-[0_12px_36px_rgba(0,0,0,0.45)] backdrop-blur-md">
+                      <NavigationMenuContent className="!top-full !right-0 !left-auto !mt-2.5 !w-[min(31rem,calc(100dvw-2rem))] rounded-lg border border-border/50 bg-[#160f0b]/97 p-3.5 shadow-[0_12px_36px_rgba(0,0,0,0.45)] backdrop-blur-md">
                         <ul className="grid grid-cols-2 gap-2">
                           <li>
                             <NavigationMenuLink
@@ -320,14 +320,14 @@ export default function RootLayout({
                 </Link>
                 <NavigationMenu viewport={false} className="hidden lg:flex">
                   <NavigationMenuList>
-                    <NavigationMenuItem>
+                    <NavigationMenuItem className="w-max shrink-0">
                       <NavigationMenuTrigger
                         className={`font-display text-sm tracking-wide text-orange-100/75 transition-colors ${THEMES["space-weather"].hoverText} bg-transparent p-0 h-auto hover:!bg-transparent hover:!text-aurora-violet focus:!bg-transparent focus:!text-aurora-violet focus-visible:!text-aurora-violet data-[state=open]:!bg-transparent data-[state=open]:!text-aurora-violet data-[state=closed]:text-orange-100/75`}
                       >
                         Weather
                       </NavigationMenuTrigger>
-                      {/* right-0: last nav item — centering overflows past the viewport; align to trigger right like Small-Bodies. */}
-                      <NavigationMenuContent className="!top-full !right-0 !left-auto !z-50 !mt-2.5 !w-[min(31rem,calc(100vw-2rem))] rounded-lg border border-border/50 bg-[#160f0b]/97 p-3.5 shadow-[0_12px_36px_rgba(0,0,0,0.45)] backdrop-blur-md">
+                      {/* right-0 + w-max item: anchor to trigger; 100dvw avoids 100vw+scrollbar overflow with scrollbar-gutter: stable */}
+                      <NavigationMenuContent className="!top-full !right-0 !left-auto !z-50 !mt-2.5 !w-[min(31rem,calc(100dvw-2rem))] rounded-lg border border-border/50 bg-[#160f0b]/97 p-3.5 shadow-[0_12px_36px_rgba(0,0,0,0.45)] backdrop-blur-md">
                         <ul className="grid grid-cols-2 gap-2">
                           <li className="col-span-2">
                             <NavigationMenuLink
