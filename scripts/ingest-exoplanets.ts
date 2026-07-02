@@ -19,6 +19,7 @@ import { config } from "dotenv";
 config({ path: ".env.local" });
 
 import { createClient, Client } from "@libsql/client";
+import { formatTursoError, getTursoConfig } from "./turso-config";
 
 const TAP_BASE_URL = "https://exoplanetarchive.ipac.caltech.edu/TAP/sync";
 const DEFAULT_BATCH_SIZE = 1000;
@@ -53,12 +54,7 @@ let db: Client | null = null;
 function getDb(): Client {
   if (db) return db;
 
-  const url = process.env.TURSO_DATABASE_URL;
-  const authToken = process.env.TURSO_AUTH_TOKEN;
-
-  if (!url) {
-    throw new Error("TURSO_DATABASE_URL environment variable not set");
-  }
+  const { url, authToken } = getTursoConfig();
 
   db = createClient({ url, authToken });
   return db;
@@ -409,6 +405,10 @@ Environment variables:
 }
 
 main().catch((err) => {
+  const formatted = formatTursoError(err);
+  if (formatted) {
+    console.error(formatted);
+  }
   console.error("Ingestion failed:", err);
   process.exit(1);
 });
