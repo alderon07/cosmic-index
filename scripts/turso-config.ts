@@ -1,4 +1,7 @@
-type TursoEnv = Partial<Record<"TURSO_DATABASE_URL" | "TURSO_AUTH_TOKEN", string | undefined>>;
+type TursoEnv = Record<string, string | undefined> & {
+  TURSO_DATABASE_URL?: string;
+  TURSO_AUTH_TOKEN?: string;
+};
 
 function getHostname(url: string): string | null {
   if (url.startsWith("file:")) {
