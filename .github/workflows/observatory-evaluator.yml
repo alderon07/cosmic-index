@@ -33,11 +33,14 @@ jobs:
         env:
           EVALUATOR_URL: ${{ secrets.OBSERVATORY_EVALUATOR_URL }}
           EVALUATOR_SECRET: ${{ secrets.OBSERVATORY_CRON_SECRET }}
+          VERCEL_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
           REQUESTED_DOMAIN: ${{ github.event.inputs.domain }}
           SCHEDULE: ${{ github.event.schedule }}
         shell: bash
         run: |
           set -euo pipefail
+
+          : "${VERCEL_BYPASS_SECRET:?Missing GitHub Actions secret VERCEL_AUTOMATION_BYPASS_SECRET}"
 
           domain="${REQUESTED_DOMAIN:-}"
           if [[ -z "$domain" ]]; then
@@ -59,6 +62,7 @@ jobs:
 
             response="$(curl --fail-with-body --silent --show-error \
               --retry 2 --retry-all-errors --max-time 70 \
+              -H "x-vercel-protection-bypass: ${VERCEL_BYPASS_SECRET}" \
               -H "Authorization: Bearer ${EVALUATOR_SECRET}" \
               -H "Content-Type: application/json" \
               --data "$body" "${EVALUATOR_URL}/api/internal/observatory/evaluate")"
