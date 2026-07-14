@@ -138,3 +138,81 @@ CREATE INDEX IF NOT EXISTS idx_stripe_subscriptions_customer
   ON stripe_subscriptions(stripe_customer_id);
 CREATE INDEX IF NOT EXISTS idx_stripe_subscriptions_user_price_status
   ON stripe_subscriptions(user_id, stripe_price_id, status);
+
+-- My Observatory (the deployed database reaches this state through migration 008)
+CREATE TABLE IF NOT EXISTS alerts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  name TEXT,
+  alert_type TEXT NOT NULL,
+  config TEXT NOT NULL,
+  config_hash TEXT,
+  enabled BOOLEAN NOT NULL DEFAULT 1,
+  email_enabled BOOLEAN NOT NULL DEFAULT 0,
+  last_checked_at TEXT,
+  enabled_at TEXT,
+  last_matched_at TEXT,
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_alerts_user_type_config
+  ON alerts(user_id, alert_type, config_hash) WHERE config_hash IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_alerts_user_created
+  ON alerts(user_id, created_at DESC, id DESC);
+CREATE INDEX IF NOT EXISTS idx_alerts_evaluator
+  ON alerts(alert_type, id) WHERE enabled = 1 AND config_hash IS NOT NULL;
+
+CREATE TABLE IF NOT EXISTS alert_signals (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  alert_id INTEGER REFERENCES alerts(id) ON DELETE SET NULL,
+  watch_name TEXT NOT NULL,
+  trigger_key TEXT NOT NULL,
+  source TEXT NOT NULL,
+  event_type TEXT NOT NULL,
+  severity TEXT,
+  title TEXT NOT NULL,
+  summary TEXT NOT NULL,
+  match_reason TEXT NOT NULL,
+  event_at TEXT,
+  source_at TEXT,
+  destination_url TEXT NOT NULL,
+  source_url TEXT,
+  snapshot_json TEXT,
+  read_at TEXT,
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+CREATE INDEX IF NOT EXISTS idx_alert_signals_user_cursor
+  ON alert_signals(user_id, created_at DESC, id DESC);
+CREATE INDEX IF NOT EXISTS idx_alert_signals_alert
+  ON alert_signals(alert_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_alert_signals_user_unread
+  ON alert_signals(user_id, created_at DESC, id DESC) WHERE read_at IS NULL;
+
+CREATE TABLE IF NOT EXISTS observatory_trigger_ledger (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  config_hash TEXT NOT NULL,
+  source TEXT NOT NULL,
+  trigger_key TEXT NOT NULL,
+  first_triggered_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  last_seen_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  UNIQUE(user_id, config_hash, source, trigger_key)
+);
+CREATE INDEX IF NOT EXISTS idx_observatory_ledger_expiry
+  ON observatory_trigger_ledger(last_seen_at);
+
+CREATE TABLE IF NOT EXISTS observatory_evaluator_state (
+  domain TEXT PRIMARY KEY,
+  watermark TEXT,
+  run_id TEXT,
+  run_start_watermark TEXT,
+  lease_owner TEXT,
+  lease_expires_at TEXT,
+  last_success_at TEXT,
+  last_error_at TEXT,
+  last_error_code TEXT,
+  last_cleanup_at TEXT,
+  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);

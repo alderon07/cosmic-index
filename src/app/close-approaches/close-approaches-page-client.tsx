@@ -57,6 +57,7 @@ const theme = THEMES["close-approaches"];
 
 // Filter options
 const TIME_RANGE_OPTIONS = [
+  { value: "1", label: "Next day" },
   { value: "7", label: "Next 7 days" },
   { value: "30", label: "Next 30 days" },
   { value: "60", label: "Next 60 days" },
@@ -64,6 +65,7 @@ const TIME_RANGE_OPTIONS = [
 ] as const;
 
 const DISTANCE_THRESHOLD_OPTIONS = [
+  { value: "1", label: "< 1 LD (closer than the Moon)" },
   { value: "3", label: "< 3 LD (very close)" },
   { value: "5", label: "< 5 LD" },
   { value: "10", label: "< 10 LD" },

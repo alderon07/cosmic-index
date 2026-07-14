@@ -80,6 +80,9 @@ mock.module("@/lib/user-db", () => ({
   getUserDb: () => ({
     execute: (...args: Parameters<typeof mockDbExecute>) => mockDbExecute(...args),
   }),
+  requireUserDb: () => ({
+    execute: (...args: Parameters<typeof mockDbExecute>) => mockDbExecute(...args),
+  }),
 }));
 
 mock.module("@/lib/stripe", () => ({

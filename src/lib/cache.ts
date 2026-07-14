@@ -200,7 +200,10 @@ export async function withCache<T>(
 ): Promise<T> {
   // Try to get from cache first
   const cached = await getCached<T>(key);
-  if (cached !== null) {
+  // Some REST/cache adapters return undefined for a miss even though our
+  // public contract uses null. Treat both as misses so callers never receive
+  // an absent cache value in place of freshly fetched data.
+  if (cached !== null && cached !== undefined) {
     return cached;
   }
 

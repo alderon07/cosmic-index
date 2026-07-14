@@ -1,0 +1,71 @@
+name: Observatory evaluator
+
+on:
+  schedule:
+    - cron: "2,17,32,47 * * * *"
+    - cron: "11 * * * *"
+    - cron: "23 4 * * *"
+  workflow_dispatch:
+    inputs:
+      domain:
+        description: Evaluator domain
+        required: true
+        default: space_weather
+        type: choice
+        options:
+          - space_weather
+          - close_approach
+          - cleanup
+
+permissions:
+  contents: read
+
+concurrency:
+  group: observatory-${{ github.event.inputs.domain || github.event.schedule }}
+  cancel-in-progress: false
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Evaluate bounded Observatory batches
+        env:
+          EVALUATOR_URL: ${{ secrets.OBSERVATORY_EVALUATOR_URL }}
+          EVALUATOR_SECRET: ${{ secrets.OBSERVATORY_CRON_SECRET }}
+          REQUESTED_DOMAIN: ${{ github.event.inputs.domain }}
+          SCHEDULE: ${{ github.event.schedule }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          domain="${REQUESTED_DOMAIN:-}"
+          if [[ -z "$domain" ]]; then
+            case "$SCHEDULE" in
+              "2,17,32,47 * * * *") domain="space_weather" ;;
+              "11 * * * *") domain="close_approach" ;;
+              "23 4 * * *") domain="cleanup" ;;
+              *) echo "Unknown schedule" >&2; exit 1 ;;
+            esac
+          fi
+
+          continuation=""
+          for attempt in 1 2 3 4 5; do
+            if [[ -n "$continuation" ]]; then
+              body="$(jq -nc --arg domain "$domain" --arg continuation "$continuation" '{domain:$domain,continuation:$continuation}')"
+            else
+              body="$(jq -nc --arg domain "$domain" '{domain:$domain}')"
+            fi
+
+            response="$(curl --fail-with-body --silent --show-error \
+              --retry 2 --retry-all-errors --max-time 70 \
+              -H "Authorization: Bearer ${EVALUATOR_SECRET}" \
+              -H "Content-Type: application/json" \
+              --data "$body" "${EVALUATOR_URL}/api/internal/observatory/evaluate")"
+            echo "$response" | jq '{domain,status,processedWatches,candidateCount,inserted,updated,deduplicated,cleanupDeleted}'
+            continuation="$(echo "$response" | jq -r '.continuation // empty')"
+            [[ -z "$continuation" ]] && exit 0
+          done
+
+          echo "Evaluator still has work after five bounded batches" >&2
+          exit 1

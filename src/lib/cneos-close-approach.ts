@@ -116,6 +116,10 @@ function buildCNEOSParams(params: CloseApproachQueryParams): URLSearchParams {
     urlParams.set("sort", mapSortField(params.sort, params.order));
   }
 
+  // Ask CNEOS to bound the response instead of downloading an unbounded result
+  // and slicing it only after parsing.
+  urlParams.set("limit", String(params.limit ?? DEFAULT_PARAMS.limit));
+
   // Always request these fields for complete data
   urlParams.set("diameter", "true");
   urlParams.set("fullname", "true");
@@ -136,11 +140,21 @@ async function fetchPhaDesignations(
       "date-min": dateMin,
       "date-max": dateMax,
       pha: "true",
+      limit: "500",
     });
 
-    const response = await fetch(`${CAD_API_URL}?${params.toString()}`, {
-      headers: { Accept: "application/json" },
-    });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
+
+    let response: Response;
+    try {
+      response = await fetch(`${CAD_API_URL}?${params.toString()}`, {
+        headers: { Accept: "application/json" },
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timeoutId);
+    }
 
     if (!response.ok) {
       return new Set();

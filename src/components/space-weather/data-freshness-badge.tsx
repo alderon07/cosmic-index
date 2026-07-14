@@ -13,15 +13,16 @@ export function DataFreshnessBadge({
   generatedAt,
   isFetching,
 }: DataFreshnessBadgeProps) {
-  const [label, setLabel] = useState(() => formatRelativeTime(generatedAt));
+  const [, setTick] = useState(0);
+  const label = formatRelativeTime(generatedAt);
 
   useEffect(() => {
-    setLabel(formatRelativeTime(generatedAt));
     const interval = setInterval(() => {
-      setLabel(formatRelativeTime(generatedAt));
+      setTick((tick) => tick + 1);
     }, 15_000);
+
     return () => clearInterval(interval);
-  }, [generatedAt]);
+  }, []);
 
   return (
     <span className="inline-flex items-center gap-1.5 rounded-full border border-border/40 bg-black/15 px-3 py-1.5 text-xs text-muted-foreground/80">

@@ -68,9 +68,9 @@ export default async function CloseApproachesPage({
   const resolvedSearchParams = await searchParams;
   const raw = toSingleValueParams(resolvedSearchParams);
 
-  const days = ["7", "30", "60", "90"].includes(raw.days ?? "") ? (raw.days as "7" | "30" | "60" | "90") : "60";
-  const distMaxLd = ["3", "5", "10", "20"].includes(raw.distMaxLd ?? "")
-    ? (raw.distMaxLd as "3" | "5" | "10" | "20")
+  const days = ["1", "7", "30", "60", "90"].includes(raw.days ?? "") ? (raw.days as "1" | "7" | "30" | "60" | "90") : "60";
+  const distMaxLd = ["1", "3", "5", "10", "20"].includes(raw.distMaxLd ?? "")
+    ? (raw.distMaxLd as "1" | "3" | "5" | "10" | "20")
     : "10";
   const sort = (["date", "dist", "h", "v-rel"].includes(raw.sort ?? "")
     ? raw.sort

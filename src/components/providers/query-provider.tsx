@@ -8,12 +8,13 @@ import {
   hydrate,
 } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
+import { useAppAuth } from "@/components/auth/app-auth-provider";
 
 interface QueryProviderProps {
   children: React.ReactNode;
 }
 
-const QUERY_CACHE_STORAGE_KEY = "cosmic-index:rq-cache:v1";
+const QUERY_CACHE_STORAGE_KEY = "cosmic-index:rq-cache:v2";
 const QUERY_CACHE_MAX_AGE_MS = 30 * 60 * 1000;
 const QUERY_CACHE_WRITE_THROTTLE_MS = 750;
 
@@ -21,7 +22,15 @@ function shouldDehydrateUserQuery(query: { queryKey: readonly unknown[]; state: 
   return query.state.status === "success" && query.queryKey[0] === "user";
 }
 
-export function QueryProvider({ children }: QueryProviderProps) {
+export function getQueryCacheStorageKey(userId: string | null): string {
+  return `${QUERY_CACHE_STORAGE_KEY}:${userId ?? "signed-out"}`;
+}
+
+function ScopedQueryProvider({
+  children,
+  userId,
+}: QueryProviderProps & { userId: string | null }) {
+  const storageKey = getQueryCacheStorageKey(userId);
   const [queryClient] = useState(
     () => {
       const client = new QueryClient({
@@ -35,7 +44,7 @@ export function QueryProvider({ children }: QueryProviderProps) {
 
       if (typeof window !== "undefined") {
         try {
-          const raw = window.sessionStorage.getItem(QUERY_CACHE_STORAGE_KEY);
+          const raw = window.sessionStorage.getItem(storageKey);
           if (!raw) return client;
 
           const parsed = JSON.parse(raw) as {
@@ -44,7 +53,7 @@ export function QueryProvider({ children }: QueryProviderProps) {
           };
           const persistedAt = Number(parsed.persistedAt ?? 0);
           if (!persistedAt || Date.now() - persistedAt > QUERY_CACHE_MAX_AGE_MS) {
-            window.sessionStorage.removeItem(QUERY_CACHE_STORAGE_KEY);
+            window.sessionStorage.removeItem(storageKey);
             return client;
           }
 
@@ -52,7 +61,7 @@ export function QueryProvider({ children }: QueryProviderProps) {
             hydrate(client, parsed.state);
           }
         } catch {
-          window.sessionStorage.removeItem(QUERY_CACHE_STORAGE_KEY);
+          window.sessionStorage.removeItem(storageKey);
         }
       }
 
@@ -77,7 +86,7 @@ export function QueryProvider({ children }: QueryProviderProps) {
           state,
         });
 
-        window.sessionStorage.setItem(QUERY_CACHE_STORAGE_KEY, payload);
+        window.sessionStorage.setItem(storageKey, payload);
       } catch {
         // Ignore transient storage serialization/quota errors.
       }
@@ -98,7 +107,18 @@ export function QueryProvider({ children }: QueryProviderProps) {
         window.clearTimeout(timeoutId);
       }
     };
-  }, [queryClient]);
+  }, [queryClient, storageKey]);
 
   return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
+}
+
+export function QueryProvider({ children }: QueryProviderProps) {
+  const auth = useAppAuth();
+  const scope = auth.isLoaded ? auth.userId : null;
+
+  return (
+    <ScopedQueryProvider key={scope ?? "signed-out"} userId={scope}>
+      {children}
+    </ScopedQueryProvider>
+  );
 }

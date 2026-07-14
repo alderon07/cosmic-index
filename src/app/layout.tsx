@@ -24,6 +24,7 @@ import { CompareProvider } from "@/components/compare/compare-provider";
 import { CompareTray } from "@/components/compare/compare-tray";
 import { AppAuthProvider } from "@/components/auth/app-auth-provider";
 import { QueryProvider } from "@/components/providers/query-provider";
+import { ObservatorySignalBadge } from "@/components/observatory-signal-badge";
 import {
   NavigationMenu,
   NavigationMenuContent,
@@ -174,8 +175,8 @@ export default function RootLayout({
       <body
         className={`${audiowide.variable} ${inter.variable} ${jetbrainsMono.variable} antialiased min-h-screen bg-background flex flex-col`}
       >
-        <QueryProvider>
         <AppAuthProvider>
+        <QueryProvider>
         <CompareProvider>
         <KeyboardShortcutsProvider>
         <div className="relative vignette flex min-h-screen flex-1 flex-col">
@@ -463,6 +464,7 @@ export default function RootLayout({
                 </NavigationMenu>
                 {/* Auth separator and button */}
                 <div className="mx-1 hidden h-4 w-px bg-border/50 lg:block" />
+                <ObservatorySignalBadge />
                 <UserAuthButton />
               </div>
             </nav>
@@ -544,8 +546,8 @@ export default function RootLayout({
         </div>
         </KeyboardShortcutsProvider>
         </CompareProvider>
-        </AppAuthProvider>
         </QueryProvider>
+        </AppAuthProvider>
         <Analytics />
       </body>
     </html>

@@ -1,113 +1,67 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requirePro, authErrorResponse } from "@/lib/auth";
-import { requireUserDb } from "@/lib/user-db";
-import { CreateAlertSchema, Alert } from "@/lib/types";
-import { getFeatureDisabledResponse, resolveProAccess } from "@/lib/pro-access";
+import { z } from "zod";
+import { requireAuth, authErrorResponse } from "@/lib/auth";
+import { WatchInputSchema } from "@/lib/observatory";
+import { createWatch, decodeObservatoryCursor, listWatches } from "@/lib/observatory-store";
 import { requireSameOrigin } from "@/lib/request-origin";
+import { requireObservatoryMutationBudget } from "@/lib/observatory-mutation-limit";
 
-/**
- * GET /api/user/alerts
- *
- * List all alerts for the authenticated Pro user.
- */
-export async function GET() {
+const PRIVATE_HEADERS = { "Cache-Control": "private, no-store" };
+const ListQuerySchema = z.object({
+  cursor: z.string().min(1).max(500).optional(),
+  limit: z.coerce.number().int().min(1).max(50).default(20),
+}).strict();
+
+export async function GET(request: NextRequest) {
   try {
-    const user = await requirePro();
-    if (!resolveProAccess(user).canAccessProSurfaces) {
-      return getFeatureDisabledResponse("pro_surfaces");
+    const user = await requireAuth();
+    const query = ListQuerySchema.safeParse(Object.fromEntries(request.nextUrl.searchParams));
+    if (!query.success) {
+      return NextResponse.json({ error: "Invalid query", code: "INVALID_QUERY", details: query.error.flatten() }, { status: 400, headers: PRIVATE_HEADERS });
     }
-    const db = requireUserDb();
-
-    const result = await db.execute({
-      sql: `
-        SELECT id, alert_type, config, enabled, email_enabled, created_at, updated_at
-        FROM alerts
-        WHERE user_id = ?
-        ORDER BY created_at DESC
-      `,
-      args: [user.userId],
+    const rawCursor = query.data.cursor;
+    const cursor = rawCursor ? decodeObservatoryCursor(rawCursor) ?? undefined : undefined;
+    if (rawCursor && !cursor) {
+      return NextResponse.json({ error: "Invalid cursor", code: "INVALID_CURSOR" }, { status: 400, headers: PRIVATE_HEADERS });
+    }
+    const result = await listWatches({
+      userId: user.userId,
+      tier: user.tier,
+      cursor,
+      limit: query.data.limit,
     });
-
-    const alerts: Alert[] = result.rows.map((row) => ({
-      id: row.id as number,
-      alertType: row.alert_type as "space_weather" | "fireball" | "close_approach",
-      config: JSON.parse(row.config as string),
-      enabled: Boolean(row.enabled),
-      emailEnabled: Boolean(row.email_enabled),
-      createdAt: row.created_at as string,
-      updatedAt: row.updated_at as string,
-    }));
-
-    return NextResponse.json({ alerts });
+    const { watches, ...pagination } = result;
+    return NextResponse.json({ alerts: watches, ...pagination }, { headers: PRIVATE_HEADERS });
   } catch (error) {
-    return authErrorResponse(error);
+    const response = authErrorResponse(error);
+    response.headers.set("Cache-Control", "private, no-store");
+    return response;
   }
 }
 
-/**
- * POST /api/user/alerts
- *
- * Create a new alert. Pro feature only.
- */
 export async function POST(request: NextRequest) {
   try {
-    const sameOriginError = requireSameOrigin(request);
-    if (sameOriginError) {
-      return sameOriginError;
+    const originError = requireSameOrigin(request);
+    if (originError) return originError;
+    const user = await requireAuth();
+    const rateLimitError = await requireObservatoryMutationBudget(user.userId);
+    if (rateLimitError) return rateLimitError;
+    const body = await request.json().catch(() => null);
+    const parsed = WatchInputSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json({ error: "Invalid request", code: "INVALID_REQUEST", details: parsed.error.flatten() }, { status: 400, headers: PRIVATE_HEADERS });
     }
-
-    const user = await requirePro();
-    if (!resolveProAccess(user).canAccessProSurfaces) {
-      return getFeatureDisabledResponse("pro_surfaces");
+    const result = await createWatch({ userId: user.userId, tier: user.tier, watch: parsed.data });
+    if (result.status === "limit") {
+      return NextResponse.json({ error: "Watch limit reached", code: "WATCH_LIMIT_REACHED", usage: result.usage }, { status: 409, headers: PRIVATE_HEADERS });
     }
-
-    const body = await request.json();
-    const parseResult = CreateAlertSchema.safeParse(body);
-
-    if (!parseResult.success) {
-      return NextResponse.json(
-        { error: "Invalid request", details: parseResult.error.flatten() },
-        { status: 400 }
-      );
+    if (result.status === "duplicate") {
+      return NextResponse.json({ error: "You already have this Watch", code: "DUPLICATE_WATCH" }, { status: 409, headers: PRIVATE_HEADERS });
     }
-
-    const { alertType, config, emailEnabled } = parseResult.data;
-    const db = requireUserDb();
-
-    const result = await db.execute({
-      sql: `
-        INSERT INTO alerts (user_id, alert_type, config, email_enabled)
-        VALUES (?, ?, ?, ?)
-        RETURNING id, alert_type, config, enabled, email_enabled, created_at, updated_at
-      `,
-      args: [
-        user.userId,
-        alertType,
-        JSON.stringify(config),
-        emailEnabled ?? true ? 1 : 0,
-      ],
-    });
-
-    if (result.rows.length === 0) {
-      return NextResponse.json(
-        { error: "Failed to create alert" },
-        { status: 500 }
-      );
-    }
-
-    const row = result.rows[0];
-    const alert: Alert = {
-      id: row.id as number,
-      alertType: row.alert_type as "space_weather" | "fireball" | "close_approach",
-      config: JSON.parse(row.config as string),
-      enabled: Boolean(row.enabled),
-      emailEnabled: Boolean(row.email_enabled),
-      createdAt: row.created_at as string,
-      updatedAt: row.updated_at as string,
-    };
-
-    return NextResponse.json(alert, { status: 201 });
+    return NextResponse.json(result.watch, { status: 201, headers: PRIVATE_HEADERS });
   } catch (error) {
-    return authErrorResponse(error);
+    const response = authErrorResponse(error);
+    response.headers.set("Cache-Control", "private, no-store");
+    return response;
   }
 }

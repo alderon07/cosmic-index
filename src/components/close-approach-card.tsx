@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/tooltip";
 import { CloseApproach } from "@/lib/types";
 import { getSizeCategory, AU_KM, LD_KM } from "@/lib/cneos-close-approach";
+import { closeApproachAnchorId } from "@/lib/observatory-url";
 import { THEMES } from "@/lib/theme";
 import { AlertTriangle, Gauge, Ruler, Calendar, Circle } from "lucide-react";
 
@@ -39,6 +40,7 @@ function InfoTooltip({ children, content }: { children: React.ReactNode; content
 }
 
 export function CloseApproachCard({ approach, showHighlightBadge, variant = "default" }: CloseApproachCardProps) {
+  const anchorId = closeApproachAnchorId(approach.id);
   const sizeCategory = getSizeCategory(approach.diameterEstimated);
 
   // Format velocity
@@ -66,7 +68,10 @@ export function CloseApproachCard({ approach, showHighlightBadge, variant = "def
   // Compact (list) variant - mobile: two lines; md+: single line [title | data | badge], data in 4-col grid
   if (variant === "compact") {
     return (
-      <Card className={`py-0 ${theme.cardSurface} transition-all duration-300 hover:border-destructive/50 hover:glow-red bezel overflow-hidden min-h-[44px]`}>
+      <Card
+        id={anchorId}
+        className={`scroll-mt-24 py-0 ${theme.cardSurface} transition-all duration-300 hover:border-destructive/50 hover:glow-red bezel overflow-hidden min-h-[44px] target:border-destructive target:ring-2 target:ring-destructive/50`}
+      >
         <CardContent className="p-3 min-h-[44px] flex flex-col md:grid md:grid-cols-[1fr_2fr_1fr] md:items-center gap-y-2.5 md:gap-y-0 md:gap-x-6">
           {/* Block 1: Designation (left on md+) */}
           <div className="flex flex-row gap-4 min-w-0 overflow-hidden">
@@ -160,7 +165,10 @@ export function CloseApproachCard({ approach, showHighlightBadge, variant = "def
 
   // Default (grid) variant
   return (
-    <Card className={`h-full ${theme.cardSurface} transition-all duration-300 hover:border-destructive/50 hover:glow-red bezel overflow-hidden`}>
+    <Card
+      id={anchorId}
+      className={`scroll-mt-24 h-full ${theme.cardSurface} transition-all duration-300 hover:border-destructive/50 hover:glow-red bezel overflow-hidden target:border-destructive target:ring-2 target:ring-destructive/50`}
+    >
       <CardHeader>
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">

@@ -7,6 +7,7 @@ import {
   buildStripeSubscriptionSnapshot,
   isEntitledStripeSubscriptionRecord,
 } from "@/lib/stripe-subscriptions";
+import { reconcileWatchAllowance } from "@/lib/observatory-store";
 
 /**
  * POST /api/webhooks/stripe
@@ -341,6 +342,10 @@ async function syncUserStripeState(userId: string, db: Client) {
     `,
     args: [tier, userId],
   });
+
+  if (tier === "free") {
+    await reconcileWatchAllowance(userId, tier, db);
+  }
 
   console.log(`Stripe webhook: Updated user ${userId} to tier ${tier}`);
 }

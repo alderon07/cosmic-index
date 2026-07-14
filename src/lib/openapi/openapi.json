@@ -2134,6 +2134,139 @@
         }
       }
     },
+    "/user/alerts": {
+      "get": {
+        "operationId": "listObservatoryWatches",
+        "summary": "List My Observatory Watches",
+        "description": "List typed monitoring Watches for the signed-in Clerk user using cursor pagination. Responses are private and not cached.",
+        "tags": ["User"],
+        "parameters": [
+          { "name": "cursor", "in": "query", "schema": { "type": "string", "maxLength": 500 } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "minimum": 1, "maximum": 50, "default": 20 } }
+        ],
+        "responses": {
+          "200": { "description": "Watches and tier usage", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ObservatoryWatchesResponse" } } } },
+          "400": { "description": "Invalid query or cursor" },
+          "401": { "description": "Authentication required" }
+        }
+      },
+      "post": {
+        "operationId": "createObservatoryWatch",
+        "summary": "Create a My Observatory Watch",
+        "description": "Create a typed Watch. Free users may own one Watch and Pro users may own 50; paused Watches count toward the limit. Requires a same-origin browser request.",
+        "tags": ["User"],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ObservatoryWatchInput" } } } },
+        "responses": {
+          "201": { "description": "Watch created", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ObservatoryWatch" } } } },
+          "400": { "description": "Invalid typed Watch configuration" },
+          "401": { "description": "Authentication required" },
+          "403": { "description": "Cross-site request blocked" },
+          "409": { "description": "Watch limit reached or equivalent Watch already exists" },
+          "429": { "description": "Per-user Watch mutation limit reached" }
+        }
+      }
+    },
+    "/user/alerts/{id}": {
+      "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "minimum": 1 } }],
+      "get": {
+        "operationId": "getObservatoryWatch",
+        "summary": "Get a My Observatory Watch",
+        "tags": ["User"],
+        "responses": {
+          "200": { "description": "Owned Watch", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ObservatoryWatch" } } } },
+          "400": { "description": "Invalid Watch ID" }, "401": { "description": "Authentication required" }, "404": { "description": "Watch not found or not owned by the user" }
+        }
+      },
+      "patch": {
+        "operationId": "updateObservatoryWatch",
+        "summary": "Update a My Observatory Watch",
+        "description": "Update name, configuration, or enabled state with optimistic concurrency. Requires the last observed updatedAt value and a same-origin request.",
+        "tags": ["User"],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ObservatoryWatchUpdate" } } } },
+        "responses": {
+          "200": { "description": "Watch updated", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ObservatoryWatch" } } } },
+          "400": { "description": "Invalid update or config/type mismatch" }, "401": { "description": "Authentication required" }, "403": { "description": "Cross-site request blocked" }, "404": { "description": "Watch not found" }, "409": { "description": "Stale edit or duplicate Watch" }, "429": { "description": "Per-user Watch mutation limit reached" }
+        }
+      },
+      "delete": {
+        "operationId": "deleteObservatoryWatch",
+        "summary": "Delete a My Observatory Watch",
+        "description": "Delete an owned Watch while preserving visible Signal history and the user-level deduplication ledger.",
+        "tags": ["User"],
+        "responses": { "200": { "description": "Watch deleted" }, "400": { "description": "Invalid Watch ID" }, "401": { "description": "Authentication required" }, "403": { "description": "Cross-site request blocked" }, "404": { "description": "Watch not found" }, "429": { "description": "Per-user Watch mutation limit reached" } }
+      }
+    },
+    "/user/signals": {
+      "get": {
+        "operationId": "listObservatorySignals",
+        "summary": "List My Observatory Signals",
+        "description": "List private in-app Signal matches for the signed-in user using cursor pagination.",
+        "tags": ["User"],
+        "parameters": [
+          { "name": "status", "in": "query", "schema": { "type": "string", "enum": ["all", "read", "unread"], "default": "all" } },
+          { "name": "alertId", "in": "query", "schema": { "type": "integer", "minimum": 1 } },
+          { "name": "eventType", "in": "query", "schema": { "type": "string", "maxLength": 40 } },
+          { "name": "cursor", "in": "query", "schema": { "type": "string", "maxLength": 500 } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 24 } }
+        ],
+        "responses": { "200": { "description": "Signal page", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ObservatorySignalsResponse" } } } }, "400": { "description": "Invalid query or cursor" }, "401": { "description": "Authentication required" } }
+      }
+    },
+    "/user/signals/{id}": {
+      "patch": {
+        "operationId": "setObservatorySignalReadState",
+        "summary": "Mark a Signal read or unread",
+        "tags": ["User"],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "minimum": 1 } }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "additionalProperties": false, "required": ["read"], "properties": { "read": { "type": "boolean" } } } } } },
+        "responses": { "200": { "description": "Read state updated" }, "400": { "description": "Invalid ID or body" }, "401": { "description": "Authentication required" }, "403": { "description": "Cross-site request blocked" }, "404": { "description": "Signal not found or not owned by the user" } }
+      }
+    },
+    "/user/signals/unread-count": {
+      "get": {
+        "operationId": "getObservatoryUnreadCount",
+        "summary": "Count unread My Observatory Signals",
+        "tags": ["User"],
+        "responses": {
+          "200": {
+            "description": "Unread count",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["unreadCount"],
+                  "properties": { "unreadCount": { "type": "integer", "minimum": 0 } }
+                }
+              }
+            }
+          },
+          "401": { "description": "Authentication required" }
+        }
+      }
+    },
+    "/user/signals/read-all": {
+      "post": {
+        "operationId": "markAllObservatorySignalsRead",
+        "summary": "Mark all My Observatory Signals read",
+        "tags": ["User"],
+        "responses": {
+          "200": {
+            "description": "Unread Signals updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["updated"],
+                  "properties": { "updated": { "type": "integer", "minimum": 0 } }
+                }
+              }
+            }
+          },
+          "401": { "description": "Authentication required" },
+          "403": { "description": "Cross-site request blocked" }
+        }
+      }
+    },
     "/stripe/checkout": {
       "post": {
         "operationId": "startStripeCheckout",
@@ -2200,6 +2333,50 @@
           "500": {
             "description": "Database, Stripe secret, or event processing failure"
           }
+        }
+      }
+    },
+    "/webhooks/clerk": {
+      "post": {
+        "operationId": "handleClerkWebhook",
+        "summary": "Process Clerk user lifecycle events",
+        "description": "Verify the Clerk webhook signature and delete the matching Turso user row, including cascading user-owned Observatory data, when a user.deleted event is received.",
+        "tags": ["User"],
+        "responses": {
+          "200": { "description": "Verified webhook accepted; repeated deletion events are idempotent" },
+          "400": { "description": "Invalid signature or a user.deleted event without an ID" },
+          "500": { "description": "Database unavailable" }
+        }
+      }
+    },
+    "/internal/observatory/evaluate": {
+      "post": {
+        "operationId": "evaluateObservatoryWatches",
+        "summary": "Evaluate My Observatory Watches",
+        "description": "Internal zero-cost scheduler target. Requires an OBSERVATORY_CRON_SECRET bearer token, evaluates one bounded domain page, and returns aggregate metrics with an opaque continuation token when more work remains.",
+        "tags": ["Internal"],
+        "security": [{ "ObservatoryCronBearer": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["domain"],
+                "properties": {
+                  "domain": { "type": "string", "enum": ["space_weather", "close_approach", "cleanup"] },
+                  "continuation": { "type": "string", "maxLength": 256, "description": "Opaque owner-bound continuation returned by the previous bounded response." }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Evaluation completed or returned a bounded continuation" },
+          "400": { "description": "Invalid JSON or evaluator request" },
+          "401": { "description": "Incorrect bearer secret" },
+          "503": { "description": "Evaluator unconfigured, upstream result incomplete, or evaluation failed" }
         }
       }
     },
@@ -3068,6 +3245,13 @@
     }
   },
   "components": {
+    "securitySchemes": {
+      "ObservatoryCronBearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Internal bearer token configured through OBSERVATORY_CRON_SECRET."
+      }
+    },
     "parameters": {
       "ResourceId": {
         "name": "id",
@@ -3204,6 +3388,59 @@
       }
     },
     "schemas": {
+      "ObservatorySpaceWeatherConfig": {
+        "type": "object", "additionalProperties": false, "required": ["schemaVersion", "categories", "minimumSeverity"],
+        "properties": {
+          "schemaVersion": { "type": "integer", "const": 1 },
+          "categories": { "type": "array", "minItems": 1, "maxItems": 8, "items": { "type": "string", "enum": ["flr", "sep", "cme", "ips", "gst", "rbe", "mpc", "other"] } },
+          "minimumSeverity": { "type": "string", "enum": ["moderate", "strong", "severe"] }
+        }
+      },
+      "ObservatoryCloseApproachConfig": {
+        "type": "object", "additionalProperties": false, "required": ["schemaVersion", "maxDistanceLd", "leadTimeDays", "phaOnly"],
+        "properties": {
+          "schemaVersion": { "type": "integer", "const": 1 },
+          "maxDistanceLd": { "type": "number", "enum": [1, 3, 5, 10, 20] },
+          "leadTimeDays": { "type": "integer", "enum": [1, 7, 30] },
+          "phaOnly": { "type": "boolean" }
+        }
+      },
+      "ObservatoryWatchInput": {
+        "oneOf": [
+          { "type": "object", "additionalProperties": false, "required": ["name", "alertType", "config"], "properties": { "name": { "type": "string", "minLength": 1, "maxLength": 80 }, "alertType": { "type": "string", "const": "space_weather" }, "config": { "$ref": "#/components/schemas/ObservatorySpaceWeatherConfig" } } },
+          { "type": "object", "additionalProperties": false, "required": ["name", "alertType", "config"], "properties": { "name": { "type": "string", "minLength": 1, "maxLength": 80 }, "alertType": { "type": "string", "const": "close_approach" }, "config": { "$ref": "#/components/schemas/ObservatoryCloseApproachConfig" } } }
+        ]
+      },
+      "ObservatoryWatch": {
+        "allOf": [
+          { "$ref": "#/components/schemas/ObservatoryWatchInput" },
+          { "type": "object", "required": ["id", "enabled", "createdAt", "updatedAt"], "properties": { "id": { "type": "integer" }, "enabled": { "type": "boolean" }, "enabledAt": { "type": ["string", "null"], "format": "date-time" }, "lastMatchedAt": { "type": ["string", "null"], "format": "date-time" }, "createdAt": { "type": "string", "format": "date-time" }, "updatedAt": { "type": "string", "format": "date-time" } } }
+        ]
+      },
+      "ObservatoryWatchUpdate": {
+        "type": "object", "additionalProperties": false, "required": ["expectedUpdatedAt"],
+        "properties": { "name": { "type": "string", "minLength": 1, "maxLength": 80 }, "config": { "oneOf": [{ "$ref": "#/components/schemas/ObservatorySpaceWeatherConfig" }, { "$ref": "#/components/schemas/ObservatoryCloseApproachConfig" }] }, "enabled": { "type": "boolean" }, "expectedUpdatedAt": { "type": "string", "maxLength": 40 } }
+      },
+      "ObservatoryWatchUsage": {
+        "type": "object", "required": ["current", "limit", "remaining"],
+        "properties": { "current": { "type": "integer", "minimum": 0 }, "limit": { "type": "integer", "enum": [1, 50] }, "remaining": { "type": "integer", "minimum": 0 } }
+      },
+      "ObservatoryWatchesResponse": {
+        "type": "object", "required": ["alerts", "usage", "total", "hasMore", "nextCursor"],
+        "properties": { "alerts": { "type": "array", "items": { "$ref": "#/components/schemas/ObservatoryWatch" } }, "usage": { "$ref": "#/components/schemas/ObservatoryWatchUsage" }, "total": { "type": "integer", "minimum": 0 }, "hasMore": { "type": "boolean" }, "nextCursor": { "type": ["string", "null"] } }
+      },
+      "ObservatorySignal": {
+        "type": "object", "required": ["id", "watchName", "triggerKey", "source", "eventType", "title", "summary", "matchReason", "destinationUrl", "readAt", "createdAt", "updatedAt"],
+        "properties": {
+          "id": { "type": "integer" }, "alertId": { "type": ["integer", "null"] }, "watchName": { "type": "string" }, "triggerKey": { "type": "string" }, "source": { "type": "string", "enum": ["donki", "swpc", "cneos"] }, "eventType": { "type": "string" },
+          "severity": { "type": ["string", "null"], "enum": ["minor", "moderate", "strong", "severe", "extreme", null] }, "title": { "type": "string" }, "summary": { "type": "string" }, "matchReason": { "type": "string" },
+          "eventAt": { "type": ["string", "null"], "format": "date-time" }, "sourceAt": { "type": ["string", "null"], "format": "date-time" }, "destinationUrl": { "type": "string" }, "sourceUrl": { "type": ["string", "null"], "format": "uri" }, "snapshot": {}, "readAt": { "type": ["string", "null"], "format": "date-time" }, "createdAt": { "type": "string", "format": "date-time" }, "updatedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "ObservatorySignalsResponse": {
+        "type": "object", "required": ["signals", "hasMore", "nextCursor"],
+        "properties": { "signals": { "type": "array", "items": { "$ref": "#/components/schemas/ObservatorySignal" } }, "hasMore": { "type": "boolean" }, "nextCursor": { "type": ["string", "null"] } }
+      },
       "ApiMeta": {
         "type": "object",
         "required": [

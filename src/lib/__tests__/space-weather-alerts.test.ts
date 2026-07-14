@@ -95,7 +95,7 @@ afterAll(() => {
 
 describe("fetchUnifiedSpaceWeatherAlerts", () => {
   it("normalizes notifications into alert cards with related event context", async () => {
-    const result = await fetchUnifiedSpaceWeatherAlerts({ type: "all", limit: 8, page: 1 });
+    const result = await fetchUnifiedSpaceWeatherAlerts({ startDate: "2026-04-10", endDate: "2026-04-12", type: "all", limit: 8, page: 1 });
 
     expect(result.alerts).toHaveLength(3);
     const donkiAlert = result.alerts.find((alert) => alert.id === "20260412-AL-001");
@@ -145,7 +145,7 @@ describe("fetchUnifiedSpaceWeatherAlerts", () => {
       FLR: [],
     };
 
-    const result = await fetchUnifiedSpaceWeatherAlerts({ type: "all", limit: 8, page: 1 });
+    const result = await fetchUnifiedSpaceWeatherAlerts({ startDate: "2026-04-10", endDate: "2026-04-12", type: "all", limit: 8, page: 1 });
 
     expect(result.alerts[0].relatedEvents).toHaveLength(0);
     expect(result.meta.warnings?.some((warning) => warning.includes("could not be resolved"))).toBe(true);
@@ -154,7 +154,7 @@ describe("fetchUnifiedSpaceWeatherAlerts", () => {
   });
 
   it("includes SWPC source-grouped alerts alongside DONKI alerts", async () => {
-    const result = await fetchUnifiedSpaceWeatherAlerts({ type: "all", limit: 8, page: 1 });
+    const result = await fetchUnifiedSpaceWeatherAlerts({ startDate: "2026-04-10", endDate: "2026-04-12", type: "all", limit: 8, page: 1 });
 
     expect(result.meta.sourcesIncluded).toEqual(["donki", "swpc"]);
     expect(result.alerts.some((alert) => alert.source === "swpc")).toBe(true);
@@ -162,6 +162,36 @@ describe("fetchUnifiedSpaceWeatherAlerts", () => {
       category: "gst",
       severity: "minor",
     });
+  });
+
+  it("uses the maximum severity across all related DONKI events", async () => {
+    rawNotifications = [{
+      messageID: "20260412-AL-MULTI",
+      messageType: "CME",
+      messageIssueTime: "2026-04-12T12:00:00Z",
+      messageBody:
+        "Activity ID: 2026-04-12T09:00:00-CME-001\nActivity ID: 2026-04-12T10:00:00-CME-002",
+    }];
+    eventPayloads = {
+      CME: [
+        {
+          activityID: "2026-04-12T09:00:00-CME-001",
+          startTime: "2026-04-12T09:00:00Z",
+          cmeAnalyses: [{ speed: 700, isMostAccurate: true }],
+        },
+        {
+          activityID: "2026-04-12T10:00:00-CME-002",
+          startTime: "2026-04-12T10:00:00Z",
+          cmeAnalyses: [{ speed: 1550, isMostAccurate: true }],
+        },
+      ],
+    };
+
+    const result = await fetchUnifiedSpaceWeatherAlerts({ type: "all", limit: 8 });
+    const alert = result.alerts.find((candidate) => candidate.source === "donki");
+
+    expect(alert?.relatedEvents).toHaveLength(2);
+    expect(alert?.severity).toBe("severe");
   });
 
   it("paginates the merged DONKI and SWPC alerts only once", async () => {
@@ -173,7 +203,7 @@ describe("fetchUnifiedSpaceWeatherAlerts", () => {
       messageBody: `Operational notice ${index + 1}.`,
     }));
 
-    const result = await fetchUnifiedSpaceWeatherAlerts({ type: "all", limit: 10, page: 2 });
+    const result = await fetchUnifiedSpaceWeatherAlerts({ startDate: "2026-04-10", endDate: "2026-04-12", type: "all", limit: 10, page: 2 });
 
     expect(result.totalAvailable).toBe(13);
     expect(result.count).toBe(3);

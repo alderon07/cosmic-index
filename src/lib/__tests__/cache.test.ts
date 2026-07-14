@@ -4,7 +4,7 @@ import type { Redis } from "@upstash/redis";
 let getCallCount = 0;
 
 const cacheModule = await import("../cache");
-const { __resetCacheStateForTests, __setRedisClientForTests, getCached } = cacheModule;
+const { __resetCacheStateForTests, __setRedisClientForTests, getCached, withCache } = cacheModule;
 
 const originalWarn = console.warn;
 const originalError = console.error;
@@ -36,7 +36,7 @@ beforeEach(() => {
     async del(): Promise<void> {
       throw new TypeError("fetch failed");
     },
-  } as Redis);
+  } as unknown as Redis);
 });
 
 afterAll(() => {
@@ -66,5 +66,24 @@ describe("cache fallback behavior", () => {
     expect(errors).toHaveLength(0);
     expect(warnings.length).toBeGreaterThan(0);
     expect(warnings[0]).toContain("Redis get failed");
+  });
+
+  it("treats an undefined adapter result as a cache miss", async () => {
+    __setRedisClientForTests({
+      async get(): Promise<undefined> {
+        return undefined;
+      },
+      async set(): Promise<void> {},
+      async del(): Promise<void> {},
+    } as unknown as Redis);
+
+    let fetches = 0;
+    const result = await withCache("sw:test:undefined", 60, async () => {
+      fetches += 1;
+      return { ok: true };
+    });
+
+    expect(result).toEqual({ ok: true });
+    expect(fetches).toBe(1);
   });
 });

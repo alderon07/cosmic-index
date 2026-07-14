@@ -8,6 +8,7 @@ export type TierLimits = {
   EXPORT_ROWS_PER_HOUR: number;
   MAX_EXPORT_ROWS: number;
   CSV_MAX_ROWS: number;
+  MAX_WATCHES: number;
 };
 
 export const TIER_LIMITS: Record<FeatureTier, TierLimits> = {
@@ -19,6 +20,7 @@ export const TIER_LIMITS: Record<FeatureTier, TierLimits> = {
     EXPORT_ROWS_PER_HOUR: 6_000,
     MAX_EXPORT_ROWS: 5_000,
     CSV_MAX_ROWS: 2_000,
+    MAX_WATCHES: 1,
   },
   pro: {
     MAX_SAVED_OBJECTS: 1_500,
@@ -28,6 +30,7 @@ export const TIER_LIMITS: Record<FeatureTier, TierLimits> = {
     EXPORT_ROWS_PER_HOUR: 40_000,
     MAX_EXPORT_ROWS: 25_000,
     CSV_MAX_ROWS: 10_000,
+    MAX_WATCHES: 50,
   },
 };
 

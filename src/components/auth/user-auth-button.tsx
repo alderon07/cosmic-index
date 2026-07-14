@@ -2,7 +2,7 @@
 
 import { SignInButton, UserButton } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
-import { User, Bookmark, Layers, CreditCard } from "lucide-react";
+import { User, Bookmark, Layers, CreditCard, Telescope } from "lucide-react";
 import { useAppAuth } from "./app-auth-provider";
 import { clerkAppearance } from "@/components/auth/clerk-appearance";
 
@@ -71,6 +71,11 @@ export function UserAuthButton({
   return (
     <UserButton appearance={clerkAppearance}>
       <UserButton.MenuItems>
+        <UserButton.Link
+          href="/user/observatory"
+          label="My Observatory"
+          labelIcon={<Telescope className="h-4 w-4" />}
+        />
         <UserButton.Link
           href="/user/saved-objects"
           label="Saved Objects"

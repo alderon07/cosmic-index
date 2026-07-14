@@ -31,4 +31,10 @@ export const queryKeys = {
     ["user", "collection-detail", collectionId, "cursor", limit] as const,
   savedObjectCollections: (savedObjectId: number) =>
     ["user", "saved-object-collections", savedObjectId] as const,
+  observatoryWatches: (userId: string) =>
+    ["user", "observatory", "watches", userId] as const,
+  observatorySignals: (userId: string, filter = "all") =>
+    ["user", "observatory", "signals", filter, userId] as const,
+  observatoryUnreadCount: (userId: string) =>
+    ["user", "observatory", "signals", "unread-count", userId] as const,
 };

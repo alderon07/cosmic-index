@@ -18,6 +18,7 @@ import type {
   SpaceWeatherNotificationType,
   SpaceWeatherSeverity,
 } from "@/lib/types";
+import { getMaximumSeverity } from "@/lib/observatory";
 
 const SWPC_ALERTS_URL = "https://services.swpc.noaa.gov/products/alerts.json";
 const ALERTS_FETCH_TIMEOUT_MS = 8_000;
@@ -343,7 +344,7 @@ export async function fetchUnifiedSpaceWeatherAlerts(
       category: toAlertCategory(notification.type),
       title: buildAlertTitle(notification, relatedEvents),
       summary: buildAlertSummary(notification),
-      severity: relatedEvents[0]?.severity ?? "minor",
+      severity: getMaximumSeverity(relatedEvents.map((event) => event.severity)),
       issuedAt: notification.issuedAt,
       sourceUrl: notification.url,
       activityCount: notification.activityIDs.length,

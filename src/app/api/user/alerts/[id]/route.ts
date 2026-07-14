@@ -1,186 +1,65 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requirePro, authErrorResponse } from "@/lib/auth";
-import { requireUserDb } from "@/lib/user-db";
-import { UpdateAlertSchema, Alert } from "@/lib/types";
-import { getFeatureDisabledResponse, resolveProAccess } from "@/lib/pro-access";
+import { requireAuth, authErrorResponse } from "@/lib/auth";
+import { WatchUpdateSchema } from "@/lib/observatory";
+import { deleteWatch, getWatch, updateWatch } from "@/lib/observatory-store";
 import { requireSameOrigin } from "@/lib/request-origin";
+import { requireObservatoryMutationBudget } from "@/lib/observatory-mutation-limit";
 
-interface RouteParams {
-  params: Promise<{ id: string }>;
+interface RouteParams { params: Promise<{ id: string }> }
+const PRIVATE_HEADERS = { "Cache-Control": "private, no-store" };
+
+function parseId(raw: string): number | null {
+  return /^\d+$/.test(raw) && Number(raw) > 0 ? Number(raw) : null;
 }
 
-/**
- * GET /api/user/alerts/[id]
- *
- * Get a single alert by ID.
- */
-export async function GET(request: NextRequest, { params }: RouteParams) {
+export async function GET(_request: NextRequest, { params }: RouteParams) {
   try {
-    const user = await requirePro();
-    if (!resolveProAccess(user).canAccessProSurfaces) {
-      return getFeatureDisabledResponse("pro_surfaces");
-    }
-    const { id } = await params;
-
-    const alertId = parseInt(id, 10);
-    if (isNaN(alertId)) {
-      return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
-    }
-
-    const db = requireUserDb();
-
-    const result = await db.execute({
-      sql: `
-        SELECT id, alert_type, config, enabled, email_enabled, created_at, updated_at
-        FROM alerts
-        WHERE id = ? AND user_id = ?
-      `,
-      args: [alertId, user.userId],
-    });
-
-    if (result.rows.length === 0) {
-      return NextResponse.json({ error: "Not found" }, { status: 404 });
-    }
-
-    const row = result.rows[0];
-    const alert: Alert = {
-      id: row.id as number,
-      alertType: row.alert_type as "space_weather" | "fireball" | "close_approach",
-      config: JSON.parse(row.config as string),
-      enabled: Boolean(row.enabled),
-      emailEnabled: Boolean(row.email_enabled),
-      createdAt: row.created_at as string,
-      updatedAt: row.updated_at as string,
-    };
-
-    return NextResponse.json(alert);
+    const user = await requireAuth();
+    const rateLimitError = await requireObservatoryMutationBudget(user.userId);
+    if (rateLimitError) return rateLimitError;
+    const id = parseId((await params).id);
+    if (!id) return NextResponse.json({ error: "Invalid ID", code: "INVALID_ID" }, { status: 400, headers: PRIVATE_HEADERS });
+    const watch = await getWatch(user.userId, id);
+    return watch
+      ? NextResponse.json(watch, { headers: PRIVATE_HEADERS })
+      : NextResponse.json({ error: "Not found", code: "NOT_FOUND" }, { status: 404, headers: PRIVATE_HEADERS });
   } catch (error) {
-    return authErrorResponse(error);
+    const response = authErrorResponse(error); response.headers.set("Cache-Control", "private, no-store"); return response;
   }
 }
 
-/**
- * PATCH /api/user/alerts/[id]
- *
- * Update an alert's config, enabled status, or email settings.
- */
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
   try {
-    const sameOriginError = requireSameOrigin(request);
-    if (sameOriginError) {
-      return sameOriginError;
-    }
-
-    const user = await requirePro();
-    if (!resolveProAccess(user).canAccessProSurfaces) {
-      return getFeatureDisabledResponse("pro_surfaces");
-    }
-    const { id } = await params;
-
-    const alertId = parseInt(id, 10);
-    if (isNaN(alertId)) {
-      return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
-    }
-
-    const body = await request.json();
-    const parseResult = UpdateAlertSchema.safeParse(body);
-
-    if (!parseResult.success) {
-      return NextResponse.json(
-        { error: "Invalid request", details: parseResult.error.flatten() },
-        { status: 400 }
-      );
-    }
-
-    const updates = parseResult.data;
-    const db = requireUserDb();
-
-    // Build dynamic UPDATE query
-    const setClauses: string[] = ['updated_at = datetime("now")'];
-    const args: (string | number)[] = [];
-
-    if (updates.config !== undefined) {
-      setClauses.push("config = ?");
-      args.push(JSON.stringify(updates.config));
-    }
-    if (updates.enabled !== undefined) {
-      setClauses.push("enabled = ?");
-      args.push(updates.enabled ? 1 : 0);
-    }
-    if (updates.emailEnabled !== undefined) {
-      setClauses.push("email_enabled = ?");
-      args.push(updates.emailEnabled ? 1 : 0);
-    }
-
-    args.push(alertId, user.userId);
-
-    const result = await db.execute({
-      sql: `
-        UPDATE alerts
-        SET ${setClauses.join(", ")}
-        WHERE id = ? AND user_id = ?
-        RETURNING id, alert_type, config, enabled, email_enabled, created_at, updated_at
-      `,
-      args,
-    });
-
-    if (result.rows.length === 0) {
-      return NextResponse.json({ error: "Not found" }, { status: 404 });
-    }
-
-    const row = result.rows[0];
-    const alert: Alert = {
-      id: row.id as number,
-      alertType: row.alert_type as "space_weather" | "fireball" | "close_approach",
-      config: JSON.parse(row.config as string),
-      enabled: Boolean(row.enabled),
-      emailEnabled: Boolean(row.email_enabled),
-      createdAt: row.created_at as string,
-      updatedAt: row.updated_at as string,
-    };
-
-    return NextResponse.json(alert);
+    const originError = requireSameOrigin(request); if (originError) return originError;
+    const user = await requireAuth();
+    const rateLimitError = await requireObservatoryMutationBudget(user.userId);
+    if (rateLimitError) return rateLimitError;
+    const id = parseId((await params).id);
+    if (!id) return NextResponse.json({ error: "Invalid ID", code: "INVALID_ID" }, { status: 400, headers: PRIVATE_HEADERS });
+    const parsed = WatchUpdateSchema.safeParse(await request.json().catch(() => null));
+    if (!parsed.success) return NextResponse.json({ error: "Invalid request", code: "INVALID_REQUEST", details: parsed.error.flatten() }, { status: 400, headers: PRIVATE_HEADERS });
+    const result = await updateWatch({ userId: user.userId, tier: user.tier, id, update: parsed.data });
+    if (result.status === "updated") return NextResponse.json(result.watch, { headers: PRIVATE_HEADERS });
+    if (result.status === "not_found") return NextResponse.json({ error: "Not found", code: "NOT_FOUND" }, { status: 404, headers: PRIVATE_HEADERS });
+    if (result.status === "duplicate") return NextResponse.json({ error: "You already have this Watch", code: "DUPLICATE_WATCH" }, { status: 409, headers: PRIVATE_HEADERS });
+    if (result.status === "type_mismatch") return NextResponse.json({ error: "Config does not match Watch type", code: "WATCH_TYPE_MISMATCH" }, { status: 400, headers: PRIVATE_HEADERS });
+    if (result.status === "limit") return NextResponse.json({ error: "Delete extra Watches before enabling another", code: "WATCH_LIMIT_REACHED" }, { status: 409, headers: PRIVATE_HEADERS });
+    return NextResponse.json({ error: "Watch changed; refresh and try again", code: "EDIT_CONFLICT" }, { status: 409, headers: PRIVATE_HEADERS });
   } catch (error) {
-    return authErrorResponse(error);
+    const response = authErrorResponse(error); response.headers.set("Cache-Control", "private, no-store"); return response;
   }
 }
 
-/**
- * DELETE /api/user/alerts/[id]
- *
- * Delete an alert. Also removes its triggers via CASCADE.
- */
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
-    const sameOriginError = requireSameOrigin(request);
-    if (sameOriginError) {
-      return sameOriginError;
-    }
-
-    const user = await requirePro();
-    if (!resolveProAccess(user).canAccessProSurfaces) {
-      return getFeatureDisabledResponse("pro_surfaces");
-    }
-    const { id } = await params;
-
-    const alertId = parseInt(id, 10);
-    if (isNaN(alertId)) {
-      return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
-    }
-
-    const db = requireUserDb();
-
-    const result = await db.execute({
-      sql: "DELETE FROM alerts WHERE id = ? AND user_id = ? RETURNING id",
-      args: [alertId, user.userId],
-    });
-
-    if (result.rows.length === 0) {
-      return NextResponse.json({ error: "Not found" }, { status: 404 });
-    }
-
-    return NextResponse.json({ success: true });
+    const originError = requireSameOrigin(request); if (originError) return originError;
+    const user = await requireAuth();
+    const id = parseId((await params).id);
+    if (!id) return NextResponse.json({ error: "Invalid ID", code: "INVALID_ID" }, { status: 400, headers: PRIVATE_HEADERS });
+    return await deleteWatch(user.userId, id)
+      ? NextResponse.json({ success: true }, { headers: PRIVATE_HEADERS })
+      : NextResponse.json({ error: "Not found", code: "NOT_FOUND" }, { status: 404, headers: PRIVATE_HEADERS });
   } catch (error) {
-    return authErrorResponse(error);
+    const response = authErrorResponse(error); response.headers.set("Cache-Control", "private, no-store"); return response;
   }
 }

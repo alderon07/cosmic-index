@@ -66,4 +66,19 @@ describe("checkRateLimit", () => {
     expect(result.effectiveLimit).toBe(30);
     expect(result.remaining).toBe(29);
   });
+
+  it("keeps Observatory write churn to a small per-user hourly budget", async () => {
+    process.env.NODE_ENV = "test";
+    delete process.env.UPSTASH_REDIS_REST_URL;
+    delete process.env.UPSTASH_REDIS_REST_TOKEN;
+
+    const result = await checkRateLimit(
+      `observatory-user-${crypto.randomUUID()}`,
+      "USER_MUTATION",
+    );
+
+    expect(result.allowed).toBe(true);
+    expect(result.effectiveLimit).toBe(20);
+    expect(result.remaining).toBe(19);
+  });
 });
