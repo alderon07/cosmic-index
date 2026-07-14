@@ -1,4 +1,4 @@
-import { Bell, Database, Download, FolderHeart, type LucideIcon } from "lucide-react";
+import { Database, Download, FolderHeart, Telescope, type LucideIcon } from "lucide-react";
 
 export interface ProFeature {
   icon: LucideIcon;
@@ -23,8 +23,8 @@ export const PRO_FEATURES: ProFeature[] = [
     description: "Download JSON, NDJSON, and CSV exports with Pro-only per-hour and per-export limits for research workflows.",
   },
   {
-    icon: Bell,
-    label: "Custom event alerts",
-    description: "Get notified about new activity relevant to your tracked objects and interests.",
+    icon: Telescope,
+    label: "My Observatory",
+    description: "Run up to 50 Watches and keep 180 days of private Signal history. Free includes one Watch and 30 days.",
   },
 ];

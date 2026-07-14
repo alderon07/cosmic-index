@@ -5,10 +5,10 @@ import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ProBadge } from "@/components/pro-badge";
+import { ProFeaturesList } from "@/components/pro-features-list";
 import { ACCOUNT_CARD_TONE } from "@/lib/theme";
-import { Check, Loader2, ExternalLink, Sparkles } from "lucide-react";
+import { Loader2, ExternalLink, Sparkles } from "lucide-react";
 import { TIER_LIMITS } from "@/lib/tier-limits";
-import { PRO_FEATURES } from "@/lib/pro-features";
 
 /**
  * Billing Content (Client Component)
@@ -45,6 +45,16 @@ const PLAN_LIMIT_COMPARISON = [
     label: "Saved searches",
     free: freeLimits.MAX_SAVED_SEARCHES.toLocaleString(),
     pro: proLimits.MAX_SAVED_SEARCHES.toLocaleString(),
+  },
+  {
+    label: "Observatory Watches",
+    free: freeLimits.MAX_WATCHES.toLocaleString(),
+    pro: proLimits.MAX_WATCHES.toLocaleString(),
+  },
+  {
+    label: "Signal history",
+    free: "30 days",
+    pro: "180 days",
   },
   {
     label: "Export requests / hour",
@@ -303,28 +313,7 @@ export function BillingContent({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <ul className="space-y-3">
-            {PRO_FEATURES.map((feature) => (
-              <li key={feature.label} className="flex items-center gap-3">
-                <div
-                  className={`p-1.5 rounded ${
-                    tier === "pro"
-                      ? "bg-uranium-green/20 text-uranium-green"
-                      : "bg-muted text-muted-foreground"
-                  }`}
-                >
-                  {tier === "pro" ? (
-                    <Check className="w-4 h-4" />
-                  ) : (
-                    <feature.icon className="w-4 h-4" />
-                  )}
-                </div>
-                <span className={tier === "pro" ? "" : "text-muted-foreground"}>
-                  {feature.label}
-                </span>
-              </li>
-            ))}
-          </ul>
+          <ProFeaturesList tier={tier} />
         </CardContent>
       </Card>
 
@@ -335,7 +324,6 @@ export function BillingContent({
           <CardDescription>
             Current enforced limits for signed-in users
           </CardDescription>
-          <p className="text-xs text-muted-foreground">Last updated: March 1, 2026 (UTC)</p>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
