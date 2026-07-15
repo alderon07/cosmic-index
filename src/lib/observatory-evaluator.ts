@@ -18,6 +18,7 @@ import {
   ObservatorySourceUrlSchema,
 } from "@/lib/observatory-url";
 import type {
+  CloseApproachListResponse,
   SpaceWeatherAlertCategory,
   SpaceWeatherAlertSource,
   SpaceWeatherSeverity,
@@ -260,6 +261,30 @@ async function defaultFetchSpaceWeatherCandidates(
   };
 }
 
+export function buildCloseApproachCandidatePage(
+  response: CloseApproachListResponse,
+): CandidatePage<CloseApproachEvaluatorCandidate> {
+  return {
+    candidates: response.events.map((event) => ({
+      id: event.id,
+      designation: event.designation,
+      orbitId: event.orbitId,
+      approachTimeRaw: event.approachTimeRaw,
+      distanceLd: event.distanceLd,
+      distanceKm: event.distanceKm,
+      relativeVelocityKmS: event.relativeVelocityKmS,
+      ...(event.jd !== undefined ? { jd: event.jd } : {}),
+      ...(event.isPha !== undefined ? { isPha: event.isPha } : {}),
+      ...(event.timeUncertainty !== undefined
+        ? { timeUncertainty: event.timeUncertainty }
+        : {}),
+    })),
+    // The CAD API has no cursor. Treat a full cap as potentially truncated,
+    // even when the reported count is exactly the cap.
+    complete: response.events.length < 200 && response.events.length >= response.meta.count,
+  };
+}
+
 async function defaultFetchCloseApproachCandidates(): Promise<CandidatePage<CloseApproachEvaluatorCandidate>> {
   const response = await fetchCloseApproaches({
     dateMin: "now",
@@ -269,12 +294,7 @@ async function defaultFetchCloseApproachCandidates(): Promise<CandidatePage<Clos
     order: "asc",
     limit: 200,
   });
-  return {
-    candidates: response.events,
-    // The CAD API has no cursor. Treat a full cap as potentially truncated,
-    // even when the reported count is exactly the cap.
-    complete: response.events.length < 200 && response.events.length >= response.meta.count,
-  };
+  return buildCloseApproachCandidatePage(response);
 }
 
 function weatherSignal(

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import {
+  buildCloseApproachCandidatePage,
   evaluateObservatory,
   type ObservatoryEvaluatorDependencies,
   type ObservatoryEvaluatorStore,
@@ -214,6 +215,55 @@ describe("evaluateObservatory", () => {
       title: "3 more close approaches matched",
     });
     expect(suppressedTriggers).toHaveLength(3);
+  });
+
+  it("narrows full close-approach records to the strict evaluator contract", () => {
+    const page = buildCloseApproachCandidatePage({
+      events: [{
+        id: "2026-NW1",
+        designation: "2026 NW1",
+        orbitId: "2",
+        fullName: "(2026 NW1)",
+        approachTimeRaw: "2026-Jul-16 10:51",
+        timeUncertainty: "00:13",
+        jd: 2_461_237.951786318,
+        distanceAu: 0.0180403304247903,
+        distanceKm: 2_699_000,
+        distanceLd: 7.02,
+        distanceMinAu: 0.0179569904098716,
+        distanceMaxAu: 0.018123660431035,
+        relativeVelocityKmS: 4.76043800257833,
+        velocityInfinityKmS: 4.7293105802475,
+        absoluteMagnitude: 25.751,
+        diameterEstimated: {
+          minKm: 0.0188,
+          maxKm: 0.042,
+          albedoRange: [0.05, 0.25],
+        },
+        isPha: false,
+      }],
+      meta: {
+        count: 1,
+        phaFilterApplied: false,
+        queryApplied: {},
+      },
+    });
+
+    expect(page).toEqual({
+      complete: true,
+      candidates: [{
+        id: "2026-NW1",
+        designation: "2026 NW1",
+        orbitId: "2",
+        approachTimeRaw: "2026-Jul-16 10:51",
+        timeUncertainty: "00:13",
+        jd: 2_461_237.951786318,
+        distanceKm: 2_699_000,
+        distanceLd: 7.02,
+        relativeVelocityKmS: 4.76043800257833,
+        isPha: false,
+      }],
+    });
   });
 
   it("does not advance the watermark when an upstream result is incomplete", async () => {
