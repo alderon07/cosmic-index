@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { THEMES } from "@/lib/theme";
 import { Analytics } from "@vercel/analytics/react";
+import { GoogleAnalytics } from "@next/third-parties/google";
 import { KeyboardShortcutsProvider } from "@/components/keyboard-shortcuts/keyboard-shortcuts-provider";
 import { UserAuthButton } from "@/components/auth/user-auth-button";
 import { CompareProvider } from "@/components/compare/compare-provider";
@@ -34,6 +35,7 @@ import {
   NavigationMenuTrigger,
 } from "@/components/ui/navigation-menu";
 import { serializeJsonLd } from "@/lib/safe-json-ld";
+import { parseGoogleAnalyticsId } from "@/lib/analytics";
 
 const audiowide = Audiowide({
   variable: "--font-display",
@@ -53,6 +55,10 @@ const jetbrainsMono = JetBrains_Mono({
   subsets: ["latin"],
   display: "swap",
 });
+
+const googleAnalyticsId = parseGoogleAnalyticsId(
+  process.env.GOOGLE_ANALYTICS_ID
+);
 
 import { BASE_URL } from "@/lib/config";
 
@@ -549,6 +555,7 @@ export default function RootLayout({
         </QueryProvider>
         </AppAuthProvider>
         <Analytics />
+        {googleAnalyticsId ? <GoogleAnalytics gaId={googleAnalyticsId} /> : null}
       </body>
     </html>
   );
