@@ -33,6 +33,28 @@ function truncateAtWordBoundary(value: string, maxLength: number) {
   return `${truncated}…`;
 }
 
+function massNarrative(exoplanet: ExoplanetData): string | undefined {
+  if (typeof exoplanet.massEarth !== "number") return undefined;
+  const value = formatDecimal(exoplanet.massEarth, 2);
+  const provenance = exoplanet.planetaryParameters?.massProvenance;
+  if (provenance === "Msini") {
+    return `a minimum mass of ${value} Earth masses (M sin i)`;
+  }
+  if (provenance === "Msin(i)/sin(i)") {
+    return `a calculated mass of ${value} Earth masses (M sin(i) / sin(i))`;
+  }
+  return `a mass of ${value} Earth masses${
+    exoplanet.massIsEstimated ? " (estimated)" : ""
+  }`;
+}
+
+function massPropertyName(exoplanet: ExoplanetData): string {
+  const provenance = exoplanet.planetaryParameters?.massProvenance;
+  if (provenance === "Msini") return "Minimum Mass (M sin i)";
+  if (provenance === "Msin(i)/sin(i)") return "Calculated Mass (M sin(i) / sin(i))";
+  return exoplanet.massIsEstimated ? "Mass (estimated)" : "Mass";
+}
+
 export function buildExoplanetDetailNarrative(exoplanet: ExoplanetData): string[] {
   const sentences: string[] = [];
 
@@ -60,13 +82,8 @@ export function buildExoplanetDetailNarrative(exoplanet: ExoplanetData): string[
       `a radius of ${formatDecimal(exoplanet.radiusEarth, 2)} Earth radii`
     );
   }
-  if (typeof exoplanet.massEarth === "number") {
-    measurementBits.push(
-      `a mass of ${formatDecimal(exoplanet.massEarth, 2)} Earth masses${
-        exoplanet.massIsEstimated ? " (estimated)" : ""
-      }`
-    );
-  }
+  const massMeasurement = massNarrative(exoplanet);
+  if (massMeasurement) measurementBits.push(massMeasurement);
   if (typeof exoplanet.orbitalPeriodDays === "number") {
     measurementBits.push(
       `an orbital period of ${formatDecimal(exoplanet.orbitalPeriodDays, 2)} days`
@@ -192,7 +209,7 @@ export function buildExoplanetJsonLd(exoplanet: ExoplanetData, slug: string) {
   if (typeof exoplanet.massEarth === "number") {
     additionalProperties.push({
       "@type": "PropertyValue",
-      name: exoplanet.massIsEstimated ? "Mass (estimated)" : "Mass",
+      name: massPropertyName(exoplanet),
       value: exoplanet.massEarth.toFixed(2),
       unitText: "Earth masses",
     });

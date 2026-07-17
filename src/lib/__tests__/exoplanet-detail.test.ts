@@ -51,6 +51,25 @@ describe("exoplanet detail helpers", () => {
     expect(narrative[2]).toContain("3 known planets");
   });
 
+  it("does not describe an M sin(i) minimum as a true planet mass", () => {
+    const exoplanet = makeExoplanet({
+      massEarth: 91.79,
+      planetaryParameters: {
+        massEarth: { value: 91.79, errorPlus: 6.11, errorMinus: 7.32 },
+        massProvenance: "Msini",
+      },
+    });
+
+    expect(buildExoplanetDetailNarrative(exoplanet)[1]).toContain(
+      "a minimum mass of 91.79 Earth masses (M sin i)",
+    );
+
+    const jsonLd = buildExoplanetJsonLd(exoplanet, "dmpp-2-d");
+    expect(jsonLd["@graph"][1].additionalProperty).toContainEqual(
+      expect.objectContaining({ name: "Minimum Mass (M sin i)" }),
+    );
+  });
+
   it("returns related planets without the current page object", () => {
     const related = getRelatedExoplanets(
       [

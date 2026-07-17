@@ -3754,6 +3754,79 @@
           }
         }
       },
+      "PlanetaryMeasurement": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "value"
+        ],
+        "properties": {
+          "value": {
+            "type": "number",
+            "description": "Published parameter value."
+          },
+          "errorPlus": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Positive asymmetric uncertainty."
+          },
+          "errorMinus": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Magnitude of the negative asymmetric uncertainty."
+          },
+          "limit": {
+            "type": "string",
+            "enum": [
+              "upper",
+              "lower"
+            ],
+            "description": "Whether the value is an upper or lower limit rather than a point measurement."
+          }
+        }
+      },
+      "PlanetaryParameters": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "reference": {
+            "type": "string",
+            "description": "Plain-text citation for the default, self-consistent parameter set."
+          },
+          "orbitalPeriodDays": {
+            "$ref": "#/components/schemas/PlanetaryMeasurement"
+          },
+          "semiMajorAxisAu": {
+            "$ref": "#/components/schemas/PlanetaryMeasurement"
+          },
+          "massEarth": {
+            "$ref": "#/components/schemas/PlanetaryMeasurement"
+          },
+          "massJupiter": {
+            "$ref": "#/components/schemas/PlanetaryMeasurement"
+          },
+          "massProvenance": {
+            "type": "string",
+            "description": "NASA mass provenance, such as Mass, Msini, or Msin(i)/sin(i)."
+          },
+          "eccentricity": {
+            "$ref": "#/components/schemas/PlanetaryMeasurement"
+          },
+          "periastronEpoch": {
+            "$ref": "#/components/schemas/PlanetaryMeasurement"
+          },
+          "timeSystem": {
+            "type": "string",
+            "description": "Reference system for temporal orbital parameters, such as BJD."
+          },
+          "argumentOfPeriastronDeg": {
+            "$ref": "#/components/schemas/PlanetaryMeasurement"
+          },
+          "radialVelocitySemiAmplitudeMps": {
+            "$ref": "#/components/schemas/PlanetaryMeasurement"
+          }
+        }
+      },
       "ExoplanetData": {
         "allOf": [
           {
@@ -3793,11 +3866,14 @@
               },
               "massEarth": {
                 "type": "number",
-                "description": "Mass in Earth masses."
+                "description": "Best available mass or minimum-mass value in Earth masses; inspect planetaryParameters.massProvenance for its meaning."
               },
               "massIsEstimated": {
                 "type": "boolean",
                 "description": "Whether the mass value is an estimate rather than a measurement."
+              },
+              "planetaryParameters": {
+                "$ref": "#/components/schemas/PlanetaryParameters"
               },
               "distanceParsecs": {
                 "type": "number",

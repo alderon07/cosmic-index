@@ -57,6 +57,7 @@ CREATE TABLE IF NOT EXISTS exoplanets (
   radius_earth REAL,
   mass_earth REAL,
   equilibrium_temp_k REAL,
+  planetary_parameters_json TEXT,  -- self-consistent default PS parameter set
 
   distance_parsecs REAL,
   stars_in_system INTEGER,

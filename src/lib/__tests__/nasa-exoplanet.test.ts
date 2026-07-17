@@ -8,7 +8,7 @@
  * - SQL injection prevention
  */
 
-import { buildBrowseQuery } from "../nasa-exoplanet";
+import { buildBrowseQuery, buildDetailQuery } from "../nasa-exoplanet";
 
 describe("ADQL query generation", () => {
   describe("buildBrowseQuery", () => {
@@ -56,6 +56,8 @@ describe("ADQL query generation", () => {
       const result = buildBrowseQuery({});
       expect(result.query).toContain("default_flag=1");
       expect(result.query).toContain("order by disc_year");
+      expect(result.query).toContain("pl_bmasse");
+      expect(result.query).not.toContain("pl_orbeccenerr1");
     });
 
     it("applies pagination correctly", () => {
@@ -87,7 +89,8 @@ describe("ADQL query generation", () => {
 
     it("includes mass filter when requested", () => {
       const result = buildBrowseQuery({ hasMass: true });
-      expect(result.query).toContain("pl_masse is not null");
+      expect(result.query).toContain("pl_bmasse is not null");
+      expect(result.query).not.toContain("pl_masse is not null");
     });
 
     it("includes distance filter when provided", () => {
@@ -105,6 +108,19 @@ describe("ADQL query generation", () => {
       const result = buildBrowseQuery({ maxDistancePc: 500, habitable: true });
       expect(result.query).toContain("sy_dist <= 500");
       expect(result.query).toContain("pl_eqt >= 200");
+    });
+  });
+
+  describe("buildDetailQuery", () => {
+    it("requests the complete self-consistent planetary parameter set", () => {
+      const query = buildDetailQuery("DMPP-2 d");
+      expect(query).toContain("pl_bmasse");
+      expect(query).toContain("pl_orbsmax");
+      expect(query).toContain("pl_orbeccenlim");
+      expect(query).toContain("pl_orbtper");
+      expect(query).toContain("pl_orblper");
+      expect(query).toContain("pl_rvamp");
+      expect(query).toContain("pl_refname");
     });
   });
 });

@@ -39,6 +39,7 @@ import {
   getDetailAccentConfig,
 } from "@/lib/theme";
 import { cn } from "@/lib/utils";
+import { PlanetaryParametersGrid } from "@/components/planetary-parameters-grid";
 
 const NasaImageGallery = dynamic(
   () => import("./nasa-image-gallery").then((m) => m.NasaImageGallery),
@@ -306,7 +307,9 @@ export function ObjectDetail({
                   </div>
                   <div className="min-w-0">
                     <p className="text-xs text-muted-foreground">
-                      Mass (Earth masses)
+                      {object.planetaryParameters?.massProvenance === "Msini"
+                        ? "Minimum Mass, M sin(i) (Earth masses)"
+                        : "Mass (Earth masses)"}
                     </p>
                     <p className="font-mono text-sm sm:text-lg break-all">
                       {object.massEarth?.toFixed(2) ?? "Unknown"}
@@ -319,7 +322,11 @@ export function ObjectDetail({
                             : "text-muted-foreground"
                         }`}
                       >
-                        {object.massIsEstimated ? "Estimated" : "Measured"}
+                        {object.massIsEstimated
+                          ? "Estimated"
+                          : object.planetaryParameters?.massProvenance === "Msini"
+                            ? "Radial-velocity minimum"
+                            : "Measured"}
                       </p>
                     )}
                   </div>
@@ -345,18 +352,19 @@ export function ObjectDetail({
                 Orbital Properties
               </AccordionTrigger>
               <AccordionContent className="pb-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                {object.planetaryParameters ? (
+                  <PlanetaryParametersGrid parameters={object.planetaryParameters} />
+                ) : (
                   <div className="min-w-0">
-                    <p className="text-xs text-muted-foreground">
-                      Orbital Period
-                    </p>
+                    <p className="text-xs text-muted-foreground">Orbital Period</p>
                     <p className="font-mono text-sm sm:text-lg break-all">
-                      {object.orbitalPeriodDays
+                      {object.orbitalPeriodDays != null
                         ? `${object.orbitalPeriodDays.toFixed(2)} days`
                         : "Unknown"}
                     </p>
                   </div>
-                  <div className="min-w-0">
+                )}
+                <div className="mt-3 min-w-0">
                     <p className="text-xs text-muted-foreground">
                       Distance from Earth
                     </p>
@@ -367,7 +375,6 @@ export function ObjectDetail({
                           ).toFixed(0)} ly)`
                         : "Unknown"}
                     </p>
-                  </div>
                 </div>
               </AccordionContent>
             </AccordionItem>

@@ -54,6 +54,7 @@ export function computeFactViz(
       const e = entry(clampPercent(object.massEarth, 0, 500), "0", "500 M⊕");
       viz.set("Mass", e);
       viz.set("Mass (est.)", e);
+      viz.set("Minimum Mass (M sin i)", e);
     }
     if (object.orbitalPeriodDays != null)
       viz.set(

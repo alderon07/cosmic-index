@@ -13,8 +13,25 @@ import {
 import { withCache, CACHE_TTL, CACHE_KEYS, hashParams } from "./cache";
 import { DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE } from "./constants";
 import { z } from "zod";
+import { mapPlanetaryParameters } from "./planetary-parameters";
 
 const BASE_URL = "https://exoplanetarchive.ipac.caltech.edu/TAP/sync";
+const EXOPLANET_BROWSE_COLUMNS = [
+  "pl_name", "hostname", "discoverymethod", "disc_year", "disc_facility",
+  "pl_orbper", "pl_rade", "pl_bmasse", "pl_bmassprov",
+  "sy_dist", "pl_eqt", "sy_snum", "sy_pnum", "st_spectype", "st_teff",
+  "st_mass", "st_rad", "st_lum", "ra", "dec",
+].join(",");
+const EXOPLANET_DETAIL_COLUMNS = [
+  EXOPLANET_BROWSE_COLUMNS,
+  "pl_refname", "pl_orbpererr1", "pl_orbpererr2", "pl_orbperlim",
+  "pl_orbsmax", "pl_orbsmaxerr1", "pl_orbsmaxerr2", "pl_orbsmaxlim",
+  "pl_bmasseerr1", "pl_bmasseerr2", "pl_bmassj", "pl_bmassjerr1", "pl_bmassjerr2",
+  "pl_orbeccen", "pl_orbeccenerr1", "pl_orbeccenerr2", "pl_orbeccenlim",
+  "pl_orbtper", "pl_orbtpererr1", "pl_orbtpererr2", "pl_orbtperlim", "pl_tsystemref",
+  "pl_orblper", "pl_orblpererr1", "pl_orblpererr2", "pl_orblperlim",
+  "pl_rvamp", "pl_rvamperr1", "pl_rvamperr2", "pl_rvamplim",
+].join(",");
 
 // Escape single quotes for ADQL strings (doubles them)
 function escapeAdqlString(input: string): string {
@@ -89,7 +106,7 @@ function buildOrderByClause(sort?: ExoplanetSortOption, order?: SortOrder): stri
     case "radius":
       return `order by pl_rade ${dirUpper} nulls ${nullsPosition}, pl_name asc`;
     case "mass":
-      return `order by pl_masse ${dirUpper} nulls ${nullsPosition}, pl_name asc`;
+      return `order by pl_bmasse ${dirUpper} nulls ${nullsPosition}, pl_name asc`;
     case "discovered":
     default:
       return `order by disc_year ${dirUpper} nulls ${nullsPosition}, pl_name asc`;
@@ -124,7 +141,7 @@ export function buildBrowseQuery(
   }
 
   if (params.hasMass) {
-    conditions.push("pl_masse is not null");
+    conditions.push("pl_bmasse is not null");
   }
 
   // Size category filter (Earth radii ranges)
@@ -177,10 +194,7 @@ export function buildBrowseQuery(
 
   return {
     // Important: stable secondary sort so paging is deterministic
-    query:
-      `select pl_name,hostname,discoverymethod,disc_year,disc_facility,pl_orbper,pl_rade,pl_masse,sy_dist,pl_eqt,sy_snum,sy_pnum,st_spectype,st_teff,st_mass,st_rad,st_lum,ra,dec ` +
-      `from ps where ${whereClause} ` +
-      orderByClause,
+    query: `select ${EXOPLANET_BROWSE_COLUMNS} from ps where ${whereClause} ${orderByClause}`,
     limit,
     offset,
     page,
@@ -210,7 +224,7 @@ function buildCountQuery(params: ExoplanetQueryParams): string {
   }
 
   if (params.hasMass) {
-    conditions.push("pl_masse is not null");
+    conditions.push("pl_bmasse is not null");
   }
 
   // Size category filter (Earth radii ranges)
@@ -263,12 +277,9 @@ function buildCountQuery(params: ExoplanetQueryParams): string {
 }
 
 // Build ADQL query for detail
-function buildDetailQuery(name: string): string {
+export function buildDetailQuery(name: string): string {
   const safeName = escapeAdqlString(name);
-  return (
-    `select pl_name,hostname,discoverymethod,disc_year,disc_facility,pl_orbper,pl_rade,pl_masse,sy_dist,pl_eqt,sy_snum,sy_pnum,st_spectype,st_teff,st_mass,st_rad,st_lum,ra,dec ` +
-    `from ps where pl_name='${safeName}' and default_flag=1`
-  );
+  return `select ${EXOPLANET_DETAIL_COLUMNS} from ps where pl_name='${safeName}' and default_flag=1`;
 }
 
 // Execute TAP query against NASA Exoplanet Archive (TAP sync) using TAP-standard params.
@@ -385,6 +396,7 @@ function estimateMassFromRadius(radiusEarth: number): number {
 // Transform raw NASA data to ExoplanetData
 function transformExoplanet(raw: z.infer<typeof NASAExoplanetRawSchema>): ExoplanetData {
   const keyFacts: KeyFact[] = [];
+  const planetaryParameters = mapPlanetaryParameters(raw);
 
   if (raw.pl_rade !== null) {
     keyFacts.push({
@@ -393,17 +405,22 @@ function transformExoplanet(raw: z.infer<typeof NASAExoplanetRawSchema>): Exopla
       unit: "Earth radii",
     });
   }
-  const hasMeasuredMass = raw.pl_masse !== null;
+  const hasMeasuredMass = raw.pl_bmasse !== null;
   const massIsEstimated = !hasMeasuredMass && raw.pl_rade !== null;
   const massEarth = hasMeasuredMass
-    ? raw.pl_masse!
+    ? raw.pl_bmasse!
     : massIsEstimated
     ? estimateMassFromRadius(raw.pl_rade!)
     : undefined;
 
   if (massEarth !== undefined) {
+    const massLabel = massIsEstimated
+      ? "Mass (est.)"
+      : planetaryParameters.massProvenance === "Msini"
+        ? "Minimum Mass (M sin i)"
+        : "Mass";
     keyFacts.push({
-      label: massIsEstimated ? "Mass (est.)" : "Mass",
+      label: massLabel,
       value: formatNumber(massEarth),
       unit: "Earth masses",
     });
@@ -473,6 +490,7 @@ function transformExoplanet(raw: z.infer<typeof NASAExoplanetRawSchema>): Exopla
     radiusEarth: raw.pl_rade ?? undefined,
     massEarth: massEarth,
     massIsEstimated: massIsEstimated || undefined,
+    planetaryParameters,
     distanceParsecs: raw.sy_dist ?? undefined,
     equilibriumTempK: raw.pl_eqt ?? undefined,
     // Host star properties
@@ -583,8 +601,8 @@ export async function fetchExoplanetBySlug(slug: string): Promise<ExoplanetData 
 
   return withCache(cacheKey, CACHE_TTL.EXOPLANETS_DETAIL, async () => {
     const query =
-      `select pl_name,hostname,discoverymethod,disc_year,disc_facility,pl_orbper,pl_rade,pl_masse,sy_dist,pl_eqt,sy_snum,sy_pnum,st_spectype,st_teff,st_mass,st_rad,st_lum,ra,dec ` +
-      `from ps where lower(pl_name)=lower('${escapeAdqlString(name)}') and default_flag=1`;
+      `select ${EXOPLANET_DETAIL_COLUMNS} from ps ` +
+      `where lower(pl_name)=lower('${escapeAdqlString(name)}') and default_flag=1`;
     const results = await executeTAPQuery(query, { maxrec: 1 });
 
     if (results.length === 0) return null;
@@ -607,7 +625,7 @@ export async function fetchExoplanetsForHostStar(hostname: string): Promise<Exop
   return withCache(cacheKey, CACHE_TTL.STARS_PLANETS, async () => {
     const safeHostname = escapeAdqlString(hostname);
     const query =
-      `select pl_name,hostname,discoverymethod,disc_year,disc_facility,pl_orbper,pl_rade,pl_masse,sy_dist,pl_eqt,sy_snum,sy_pnum,st_spectype,st_teff,st_mass,st_rad,st_lum,ra,dec ` +
+      `select ${EXOPLANET_BROWSE_COLUMNS} ` +
       `from ps where lower(hostname)=lower('${safeHostname}') and default_flag=1 ` +
       `order by pl_orbper asc nulls last, pl_name asc`;
 

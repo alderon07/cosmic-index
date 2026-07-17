@@ -20,6 +20,7 @@ import {
   EXOPLANET_SORT_CONFIG,
   CursorValidationError,
 } from "./cursor";
+import { parsePlanetaryParametersJson } from "./planetary-parameters";
 
 // Lazy singleton for Turso client
 let client: Client | null = null;
@@ -58,6 +59,7 @@ interface ExoplanetRow {
   radius_earth: number | null;
   mass_earth: number | null;
   equilibrium_temp_k: number | null;
+  planetary_parameters_json?: string | null;
   distance_parsecs: number | null;
   stars_in_system: number | null;
   planets_in_system: number | null;
@@ -83,6 +85,9 @@ function estimateMassFromRadius(radiusEarth: number): number {
 // Transform database row to ExoplanetData
 function transformExoplanetRow(row: ExoplanetRow): ExoplanetData {
   const keyFacts: KeyFact[] = [];
+  const planetaryParameters = parsePlanetaryParametersJson(
+    row.planetary_parameters_json,
+  );
 
   if (row.radius_earth !== null) {
     keyFacts.push({
@@ -101,8 +106,13 @@ function transformExoplanetRow(row: ExoplanetRow): ExoplanetData {
     : undefined;
 
   if (massEarth !== undefined) {
+    const massLabel = massIsEstimated
+      ? "Mass (est.)"
+      : planetaryParameters?.massProvenance === "Msini"
+        ? "Minimum Mass (M sin i)"
+        : "Mass";
     keyFacts.push({
-      label: massIsEstimated ? "Mass (est.)" : "Mass",
+      label: massLabel,
       value: formatNumber(massEarth),
       unit: "Earth masses",
     });
@@ -182,6 +192,7 @@ function transformExoplanetRow(row: ExoplanetRow): ExoplanetData {
     radiusEarth: row.radius_earth ?? undefined,
     massEarth: massEarth,
     massIsEstimated: massIsEstimated || undefined,
+    planetaryParameters,
     distanceParsecs: row.distance_parsecs ?? undefined,
     equilibriumTempK: row.equilibrium_temp_k ?? undefined,
     starsInSystem: row.stars_in_system ?? undefined,

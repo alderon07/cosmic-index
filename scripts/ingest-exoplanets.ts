@@ -20,6 +20,10 @@ config({ path: ".env.local" });
 
 import { createClient, Client } from "@libsql/client";
 import { formatTursoError, getTursoConfig } from "./turso-config";
+import {
+  mapPlanetaryParameters,
+  type PlanetaryParameterSource,
+} from "../src/lib/planetary-parameters";
 
 const TAP_BASE_URL = "https://exoplanetarchive.ipac.caltech.edu/TAP/sync";
 const DEFAULT_BATCH_SIZE = 1000;
@@ -80,9 +84,40 @@ function buildQuery(lastPlNameLower: string | null): string {
       discoverymethod,
       disc_facility,
       disc_year,
+      pl_refname,
       pl_orbper,
+      pl_orbpererr1,
+      pl_orbpererr2,
+      pl_orbperlim,
+      pl_orbsmax,
+      pl_orbsmaxerr1,
+      pl_orbsmaxerr2,
+      pl_orbsmaxlim,
       pl_rade,
-      pl_masse,
+      pl_bmasse,
+      pl_bmasseerr1,
+      pl_bmasseerr2,
+      pl_bmassj,
+      pl_bmassjerr1,
+      pl_bmassjerr2,
+      pl_bmassprov,
+      pl_orbeccen,
+      pl_orbeccenerr1,
+      pl_orbeccenerr2,
+      pl_orbeccenlim,
+      pl_orbtper,
+      pl_orbtpererr1,
+      pl_orbtpererr2,
+      pl_orbtperlim,
+      pl_tsystemref,
+      pl_orblper,
+      pl_orblpererr1,
+      pl_orblpererr2,
+      pl_orblperlim,
+      pl_rvamp,
+      pl_rvamperr1,
+      pl_rvamperr2,
+      pl_rvamplim,
       pl_eqt,
       sy_dist,
       sy_snum,
@@ -169,15 +204,13 @@ async function executeTAPQuery(query: string, maxrec: number): Promise<unknown[]
 }
 
 // Raw exoplanet row from TAP API (matches NASA column names exactly)
-interface TAPExoplanetRow {
+interface TAPExoplanetRow extends PlanetaryParameterSource {
   pl_name: string;
   hostname: string | null;
   discoverymethod: string | null;
   disc_facility: string | null;
   disc_year: number | null;
-  pl_orbper: number | null;
   pl_rade: number | null;
-  pl_masse: number | null;
   pl_eqt: number | null;
   sy_dist: number | null;
   sy_snum: number | null;
@@ -232,11 +265,12 @@ async function upsertExoplanets(exoplanets: TAPExoplanetRow[]): Promise<void> {
             id, pl_name, pl_name_lower, hostname,
             discovery_method, disc_facility, disc_year,
             orbital_period_days, radius_earth, mass_earth, equilibrium_temp_k,
+            planetary_parameters_json,
             distance_parsecs, stars_in_system, planets_in_system,
             st_spectype, st_teff, st_mass, st_rad, st_lum,
             ra_deg, dec_deg,
             updated_at_index
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           ON CONFLICT(pl_name) DO UPDATE SET
             id = excluded.id,
             pl_name_lower = excluded.pl_name_lower,
@@ -248,6 +282,7 @@ async function upsertExoplanets(exoplanets: TAPExoplanetRow[]): Promise<void> {
             radius_earth = excluded.radius_earth,
             mass_earth = excluded.mass_earth,
             equilibrium_temp_k = excluded.equilibrium_temp_k,
+            planetary_parameters_json = excluded.planetary_parameters_json,
             distance_parsecs = excluded.distance_parsecs,
             stars_in_system = excluded.stars_in_system,
             planets_in_system = excluded.planets_in_system,
@@ -269,8 +304,9 @@ async function upsertExoplanets(exoplanets: TAPExoplanetRow[]): Promise<void> {
       planet.disc_year,
       planet.pl_orbper,
       planet.pl_rade,
-      planet.pl_masse,
+      planet.pl_bmasse,
       planet.pl_eqt,
+      JSON.stringify(mapPlanetaryParameters(planet)),
       planet.sy_dist,
       planet.sy_snum,
       planet.sy_pnum,

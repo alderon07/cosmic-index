@@ -20,6 +20,29 @@ export interface SourceLink {
   url: string;
 }
 
+export type MeasurementLimit = "upper" | "lower";
+
+export interface PlanetaryMeasurement {
+  value: number;
+  errorPlus?: number;
+  errorMinus?: number;
+  limit?: MeasurementLimit;
+}
+
+export interface PlanetaryParameters {
+  reference?: string;
+  orbitalPeriodDays?: PlanetaryMeasurement;
+  semiMajorAxisAu?: PlanetaryMeasurement;
+  massEarth?: PlanetaryMeasurement;
+  massJupiter?: PlanetaryMeasurement;
+  massProvenance?: string;
+  eccentricity?: PlanetaryMeasurement;
+  periastronEpoch?: PlanetaryMeasurement;
+  timeSystem?: string;
+  argumentOfPeriastronDeg?: PlanetaryMeasurement;
+  radialVelocitySemiAmplitudeMps?: PlanetaryMeasurement;
+}
+
 // Base Cosmic Object Interface
 export interface CosmicObject {
   id: string;                    // URL-safe slug
@@ -45,6 +68,7 @@ export interface ExoplanetData extends CosmicObject {
   radiusEarth?: number;
   massEarth?: number;
   massIsEstimated?: boolean;
+  planetaryParameters?: PlanetaryParameters;
   distanceParsecs?: number;
   equilibriumTempK?: number;
   // Host star properties
@@ -179,6 +203,31 @@ export const SourceLinkSchema = z.object({
   url: z.string().url(),
 });
 
+export const PlanetaryMeasurementSchema = z
+  .object({
+    value: z.number().finite(),
+    errorPlus: z.number().finite().nonnegative().optional(),
+    errorMinus: z.number().finite().nonnegative().optional(),
+    limit: z.enum(["upper", "lower"]).optional(),
+  })
+  .strict();
+
+export const PlanetaryParametersSchema = z
+  .object({
+    reference: z.string().max(500).optional(),
+    orbitalPeriodDays: PlanetaryMeasurementSchema.optional(),
+    semiMajorAxisAu: PlanetaryMeasurementSchema.optional(),
+    massEarth: PlanetaryMeasurementSchema.optional(),
+    massJupiter: PlanetaryMeasurementSchema.optional(),
+    massProvenance: z.string().max(64).optional(),
+    eccentricity: PlanetaryMeasurementSchema.optional(),
+    periastronEpoch: PlanetaryMeasurementSchema.optional(),
+    timeSystem: z.string().max(64).optional(),
+    argumentOfPeriastronDeg: PlanetaryMeasurementSchema.optional(),
+    radialVelocitySemiAmplitudeMps: PlanetaryMeasurementSchema.optional(),
+  })
+  .strict();
+
 // Base Cosmic Object Schema
 export const CosmicObjectSchema = z.object({
   id: z.string(),
@@ -204,6 +253,7 @@ export const ExoplanetDataSchema = CosmicObjectSchema.extend({
   radiusEarth: z.number().optional(),
   massEarth: z.number().optional(),
   massIsEstimated: z.boolean().optional(),
+  planetaryParameters: PlanetaryParametersSchema.optional(),
   distanceParsecs: z.number().optional(),
   equilibriumTempK: z.number().optional(),
   // Host star properties
@@ -324,7 +374,38 @@ export const NASAExoplanetRawSchema = z.object({
   disc_facility: z.string().nullable(),
   pl_orbper: z.number().nullable(),
   pl_rade: z.number().nullable(),
-  pl_masse: z.number().nullable(),
+  pl_bmasse: z.number().nullable(),
+  pl_bmasseerr1: z.number().nullish(),
+  pl_bmasseerr2: z.number().nullish(),
+  pl_bmassj: z.number().nullish(),
+  pl_bmassjerr1: z.number().nullish(),
+  pl_bmassjerr2: z.number().nullish(),
+  pl_bmassprov: z.string().nullable(),
+  pl_refname: z.string().nullish(),
+  pl_orbpererr1: z.number().nullish(),
+  pl_orbpererr2: z.number().nullish(),
+  pl_orbperlim: z.number().nullish(),
+  pl_orbsmax: z.number().nullish(),
+  pl_orbsmaxerr1: z.number().nullish(),
+  pl_orbsmaxerr2: z.number().nullish(),
+  pl_orbsmaxlim: z.number().nullish(),
+  pl_orbeccen: z.number().nullish(),
+  pl_orbeccenerr1: z.number().nullish(),
+  pl_orbeccenerr2: z.number().nullish(),
+  pl_orbeccenlim: z.number().nullish(),
+  pl_orbtper: z.number().nullish(),
+  pl_orbtpererr1: z.number().nullish(),
+  pl_orbtpererr2: z.number().nullish(),
+  pl_orbtperlim: z.number().nullish(),
+  pl_tsystemref: z.string().nullish(),
+  pl_orblper: z.number().nullish(),
+  pl_orblpererr1: z.number().nullish(),
+  pl_orblpererr2: z.number().nullish(),
+  pl_orblperlim: z.number().nullish(),
+  pl_rvamp: z.number().nullish(),
+  pl_rvamperr1: z.number().nullish(),
+  pl_rvamperr2: z.number().nullish(),
+  pl_rvamplim: z.number().nullish(),
   sy_dist: z.number().nullable(),
   pl_eqt: z.number().nullable(),
   // Host star properties

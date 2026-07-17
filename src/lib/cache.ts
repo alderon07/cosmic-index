@@ -105,13 +105,13 @@ export const CACHE_TTL = {
 
 // Cache key prefixes
 export const CACHE_KEYS = {
-  EXOPLANET_BROWSE: "exo:browse",
-  EXOPLANET_DETAIL: "exo:detail",
+  EXOPLANET_BROWSE: "exo:browse:v2",
+  EXOPLANET_DETAIL: "exo:detail:v2",
   SMALL_BODY_BROWSE: "sb:browse",
   SMALL_BODY_DETAIL: "sb:detail",
   STARS_BROWSE: "star:browse",
   STARS_DETAIL: "star:detail",
-  STARS_PLANETS: "star:planets",
+  STARS_PLANETS: "star:planets:v2",
   NASA_IMAGES: "img",
   CLOSE_APPROACH_LIST: "ca:list",
   CLOSE_APPROACH_UPCOMING: "ca:upcoming",
