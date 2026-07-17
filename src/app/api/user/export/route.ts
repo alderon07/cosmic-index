@@ -10,6 +10,10 @@ import {
 } from "@/lib/exoplanet-index";
 import { fetchExoplanetBySlug } from "@/lib/nasa-exoplanet";
 import { getStarBySlug, searchStars } from "@/lib/star-index";
+import {
+  fetchStellarHostParametersBatch,
+  MAX_STELLAR_HOST_BATCH_SIZE,
+} from "@/lib/nasa-stellar-host";
 import { fetchSmallBodies, fetchSmallBodyBySlug } from "@/lib/jpl-sbdb";
 import {
   ExoplanetQuerySchema,
@@ -179,6 +183,8 @@ const CSV_FIELDS_BY_PROFILE: Record<ExportProfile, Record<ExportCategory, CSVFie
     { key: "ra_deg", header: "RA (deg)" },
     { key: "dec_deg", header: "Dec (deg)" },
     { key: "source_url", header: "Source URL" },
+    { key: "stellar_parameter_sources", header: "Stellar Parameter Sources" },
+    { key: "stellar_parameters", header: "Published Stellar Parameters (JSON)" },
     { key: "summary", header: "Summary" },
   ],
     "small-bodies": [
@@ -363,7 +369,8 @@ function neutralizeCsvFormula(value: string): string {
 function escapeCSV(value: unknown): string {
   if (value === null || value === undefined) return "";
 
-  const str = neutralizeCsvFormula(String(value));
+  const serialized = typeof value === "object" ? JSON.stringify(value) : String(value);
+  const str = neutralizeCsvFormula(serialized);
   if (str.includes(",") || str.includes('"') || str.includes("\n") || str.includes("\r")) {
     return `"${str.replace(/"/g, '""')}"`;
   }
@@ -557,8 +564,31 @@ function buildStarExportRow(item: StarData, profile: ExportProfile): Record<stri
     ra_deg: item.ra ?? null,
     dec_deg: item.dec ?? null,
     source_url: getSourceUrl(item.links),
+    stellar_parameter_sources: item.stellarParameters
+      ? ["NASA Exoplanet Archive stellarhosts", "Hypatia Catalog"]
+      : [],
+    stellar_parameters: item.stellarParameters ?? null,
     summary: item.summary,
   };
+}
+
+async function enrichStarExportBatch(items: StarData[]): Promise<StarData[] | null> {
+  if (items.length === 0) return items;
+  try {
+    const parametersByHostname = await fetchStellarHostParametersBatch(
+      items.map((item) => item.hostname),
+    );
+    return items.map((item) => {
+      const stellarParameters = parametersByHostname.get(item.hostname);
+      return stellarParameters ? { ...item, stellarParameters } : item;
+    });
+  } catch (error) {
+    console.warn(
+      "[export] stellar parameter batch enrichment failed",
+      error instanceof Error ? error.message : error,
+    );
+    return null;
+  }
 }
 
 function buildSmallBodyExportRow(item: SmallBodyData, profile: ExportProfile): Record<string, unknown> {
@@ -2333,9 +2363,13 @@ export async function POST(request: NextRequest) {
           } else if (category === "stars") {
             let cursorValue = resumeCursor?.lastId;
             let hasMore = true;
+            let stellarEnrichmentAvailable = exportProfile === "research";
 
             while (hasMore && exportedCount < maxRows && !timeoutFired) {
-              const limit = Math.min(EXPORT_CHUNK_SIZE, maxRows - exportedCount);
+              const limit = Math.min(
+                exportProfile === "research" ? MAX_STELLAR_HOST_BATCH_SIZE : EXPORT_CHUNK_SIZE,
+                maxRows - exportedCount,
+              );
               const starParams: StarQueryParams = {
                 ...(filters as StarQueryParams),
                 paginationMode: "cursor",
@@ -2345,7 +2379,18 @@ export async function POST(request: NextRequest) {
               const result = await searchStars(starParams);
 
               if (result.objects.length === 0) break;
-              for (const item of result.objects) {
+              let exportItems = result.objects;
+              if (stellarEnrichmentAvailable) {
+                const enrichedItems = await enrichStarExportBatch(result.objects);
+                if (enrichedItems) {
+                  exportItems = enrichedItems;
+                } else {
+                  // Avoid repeatedly contacting an unavailable upstream source
+                  // for every remaining chunk in the same export.
+                  stellarEnrichmentAvailable = false;
+                }
+              }
+              for (const item of exportItems) {
                 if (timeoutFired) break;
                 const row = buildStarExportRow(item, exportProfile);
                 if (format === "csv") {

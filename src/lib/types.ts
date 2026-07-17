@@ -29,6 +29,8 @@ export interface PlanetaryMeasurement {
   limit?: MeasurementLimit;
 }
 
+export type ScientificMeasurement = PlanetaryMeasurement;
+
 export interface PlanetaryParameters {
   reference?: string;
   orbitalPeriodDays?: PlanetaryMeasurement;
@@ -41,6 +43,74 @@ export interface PlanetaryParameters {
   timeSystem?: string;
   argumentOfPeriastronDeg?: PlanetaryMeasurement;
   radialVelocitySemiAmplitudeMps?: PlanetaryMeasurement;
+}
+
+export interface StellarIdentifiers {
+  hd?: string;
+  hip?: string;
+  tic?: string;
+  gaiaDR2?: string;
+  gaiaDR3?: string;
+}
+
+export interface StellarCoordinates {
+  raDeg?: number;
+  decDeg?: number;
+  raSexagesimal?: string;
+  decSexagesimal?: string;
+  galacticLongitudeDeg?: number;
+  galacticLatitudeDeg?: number;
+  eclipticLongitudeDeg?: number;
+  eclipticLatitudeDeg?: number;
+}
+
+export interface StellarPhotometry {
+  band: string;
+  catalog?: string;
+  magnitude: ScientificMeasurement;
+}
+
+export interface StellarAbundance {
+  element: string;
+  notation: string;
+  medianDex: number;
+  spreadDex?: number;
+  solarNormalization?: string;
+}
+
+export interface StellarSolution {
+  reference: string;
+  spectralType?: string;
+  effectiveTemperatureK?: ScientificMeasurement;
+  radiusSolar?: ScientificMeasurement;
+  massSolar?: ScientificMeasurement;
+  metallicityDex?: ScientificMeasurement;
+  metallicityRatio?: string;
+  luminosityLogSolar?: ScientificMeasurement;
+  surfaceGravityLogCgs?: ScientificMeasurement;
+  ageGyr?: ScientificMeasurement;
+  rotationalVelocityKms?: ScientificMeasurement;
+  radialVelocityKms?: ScientificMeasurement;
+  densityCgs?: ScientificMeasurement;
+  rotationPeriodDays?: ScientificMeasurement;
+}
+
+export interface StellarHostParameters {
+  systemReference?: string;
+  identifiers: StellarIdentifiers;
+  coordinates: StellarCoordinates;
+  distanceParsecs?: ScientificMeasurement;
+  parallaxMas?: ScientificMeasurement;
+  properMotionMasPerYear?: ScientificMeasurement;
+  properMotionRaMasPerYear?: ScientificMeasurement;
+  properMotionDecMasPerYear?: ScientificMeasurement;
+  starsInSystem?: number;
+  planetsInSystem?: number;
+  moonsInSystem?: number;
+  circumbinary?: boolean;
+  photometry: StellarPhotometry[];
+  abundances: StellarAbundance[];
+  solutions: StellarSolution[];
 }
 
 // Base Cosmic Object Interface
@@ -118,6 +188,7 @@ export interface StarData extends CosmicObject {
   starsInSystem?: number;
   planetsInSystem?: number;
   planetCount: number;
+  stellarParameters?: StellarHostParameters;
 }
 
 // Union type for all cosmic objects
@@ -228,6 +299,86 @@ export const PlanetaryParametersSchema = z
   })
   .strict();
 
+const StellarIdentifiersSchema = z
+  .object({
+    hd: z.string().max(128).optional(),
+    hip: z.string().max(128).optional(),
+    tic: z.string().max(128).optional(),
+    gaiaDR2: z.string().max(128).optional(),
+    gaiaDR3: z.string().max(128).optional(),
+  })
+  .strict();
+
+const StellarCoordinatesSchema = z
+  .object({
+    raDeg: z.number().finite().optional(),
+    decDeg: z.number().finite().optional(),
+    raSexagesimal: z.string().max(64).optional(),
+    decSexagesimal: z.string().max(64).optional(),
+    galacticLongitudeDeg: z.number().finite().optional(),
+    galacticLatitudeDeg: z.number().finite().optional(),
+    eclipticLongitudeDeg: z.number().finite().optional(),
+    eclipticLatitudeDeg: z.number().finite().optional(),
+  })
+  .strict();
+
+const StellarPhotometrySchema = z
+  .object({
+    band: z.string().min(1).max(16),
+    catalog: z.string().max(64).optional(),
+    magnitude: PlanetaryMeasurementSchema,
+  })
+  .strict();
+
+const StellarAbundanceSchema = z
+  .object({
+    element: z.string().min(1).max(32),
+    notation: z.string().min(1).max(32),
+    medianDex: z.number().finite(),
+    spreadDex: z.number().finite().nonnegative().optional(),
+    solarNormalization: z.string().max(64).optional(),
+  })
+  .strict();
+
+const StellarSolutionSchema = z
+  .object({
+    reference: z.string().min(1).max(500),
+    spectralType: z.string().max(128).optional(),
+    effectiveTemperatureK: PlanetaryMeasurementSchema.optional(),
+    radiusSolar: PlanetaryMeasurementSchema.optional(),
+    massSolar: PlanetaryMeasurementSchema.optional(),
+    metallicityDex: PlanetaryMeasurementSchema.optional(),
+    metallicityRatio: z.string().max(32).optional(),
+    luminosityLogSolar: PlanetaryMeasurementSchema.optional(),
+    surfaceGravityLogCgs: PlanetaryMeasurementSchema.optional(),
+    ageGyr: PlanetaryMeasurementSchema.optional(),
+    rotationalVelocityKms: PlanetaryMeasurementSchema.optional(),
+    radialVelocityKms: PlanetaryMeasurementSchema.optional(),
+    densityCgs: PlanetaryMeasurementSchema.optional(),
+    rotationPeriodDays: PlanetaryMeasurementSchema.optional(),
+  })
+  .strict();
+
+export const StellarHostParametersSchema = z
+  .object({
+    systemReference: z.string().max(500).optional(),
+    identifiers: StellarIdentifiersSchema,
+    coordinates: StellarCoordinatesSchema,
+    distanceParsecs: PlanetaryMeasurementSchema.optional(),
+    parallaxMas: PlanetaryMeasurementSchema.optional(),
+    properMotionMasPerYear: PlanetaryMeasurementSchema.optional(),
+    properMotionRaMasPerYear: PlanetaryMeasurementSchema.optional(),
+    properMotionDecMasPerYear: PlanetaryMeasurementSchema.optional(),
+    starsInSystem: z.number().int().nonnegative().optional(),
+    planetsInSystem: z.number().int().nonnegative().optional(),
+    moonsInSystem: z.number().int().nonnegative().optional(),
+    circumbinary: z.boolean().optional(),
+    photometry: z.array(StellarPhotometrySchema).max(20),
+    abundances: z.array(StellarAbundanceSchema).max(16),
+    solutions: z.array(StellarSolutionSchema).max(50),
+  })
+  .strict();
+
 // Base Cosmic Object Schema
 export const CosmicObjectSchema = z.object({
   id: z.string(),
@@ -300,6 +451,7 @@ export const StarDataSchema = CosmicObjectSchema.extend({
   starsInSystem: z.number().optional(),
   planetsInSystem: z.number().optional(),
   planetCount: z.number(),
+  stellarParameters: StellarHostParametersSchema.optional(),
 });
 
 // Union schema for runtime validation (must be after individual schemas are defined)

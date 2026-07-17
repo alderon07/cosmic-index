@@ -4,7 +4,14 @@ import type { Redis } from "@upstash/redis";
 let getCallCount = 0;
 
 const cacheModule = await import("../cache");
-const { __resetCacheStateForTests, __setRedisClientForTests, getCached, withCache } = cacheModule;
+const {
+  __resetCacheStateForTests,
+  __setRedisClientForTests,
+  getCached,
+  getCachedMany,
+  setCachedMany,
+  withCache,
+} = cacheModule;
 
 const originalWarn = console.warn;
 const originalError = console.error;
@@ -56,6 +63,47 @@ afterAll(() => {
 });
 
 describe("cache fallback behavior", () => {
+  it("reads and writes a stellar batch with one Redis command in each direction", async () => {
+    let mgetCalls = 0;
+    let pipelineExecutions = 0;
+    const pipelineWrites: Array<{ key: string; value: unknown; ttl?: number }> = [];
+    __setRedisClientForTests({
+      async mget(): Promise<Array<{ value: number } | null>> {
+        mgetCalls += 1;
+        return [{ value: 1 }, null];
+      },
+      pipeline() {
+        return {
+          set(key: string, value: unknown, options?: { ex?: number }) {
+            pipelineWrites.push({ key, value, ttl: options?.ex });
+            return this;
+          },
+          async exec() {
+            pipelineExecutions += 1;
+            return [];
+          },
+        };
+      },
+    } as unknown as Redis);
+
+    const cached = await getCachedMany<{ value: number }>(["star:one", "star:two"]);
+    await setCachedMany(
+      [
+        { key: "star:one", data: { value: 1 } },
+        { key: "star:two", data: { value: 2 } },
+      ],
+      3600,
+    );
+
+    expect(cached).toEqual([{ value: 1 }, null]);
+    expect(mgetCalls).toBe(1);
+    expect(pipelineExecutions).toBe(1);
+    expect(pipelineWrites).toEqual([
+      { key: "star:one", value: { value: 1 }, ttl: 3600 },
+      { key: "star:two", value: { value: 2 }, ttl: 3600 },
+    ]);
+  });
+
   it("returns null and avoids console.error when Redis fetch fails", async () => {
     const first = await getCached("sw:test:one");
     const second = await getCached("sw:test:two");

@@ -34,7 +34,7 @@ const EXOPLANET_DETAIL_COLUMNS = [
 ].join(",");
 
 // Escape single quotes for ADQL strings (doubles them)
-function escapeAdqlString(input: string): string {
+export function escapeAdqlString(input: string): string {
   return input.replace(/'/g, "''");
 }
 
@@ -285,7 +285,7 @@ export function buildDetailQuery(name: string): string {
 // Execute TAP query against NASA Exoplanet Archive (TAP sync) using TAP-standard params.
 // Using POST avoids prod/dev encoding differences and URL length limits.
 // Adds timeout + retry to prevent flaky prod timeouts.
-async function executeTAPQuery(
+export async function executeTAPQuery(
   query: string,
   options?: { maxrec?: number }
 ): Promise<unknown[]> {

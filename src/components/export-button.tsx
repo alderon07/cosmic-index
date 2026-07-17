@@ -80,7 +80,7 @@ const PROFILE_DESCRIPTIONS: Record<
   stars: {
     basic: "Core host-star attributes for sorting, comparison, and reporting.",
     research:
-      "Adds stellar structure, magnitudes, metallicity, age, and coordinates.",
+      "Adds published stellar solutions, photometry, chemical abundances, identifiers, and coordinates.",
   },
   "small-bodies": {
     basic:
@@ -95,6 +95,14 @@ const PROFILE_DESCRIPTIONS: Record<
       "Full saved-item enrichment with domain-specific metrics and event details.",
   },
 };
+
+export function getExportSourceNotice(
+  category: ExportCategory,
+  profile: ExportProfile,
+): string | null {
+  if (category !== "stars" || profile !== "research") return null;
+  return "Data sources: NASA Exoplanet Archive stellar-host solutions and Hypatia Catalog abundances, loaded on demand for this export.";
+}
 
 function parseDate(value: string): Date | null {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
@@ -255,6 +263,7 @@ export function ExportButton({
   const [exportError, setExportError] = useState<string | null>(null);
   const showSavedObjectControls = category === "saved-objects";
   const profileDescription = PROFILE_DESCRIPTIONS[category][profile];
+  const sourceNotice = getExportSourceNotice(category, profile);
   const layoutDescription =
     layout === "wide"
       ? "One row per saved object."
@@ -382,6 +391,19 @@ export function ExportButton({
                       </SelectContent>
                     </Select>
                     <span className="text-[11px] text-muted-foreground">{profileDescription}</span>
+                    {sourceNotice ? (
+                      <div
+                        className="rounded-sm border border-uranium-green/20 bg-uranium-green/5 px-2.5 py-2"
+                        role="note"
+                      >
+                        <span className="font-display text-[9px] uppercase tracking-[0.16em] text-uranium-green">
+                          Source array · on demand
+                        </span>
+                        <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+                          {sourceNotice}
+                        </p>
+                      </div>
+                    ) : null}
                   </div>
                   <div className="grid gap-1">
                     <span className="text-xs font-medium">Format</span>

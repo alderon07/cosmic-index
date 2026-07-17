@@ -435,7 +435,7 @@
       "get": {
         "operationId": "getStar",
         "summary": "Get star by slug",
-        "description": "Retrieve a single host star by its URL-safe slug ID from the Turso index.",
+        "description": "Retrieve a single host star by its URL-safe slug ID. Detail responses may include cached NASA stellar-host solutions and Hypatia abundance medians; browse responses remain compact.",
         "tags": [
           "Stars"
         ],
@@ -1994,7 +1994,7 @@
       "post": {
         "operationId": "exportUserData",
         "summary": "Export user data",
-        "description": "Pro-only export of cosmic objects as JSON, NDJSON, or CSV. Profile `basic` returns compact fields for everyday use and `research` returns the full enriched dataset. Exoplanet and star research exports include extended scientific measurements, while small-body research exports include archival identifiers, aliases, and designation metadata. Saved-object exports support `layout=wide|relational`, optional raw payload inclusion, decoded object IDs, relative and absolute app links, normalized UTC timestamps, domain-aware catalog enrichment for saved exoplanets/stars/small bodies, and saved-object filters (`objectType`, `hasEventPayload`, `savedAfter`, `savedBefore`). Pro export limits apply and CSV requires an explicit bounded limit.",
+        "description": "Pro-only export of cosmic objects as JSON, NDJSON, or CSV. Profile `basic` returns compact fields for everyday use and `research` returns the full enriched dataset. Star research exports add a nested `stellar_parameters` object containing on-demand NASA Exoplanet Archive stellar-host solutions and Hypatia Catalog abundances; CSV serializes that object in the `Published Stellar Parameters (JSON)` column. Enrichment is fetched in bounded batches and gracefully falls back to indexed star fields when an upstream source is unavailable. Exoplanet research exports include extended scientific measurements, while small-body research exports include archival identifiers, aliases, and designation metadata. Saved-object exports support `layout=wide|relational`, optional raw payload inclusion, decoded object IDs, relative and absolute app links, normalized UTC timestamps, domain-aware catalog enrichment for saved exoplanets/stars/small bodies, and saved-object filters (`objectType`, `hasEventPayload`, `savedAfter`, `savedBefore`). Pro export limits apply and CSV requires an explicit bounded limit.",
         "tags": [
           "User"
         ],
@@ -3827,6 +3827,109 @@
           }
         }
       },
+      "StellarIdentifiers": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "hd": { "type": "string", "description": "Henry Draper identifier." },
+          "hip": { "type": "string", "description": "Hipparcos identifier." },
+          "tic": { "type": "string", "description": "TESS Input Catalog identifier." },
+          "gaiaDR2": { "type": "string", "description": "Gaia DR2 identifier." },
+          "gaiaDR3": { "type": "string", "description": "Gaia DR3 identifier." }
+        }
+      },
+      "StellarCoordinates": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "raDeg": { "type": "number", "description": "Right ascension in decimal degrees." },
+          "decDeg": { "type": "number", "description": "Declination in decimal degrees." },
+          "raSexagesimal": { "type": "string", "description": "Right ascension in sexagesimal notation." },
+          "decSexagesimal": { "type": "string", "description": "Declination in sexagesimal notation." },
+          "galacticLongitudeDeg": { "type": "number", "description": "Galactic longitude in degrees." },
+          "galacticLatitudeDeg": { "type": "number", "description": "Galactic latitude in degrees." },
+          "eclipticLongitudeDeg": { "type": "number", "description": "Ecliptic longitude in degrees." },
+          "eclipticLatitudeDeg": { "type": "number", "description": "Ecliptic latitude in degrees." }
+        }
+      },
+      "StellarPhotometry": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["band", "magnitude"],
+        "properties": {
+          "band": { "type": "string", "description": "Photometric band." },
+          "catalog": { "type": "string", "description": "Photometric catalog or survey." },
+          "magnitude": { "$ref": "#/components/schemas/PlanetaryMeasurement" }
+        }
+      },
+      "StellarAbundance": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["element", "notation", "medianDex"],
+        "properties": {
+          "element": { "type": "string", "description": "Element or ionized species." },
+          "notation": { "type": "string", "description": "Abundance notation, such as [Fe/H]." },
+          "medianDex": { "type": "number", "description": "Median Hypatia abundance in dex." },
+          "spreadDex": { "type": "number", "minimum": 0, "description": "Half-range spread, or representative error for a single value, in dex." },
+          "solarNormalization": { "type": "string", "description": "Hypatia solar normalization identifier." }
+        }
+      },
+      "StellarSolution": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["reference"],
+        "properties": {
+          "reference": { "type": "string", "description": "Plain-text publication or catalog citation." },
+          "spectralType": { "type": "string" },
+          "effectiveTemperatureK": { "$ref": "#/components/schemas/PlanetaryMeasurement" },
+          "radiusSolar": { "$ref": "#/components/schemas/PlanetaryMeasurement" },
+          "massSolar": { "$ref": "#/components/schemas/PlanetaryMeasurement" },
+          "metallicityDex": { "$ref": "#/components/schemas/PlanetaryMeasurement" },
+          "metallicityRatio": { "type": "string", "description": "Metallicity ratio represented by metallicityDex." },
+          "luminosityLogSolar": { "$ref": "#/components/schemas/PlanetaryMeasurement" },
+          "surfaceGravityLogCgs": { "$ref": "#/components/schemas/PlanetaryMeasurement" },
+          "ageGyr": { "$ref": "#/components/schemas/PlanetaryMeasurement" },
+          "rotationalVelocityKms": { "$ref": "#/components/schemas/PlanetaryMeasurement" },
+          "radialVelocityKms": { "$ref": "#/components/schemas/PlanetaryMeasurement" },
+          "densityCgs": { "$ref": "#/components/schemas/PlanetaryMeasurement" },
+          "rotationPeriodDays": { "$ref": "#/components/schemas/PlanetaryMeasurement" }
+        }
+      },
+      "StellarHostParameters": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["identifiers", "coordinates", "photometry", "abundances", "solutions"],
+        "description": "Detail-only stellar-host overview and bounded published solution set.",
+        "properties": {
+          "systemReference": { "type": "string", "description": "Plain-text source for system-level values." },
+          "identifiers": { "$ref": "#/components/schemas/StellarIdentifiers" },
+          "coordinates": { "$ref": "#/components/schemas/StellarCoordinates" },
+          "distanceParsecs": { "$ref": "#/components/schemas/PlanetaryMeasurement" },
+          "parallaxMas": { "$ref": "#/components/schemas/PlanetaryMeasurement" },
+          "properMotionMasPerYear": { "$ref": "#/components/schemas/PlanetaryMeasurement" },
+          "properMotionRaMasPerYear": { "$ref": "#/components/schemas/PlanetaryMeasurement" },
+          "properMotionDecMasPerYear": { "$ref": "#/components/schemas/PlanetaryMeasurement" },
+          "starsInSystem": { "type": "integer", "minimum": 0 },
+          "planetsInSystem": { "type": "integer", "minimum": 0 },
+          "moonsInSystem": { "type": "integer", "minimum": 0 },
+          "circumbinary": { "type": "boolean" },
+          "photometry": {
+            "type": "array",
+            "maxItems": 20,
+            "items": { "$ref": "#/components/schemas/StellarPhotometry" }
+          },
+          "abundances": {
+            "type": "array",
+            "maxItems": 16,
+            "items": { "$ref": "#/components/schemas/StellarAbundance" }
+          },
+          "solutions": {
+            "type": "array",
+            "maxItems": 50,
+            "items": { "$ref": "#/components/schemas/StellarSolution" }
+          }
+        }
+      },
       "ExoplanetData": {
         "allOf": [
           {
@@ -4017,6 +4120,9 @@
               "planetCount": {
                 "type": "integer",
                 "description": "Number of known planets orbiting this star."
+              },
+              "stellarParameters": {
+                "$ref": "#/components/schemas/StellarHostParameters"
               }
             }
           }

@@ -1,12 +1,13 @@
 # AGENTS.md
 
-Last updated: 2026-07-14
+Last updated: 2026-07-17
 
 Operational guidance for agents working in this repository.
 
 ## General
 
 - This project needs to adhere to hobby account limits for the stack. This means that we need to be careful about the size of the database, the number of requests, and the number of users.
+- Always code with accessibility, performance, maintainability, operability, and security in mind.
 
 ## Stack
 
@@ -33,6 +34,11 @@ mise run dev
 mise run build
 mise run lint
 bun test
+
+# Turso commands
+turso auth login --headless
+turso db list
+turso db shell [database-name]
 ```
 
 Run a focused test before broader validation:

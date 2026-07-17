@@ -40,6 +40,7 @@ import {
 } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 import { PlanetaryParametersGrid } from "@/components/planetary-parameters-grid";
+import { StellarParametersPanel } from "@/components/stellar-parameters-panel";
 
 const NasaImageGallery = dynamic(
   () => import("./nasa-image-gallery").then((m) => m.NasaImageGallery),
@@ -573,6 +574,19 @@ export function ObjectDetail({
 
         {isStar(object) && (
           <>
+            {object.stellarParameters && (
+              <AccordionItem
+                value="archive-stellar-data"
+                className={DETAIL_ACCORDION_SURFACE_CLASS}
+              >
+                <AccordionTrigger className="font-display hover:no-underline">
+                  Archive Measurements &amp; Published Solutions
+                </AccordionTrigger>
+                <AccordionContent className="pb-4">
+                  <StellarParametersPanel parameters={object.stellarParameters} />
+                </AccordionContent>
+              </AccordionItem>
+            )}
             <AccordionItem
               value="stellar"
               className={DETAIL_ACCORDION_SURFACE_CLASS}

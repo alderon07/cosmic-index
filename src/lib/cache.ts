@@ -82,6 +82,7 @@ export const CACHE_TTL = {
   SMALL_BODIES_DETAIL: 7 * 24 * 60 * 60, // 7 days
   STARS_BROWSE: 12 * 60 * 60,        // 12 hours
   STARS_DETAIL: 24 * 60 * 60,        // 24 hours
+  STARS_PARAMETERS: 24 * 60 * 60,    // 24 hours (published stellar solutions + abundances)
   STARS_PLANETS: 12 * 60 * 60,       // 12 hours (planets in system)
   NASA_IMAGES: 24 * 60 * 60,         // 24 hours
   NASA_IMAGES_EMPTY: 2 * 60 * 60,    // 2 hours (avoid hammering for objects with 0 images)
@@ -111,6 +112,7 @@ export const CACHE_KEYS = {
   SMALL_BODY_DETAIL: "sb:detail",
   STARS_BROWSE: "star:browse",
   STARS_DETAIL: "star:detail",
+  STARS_PARAMETERS: "star:parameters:v1",
   STARS_PLANETS: "star:planets:v2",
   NASA_IMAGES: "img",
   CLOSE_APPROACH_LIST: "ca:list",
@@ -168,6 +170,23 @@ export async function getCached<T>(key: string): Promise<T | null> {
   }
 }
 
+// Read a bounded group of cache entries in one Upstash command. Returning a
+// null for every key when caching is unavailable keeps callers on their normal
+// upstream fallback path without multiplying REST requests.
+export async function getCachedMany<T>(keys: string[]): Promise<Array<T | null>> {
+  if (keys.length === 0) return [];
+  const client = getRedis();
+  if (!client) return keys.map(() => null);
+
+  try {
+    const values = await client.mget<Array<T | null>>(...keys);
+    return keys.map((_, index) => values[index] ?? null);
+  } catch (error) {
+    disableRedisTemporarily("get", error);
+    return keys.map(() => null);
+  }
+}
+
 // Set cached data with TTL
 export async function setCached<T>(key: string, data: T, ttlSeconds: number): Promise<void> {
   const client = getRedis();
@@ -175,6 +194,27 @@ export async function setCached<T>(key: string, data: T, ttlSeconds: number): Pr
 
   try {
     await client.set(key, data, { ex: ttlSeconds });
+  } catch (error) {
+    disableRedisTemporarily("set", error);
+  }
+}
+
+// Pipeline related writes so a batch enrichment consumes one Upstash REST
+// request instead of one request per star.
+export async function setCachedMany<T>(
+  entries: Array<{ key: string; data: T }>,
+  ttlSeconds: number,
+): Promise<void> {
+  if (entries.length === 0) return;
+  const client = getRedis();
+  if (!client) return;
+
+  try {
+    const pipeline = client.pipeline();
+    for (const entry of entries) {
+      pipeline.set(entry.key, entry.data, { ex: ttlSeconds });
+    }
+    await pipeline.exec();
   } catch (error) {
     disableRedisTemporarily("set", error);
   }

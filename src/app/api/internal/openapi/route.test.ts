@@ -88,6 +88,11 @@ describe("GET /api/internal/openapi", () => {
     expect(response.headers.get("x-robots-tag")).toBe("noindex, nofollow");
     const body = await response.json();
     expect(body.openapi).toBe("3.1.0");
+    expect(
+      body.components.schemas.StarData.allOf[1].properties.stellarParameters.$ref,
+    ).toBe("#/components/schemas/StellarHostParameters");
+    expect(body.components.schemas.StellarHostParameters.properties.solutions.maxItems).toBe(50);
+    expect(body.paths["/stars/{id}"].get.description).toContain("Detail responses");
   });
 
   it("returns 404 in production when admin ids are not configured", async () => {

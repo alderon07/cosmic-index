@@ -1,6 +1,7 @@
 export const queryKeys = {
   exoplanets: (fetchKey: string) => ["objects", "exoplanets", fetchKey] as const,
   stars: (fetchKey: string) => ["objects", "stars", fetchKey] as const,
+  starDetail: (id: string) => ["objects", "stars", "detail", id] as const,
   smallBodies: (fetchKey: string) =>
     ["objects", "small-bodies", fetchKey] as const,
   closeApproaches: (fetchKey: string) =>

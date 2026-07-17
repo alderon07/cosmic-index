@@ -16,6 +16,8 @@ let mockRequireAuth = async (): Promise<MockAuthUser> => ({
   isPro: true,
 });
 
+let mockStellarBatchCalls = 0;
+
 const savedRows = [
   {
     id: 21,
@@ -290,8 +292,53 @@ mock.module("@/lib/nasa-exoplanet", () => ({
 }));
 
 mock.module("@/lib/star-index", () => ({
-  searchStars: async () => ({ objects: [], hasMore: false, nextCursor: null, usedCursor: true, limit: 1, page: 1, total: 0 }),
+  searchStars: async () => ({
+    objects: [
+      {
+        id: "11%20UMi",
+        sourceId: "11 UMi",
+        displayName: "11 UMi",
+        summary: "A giant host star.",
+        links: [{ label: "NASA Exoplanet Archive", url: "https://example.com/stars/11-umi" }],
+        hostname: "11 UMi",
+        spectralClass: "K",
+        planetCount: 1,
+      },
+    ],
+    hasMore: false,
+    nextCursor: null,
+    usedCursor: true,
+    limit: 1,
+    page: 1,
+    total: 1,
+  }),
   getStarBySlug: async () => null,
+}));
+
+mock.module("@/lib/nasa-stellar-host", () => ({
+  MAX_STELLAR_HOST_BATCH_SIZE: 50,
+  fetchStellarHostParametersBatch: async (hostnames: string[]) => {
+    mockStellarBatchCalls += 1;
+    return new Map(
+      hostnames.map((hostname) => [
+        hostname,
+        {
+          identifiers: { hip: "HIP 74793", gaiaDr2: "Gaia DR2 1696798367260229376" },
+          coordinates: { raDegrees: 229.2746, decDegrees: 71.8239 },
+          distanceParsecs: { value: 125.321, errorPlus: 1.9765, errorMinus: 1.9765 },
+          photometry: [
+            { band: "V", catalog: "Johnson", magnitude: { value: 5.013, errorPlus: 0.005, errorMinus: 0.005 } },
+          ],
+          abundances: [
+            { element: "Fe", notation: "[Fe/H]", medianDex: 0.01, spreadDex: 0.18 },
+          ],
+          solutions: [
+            { reference: "Dollinger et al. 2009", effectiveTemperatureK: { value: 4340, errorPlus: 70, errorMinus: 70 } },
+          ],
+        },
+      ]),
+    );
+  },
 }));
 
 function isContractMismatch(error: unknown): boolean {
@@ -481,6 +528,72 @@ describe("/api/user/export", () => {
     expect(body.data[0]?.source_id).toBe("Kepler-22b");
     expect(body.data[0]?.star_temp_k).toBe(5518);
     expect(body.export?.status).toBe("complete");
+  });
+
+  it("adds published stellar solutions to research star JSON exports in one batch", async () => {
+    mockStellarBatchCalls = 0;
+    const req = createSameOriginRequest("http://localhost/api/user/export", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        format: "json",
+        profile: "research",
+        category: "stars",
+        queryParams: { limit: 1 },
+      }),
+    });
+
+    const res = await POST(req);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(mockStellarBatchCalls).toBe(1);
+    expect(body.data[0]?.stellar_parameters?.identifiers?.hip).toBe("HIP 74793");
+    expect(body.data[0]?.stellar_parameters?.photometry[0]?.band).toBe("V");
+    expect(body.data[0]?.stellar_parameters?.abundances[0]?.notation).toBe("[Fe/H]");
+    expect(body.data[0]?.stellar_parameters?.solutions[0]?.reference).toBe(
+      "Dollinger et al. 2009",
+    );
+  });
+
+  it("serializes published stellar parameters into research star CSV exports", async () => {
+    mockStellarBatchCalls = 0;
+    const req = createSameOriginRequest("http://localhost/api/user/export", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        format: "csv",
+        profile: "research",
+        category: "stars",
+        queryParams: { limit: 1 },
+      }),
+    });
+
+    const res = await POST(req);
+    expect(res.status).toBe(200);
+    const text = await res.text();
+    expect(mockStellarBatchCalls).toBe(1);
+    expect(text).toContain("Published Stellar Parameters (JSON)");
+    expect(text).toContain("Dollinger et al. 2009");
+  });
+
+  it("keeps basic star exports on the indexed path without archive enrichment", async () => {
+    mockStellarBatchCalls = 0;
+    const req = createSameOriginRequest("http://localhost/api/user/export", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        format: "json",
+        profile: "basic",
+        category: "stars",
+        queryParams: { limit: 1 },
+      }),
+    });
+
+    const res = await POST(req);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(mockStellarBatchCalls).toBe(0);
+    expect(body.data[0]?.stellar_parameters).toBeUndefined();
   });
 
   it("rejects CSV when limit exceeds tier cap", async () => {

@@ -7,6 +7,8 @@ import { Breadcrumbs } from "@/components/breadcrumbs";
 import { StarPlanets } from "./star-planets";
 import { getStarBySlug } from "@/lib/star-index";
 import { fetchExoplanetsForHostStar } from "@/lib/nasa-exoplanet";
+import { fetchStellarHostParameters } from "@/lib/nasa-stellar-host";
+import { enrichStarWithStellarParameters } from "@/lib/stellar-parameters";
 import { StarData } from "@/lib/types";
 import { BASE_URL } from "@/lib/config";
 import { THEMES } from "@/lib/theme";
@@ -20,6 +22,9 @@ interface StarDetailPageProps {
 const getStarDetailById = cache(async (id: string) => getStarBySlug(id));
 const getPlanetsForHostStar = cache(async (hostname: string) =>
   fetchExoplanetsForHostStar(hostname)
+);
+const getStellarParameters = cache(async (hostname: string) =>
+  fetchStellarHostParameters(hostname)
 );
 
 // Generate dynamic metadata for SEO
@@ -148,16 +153,28 @@ export default async function StarDetailPage({ params }: StarDetailPageProps) {
     { label: star.displayName },
   ];
 
-  let planetsError: string | null = null;
-  let planets: Awaited<ReturnType<typeof fetchExoplanetsForHostStar>> = [];
-  if (star.planetCount > 0) {
-    try {
-      planets = await getPlanetsForHostStar(star.hostname);
-    } catch (error) {
-      planetsError =
-        error instanceof Error ? error.message : "Failed to load planets for this star";
-    }
+  const [parametersResult, planetsResult] = await Promise.allSettled([
+    getStellarParameters(star.hostname),
+    star.planetCount > 0
+      ? getPlanetsForHostStar(star.hostname)
+      : Promise.resolve([]),
+  ]);
+  const stellarParameters = parametersResult.status === "fulfilled"
+    ? parametersResult.value
+    : null;
+  if (parametersResult.status === "rejected") {
+    console.warn(
+      `Stellar parameter enrichment unavailable for ${star.hostname}:`,
+      parametersResult.reason,
+    );
   }
+  const detailedStar = enrichStarWithStellarParameters(star, stellarParameters);
+  const planets = planetsResult.status === "fulfilled" ? planetsResult.value : [];
+  const planetsError = planetsResult.status === "rejected"
+    ? planetsResult.reason instanceof Error
+      ? planetsResult.reason.message
+      : "Failed to load planets for this star"
+    : null;
 
   return (
     <>
@@ -169,7 +186,7 @@ export default async function StarDetailPage({ params }: StarDetailPageProps) {
           className="mb-6"
           linkHoverClassName={THEMES.stars.hoverText}
         />
-        <ObjectDetail object={star} hideDataSources />
+        <ObjectDetail object={detailedStar} hideDataSources />
 
         {/* Planets in this system */}
         {star.planetCount > 0 && (
