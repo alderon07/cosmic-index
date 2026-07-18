@@ -143,9 +143,7 @@ describe("SpaceWeatherSolarWindPage", () => {
   it("publishes canonical metadata for the solar-wind route", () => {
     expect(metadata.title).toBe("Solar Wind & IMF");
     expect(metadata.description).toContain("Live solar wind and IMF monitoring");
-    expect(metadata.keywords).toEqual(
-      expect.arrayContaining(["solar wind", "IMF Bz", "southward Bz"]),
-    );
+    expect(metadata.keywords).toBeUndefined();
     expect(metadata.alternates).toMatchObject({
       canonical: "https://cosmicindex.dev/space-weather/solar-wind",
     });

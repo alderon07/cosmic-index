@@ -8,7 +8,8 @@ import { fetchSmallBodyBySlug } from "@/lib/jpl-sbdb";
 import { SmallBodyData } from "@/lib/types";
 import { BASE_URL } from "@/lib/config";
 import { JsonLd } from "@/components/seo/json-ld";
-import { buildBreadcrumbJsonLd } from "@/lib/seo";
+import { buildBreadcrumbJsonLd, buildRobots } from "@/lib/seo";
+import { shouldIndexSmallBody } from "@/lib/small-body-seo";
 
 interface SmallBodyDetailPageProps {
   params: Promise<{ id: string }>;
@@ -60,6 +61,7 @@ export async function generateMetadata({
     alternates: {
       canonical: `${BASE_URL}/small-bodies/${id}`,
     },
+    robots: buildRobots(shouldIndexSmallBody(smallBody)),
   };
 }
 

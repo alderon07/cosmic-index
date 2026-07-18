@@ -11,11 +11,6 @@ export interface SeoItemListEntry {
   path: string;
 }
 
-export interface SeoFaqEntry {
-  question: string;
-  answer: string;
-}
-
 const DEFAULT_DATASET_LICENSE_URL = "https://science.data.nasa.gov/about/license";
 
 const GOOGLEBOT_ROBOTS = {
@@ -59,6 +54,16 @@ export function buildRobots(index: boolean): NonNullable<Metadata["robots"]> {
       index,
       ...GOOGLEBOT_ROBOTS,
     },
+  };
+}
+
+export function buildWebsiteJsonLd() {
+  return {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: SITE_CONFIG.name,
+    url: BASE_URL,
+    description: SITE_CONFIG.description,
   };
 }
 
@@ -171,33 +176,5 @@ export function buildCollectionPageJsonLd(input: {
       license: input.sourceLicense ?? DEFAULT_DATASET_LICENSE_URL,
     },
     ...(itemList ? { mainEntity: itemList } : {}),
-  };
-}
-
-export function buildFaqPageJsonLd(input: {
-  name: string;
-  description: string;
-  path: string;
-  questions: SeoFaqEntry[];
-}) {
-  return {
-    "@context": "https://schema.org",
-    "@type": "FAQPage",
-    name: input.name,
-    description: input.description,
-    url: `${BASE_URL}${input.path}`,
-    isPartOf: {
-      "@type": "WebSite",
-      name: SITE_CONFIG.name,
-      url: BASE_URL,
-    },
-    mainEntity: input.questions.map((entry) => ({
-      "@type": "Question",
-      name: entry.question,
-      acceptedAnswer: {
-        "@type": "Answer",
-        text: entry.answer,
-      },
-    })),
   };
 }

@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, mock } from "bun:test";
 import { NextRequest } from "next/server";
 
 let mockObjects = [{ id: "433-eros" }];
+let mockFailure = false;
 
 function isContractMismatch(error: unknown): boolean {
   return error instanceof Error
@@ -25,13 +26,16 @@ function isUpstreamFailure(error: unknown): boolean {
 }
 
 mock.module("@/lib/jpl-sbdb", () => ({
-  fetchSmallBodies: async () => ({
-    objects: mockObjects,
-    total: mockObjects.length,
-    page: 1,
-    limit: 100,
-    hasMore: false,
-  }),
+  fetchSmallBodies: async () => {
+    if (mockFailure) throw new Error("JPL request timed out");
+    return {
+      objects: mockObjects,
+      total: mockObjects.length,
+      page: 1,
+      limit: 100,
+      hasMore: false,
+    };
+  },
   fetchSmallBodyByIdentifier: async () => null,
   fetchSmallBodyBySlug: async () => null,
   isContractMismatch,
@@ -42,9 +46,20 @@ const { GET } = await import("@/app/sitemap-small-bodies/route");
 
 beforeEach(() => {
   mockObjects = [{ id: "433-eros" }];
+  mockFailure = false;
 });
 
 describe("GET /sitemap-small-bodies", () => {
+  it("returns a retryable error instead of an empty successful sitemap", async () => {
+    mockFailure = true;
+
+    const response = await GET(new NextRequest("http://localhost:3000/sitemap-small-bodies"));
+
+    expect(response.status).toBe(503);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(response.headers.get("retry-after")).toBe("300");
+  });
+
   it("returns xml sitemap entries for indexed small bodies without crawler-facing throttling", async () => {
     const response = await GET(new NextRequest("http://localhost:3000/sitemap-small-bodies"));
     const body = await response.text();

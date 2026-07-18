@@ -50,13 +50,6 @@ export async function generateMetadata({
   return {
     title,
     description,
-    keywords: [
-      exoplanet.displayName,
-      exoplanet.hostStar,
-      exoplanet.discoveryMethod,
-      "exoplanet",
-      "NASA Exoplanet Archive",
-    ].filter(Boolean),
     openGraph: {
       title: `${title} | Cosmic Index`,
       description,

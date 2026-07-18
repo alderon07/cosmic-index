@@ -36,6 +36,7 @@ import {
 } from "@/components/ui/navigation-menu";
 import { serializeJsonLd } from "@/lib/safe-json-ld";
 import { parseGoogleAnalyticsId } from "@/lib/analytics";
+import { buildWebsiteJsonLd } from "@/lib/seo";
 
 const audiowide = Audiowide({
   variable: "--font-display",
@@ -70,21 +71,6 @@ export const metadata: Metadata = {
   },
   description:
     "A retrofuturistic space encyclopedia for discovering exoplanets, host stars, asteroids, and comets. Explore 5,000+ exoplanets, 4,500+ host stars, and 1,000,000+ small bodies with data from NASA and JPL.",
-  keywords: [
-    "exoplanets",
-    "stars",
-    "host stars",
-    "asteroids",
-    "comets",
-    "space",
-    "NASA",
-    "astronomy",
-    "space exploration",
-    "near-earth objects",
-    "NEO",
-    "planetary science",
-    "spectral class",
-  ],
   authors: [{ name: "Cosmic Index" }],
   creator: "Cosmic Index",
   publisher: "Cosmic Index",
@@ -128,42 +114,7 @@ export const metadata: Metadata = {
   },
 };
 
-// JSON-LD WebSite schema with SearchAction
-// This is static content we control, not user input, so it's safe
-const websiteJsonLd = {
-  "@context": "https://schema.org",
-  "@type": "WebSite",
-  name: "Cosmic Index",
-  url: BASE_URL,
-  description:
-    "A retrofuturistic space encyclopedia for discovering exoplanets, host stars, asteroids, and comets. Explore 5,000+ exoplanets, 4,500+ host stars, and 1,000,000+ small bodies with data from NASA and JPL.",
-  potentialAction: [
-    {
-      "@type": "SearchAction",
-      target: {
-        "@type": "EntryPoint",
-        urlTemplate: `${BASE_URL}/exoplanets?query={search_term_string}`,
-      },
-      "query-input": "required name=search_term_string",
-    },
-    {
-      "@type": "SearchAction",
-      target: {
-        "@type": "EntryPoint",
-        urlTemplate: `${BASE_URL}/stars?query={search_term_string}`,
-      },
-      "query-input": "required name=search_term_string",
-    },
-    {
-      "@type": "SearchAction",
-      target: {
-        "@type": "EntryPoint",
-        urlTemplate: `${BASE_URL}/small-bodies?query={search_term_string}`,
-      },
-      "query-input": "required name=search_term_string",
-    },
-  ],
-};
+const websiteJsonLd = buildWebsiteJsonLd();
 
 export default function RootLayout({
   children,

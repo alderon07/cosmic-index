@@ -3,14 +3,14 @@ import { renderToStaticMarkup } from "react-dom/server";
 import FaqPage, { metadata } from "@/app/faq/page";
 
 describe("FaqPage", () => {
-  it("renders the faq sections and structured data", () => {
+  it("renders the faq sections and supported breadcrumb structured data", () => {
     const html = renderToStaticMarkup(<FaqPage />);
 
     expect(html).toContain("Frequently Asked Questions");
     expect(html).toContain("What is Cosmic Index?");
     expect(html).toContain("What does southward Bz mean for geomagnetic storms?");
     expect(html).toContain("Does a habitable exoplanet label mean a planet is definitely life-friendly?");
-    expect(html).toContain('"@type":"FAQPage"');
+    expect(html).not.toContain('"@type":"FAQPage"');
     expect(html).toContain('"@type":"BreadcrumbList"');
     expect(html).toContain("https://cosmicindex.dev/faq");
     expect(html).toContain("/space-weather");

@@ -9,11 +9,11 @@ import { getStarBySlug } from "@/lib/star-index";
 import { fetchExoplanetsForHostStar } from "@/lib/nasa-exoplanet";
 import { fetchStellarHostParameters } from "@/lib/nasa-stellar-host";
 import { enrichStarWithStellarParameters } from "@/lib/stellar-parameters";
-import { StarData } from "@/lib/types";
 import { BASE_URL } from "@/lib/config";
 import { THEMES } from "@/lib/theme";
 import { JsonLd } from "@/components/seo/json-ld";
 import { buildBreadcrumbJsonLd } from "@/lib/seo";
+import { buildStarJsonLd } from "@/lib/star-seo";
 
 interface StarDetailPageProps {
   params: Promise<{ id: string }>;
@@ -73,70 +73,6 @@ export async function generateMetadata({
   };
 }
 
-// Generate JSON-LD structured data for a star
-// Data comes from trusted NASA API via our Turso database - safe to serialize
-function generateStarJsonLd(star: StarData, slug: string) {
-  const additionalProperties = [];
-
-  if (star.spectralType) {
-    additionalProperties.push({
-      "@type": "PropertyValue",
-      name: "Spectral Type",
-      value: star.spectralType,
-    });
-  }
-
-  if (star.planetCount > 0) {
-    additionalProperties.push({
-      "@type": "PropertyValue",
-      name: "Known Planets",
-      value: star.planetCount.toString(),
-    });
-  }
-
-  if (star.distanceParsecs !== undefined) {
-    additionalProperties.push({
-      "@type": "PropertyValue",
-      name: "Distance",
-      value: star.distanceParsecs.toFixed(1),
-      unitText: "parsecs",
-    });
-  }
-
-  if (star.starTempK !== undefined) {
-    additionalProperties.push({
-      "@type": "PropertyValue",
-      name: "Temperature",
-      value: star.starTempK.toFixed(0),
-      unitText: "Kelvin",
-    });
-  }
-
-  if (star.starMassSolar !== undefined) {
-    additionalProperties.push({
-      "@type": "PropertyValue",
-      name: "Mass",
-      value: star.starMassSolar.toFixed(2),
-      unitText: "Solar masses",
-    });
-  }
-
-  return {
-    "@context": "https://schema.org",
-    "@type": "Thing",
-    additionalType: "https://schema.org/Thing",
-    name: star.displayName,
-    description: star.summary,
-    url: `${BASE_URL}/stars/${slug}`,
-    additionalProperty: additionalProperties,
-    sameAs: [
-      `https://exoplanetarchive.ipac.caltech.edu/overview/${encodeURIComponent(
-        star.hostname
-      )}`,
-    ],
-  };
-}
-
 export default async function StarDetailPage({ params }: StarDetailPageProps) {
   const { id } = await params;
   const star = await getStarDetailById(id);
@@ -144,8 +80,6 @@ export default async function StarDetailPage({ params }: StarDetailPageProps) {
   if (!star) {
     notFound();
   }
-
-  const jsonLd = generateStarJsonLd(star, id);
 
   const breadcrumbItems = [
     { label: "Home", href: "/" },
@@ -169,6 +103,7 @@ export default async function StarDetailPage({ params }: StarDetailPageProps) {
     );
   }
   const detailedStar = enrichStarWithStellarParameters(star, stellarParameters);
+  const jsonLd = buildStarJsonLd(detailedStar, id);
   const planets = planetsResult.status === "fulfilled" ? planetsResult.value : [];
   const planetsError = planetsResult.status === "rejected"
     ? planetsResult.reason instanceof Error

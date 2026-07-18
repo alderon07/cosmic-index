@@ -13,12 +13,16 @@ describe("main sitemap metadata route", () => {
       "https://cosmicindex.dev/small-bodies",
       "https://cosmicindex.dev/close-approaches",
       "https://cosmicindex.dev/fireballs",
+      "https://cosmicindex.dev/faq",
       "https://cosmicindex.dev/space-weather",
       "https://cosmicindex.dev/space-weather/events",
       "https://cosmicindex.dev/space-weather/alerts",
       "https://cosmicindex.dev/space-weather/solar",
+      "https://cosmicindex.dev/space-weather/solar-wind",
       "https://cosmicindex.dev/space-weather/geomagnetic",
     ]);
-    expect(entries.every((entry) => typeof entry.lastModified === "string")).toBe(true);
+    expect(entries.every((entry) => entry.lastModified === undefined)).toBe(true);
+    expect(entries.every((entry) => entry.changeFrequency === undefined)).toBe(true);
+    expect(entries.every((entry) => entry.priority === undefined)).toBe(true);
   });
 });

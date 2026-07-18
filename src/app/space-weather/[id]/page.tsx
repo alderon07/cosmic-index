@@ -7,17 +7,10 @@ import {
   fetchSpaceWeatherEventById,
   getEventTypeLabel,
 } from "@/lib/nasa-donki";
-import {
-  CMEEvent,
-  GSTEvent,
-  IPSEvent,
-  SEPEvent,
-  SolarFlareEvent,
-} from "@/lib/types";
-import { BASE_URL } from "@/lib/config";
 import { THEMES } from "@/lib/theme";
 import { JsonLd } from "@/components/seo/json-ld";
 import { buildBreadcrumbJsonLd } from "@/lib/seo";
+import { buildSpaceWeatherEventMetadata } from "@/lib/space-weather-seo";
 
 const theme = THEMES["space-weather"];
 
@@ -29,20 +22,6 @@ const getSpaceWeatherEventById = cache(async (id: string) => {
   const eventId = decodeURIComponent(id);
   return fetchSpaceWeatherEventById(eventId);
 });
-
-function formatDate(isoString: string): string {
-  try {
-    const d = new Date(isoString);
-    return d.toLocaleDateString("en-US", {
-      weekday: "long",
-      month: "long",
-      day: "numeric",
-      year: "numeric",
-    });
-  } catch {
-    return isoString;
-  }
-}
 
 // Generate metadata
 export async function generateMetadata({
@@ -58,42 +37,7 @@ export async function generateMetadata({
     };
   }
 
-  const typeLabel = getEventTypeLabel(event.eventType);
-  const date = formatDate(event.startTime);
-  const title = `${typeLabel} - ${date}`;
-
-  let description = `${typeLabel} detected on ${date}.`;
-  if (event.eventType === "FLR") {
-    description = `${(event as SolarFlareEvent).classType}-class solar flare on ${date}.`;
-  } else if (event.eventType === "CME" && (event as CMEEvent).speed) {
-    description = `Coronal mass ejection at ${(event as CMEEvent).speed} km/s on ${date}.`;
-  } else if (event.eventType === "GST") {
-    description = `Geomagnetic storm with Kp index ${(event as GSTEvent).kpIndex} on ${date}.`;
-  } else if (event.eventType === "IPS") {
-    description = `Interplanetary shock${(event as IPSEvent).location ? ` near ${(event as IPSEvent).location}` : ""} observed on ${date}.`;
-  } else if (event.eventType === "SEP") {
-    const sep = event as SEPEvent;
-    description = `Solar energetic particle event on ${date}${sep.instruments?.length ? ` observed by ${sep.instruments[0]}` : ""}.`;
-  }
-
-  return {
-    title,
-    description,
-    openGraph: {
-      title: `${title} | Cosmic Index`,
-      description,
-      url: `${BASE_URL}/space-weather/${id}`,
-      type: "article",
-    },
-    twitter: {
-      card: "summary",
-      title: `${title} | Cosmic Index`,
-      description,
-    },
-    alternates: {
-      canonical: `${BASE_URL}/space-weather/${id}`,
-    },
-  };
+  return buildSpaceWeatherEventMetadata(event);
 }
 
 export default async function SpaceWeatherDetailPage({

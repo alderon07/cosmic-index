@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { buildBreadcrumbJsonLd, buildFaqPageJsonLd, buildHubMetadata } from "@/lib/seo";
+import { buildBreadcrumbJsonLd, buildHubMetadata } from "@/lib/seo";
 
 const FAQ_DESCRIPTION =
   "Frequently asked questions about Cosmic Index, including data sources, update cadence, space weather interpretation, object catalogs, alerts, and account features.";
@@ -141,40 +141,16 @@ const FAQ_SECTIONS: FaqSection[] = [
   },
 ];
 
-const FAQ_ENTRIES = FAQ_SECTIONS.flatMap((section) =>
-  section.questions.map((entry) => ({
-    question: entry.question,
-    answer: entry.answer,
-  })),
-);
-
-export const metadata: Metadata = {
-  ...buildHubMetadata({
-    title: "FAQ",
-    description: FAQ_DESCRIPTION,
-    path: "/faq",
-    variantKeys: [],
-    params: {},
-    imageAlt: "Cosmic Index - Frequently Asked Questions",
-  }),
-  keywords: [
-    "cosmic index faq",
-    "space weather faq",
-    "astronomy data sources",
-    "solar wind faq",
-    "exoplanet faq",
-    "asteroid faq",
-  ],
-};
+export const metadata: Metadata = buildHubMetadata({
+  title: "FAQ",
+  description: FAQ_DESCRIPTION,
+  path: "/faq",
+  variantKeys: [],
+  params: {},
+  imageAlt: "Cosmic Index - Frequently Asked Questions",
+});
 
 export default function FaqPage() {
-  const faqJsonLd = buildFaqPageJsonLd({
-    name: "Cosmic Index FAQ",
-    description: FAQ_DESCRIPTION,
-    path: "/faq",
-    questions: FAQ_ENTRIES,
-  });
-
   const breadcrumbJsonLd = buildBreadcrumbJsonLd([
     { label: "Home", href: "/" },
     { label: "FAQ", href: "/faq" },
@@ -182,7 +158,6 @@ export default function FaqPage() {
 
   return (
     <>
-      <JsonLd data={faqJsonLd} />
       <JsonLd data={breadcrumbJsonLd} />
       <div className="shell-container py-8 md:py-10">
         <section className="relative overflow-hidden rounded-3xl border border-border/50 bg-[#120d0f] px-6 py-8 shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_20px_50px_rgba(0,0,0,0.35)] md:px-8">

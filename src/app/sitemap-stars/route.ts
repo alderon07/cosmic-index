@@ -1,4 +1,3 @@
-import { NextResponse } from "next/server";
 import { searchStars } from "@/lib/star-index";
 import {
   buildUrl,
@@ -6,8 +5,13 @@ import {
   getIsoDate,
   SITEMAP_BATCH_SIZE,
   SITEMAP_CACHE_TTL_MS,
+  MAX_URLS_PER_SITEMAP,
   type SitemapUrl,
 } from "@/lib/sitemap";
+import {
+  sitemapUnavailableResponse,
+  sitemapXmlResponse,
+} from "@/lib/sitemap-response";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -20,19 +24,9 @@ let cachedSitemap:
     }
   | null = null;
 
-function xmlResponse(xml: string, lastmod: string) {
-  return new NextResponse(xml, {
-    headers: {
-      "Content-Type": "application/xml",
-      "Cache-Control": "public, max-age=86400, s-maxage=86400, stale-while-revalidate=3600",
-      "Last-Modified": new Date(`${lastmod}T00:00:00.000Z`).toUTCString(),
-    },
-  });
-}
-
 export async function GET() {
   if (cachedSitemap && cachedSitemap.expiresAt > Date.now()) {
-    return xmlResponse(cachedSitemap.xml, cachedSitemap.lastmod);
+    return sitemapXmlResponse(cachedSitemap.xml, cachedSitemap.lastmod);
   }
 
   try {
@@ -41,17 +35,16 @@ export async function GET() {
     let page = 1;
     let hasMore = true;
 
-    while (hasMore && page <= 10) {
+    while (hasMore && page <= 10 && allUrls.length < MAX_URLS_PER_SITEMAP) {
       const result = await searchStars({
         page,
         limit: SITEMAP_BATCH_SIZE,
       });
 
       for (const star of result.objects) {
+        if (allUrls.length >= MAX_URLS_PER_SITEMAP) break;
         allUrls.push({
           loc: buildUrl(`/stars/${star.id}`),
-          changefreq: "monthly",
-          priority: 0.6,
         });
       }
 
@@ -66,14 +59,14 @@ export async function GET() {
       expiresAt: Date.now() + SITEMAP_CACHE_TTL_MS,
     };
 
-    return xmlResponse(xml, generatedAt);
+    return sitemapXmlResponse(xml, generatedAt);
   } catch (error) {
     console.error("Error generating stars sitemap:", error);
 
     if (cachedSitemap) {
-      return xmlResponse(cachedSitemap.xml, cachedSitemap.lastmod);
+      return sitemapXmlResponse(cachedSitemap.xml, cachedSitemap.lastmod);
     }
 
-    return xmlResponse(generateSitemapXml([]), getIsoDate());
+    return sitemapUnavailableResponse();
   }
 }

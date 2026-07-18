@@ -18,25 +18,14 @@ const theme = THEMES["space-weather"];
 const SPACE_WEATHER_SOLAR_WIND_DESCRIPTION =
   "Live solar wind and IMF monitoring with NOAA SWPC plasma speed, density, southward Bz, and propagated geospace context for geomagnetic storm awareness.";
 
-export const metadata: Metadata = {
-  ...buildHubMetadata({
-    title: "Solar Wind & IMF",
-    description: SPACE_WEATHER_SOLAR_WIND_DESCRIPTION,
-    path: "/space-weather/solar-wind",
-    variantKeys: [],
-    params: {},
-    imageAlt: "Cosmic Index - Solar Wind and IMF Monitoring",
-  }),
-  keywords: [
-    "solar wind",
-    "interplanetary magnetic field",
-    "IMF Bz",
-    "southward Bz",
-    "geomagnetic storm monitoring",
-    "NOAA SWPC solar wind",
-    "space weather solar wind",
-  ],
-};
+export const metadata: Metadata = buildHubMetadata({
+  title: "Solar Wind & IMF",
+  description: SPACE_WEATHER_SOLAR_WIND_DESCRIPTION,
+  path: "/space-weather/solar-wind",
+  variantKeys: [],
+  params: {},
+  imageAlt: "Cosmic Index - Solar Wind and IMF Monitoring",
+});
 
 function formatMetric(value: number | null, digits = 1) {
   if (value === null) return "—";

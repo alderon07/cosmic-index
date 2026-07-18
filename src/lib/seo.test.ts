@@ -2,8 +2,8 @@ import { describe, expect, it } from "bun:test";
 import {
   buildBreadcrumbJsonLd,
   buildCollectionPageJsonLd,
-  buildFaqPageJsonLd,
   buildHubMetadata,
+  buildWebsiteJsonLd,
   toSingleValueParams,
 } from "@/lib/seo";
 
@@ -110,32 +110,14 @@ describe("seo helpers", () => {
     });
   });
 
-  it("builds faq page json-ld with question and answer entries", () => {
-    const jsonLd = buildFaqPageJsonLd({
-      name: "FAQ",
-      description: "Frequently asked questions.",
-      path: "/faq",
-      questions: [
-        {
-          question: "Where does the data come from?",
-          answer: "From public datasets and operational sources.",
-        },
-      ],
-    });
+  it("builds supported website json-ld without retired search actions", () => {
+    const jsonLd = buildWebsiteJsonLd();
 
     expect(jsonLd).toMatchObject({
-      "@type": "FAQPage",
-      url: "https://cosmicindex.dev/faq",
-      mainEntity: [
-        {
-          "@type": "Question",
-          name: "Where does the data come from?",
-          acceptedAnswer: {
-            "@type": "Answer",
-            text: "From public datasets and operational sources.",
-          },
-        },
-      ],
+      "@type": "WebSite",
+      name: "Cosmic Index",
+      url: "https://cosmicindex.dev",
     });
+    expect(jsonLd).not.toHaveProperty("potentialAction");
   });
 });
