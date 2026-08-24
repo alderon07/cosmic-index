@@ -18,7 +18,10 @@ const QUERY_CACHE_STORAGE_KEY = "cosmic-index:rq-cache:v2";
 const QUERY_CACHE_MAX_AGE_MS = 30 * 60 * 1000;
 const QUERY_CACHE_WRITE_THROTTLE_MS = 750;
 
-function shouldDehydrateUserQuery(query: { queryKey: readonly unknown[]; state: { status: string } }) {
+export function shouldDehydrateUserQuery(query: {
+  queryKey: readonly unknown[];
+  state: { status: string };
+}) {
   return query.state.status === "success" && query.queryKey[0] === "user";
 }
 

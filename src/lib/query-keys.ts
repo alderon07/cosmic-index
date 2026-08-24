@@ -1,4 +1,6 @@
 export const queryKeys = {
+  adsenseEligibility: (userId: string) =>
+    ["adsense", "eligibility", userId] as const,
   exoplanets: (fetchKey: string) => ["objects", "exoplanets", fetchKey] as const,
   stars: (fetchKey: string) => ["objects", "stars", fetchKey] as const,
   starDetail: (id: string) => ["objects", "stars", "detail", id] as const,

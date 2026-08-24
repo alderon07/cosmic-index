@@ -114,6 +114,20 @@ CREATE TRIGGER IF NOT EXISTS exoplanets_fts_update AFTER UPDATE ON exoplanets BE
   VALUES (NEW.rowid, NEW.pl_name, NEW.hostname, NEW.discovery_method);
 END;
 
+-- Users (synced from Clerk). Source of truth for subscription tier.
+-- This matches the deployed schema after migration 007.
+CREATE TABLE IF NOT EXISTS users (
+  id TEXT PRIMARY KEY,
+  email TEXT NOT NULL,
+  tier TEXT NOT NULL DEFAULT 'free',
+  stripe_customer_id TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_users_stripe_customer
+  ON users(stripe_customer_id);
+
 -- Stripe subscription ledger for robust billing reconciliation
 CREATE TABLE IF NOT EXISTS stripe_subscriptions (
   id INTEGER PRIMARY KEY AUTOINCREMENT,

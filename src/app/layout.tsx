@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { Audiowide, Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import Link from "next/link";
@@ -17,8 +18,6 @@ import {
   Wind,
 } from "lucide-react";
 import { THEMES } from "@/lib/theme";
-import { Analytics } from "@vercel/analytics/react";
-import { GoogleAnalytics } from "@next/third-parties/google";
 import { KeyboardShortcutsProvider } from "@/components/keyboard-shortcuts/keyboard-shortcuts-provider";
 import { UserAuthButton } from "@/components/auth/user-auth-button";
 import { CompareProvider } from "@/components/compare/compare-provider";
@@ -37,6 +36,8 @@ import {
 import { serializeJsonLd } from "@/lib/safe-json-ld";
 import { parseGoogleAnalyticsId } from "@/lib/analytics";
 import { buildWebsiteJsonLd } from "@/lib/seo";
+import { getAdsenseConfig } from "@/lib/adsense";
+import { GooglePublisherServices } from "@/components/ads/google-publisher-services";
 
 const audiowide = Audiowide({
   variable: "--font-display",
@@ -60,6 +61,7 @@ const jetbrainsMono = JetBrains_Mono({
 const googleAnalyticsId = parseGoogleAnalyticsId(
   process.env.GOOGLE_ANALYTICS_ID
 );
+const adsenseConfig = getAdsenseConfig();
 
 import { BASE_URL } from "@/lib/config";
 
@@ -112,6 +114,13 @@ export const metadata: Metadata = {
   alternates: {
     canonical: BASE_URL,
   },
+  ...(adsenseConfig.clientId
+    ? {
+        other: {
+          "google-adsense-account": adsenseConfig.clientId,
+        },
+      }
+    : {}),
 };
 
 const websiteJsonLd = buildWebsiteJsonLd();
@@ -471,6 +480,9 @@ export default function RootLayout({
                     <Link href="/faq" className="text-orange-300 hover:underline">
                       FAQ
                     </Link>
+                    <a href="/privacy" className="text-orange-300 hover:underline">
+                      Privacy
+                    </a>
                   </div>
                 </div>
                 <div className="flex items-center gap-4">
@@ -500,13 +512,17 @@ export default function RootLayout({
               </div>
             </div>
           </footer>
+          <Suspense fallback={null}>
+            <GooglePublisherServices
+              adsense={adsenseConfig}
+              googleAnalyticsId={googleAnalyticsId}
+            />
+          </Suspense>
         </div>
         </KeyboardShortcutsProvider>
         </CompareProvider>
         </QueryProvider>
         </AppAuthProvider>
-        <Analytics />
-        {googleAnalyticsId ? <GoogleAnalytics gaId={googleAnalyticsId} /> : null}
       </body>
     </html>
   );

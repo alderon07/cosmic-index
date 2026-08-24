@@ -48,6 +48,23 @@ interface ClerkUserSnapshot {
   email: string;
 }
 
+/**
+ * Return only the current Clerk user ID.
+ *
+ * This intentionally avoids currentUser(), email retrieval, and the database
+ * reconciliation performed by getAuthUser(). Use it for lightweight endpoints
+ * that still perform their own database-backed authorization or entitlement read.
+ */
+export async function getAuthenticatedUserId(): Promise<string | null> {
+  if (!isClerkServerConfigured()) {
+    return null;
+  }
+
+  const { auth } = await import("@clerk/nextjs/server");
+  const { userId } = await auth();
+  return userId;
+}
+
 async function getClerkUserSnapshot(): Promise<ClerkUserSnapshot> {
   if (!isClerkServerConfigured()) {
     return { userId: null, email: "" };

@@ -1555,6 +1555,117 @@
         }
       }
     },
+    "/user/ad-eligibility": {
+      "get": {
+        "operationId": "getAdEligibility",
+        "summary": "Check advertising eligibility",
+        "description": "Returns a fail-closed advertising decision for the authenticated user using the database-backed account tier and subscription ledger. The response never exposes tier, billing status, or user identifiers and is never cacheable.",
+        "tags": [
+          "User"
+        ],
+        "security": [
+          {
+            "ClerkSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Advertising eligibility decision",
+            "headers": {
+              "Cache-Control": {
+                "description": "Always private, no-store.",
+                "schema": {
+                  "type": "string",
+                  "const": "private, no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "canShowAds"
+                  ],
+                  "properties": {
+                    "canShowAds": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "headers": {
+              "Cache-Control": {
+                "description": "Always private, no-store.",
+                "schema": {
+                  "type": "string",
+                  "const": "private, no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "error",
+                    "code"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string",
+                      "const": "UNAUTHORIZED"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Eligibility cannot be safely determined",
+            "headers": {
+              "Cache-Control": {
+                "description": "Always private, no-store.",
+                "schema": {
+                  "type": "string",
+                  "const": "private, no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "error",
+                    "code"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string",
+                      "const": "AD_ELIGIBILITY_UNAVAILABLE"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/user/saved-objects": {
       "get": {
         "operationId": "listSavedObjects",
@@ -3246,6 +3357,12 @@
   },
   "components": {
     "securitySchemes": {
+      "ClerkSession": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "__session",
+        "description": "Authenticated Clerk browser session."
+      },
       "ObservatoryCronBearer": {
         "type": "http",
         "scheme": "bearer",

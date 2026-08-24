@@ -1,9 +1,11 @@
 import { CircleDot } from "lucide-react";
 import Link from "next/link";
+import { NoAdsMarker } from "@/components/ads/no-ads-marker";
 
 export default function SmallBodyNotFound() {
   return (
     <div className="shell-container py-16">
+      <NoAdsMarker />
       <div className="max-w-md mx-auto text-center">
         <div className="w-16 h-16 rounded-full bg-secondary/20 flex items-center justify-center mx-auto mb-6">
           <CircleDot className="w-8 h-8 text-secondary" />
