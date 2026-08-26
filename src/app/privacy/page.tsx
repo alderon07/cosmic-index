@@ -34,7 +34,7 @@ export default function PrivacyPage() {
           Privacy Policy
         </h1>
         <p className="mt-4 text-sm text-orange-100/60">
-          Last updated: August 24, 2026
+          Last updated: August 26, 2026
         </p>
         <p className="mt-5 max-w-3xl leading-7 text-orange-100/75">
           Cosmic Index is a general-audience astronomy service. This policy
@@ -74,6 +74,21 @@ export default function PrivacyPage() {
             choices, these services may process device, browser, approximate
             location, page-view, referrer, and IP-derived information. This
             privacy-policy document does not load those telemetry scripts.
+          </p>
+        </section>
+
+        <section className={sectionClassName}>
+          <h2 className="font-display text-xl text-orange-100">
+            Error monitoring and bug reports
+          </h2>
+          <p className="mt-3">
+            Sentry receives sampled performance information and technical error
+            details such as the affected page, stack trace, browser, device, and
+            IP-derived information. Default personally identifiable information,
+            request bodies, and authenticated user details are not sent. The
+            optional bug-report form sends the description and email address you
+            choose to provide; screenshots are disabled. Sentry monitoring and
+            the bug-report form are disabled on this privacy-policy document.
           </p>
         </section>
 

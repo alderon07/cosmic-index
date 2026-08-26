@@ -7,7 +7,7 @@ describe("PrivacyPage", () => {
     const html = renderToStaticMarkup(<PrivacyPage />);
 
     expect(html).toContain("Privacy Policy");
-    expect(html).toContain("August 24, 2026");
+    expect(html).toContain("August 26, 2026");
     expect(html).toContain("Clerk");
     expect(html).toContain("Stripe");
     expect(html).toContain("Turso");
@@ -15,6 +15,8 @@ describe("PrivacyPage", () => {
     expect(html).toContain("Vercel Analytics");
     expect(html).toContain("Google Analytics");
     expect(html).toContain("Google AdSense");
+    expect(html).toContain("Sentry");
+    expect(html).toContain("bug reports");
     expect(html).toContain("under 13");
     expect(html).toContain("personal information");
     expect(html).toContain("github.com");

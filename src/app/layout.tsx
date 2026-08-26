@@ -38,6 +38,7 @@ import { parseGoogleAnalyticsId } from "@/lib/analytics";
 import { buildWebsiteJsonLd } from "@/lib/seo";
 import { getAdsenseConfig } from "@/lib/adsense";
 import { GooglePublisherServices } from "@/components/ads/google-publisher-services";
+import { ReportBugButton } from "@/components/report-bug-button";
 
 const audiowide = Audiowide({
   variable: "--font-display",
@@ -483,6 +484,9 @@ export default function RootLayout({
                     <a href="/privacy" className="text-orange-300 hover:underline">
                       Privacy
                     </a>
+                    <Suspense fallback={null}>
+                      <ReportBugButton />
+                    </Suspense>
                   </div>
                 </div>
                 <div className="flex items-center gap-4">

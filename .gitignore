@@ -61,3 +61,5 @@ plans/
 
 # codex
 .codex
+# Sentry Config File
+.env.sentry-build-plugin
