@@ -8,8 +8,10 @@ Operational guidance for agents working in this repository.
 
 - This project needs to adhere to hobby account limits for the stack. This means that we need to be careful about the size of the database, the number of requests, and the number of users.
 - Always code with accessibility, performance, maintainability, operability, and security in mind.
+- Do not use any: Writing any turns off type safety. It defeats the main goal of using TypeScript. Use unknown or define precise shapes instead.
+- Avoid React.FC: Typing components with React.FC adds an implicit children prop and legacy behaviors. Use standard function declarations and type your props explicitly.Do not ignore event types: Generic event parameters default to broad types if left unannotated. Always use specific types like React.ChangeEvent<HTMLInputElement> or React.FormEvent.Do not rely solely on inference for complex state: Simple hooks like useState(false) are easy for TypeScript to guess. Complex objects or initial null values require explicit generic types like useState<User | null>(null).Do not turn off strict mode: Keep strict mode active in your tsconfig.json file. It forces you to write safer, cleaner code and catches errors early
 
-## Stack
+## Stacki
 
 - Next.js 16 App Router and React 19
 - TypeScript in strict mode
