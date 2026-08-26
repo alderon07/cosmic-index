@@ -2,7 +2,7 @@ import * as Sentry from "@sentry/nextjs";
 import {
   DEFAULT_SENTRY_DSN,
   getSentryEnvironment,
-  getSentryRelease,
+  getSentryReleaseOverride,
   getSentryTracesSampleRate,
 } from "@/lib/sentry";
 
@@ -16,7 +16,7 @@ Sentry.init({
     undefined,
     process.env.NODE_ENV,
   ),
-  release: getSentryRelease(
+  ...getSentryReleaseOverride(
     process.env.NEXT_PUBLIC_SENTRY_RELEASE,
     undefined,
   ),

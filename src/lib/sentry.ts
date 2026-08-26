@@ -33,3 +33,11 @@ export function getSentryRelease(
     normalizeOptionalValue(deploymentCommit)
   );
 }
+
+export function getSentryReleaseOverride(
+  configuredRelease: string | undefined,
+  deploymentCommit: string | undefined,
+): { release?: string } {
+  const release = getSentryRelease(configuredRelease, deploymentCommit);
+  return release ? { release } : {};
+}

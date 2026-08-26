@@ -17,6 +17,7 @@ describe("Sentry Next.js instrumentation", () => {
       expect(source).toContain("Sentry.init");
       expect(source).toContain("tracesSampleRate");
       expect(source).toContain("sendDefaultPii: false");
+      expect(source).toContain("...getSentryReleaseOverride(");
       expect(source).not.toContain("replayIntegration");
       expect(source).not.toContain("enableLogs: true");
     }

@@ -3,6 +3,7 @@ import { describe, expect, test } from "bun:test";
 import {
   getSentryEnvironment,
   getSentryRelease,
+  getSentryReleaseOverride,
   getSentryTracesSampleRate,
 } from "@/lib/sentry";
 
@@ -29,5 +30,12 @@ describe("Sentry runtime configuration", () => {
     expect(getSentryRelease(" release-42 ", "commit-17")).toBe("release-42");
     expect(getSentryRelease("  ", " commit-17 ")).toBe("commit-17");
     expect(getSentryRelease(undefined, undefined)).toBeUndefined();
+  });
+
+  test("does not override the SDK's injected release when no override exists", () => {
+    expect(getSentryReleaseOverride(undefined, undefined)).toEqual({});
+    expect(
+      getSentryReleaseOverride("release-42", "commit-17"),
+    ).toEqual({ release: "release-42" });
   });
 });
