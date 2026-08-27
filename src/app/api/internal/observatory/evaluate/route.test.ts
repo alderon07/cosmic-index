@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
-import { createObservatoryEvaluatorPost } from "@/app/api/internal/observatory/evaluate/route";
+import { createObservatoryEvaluatorPost } from "@/app/api/internal/observatory/evaluate/handler";
 import type { ObservatoryEvaluatorStore } from "@/lib/observatory-evaluator";
 
 const evaluatorResult = {

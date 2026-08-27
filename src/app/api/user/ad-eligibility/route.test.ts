@@ -1,6 +1,6 @@
 import { afterAll, beforeEach, describe, expect, it } from "bun:test";
 import type { Client } from "@libsql/client";
-import { createAdEligibilityHandler } from "@/app/api/user/ad-eligibility/route";
+import { createAdEligibilityHandler } from "@/app/api/user/ad-eligibility/handler";
 
 let authenticatedUserId: string | null = "user_free";
 let authenticationError: Error | null = null;

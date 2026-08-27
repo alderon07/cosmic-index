@@ -15,6 +15,15 @@ interface SmallBodyDetailPageProps {
   params: Promise<{ id: string }>;
 }
 
+// Generate catalog pages on first request and reuse them for subsequent bot
+// and visitor traffic. Match the existing seven-day small-body detail TTL.
+export const dynamic = "force-static";
+export const revalidate = 604800;
+
+export function generateStaticParams(): Array<{ id: string }> {
+  return [];
+}
+
 const getSmallBodyById = cache(async (id: string) => fetchSmallBodyBySlug(id));
 
 // Generate dynamic metadata for SEO

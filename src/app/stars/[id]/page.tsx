@@ -19,6 +19,15 @@ interface StarDetailPageProps {
   params: Promise<{ id: string }>;
 }
 
+// Generate catalog pages on first request rather than expanding the full star
+// index during every build. Published stellar data is safe to refresh monthly.
+export const dynamic = "force-static";
+export const revalidate = 2592000;
+
+export function generateStaticParams(): Array<{ id: string }> {
+  return [];
+}
+
 const getStarDetailById = cache(async (id: string) => getStarBySlug(id));
 const getPlanetsForHostStar = cache(async (hostname: string) =>
   fetchExoplanetsForHostStar(hostname)

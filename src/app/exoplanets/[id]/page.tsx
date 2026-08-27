@@ -20,6 +20,16 @@ interface ExoplanetDetailPageProps {
   params: Promise<{ id: string }>;
 }
 
+// Generate catalog pages on first request, then reuse them across crawler and
+// visitor traffic. Exoplanet catalog data changes slowly enough for a 14-day
+// refresh window, while failed revalidations continue serving the last page.
+export const dynamic = "force-static";
+export const revalidate = 1209600;
+
+export function generateStaticParams(): Array<{ id: string }> {
+  return [];
+}
+
 const getExoplanetById = cache(async (id: string) => fetchExoplanetBySlug(id));
 const getHostStarByName = cache(async (hostname: string) => getStarByHostname(hostname));
 const getSystemPlanets = cache(async (hostname: string) =>
