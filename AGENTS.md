@@ -15,6 +15,7 @@ Operational guidance for agents working in this repository.
 - Add explicit generic types for complex state and nullable initial values, such
   as `useState<User | null>(null)`.
 - Keep TypeScript strict mode enabled.
+-  Use relevant skills from /home/naqihaid/.agents/skills
 
 ## Stack
 
