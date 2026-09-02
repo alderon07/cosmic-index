@@ -3,13 +3,14 @@ import type { Metadata } from "next";
 import { cache } from "react";
 import { ObjectDetail } from "@/components/object-detail";
 import { Breadcrumbs } from "@/components/breadcrumbs";
-import { fetchExoplanetBySlug } from "@/lib/nasa-exoplanet";
 import { BASE_URL } from "@/lib/config";
 import { THEMES } from "@/lib/theme";
 import { JsonLd } from "@/components/seo/json-ld";
 import { buildBreadcrumbJsonLd } from "@/lib/seo";
-import { getExoplanetsForHostStar } from "@/lib/exoplanet-index";
-import { getStarByHostname } from "@/lib/star-index";
+import {
+  loadExoplanetDetail,
+  loadExoplanetSystemContext,
+} from "@/lib/exoplanet-detail-data";
 import {
   buildExoplanetJsonLd,
   buildExoplanetMetaDescription,
@@ -30,11 +31,8 @@ export function generateStaticParams(): Array<{ id: string }> {
   return [];
 }
 
-const getExoplanetById = cache(async (id: string) => fetchExoplanetBySlug(id));
-const getHostStarByName = cache(async (hostname: string) => getStarByHostname(hostname));
-const getSystemPlanets = cache(async (hostname: string) =>
-  getExoplanetsForHostStar(hostname)
-);
+const getExoplanetById = cache(loadExoplanetDetail);
+const getSystemContext = cache(loadExoplanetSystemContext);
 
 // Generate dynamic metadata for SEO
 export async function generateMetadata({
@@ -105,12 +103,9 @@ export default async function ExoplanetDetailPage({
   ];
 
   const hasHostStar = Boolean(exoplanet.hostStar && exoplanet.hostStar !== "Unknown");
-  const [hostStar, systemPlanets] = hasHostStar
-    ? await Promise.all([
-        getHostStarByName(exoplanet.hostStar),
-        getSystemPlanets(exoplanet.hostStar),
-      ])
-    : [null, []];
+  const { hostStar, systemPlanets } = hasHostStar
+    ? await getSystemContext(exoplanet.hostStar)
+    : { hostStar: null, systemPlanets: [] };
 
   return (
     <>
