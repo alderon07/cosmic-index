@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { cache } from "react";
+import { ExoplanetInterpretation } from "@/components/exoplanet-interpretation";
 import { ObjectDetail } from "@/components/object-detail";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { BASE_URL } from "@/lib/config";
@@ -117,7 +118,10 @@ export default async function ExoplanetDetailPage({
           className="mb-6"
           linkHoverClassName={THEMES.exoplanets.hoverText}
         />
-        <ObjectDetail object={exoplanet} />
+        <ObjectDetail
+          object={exoplanet}
+          measurementContext={<ExoplanetInterpretation exoplanet={exoplanet} />}
+        />
         <div className="mt-8">
           <ExoplanetSystemContext
             exoplanet={exoplanet}

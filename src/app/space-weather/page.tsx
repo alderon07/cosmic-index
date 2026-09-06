@@ -1,3 +1,4 @@
+import { GuideLink } from "@/components/guide-link";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, Radio } from "lucide-react";
@@ -89,7 +90,9 @@ export default async function SpaceWeatherPage() {
             explanation={SPACE_WEATHER_EDUCATION.SPACE_WEATHER.explanation}
             impact={SPACE_WEATHER_EDUCATION.SPACE_WEATHER.impact}
             theme="space-weather"
+            defaultOpen
           />
+          <GuideLink slug="reading-space-weather" />
         </section>
 
         {/* Client-rendered dashboard with React Query auto-refresh */}

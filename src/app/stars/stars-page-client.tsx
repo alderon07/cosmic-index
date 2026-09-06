@@ -25,6 +25,7 @@ import {
   buildPathWithSearch,
   isNoopUrlUpdate,
 } from "@/lib/url-normalize";
+import { GuideLink } from "@/components/guide-link";
 import { CATALOG_EDUCATION } from "@/lib/catalog-education";
 
 const theme = THEMES.stars;
@@ -315,7 +316,9 @@ export function StarsPageClient({
             explanation={CATALOG_EDUCATION.stars.explanation}
             impact={CATALOG_EDUCATION.stars.impact}
             theme="stars"
+            defaultOpen
           />
+          <GuideLink slug="comparing-exoplanets" />
         </div>
       </div>
 

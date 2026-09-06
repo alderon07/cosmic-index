@@ -1,3 +1,4 @@
+import { HomeFieldGuides } from "@/components/home-field-guides";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -8,14 +9,10 @@ import {
   ArrowRight,
   Circle,
   CircleDot,
-  Compass,
-  Crosshair,
-  Orbit,
   Rocket,
   Star,
   Sun,
   Telescope,
-  Zap,
 } from "lucide-react";
 
 const STAR_POSITIONS = Array.from({ length: 60 }, (_, index) => ({
@@ -113,33 +110,20 @@ export default function HomePage() {
               </div>
             </div>
 
-            <Card className="relative overflow-hidden border-orange-200/30 bg-[#1d140f]/90 p-4 sm:p-5 text-orange-100 shadow-[inset_0_0_0_1px_rgba(255,180,120,0.15)] animate-reveal-up-delay min-w-0">
-              <div className="pointer-events-none absolute -right-12 -top-12 h-32 w-32 rounded-full border border-orange-300/25 animate-orbit-spin motion-reduce:animate-none" />
-              <div className="pointer-events-none absolute -left-1/2 top-0 h-full w-1/2 bg-gradient-to-r from-transparent via-orange-200/20 to-transparent animate-data-sweep motion-reduce:hidden" />
-              <p className="text-xs uppercase tracking-[0.2em] text-orange-200/70">
-                Payload Summary
-              </p>
-              <div className="mt-3 sm:mt-4 grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3 text-sm">
-                <PayloadChip icon={<Circle className="h-3.5 w-3.5" />} label="Exoplanets" value="5,900+" />
-                <PayloadChip icon={<Star className="h-3.5 w-3.5" />} label="Host Stars" value="4,700+" />
-                <PayloadChip icon={<CircleDot className="h-3.5 w-3.5" />} label="Objects" value="1.1M" className="col-span-2 sm:col-span-1" />
-              </div>
-              <div className="mt-3 sm:mt-4 flex flex-col gap-2 rounded-lg border border-orange-200/20 bg-black/25 p-3 sm:flex-row sm:items-center sm:justify-between">
-                <p className="flex items-center gap-2 text-xs sm:text-sm text-orange-100/80 min-w-0">
-                  <Crosshair className="h-4 w-4 shrink-0 text-orange-300" />
-                  <span className="truncate">Trajectory confidence</span>
-                </p>
-                <p className="font-mono text-lg sm:text-xl text-orange-300 shrink-0">98.2%</p>
-              </div>
-              <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
-                <TelemetryPill icon={<Orbit className="h-3.5 w-3.5" />} label="Orbital map ready" />
-                <TelemetryPill icon={<Compass className="h-3.5 w-3.5" />} label="Navigation lock" />
-                <TelemetryPill icon={<Zap className="h-3.5 w-3.5" />} label="Power stable" />
-              </div>
-            </Card>
+            <aside className="min-w-0 border-l-2 border-orange-300/50 bg-[#1d140f]/90 p-5 text-orange-100 sm:p-7" aria-labelledby="first-comparison">
+              <p className="font-mono text-xs uppercase tracking-[0.2em] text-orange-300">Your first comparison</p>
+              <h2 id="first-comparison" className="mt-4 font-display text-xl leading-relaxed">Twice the radius. Eight times the volume.</h2>
+              <p className="mt-4 text-sm leading-7 text-orange-100/80">Imagine a spherical planet with twice Earth&apos;s radius. Its volume scales with the cube of its radius: 2 × 2 × 2 = 8. That gives eight times Earth&apos;s volume, but tells us nothing yet about its mass or whether it has a solid surface.</p>
+              <p className="mt-3 text-sm leading-7 text-orange-100/80">A useful comparison names its assumptions. Our exoplanet guide shows how to carry that habit into real catalog records, including estimated masses and missing measurements.</p>
+              <Link href="/learn/comparing-exoplanets" className="mt-5 inline-flex items-center gap-2 text-sm text-orange-300 underline underline-offset-4">
+                Work through the comparison <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              </Link>
+            </aside>
           </div>
         </div>
       </section>
+
+      <HomeFieldGuides />
 
       <section className="shell-container py-8 md:py-12 animate-reveal-up-late overflow-hidden min-w-0">
         <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between min-w-0">
@@ -226,37 +210,6 @@ export default function HomePage() {
         </div>
       </section>
     </div>
-  );
-}
-
-function PayloadChip({
-  icon,
-  label,
-  value,
-  className,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-  className?: string;
-}) {
-  return (
-    <div className={`rounded-lg border border-orange-200/20 bg-black/25 p-2.5 sm:p-3 ${className ?? ""}`}>
-      <p className="flex items-center gap-1.5 text-orange-200/70">
-        <span className="text-orange-300">{icon}</span>
-        {label}
-      </p>
-      <p className="mt-1 font-mono text-xl text-orange-50">{value}</p>
-    </div>
-  );
-}
-
-function TelemetryPill({ icon, label }: { icon: React.ReactNode; label: string }) {
-  return (
-    <p className="flex items-center gap-2 rounded-md border border-orange-200/15 bg-black/20 px-2.5 py-2 text-xs text-orange-100/80">
-      <span className="text-orange-300">{icon}</span>
-      {label}
-    </p>
   );
 }
 

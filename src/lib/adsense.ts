@@ -1,14 +1,15 @@
 const ADSENSE_CLIENT_ID_PATTERN = /^ca-pub-\d{16}$/;
 const ADSENSE_SLOT_ID_PATTERN = /^\d{10}$/;
 
-const AD_ELIGIBLE_PREFIXES = [
-  "/exoplanets",
-  "/stars",
-  "/small-bodies",
-  "/close-approaches",
-  "/fireballs",
-  "/space-weather",
-] as const;
+// Explicit editorial inventory. Catalog/search/detail screens stay ad-free,
+// including sparse records and empty or failed upstream responses. Adding a
+// route elsewhere must not automatically opt it into monetization.
+const AD_ELIGIBLE_PATHS = new Set([
+  "/",
+  "/learn/comparing-exoplanets",
+  "/learn/reading-space-weather",
+  "/learn/understanding-asteroid-flybys",
+]);
 
 export const NO_ADS_MARKER_ATTRIBUTE = "data-no-ads";
 export const NO_ADS_MARKER_SELECTOR = `[${NO_ADS_MARKER_ATTRIBUTE}]`;
@@ -52,11 +53,7 @@ export function getAdsenseConfig(
 }
 
 export function isAdEligiblePath(pathname: string): boolean {
-  if (pathname === "/") return true;
-
-  return AD_ELIGIBLE_PREFIXES.some(
-    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
-  );
+  return AD_ELIGIBLE_PATHS.has(pathname);
 }
 
 export function getAdsTxtLine(clientId: string | null | undefined): string | null {

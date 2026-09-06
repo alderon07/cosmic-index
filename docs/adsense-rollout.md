@@ -1,11 +1,32 @@
 # Google AdSense rollout
 
-Last updated: 2026-08-24
+Last updated: 2026-09-05
 
 This runbook covers the external configuration and production verification for
 the single manual responsive unit below the Cosmic Index footer. Code rollout
 does not create an AdSense account, configure Google Privacy & messaging, deploy,
 or mutate production data.
+
+## Content inventory
+
+The manual unit is eligible only on the homepage and these complete guides:
+
+- `/learn/comparing-exoplanets`
+- `/learn/reading-space-weather`
+- `/learn/understanding-asteroid-flybys`
+
+`src/lib/adsense.ts` uses exact paths. Catalog lists, object details, and all
+space-weather dashboards are excluded, including empty results, sparse records,
+and upstream failures. The guide index, unknown guides, and future routes are
+excluded by default. The existing error-screen marker remains a second guard.
+Adding a guide does not automatically enable ads on it.
+
+The guides contain original worked examples, primary-source links, and links
+back to the tools. Catalog education opens by default, and exoplanet detail
+pages explain measurement limits and derived size and period comparisons.
+These changes do not establish AdSense approval. After deploying, inspect the
+public pages and request another review of the low-value-content rejection in
+AdSense. Keep serving disabled until Google marks the site Ready.
 
 ## Environment configuration
 
@@ -57,7 +78,8 @@ compatible policy.
 Use a clean browser profile and Google's documented `fc=alwaysshow` parameters
 when testing privacy messages. Verify:
 
-- Anonymous visitors receive one below-footer unit only on allowlisted content.
+- Anonymous visitors receive one below-footer unit only on the exact editorial
+  paths above. Catalog, search, and dashboard pages contain no unit.
 - Free signed-in users receive the unit only after the database check succeeds.
 - Pro users and active or trialing configured-price subscribers receive no ad
   element and no `adsbygoogle.push` call.

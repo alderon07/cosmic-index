@@ -307,6 +307,7 @@ export function FireballsPageClient({
             explanation={CATALOG_EDUCATION.fireballs.explanation}
             impact={CATALOG_EDUCATION.fireballs.impact}
             theme="fireballs"
+            defaultOpen
           />
         </div>
       </div>

@@ -25,6 +25,7 @@ import {
   buildPathWithSearch,
   isNoopUrlUpdate,
 } from "@/lib/url-normalize";
+import { GuideLink } from "@/components/guide-link";
 import { CATALOG_EDUCATION } from "@/lib/catalog-education";
 
 const theme = THEMES["small-bodies"];
@@ -298,7 +299,9 @@ export function SmallBodiesPageClient({
           explanation={CATALOG_EDUCATION["small-bodies"].explanation}
           impact={CATALOG_EDUCATION["small-bodies"].impact}
           theme="small-bodies"
+          defaultOpen
         />
+        <GuideLink slug="understanding-asteroid-flybys" />
       </div>
       </div>
 

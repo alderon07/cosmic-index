@@ -51,6 +51,7 @@ import {
   buildPathWithSearch,
   isNoopUrlUpdate,
 } from "@/lib/url-normalize";
+import { GuideLink } from "@/components/guide-link";
 import { CATALOG_EDUCATION } from "@/lib/catalog-education";
 
 const theme = THEMES["close-approaches"];
@@ -304,7 +305,9 @@ export function CloseApproachesPageClient({
             explanation={CATALOG_EDUCATION["close-approaches"].explanation}
             impact={CATALOG_EDUCATION["close-approaches"].impact}
             theme="close-approaches"
+            defaultOpen
           />
+          <GuideLink slug="understanding-asteroid-flybys" />
         </div>
       </div>
 

@@ -478,6 +478,9 @@ export default function RootLayout({
                   </p>
                   <div className="mt-2 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[11px] text-orange-100/50">
                     <span className="text-orange-100/35">Help &amp; trust</span>
+                    <Link href="/learn" className="text-orange-300 hover:underline">
+                      Field guides
+                    </Link>
                     <Link href="/faq" className="text-orange-300 hover:underline">
                       FAQ
                     </Link>

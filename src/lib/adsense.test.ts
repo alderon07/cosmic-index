@@ -86,6 +86,14 @@ describe("AdSense configuration", () => {
 describe("AdSense route allowlist", () => {
   it.each([
     "/",
+    "/learn/comparing-exoplanets",
+    "/learn/reading-space-weather",
+    "/learn/understanding-asteroid-flybys",
+  ])("allows %s", (pathname) => {
+    expect(isAdEligiblePath(pathname)).toBe(true);
+  });
+
+  it.each([
     "/exoplanets",
     "/exoplanets/kepler-22-b",
     "/stars",
@@ -96,11 +104,12 @@ describe("AdSense route allowlist", () => {
     "/fireballs",
     "/space-weather",
     "/space-weather/alerts",
-  ])("allows %s", (pathname) => {
-    expect(isAdEligiblePath(pathname)).toBe(true);
-  });
-
-  it.each([
+    "/space-weather/solar",
+    "/space-weather/unknown-event",
+    "/learn",
+    "/learn/unpublished-guide",
+    "/learn/comparing-exoplanets/extra",
+    "/learn/comparing-exoplanets/",
     "/faq",
     "/privacy",
     "/waitlist",

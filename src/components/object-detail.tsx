@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import type { ReactNode } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -54,6 +55,7 @@ interface ObjectDetailProps {
   hideDataSources?: boolean;
   compact?: boolean;
   showCompare?: boolean;
+  measurementContext?: ReactNode;
 }
 
 export function ObjectDetail({
@@ -61,6 +63,7 @@ export function ObjectDetail({
   hideDataSources,
   compact,
   showCompare = true,
+  measurementContext,
 }: ObjectDetailProps) {
   const { addObject, isInCompare, isObjectSupported } = useCompare();
 
@@ -272,6 +275,8 @@ export function ObjectDetail({
           )}
         </CardContent>
       </Card>
+
+      {measurementContext}
 
       {/* Detailed Sections */}
       <Accordion

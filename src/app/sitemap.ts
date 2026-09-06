@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+import { GUIDES } from "@/content/guide-index";
 import { BASE_URL } from "@/lib/config";
 
 export default function sitemap(): MetadataRoute.Sitemap {
@@ -25,6 +26,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
     {
       url: `${BASE_URL}/faq`,
     },
+    { url: `${BASE_URL}/learn` },
+    ...GUIDES.map((guide) => ({ url: `${BASE_URL}/learn/${guide.slug}` })),
     {
       url: `${BASE_URL}/space-weather`,
     },

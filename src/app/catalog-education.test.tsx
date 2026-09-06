@@ -92,6 +92,8 @@ describe("catalog education placement", () => {
     );
 
     expect(html).toContain("How to read exoplanet data");
+    expect(html).toContain("Most exoplanet entries are incomplete");
+    expect(html).toContain('href="/learn/comparing-exoplanets"');
   });
 
   it("adds a learn block to the stars browse page", () => {
