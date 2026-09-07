@@ -2,7 +2,9 @@ import { describe, expect, it, mock } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { ReactNode } from "react";
 
+const navigation = { ...await import("next/navigation") };
 mock.module("next/navigation", () => ({
+  ...navigation,
   useSearchParams: () => new URLSearchParams(),
   useRouter: () => ({ replace: () => {} }),
   usePathname: () => "/",
@@ -24,10 +26,6 @@ mock.module("@tanstack/react-query", () => ({
 
 mock.module("@/hooks/use-keyboard-shortcuts", () => ({
   useKeyboardShortcuts: () => {},
-}));
-
-mock.module("@/lib/list-url-store", () => ({
-  saveListUrl: () => {},
 }));
 
 mock.module("@/components/object-card", () => ({

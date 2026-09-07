@@ -1,6 +1,14 @@
 // Keep article bodies out of client bundles that only need navigation metadata.
 export const GUIDES = [
   {
+    slug: "trappist-1-comparison",
+    title: "TRAPPIST-1 b and e: similar sizes, different years",
+    description: "Compare two real planets with a scale diagram, a month of orbital motion, and calculations you can reproduce from NASA data.",
+    topic: "Exoplanets",
+    toolHref: "/exoplanets?query=TRAPPIST-1",
+    toolLabel: "Explore the TRAPPIST-1 planets",
+  },
+  {
     slug: "comparing-exoplanets",
     title: "Compare exoplanets without mistaking size for habitability",
     description:

@@ -27,6 +27,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
       url: `${BASE_URL}/faq`,
     },
     { url: `${BASE_URL}/learn` },
+    { url: `${BASE_URL}/about` },
     ...GUIDES.map((guide) => ({ url: `${BASE_URL}/learn/${guide.slug}` })),
     {
       url: `${BASE_URL}/space-weather`,

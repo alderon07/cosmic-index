@@ -14,6 +14,7 @@ import {
   NO_ADS_MARKER_SELECTOR,
 } from "@/lib/adsense";
 import { queryKeys } from "@/lib/query-keys";
+import { GuideEngagementTracking } from "@/components/learn/guide-engagement-tracking";
 
 const adEligibilityResponseSchema = z
   .object({
@@ -271,7 +272,10 @@ export function GooglePublisherServices({
 
       <Analytics />
       {analyticsReady && googleAnalyticsId ? (
-        <GoogleAnalytics gaId={googleAnalyticsId} />
+        <>
+          <GoogleAnalytics gaId={googleAnalyticsId} />
+          <GuideEngagementTracking />
+        </>
       ) : null}
     </>
   );

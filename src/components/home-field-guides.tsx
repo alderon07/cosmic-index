@@ -17,29 +17,22 @@ export function HomeFieldGuides() {
               id="field-guides"
               className="mt-3 font-display text-2xl leading-relaxed sm:text-3xl"
             >
-              The numbers are a starting point.
+              Start with a question.
             </h2>
             <div className="mt-5 space-y-4 text-sm leading-7 text-muted-foreground">
               <p>
-                Two planets can have the same radius and very different
-                interiors. A busy solar-event feed does not establish a storm at
-                Earth. An asteroid&apos;s monitoring label does not predict an
-                impact. Understanding the measurement matters as much as finding
-                it.
+                How long is a year on another planet? How close is an asteroid
+                flyby? What happens between a solar eruption and a geomagnetic
+                storm? Choose a guide and work through the evidence.
               </p>
               <p>
-                Start with a question, use the catalog to compare the relevant
-                records, and follow the source when uncertainty matters. Our
-                field guides walk through that process with calculations you can
-                reproduce and examples that separate observations from
-                interpretations.
+                Start with the TRAPPIST-1 comparison for a real example. You can
+                change the time interval, compare the planets&apos; sizes, and
+                open the source records without creating an account.
               </p>
               <p>
-                The scientific archives supply the observations. Cosmic Index
-                brings records together, connects planets with their host stars,
-                and explains how to read the results. Missing measurements stay
-                unknown, and worked examples are labelled so they cannot be
-                mistaken for live data.
+                Save a guide for later to build a reading list in this browser.
+                Each guide ends with a question to investigate in the catalog.
               </p>
             </div>
             <Link

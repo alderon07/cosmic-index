@@ -99,11 +99,16 @@ export function CompareTable({ items }: CompareTableProps) {
         };
 
   return (
-    <div className={cn("min-w-0 overflow-x-auto border rounded-lg bezel", toneClass.tableBorder)}>
+    <div className={cn("min-w-0 overflow-x-auto border rounded-lg bezel focus-visible:outline-2 focus-visible:outline-primary", toneClass.tableBorder)} tabIndex={0} role="region" aria-label="Object comparison, scroll horizontally for more columns">
       <table className="w-full border-collapse" style={{ minWidth: `${tableMinWidthRem}rem` }}>
+        <caption className="caption-top p-3 text-left text-sm leading-6 text-muted-foreground">
+          Catalog snapshots saved on this device. To update a record, remove it and add it again from its detail page.
+          {domain === "exoplanets" ? " Mass provenance and reported bounds matter. An absent provenance label in an older snapshot means unknown, not measured. Uncertainties appear only where supplied; a plain number does not imply an exact value." : " Missing values are unknown."}
+        </caption>
         <thead>
           <tr className={cn("bg-card/70", toneClass.headerBg)}>
             <th
+              scope="col"
               className={cn(
                 "sticky left-0 z-10 min-w-40 text-left text-xs uppercase tracking-wider p-3 border-b border-border/50",
                 toneClass.metricBg,
@@ -114,6 +119,7 @@ export function CompareTable({ items }: CompareTableProps) {
             </th>
             {items.map((item) => (
               <th
+                scope="col"
                 key={item.id}
                 className={cn("text-left p-3 border-b border-border/50 min-w-48", toneClass.headerBg)}
               >
@@ -130,14 +136,15 @@ export function CompareTable({ items }: CompareTableProps) {
         <tbody>
           {rows.map((row) => (
             <tr key={row.key} className={toneClass.oddBg}>
-              <td
+              <th
+                scope="row"
                 className={cn(
                   "sticky left-0 z-10 p-3 border-b border-border/30 text-sm text-muted-foreground",
                   toneClass.metricBg
                 )}
               >
                 {row.label}
-              </td>
+              </th>
               {items.map((item) => {
                 const fact = readFactValue(item, row.key);
                 return (

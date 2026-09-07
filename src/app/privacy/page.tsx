@@ -34,7 +34,7 @@ export default function PrivacyPage() {
           Privacy Policy
         </h1>
         <p className="mt-4 text-sm text-orange-100/60">
-          Last updated: August 26, 2026
+          Last updated: September 6, 2026
         </p>
         <p className="mt-5 max-w-3xl leading-7 text-orange-100/75">
           Cosmic Index is a general-audience astronomy service. This policy
@@ -64,6 +64,7 @@ export default function PrivacyPage() {
             request information needed for reliability, abuse prevention, and
             security.
           </p>
+          <p className="mt-3">The optional field-guide reading list stores only saved guide identifiers in this browser. It does not sync to your account or other devices. Remove a guide with its save button, or clear site data in your browser to delete the list.</p>
         </section>
 
         <section className={sectionClassName}>
@@ -75,6 +76,7 @@ export default function PrivacyPage() {
             location, page-view, referrer, and IP-derived information. This
             privacy-policy document does not load those telemetry scripts.
           </p>
+          <p className="mt-3">Guide engagement events count save-button clicks, calculator changes, and links opened from a guide into the catalog. These events include the published guide identifier, not calculator inputs, the contents of your reading list, or account details.</p>
         </section>
 
         <section className={sectionClassName}>

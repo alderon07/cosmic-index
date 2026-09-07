@@ -26,7 +26,7 @@ const STAR_POSITIONS = Array.from({ length: 60 }, (_, index) => ({
 export const metadata: Metadata = {
   title: "Cosmic Index",
   description:
-    "Explore exoplanets, stars, small bodies, close approaches, fireballs, and space weather from NASA and JPL data.",
+    "Compare real exoplanets, understand asteroid flybys, and follow space weather with interactive field guides and searchable NASA, JPL, and NOAA data.",
 };
 
 export default function HomePage() {
@@ -72,10 +72,10 @@ export default function HomePage() {
               </p>
               <p className="mt-3 text-sm text-orange-100/65">
                 New here?{" "}
-                <Link href="/faq" className="text-orange-300 underline-offset-4 hover:underline">
-                  Read the FAQ
+                <Link href="/learn/trappist-1-comparison" className="text-orange-300 underline-offset-4 hover:underline">
+                  Compare two real planets
                 </Link>{" "}
-                for data-source notes, space weather basics, and catalog definitions.
+                and see what their measurements can tell you. No account needed.
               </p>
 
               <div className="mt-6 sm:mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
@@ -112,11 +112,11 @@ export default function HomePage() {
 
             <aside className="min-w-0 border-l-2 border-orange-300/50 bg-[#1d140f]/90 p-5 text-orange-100 sm:p-7" aria-labelledby="first-comparison">
               <p className="font-mono text-xs uppercase tracking-[0.2em] text-orange-300">Your first comparison</p>
-              <h2 id="first-comparison" className="mt-4 font-display text-xl leading-relaxed">Twice the radius. Eight times the volume.</h2>
-              <p className="mt-4 text-sm leading-7 text-orange-100/80">Imagine a spherical planet with twice Earth&apos;s radius. Its volume scales with the cube of its radius: 2 × 2 × 2 = 8. That gives eight times Earth&apos;s volume, but tells us nothing yet about its mass or whether it has a solid surface.</p>
-              <p className="mt-3 text-sm leading-7 text-orange-100/80">A useful comparison names its assumptions. Our exoplanet guide shows how to carry that habit into real catalog records, including estimated masses and missing measurements.</p>
-              <Link href="/learn/comparing-exoplanets" className="mt-5 inline-flex items-center gap-2 text-sm text-orange-300 underline underline-offset-4">
-                Work through the comparison <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              <h2 id="first-comparison" className="mt-4 font-display text-xl leading-relaxed">Two planets. One star. Very different years.</h2>
+              <p className="mt-4 text-sm leading-7 text-orange-100/80">In 30 Earth days, TRAPPIST-1 b completes about 20 orbits. TRAPPIST-1 e completes about five. Their radii differ by only about 21%.</p>
+              <p className="mt-3 text-sm leading-7 text-orange-100/80">Compare their sizes and change the calendar in our interactive case study. Calculations use a dated NASA Science snapshot, with sources and assumptions beside the results.</p>
+              <Link href="/learn/trappist-1-comparison" className="mt-5 inline-flex items-center gap-2 text-sm text-orange-300 underline underline-offset-4">
+                Explore the TRAPPIST-1 comparison <ArrowRight className="h-4 w-4" aria-hidden="true" />
               </Link>
             </aside>
           </div>

@@ -4,6 +4,7 @@ import { ArrowRight } from "lucide-react";
 import { GUIDES } from "@/content/guide-index";
 import { BASE_URL } from "@/lib/config";
 import { Breadcrumbs } from "@/components/breadcrumbs";
+import { ReadingList } from "@/components/learn/reading-list";
 
 export const metadata: Metadata = {
   title: "Field guides to the cosmos",
@@ -38,6 +39,7 @@ export default function LearnPage() {
           so you can reach a conclusion the data actually supports.
         </p>
       </header>
+      <ReadingList />
       <div className="divide-y divide-border border-y border-border">
         {GUIDES.map((guide, index) => (
           <article
@@ -99,6 +101,7 @@ export default function LearnPage() {
           operational forecasts or impact assessments, use the responsible
           agency.
         </p>
+        <p><Link href="/about" className="text-primary underline underline-offset-4">About Cosmic Index, data methods, and corrections</Link></p>
         <p>
           Found an error? Use Report a bug in the footer and include the guide
           title and the passage that needs correction. The{" "}

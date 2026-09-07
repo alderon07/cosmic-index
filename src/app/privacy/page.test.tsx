@@ -7,7 +7,9 @@ describe("PrivacyPage", () => {
     const html = renderToStaticMarkup(<PrivacyPage />);
 
     expect(html).toContain("Privacy Policy");
-    expect(html).toContain("August 26, 2026");
+    expect(html).toContain("September 6, 2026");
+    expect(html).toContain("reading list");
+    expect(html).toContain("calculator changes");
     expect(html).toContain("Clerk");
     expect(html).toContain("Stripe");
     expect(html).toContain("Turso");

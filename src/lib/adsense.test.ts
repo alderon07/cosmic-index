@@ -89,6 +89,7 @@ describe("AdSense route allowlist", () => {
     "/learn/comparing-exoplanets",
     "/learn/reading-space-weather",
     "/learn/understanding-asteroid-flybys",
+    "/learn/trappist-1-comparison",
   ])("allows %s", (pathname) => {
     expect(isAdEligiblePath(pathname)).toBe(true);
   });
@@ -108,6 +109,8 @@ describe("AdSense route allowlist", () => {
     "/space-weather/unknown-event",
     "/learn",
     "/learn/unpublished-guide",
+    "/about",
+    "/learn/trappist-1-comparison/extra",
     "/learn/comparing-exoplanets/extra",
     "/learn/comparing-exoplanets/",
     "/faq",

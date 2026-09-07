@@ -58,6 +58,35 @@ const smallBody: SmallBodyData = {
 };
 
 describe("compare facts", () => {
+  it("preserves estimated mass and minimum-mass provenance", () => {
+    const estimated = createCompareItem({ ...exoplanet, massIsEstimated: true });
+    expect(estimated?.facts.find((fact) => fact.key === "mass-kind")?.value).toBe("Estimated from radius");
+    const minimum = createCompareItem({
+      ...exoplanet,
+      planetaryParameters: { massProvenance: "Msini", massEarth: { value: 5.2, limit: "upper" } },
+    });
+    expect(minimum?.facts.find((fact) => fact.key === "mass-kind")?.value).toBe("M sin i (minimum mass)");
+    expect(minimum?.facts.find((fact) => fact.key === "mass-earth")?.value).toBe("< 5.2");
+  });
+
+  it("retains asymmetric uncertainty and period bounds", () => {
+    const item = createCompareItem({
+      ...exoplanet, orbitalPeriodDays: 0.004,
+      planetaryParameters: {
+        massEarth: { value: 5.2, errorPlus: 0.4, errorMinus: -0.2 },
+        orbitalPeriodDays: { value: 0.004, limit: "lower" },
+      },
+    });
+    expect(item?.facts.find((fact) => fact.key === "mass-earth")?.value).toBe("5.2 (+0.4 / −0.2)");
+    expect(item?.facts.find((fact) => fact.key === "orbital-period-days")?.value).toBe("> 0.004");
+  });
+
+  it("does not invent mass provenance or render non-finite values", () => {
+    const item = createCompareItem({ ...exoplanet, radiusEarth: Infinity });
+    expect(item?.facts.some((fact) => fact.key === "radius-earth")).toBe(false);
+    expect(item?.facts.find((fact) => fact.key === "mass-kind")?.value).toBe("Provenance not supplied");
+  });
+
   it("maps objects to compare domains", () => {
     expect(compareDomainFromObject(exoplanet)).toBe("exoplanets");
     expect(compareDomainFromObject(star)).toBe("stars");

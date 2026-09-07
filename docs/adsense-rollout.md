@@ -1,6 +1,6 @@
 # Google AdSense rollout
 
-Last updated: 2026-09-05
+Last updated: 2026-09-06
 
 This runbook covers the external configuration and production verification for
 the single manual responsive unit below the Cosmic Index footer. Code rollout
@@ -14,12 +14,14 @@ The manual unit is eligible only on the homepage and these complete guides:
 - `/learn/comparing-exoplanets`
 - `/learn/reading-space-weather`
 - `/learn/understanding-asteroid-flybys`
+- `/learn/trappist-1-comparison`
 
 `src/lib/adsense.ts` uses exact paths. Catalog lists, object details, and all
 space-weather dashboards are excluded, including empty results, sparse records,
 and upstream failures. The guide index, unknown guides, and future routes are
 excluded by default. The existing error-screen marker remains a second guard.
-Adding a guide does not automatically enable ads on it.
+Adding a guide does not automatically enable ads on it. `/about` and the
+browser-local reading list on `/learn` remain outside ad inventory.
 
 The guides contain original worked examples, primary-source links, and links
 back to the tools. Catalog education opens by default, and exoplanet detail

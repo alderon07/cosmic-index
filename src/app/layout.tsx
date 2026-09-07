@@ -16,6 +16,7 @@ import {
   Sun,
   Waves,
   Wind,
+  BookOpen,
 } from "lucide-react";
 import { THEMES } from "@/lib/theme";
 import { KeyboardShortcutsProvider } from "@/components/keyboard-shortcuts/keyboard-shortcuts-provider";
@@ -73,7 +74,7 @@ export const metadata: Metadata = {
     template: "%s | Cosmic Index",
   },
   description:
-    "A retrofuturistic space encyclopedia for discovering exoplanets, host stars, asteroids, and comets. Explore 5,000+ exoplanets, 4,500+ host stars, and 1,000,000+ small bodies with data from NASA and JPL.",
+    "Explore exoplanets, host stars, asteroids, and space weather through searchable public data, interactive comparisons, and sourced field guides.",
   authors: [{ name: "Cosmic Index" }],
   creator: "Cosmic Index",
   publisher: "Cosmic Index",
@@ -150,13 +151,17 @@ export default function RootLayout({
           {/* Navigation */}
           <header className="sticky top-0 z-50 border-b border-orange-200/20 bg-[#120d0a]/90 backdrop-blur-md">
             <nav className="shell-container flex h-16 min-w-0 items-center justify-between">
-              <Link href="/" className="flex items-center gap-2 group">
+              <Link href="/" aria-label="Cosmic Index home" className="flex items-center gap-2 group">
                 <div className="h-8 w-8 rounded-full border border-orange-300/35 reactor-gradient pulse-glow" />
                 <span className="hidden lg:inline font-display text-xl tracking-wider text-orange-100 transition-colors group-hover:text-orange-300">
                   Cosmic Index
                 </span>
               </Link>
               <div className="flex min-w-0 items-center gap-1.5 sm:gap-3 lg:gap-6">
+                <Link href="/learn" aria-label="Field guides" className="inline-flex min-h-11 min-w-9 items-center justify-center gap-2 rounded-sm text-sm text-orange-300 hover:underline focus-visible:outline-2 focus-visible:outline-orange-300">
+                  <BookOpen className="h-5 w-5" aria-hidden="true" />
+                  <span className="hidden xl:inline">Field guides</span>
+                </Link>
                 <Link
                   href="/exoplanets"
                   className={`font-display text-sm tracking-wide text-orange-100/75 transition-colors ${THEMES.exoplanets.hoverText}`}
@@ -484,6 +489,7 @@ export default function RootLayout({
                     <Link href="/faq" className="text-orange-300 hover:underline">
                       FAQ
                     </Link>
+                    <Link href="/about" className="text-orange-300 hover:underline">About &amp; methods</Link>
                     <a href="/privacy" className="text-orange-300 hover:underline">
                       Privacy
                     </a>

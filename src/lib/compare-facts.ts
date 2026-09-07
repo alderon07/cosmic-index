@@ -8,6 +8,7 @@ import {
   isSmallBody,
   isStar,
 } from "@/lib/types";
+import type { PlanetaryMeasurement } from "@/lib/types";
 
 export type CompareDomain = "exoplanets" | "stars" | "small-bodies";
 export type CompareSnapshotLevel = "list" | "detail";
@@ -72,6 +73,7 @@ const FACT_SCHEMAS: Record<CompareDomain, CompareFactSchema[]> = {
     { key: "host-star", label: "Host Star" },
     { key: "radius-earth", label: "Radius", detailOnly: false },
     { key: "mass-earth", label: "Mass" },
+    { key: "mass-kind", label: "Mass provenance" },
     { key: "orbital-period-days", label: "Orbital Period" },
     { key: "distance-pc", label: "Distance" },
     { key: "equilibrium-temp-k", label: "Eq. Temp" },
@@ -204,7 +206,7 @@ function withFact(
   }
 
   if (typeof value === "number") {
-    if (Number.isNaN(value)) return;
+    if (!Number.isFinite(value)) return;
     const precision = options?.precision ?? 2;
     facts.push({ key, value: value.toFixed(precision), unit: options?.unit });
     return;
@@ -215,18 +217,53 @@ function withFact(
   facts.push({ key, value: trimmed, unit: options?.unit });
 }
 
+const measurementFormat = new Intl.NumberFormat("en-US", { maximumSignificantDigits: 6 });
+
+function withMeasurement(
+  facts: CompareFact[],
+  key: string,
+  value: number | undefined,
+  unit: string,
+  measurement?: PlanetaryMeasurement,
+): void {
+  if (value === undefined || !Number.isFinite(value) || value <= 0) return;
+  let text = measurementFormat.format(value);
+  // Do not attach constraints from a different value or an estimated fallback.
+  if (measurement?.value === value) {
+    if (measurement.limit) {
+      text = `${measurement.limit === "upper" ? "<" : ">"} ${text}`;
+    } else {
+      const errors: string[] = [];
+      if (measurement.errorPlus !== undefined && Number.isFinite(measurement.errorPlus)) {
+        errors.push(`+${measurementFormat.format(Math.abs(measurement.errorPlus))}`);
+      }
+      if (measurement.errorMinus !== undefined && Number.isFinite(measurement.errorMinus)) {
+        errors.push(`−${measurementFormat.format(Math.abs(measurement.errorMinus))}`);
+      }
+      if (errors.length) text += ` (${errors.join(" / ")})`;
+    }
+  }
+  facts.push({ key, value: text, unit });
+}
+
 function getExoplanetFacts(exoplanet: ExoplanetData): CompareFact[] {
   const facts: CompareFact[] = [];
   withFact(facts, "host-star", exoplanet.hostStar);
-  withFact(facts, "radius-earth", exoplanet.radiusEarth, { unit: "R⊕", precision: 2 });
-  withFact(facts, "mass-earth", exoplanet.massEarth, {
-    unit: "M⊕",
-    precision: 2,
-  });
-  withFact(facts, "orbital-period-days", exoplanet.orbitalPeriodDays, {
-    unit: "days",
-    precision: 2,
-  });
+  withMeasurement(facts, "radius-earth", exoplanet.radiusEarth, "R⊕");
+  withMeasurement(facts, "mass-earth", exoplanet.massEarth, "M⊕", exoplanet.massIsEstimated ? undefined : exoplanet.planetaryParameters?.massEarth);
+  if (facts.some((fact) => fact.key === "mass-earth")) {
+    const provenance = exoplanet.planetaryParameters?.massProvenance;
+    withFact(facts, "mass-kind", exoplanet.massIsEstimated
+      ? "Estimated from radius"
+      : provenance === "Msini"
+        ? "M sin i (minimum mass)"
+        : provenance === "Msin(i)/sin(i)"
+          ? "Calculated from M sin i and inclination"
+          : provenance === "Mass"
+            ? "Mass reported by archive"
+            : provenance || "Provenance not supplied");
+  }
+  withMeasurement(facts, "orbital-period-days", exoplanet.orbitalPeriodDays, "days", exoplanet.planetaryParameters?.orbitalPeriodDays);
   withFact(facts, "distance-pc", exoplanet.distanceParsecs, {
     unit: "pc",
     precision: 1,

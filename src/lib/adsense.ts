@@ -9,6 +9,7 @@ const AD_ELIGIBLE_PATHS = new Set([
   "/learn/comparing-exoplanets",
   "/learn/reading-space-weather",
   "/learn/understanding-asteroid-flybys",
+  "/learn/trappist-1-comparison",
 ]);
 
 export const NO_ADS_MARKER_ATTRIBUTE = "data-no-ads";

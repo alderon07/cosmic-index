@@ -31,6 +31,9 @@ describe("public field guides", () => {
       expect(html.match(/<h1\b/g)).toHaveLength(1);
       expect(html).toContain(`href="${guide.toolHref}"`);
       expect(html).toContain("<caption");
+      expect(html).toContain('"@type":"Article"');
+      expect(html).toContain('href="/about"');
+      expect(html).toContain("Save for later");
       for (const section of GUIDE_ARTICLES[guide.slug].sections) {
         expect(html).toContain(`href="#${section.id}"`);
         expect(html).toContain(`id="${section.id}"`);
@@ -43,6 +46,18 @@ describe("public field guides", () => {
       }
     },
   );
+
+  it("renders the real case study with source values and usable catalog links before hydration", async () => {
+    const html = renderToStaticMarkup(await GuidePage({ params: Promise.resolve({ slug: "trappist-1-comparison" }) }));
+    expect(html).toContain("TRAPPIST-1 b");
+    expect(html).toContain("TRAPPIST-1 e");
+    expect(html).toContain("1.116");
+    expect(html).toContain('href="/exoplanets/TRAPPIST-1%20b"');
+    expect(html).toContain('href="/exoplanets/TRAPPIST-1%20e"');
+    expect(html).toContain('id="earth-interval"');
+    expect(html).toContain("20");
+    expect(html).toContain("4.9");
+  });
 
   it.each(["unpublished", "constructor", "__proto__"])(
     "returns not found for %s rather than another article",

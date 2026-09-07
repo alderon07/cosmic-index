@@ -8,6 +8,9 @@ import { BASE_URL } from "@/lib/config";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { JsonLd } from "@/components/seo/json-ld";
 import { buildBreadcrumbJsonLd } from "@/lib/seo";
+import { OrbitComparison } from "@/components/learn/orbit-comparison";
+import { PlanetSizeComparison } from "@/components/learn/planet-size-comparison";
+import { SaveGuideButton } from "@/components/learn/reading-list";
 
 interface GuidePageProps {
   params: Promise<{ slug: string }>;
@@ -57,6 +60,17 @@ export default async function GuidePage({ params }: GuidePageProps) {
   return (
     <div className="shell-container py-8 sm:py-12">
       <JsonLd data={buildBreadcrumbJsonLd(breadcrumbs)} />
+      <JsonLd data={{
+        "@context": "https://schema.org",
+        "@type": "Article",
+        headline: guide.title,
+        description: guide.description,
+        mainEntityOfPage: `${BASE_URL}/learn/${guide.slug}`,
+        author: { "@type": "Organization", name: "Cosmic Index", url: `${BASE_URL}/about` },
+        publisher: { "@type": "Organization", name: "Cosmic Index", url: BASE_URL },
+        ...(article.updatedAt ? { dateModified: article.updatedAt } : {}),
+        citation: [...new Set(article.sections.flatMap((section) => section.sources?.map((source) => source.href) ?? []))],
+      }} />
       <Breadcrumbs items={breadcrumbs} />
       <header className="mb-10 mt-8 max-w-4xl border-b border-primary/30 pb-8">
         <p className="font-mono text-xs uppercase tracking-[0.2em] text-primary">
@@ -69,8 +83,10 @@ export default async function GuidePage({ params }: GuidePageProps) {
           {article.introduction}
         </p>
         <p className="mt-5 text-sm text-muted-foreground">
-          By Cosmic Index · Worked examples with primary sources
+          By <Link href="/about" className="text-primary underline underline-offset-4">Cosmic Index</Link>. Worked examples with primary sources.
+          {article.updatedAt ? <> Updated <time dateTime={article.updatedAt}>{new Intl.DateTimeFormat("en-US", { dateStyle: "long", timeZone: "UTC" }).format(new Date(`${article.updatedAt}T00:00:00Z`))}</time>.</> : null}
         </p>
+        <SaveGuideButton slug={guide.slug} />
       </header>
       <div className="grid items-start gap-10 lg:grid-cols-[14rem_minmax(0,1fr)] lg:gap-14">
         <nav
@@ -184,6 +200,8 @@ export default async function GuidePage({ params }: GuidePageProps) {
                     ))}
                   </ul>
                 ) : null}
+                {guide.slug === "trappist-1-comparison" && section.id === "source-snapshot" ? <PlanetSizeComparison /> : null}
+                {guide.slug === "trappist-1-comparison" && section.id === "orbital-calendar" ? <OrbitComparison /> : null}
               </section>
             ))}
           </div>
@@ -199,6 +217,8 @@ export default async function GuidePage({ params }: GuidePageProps) {
             </p>
             <Link
               href={guide.toolHref}
+              data-guide-event="guide_tool_open"
+              data-guide-slug={guide.slug}
               className="mt-5 inline-flex items-center gap-2 text-primary underline underline-offset-4"
             >
               {guide.toolLabel}

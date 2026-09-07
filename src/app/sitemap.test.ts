@@ -15,6 +15,8 @@ describe("main sitemap metadata route", () => {
       "https://cosmicindex.dev/fireballs",
       "https://cosmicindex.dev/faq",
       "https://cosmicindex.dev/learn",
+      "https://cosmicindex.dev/about",
+      "https://cosmicindex.dev/learn/trappist-1-comparison",
       "https://cosmicindex.dev/learn/comparing-exoplanets",
       "https://cosmicindex.dev/learn/reading-space-weather",
       "https://cosmicindex.dev/learn/understanding-asteroid-flybys",
