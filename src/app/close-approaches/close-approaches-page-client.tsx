@@ -307,7 +307,10 @@ export function CloseApproachesPageClient({
             theme="close-approaches"
             defaultOpen
           />
-          <GuideLink slug="understanding-asteroid-flybys" />
+          <div className="flex flex-col items-start">
+            <GuideLink slug="understanding-asteroid-flybys" />
+            <GuideLink slug="2023-bu-close-approach" />
+          </div>
         </div>
       </div>
 

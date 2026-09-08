@@ -40,6 +40,7 @@ import { buildWebsiteJsonLd } from "@/lib/seo";
 import { getAdsenseConfig } from "@/lib/adsense";
 import { GooglePublisherServices } from "@/components/ads/google-publisher-services";
 import { ReportBugButton } from "@/components/report-bug-button";
+import { AnalyticsConsentSettings } from "@/components/analytics-consent";
 
 const audiowide = Audiowide({
   variable: "--font-display",
@@ -446,6 +447,8 @@ export default function RootLayout({
           <main className="flex-1">{children}</main>
           <CompareTray />
 
+          <Suspense fallback={null}><AnalyticsConsentSettings /></Suspense>
+
           {/* Footer */}
           <footer className="mt-auto border-t border-orange-200/20 bg-[#100c09]">
             <div className="shell-container py-8">
@@ -493,6 +496,7 @@ export default function RootLayout({
                     <a href="/privacy" className="text-orange-300 hover:underline">
                       Privacy
                     </a>
+                    <a href="/privacy#analytics-settings" className="text-orange-300 hover:underline">Analytics settings</a>
                     <Suspense fallback={null}>
                       <ReportBugButton />
                     </Suspense>

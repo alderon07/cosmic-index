@@ -100,32 +100,30 @@ export function AddToCollectionDialog({
     [membershipsQuery.data]
   );
   const isLoading = membershipsQuery.isLoading;
+  const membershipError = membershipsQuery.error instanceof MembershipError
+    ? membershipsQuery.error
+    : null;
+  const displayedErrorMessage = errorMessage ?? membershipError?.message ?? null;
 
-  useEffect(() => {
-    if (!open) {
-      setQuery("");
-      setStatusMessage(null);
-      setErrorMessage(null);
-      setPendingByCollectionId({});
-      return;
-    }
-
+  const handleOpenChange = useCallback((nextOpen: boolean) => {
+    setOpen(nextOpen);
     setStatusMessage(null);
     setErrorMessage(null);
-  }, [open]);
+
+    if (!nextOpen) {
+      setQuery("");
+      setPendingByCollectionId({});
+    }
+  }, []);
 
   useEffect(() => {
-    const error = membershipsQuery.error;
-    if (!(error instanceof MembershipError)) return;
+    if (membershipError?.status !== 401) return;
 
-    if (error.status === 401) {
-      setOpen(false);
-      setErrorMessage("Session expired. Please sign in again.");
-      return;
-    }
-
-    setErrorMessage(error.message);
-  }, [membershipsQuery.error]);
+    // The query error arrives from an external request; closing the dialog is
+    // the synchronization this effect performs, not derived render state.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setOpen(false);
+  }, [membershipError]);
 
   const filteredCollections = useMemo(() => {
     const trimmedQuery = query.trim().toLowerCase();
@@ -358,7 +356,7 @@ export function AddToCollectionDialog({
   ]);
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button
           type="button"
@@ -493,8 +491,8 @@ export function AddToCollectionDialog({
           </div>
 
           <div aria-live="polite" className="min-h-5 text-xs">
-            {errorMessage ? <p className="text-destructive">{errorMessage}</p> : null}
-            {!errorMessage && statusMessage ? (
+            {displayedErrorMessage ? <p className="text-destructive">{displayedErrorMessage}</p> : null}
+            {!displayedErrorMessage && statusMessage ? (
               <p className="text-uranium-green">{statusMessage}</p>
             ) : null}
           </div>

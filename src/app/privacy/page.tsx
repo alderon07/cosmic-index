@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { BASE_URL } from "@/lib/config";
+import { Suspense } from "react";
+import { AnalyticsConsentSettings } from "@/components/analytics-consent";
 
 const GITHUB_REPOSITORY = "https://github.com/alderon07/cosmic-index";
 
@@ -34,7 +36,7 @@ export default function PrivacyPage() {
           Privacy Policy
         </h1>
         <p className="mt-4 text-sm text-orange-100/60">
-          Last updated: September 6, 2026
+          Last updated: September 7, 2026
         </p>
         <p className="mt-5 max-w-3xl leading-7 text-orange-100/75">
           Cosmic Index is a general-audience astronomy service. This policy
@@ -44,6 +46,9 @@ export default function PrivacyPage() {
       </header>
 
       <div className="space-y-5 text-sm leading-7 text-orange-100/75 sm:text-base">
+        <div id="analytics-settings" className="scroll-mt-24">
+          <Suspense fallback={null}><AnalyticsConsentSettings alwaysVisible /></Suspense>
+        </div>
         <section className={sectionClassName}>
           <h2 className="font-display text-xl text-orange-100">Accounts and billing</h2>
           <p className="mt-3">
@@ -71,12 +76,13 @@ export default function PrivacyPage() {
           <h2 className="font-display text-xl text-orange-100">Analytics</h2>
           <p className="mt-3">
             Vercel Analytics and Google Analytics help measure aggregate site use
-            and diagnose performance. Depending on your region and consent
-            choices, these services may process device, browser, approximate
+            and diagnose performance. Both stay off until you accept optional
+            analytics. After acceptance, these services may process device, browser, approximate
             location, page-view, referrer, and IP-derived information. This
             privacy-policy document does not load those telemetry scripts.
           </p>
           <p className="mt-3">Guide engagement events count save-button clicks, calculator changes, and links opened from a guide into the catalog. These events include the published guide identifier, not calculator inputs, the contents of your reading list, or account details.</p>
+          <p className="mt-3">Use Analytics settings in the footer to change your choice. Declining stops future analytics collection and removes accessible Google Analytics cookies. It does not delete information already received by the analytics providers. This browser stores a versioned analytics preference until you change it or clear site data. If storage is unavailable, the choice applies to the current page and may not survive a reload.</p>
         </section>
 
         <section className={sectionClassName}>
@@ -126,7 +132,9 @@ export default function PrivacyPage() {
             Consent and US-state choices
           </h2>
           <p className="mt-3">
-            Where required, Google&apos;s privacy message presents consent,
+            Analytics settings control optional site analytics separately from
+            advertising. Accepting analytics does not grant advertising consent.
+            When advertising is enabled, Google&apos;s privacy message presents consent,
             non-consent, vendor, and purpose choices. You can revisit the privacy
             choices control provided on supported pages to withdraw consent. US
             residents can also use the displayed state privacy control to opt out

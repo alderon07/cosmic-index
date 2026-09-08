@@ -124,5 +124,6 @@ describe("catalog education placement", () => {
     );
 
     expect(html).toContain("How to read close-approach risk data");
+    expect(html).toContain('href="/learn/2023-bu-close-approach"');
   });
 });

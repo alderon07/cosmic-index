@@ -142,13 +142,6 @@ export function SaveButton({
   className,
 }: SaveButtonProps) {
   const { isSignedIn, isLoaded } = useAppAuth();
-  const [isSaved, setIsSaved] = useState(initialIsSaved);
-  const [savedObjectId, setSavedObjectId] = useState<number | null>(
-    initialSavedObjectId
-  );
-  const [isLoading, setIsLoading] = useState(false);
-
-  // Determine object type for canonical ID
   const objectType: CatalogObjectType = isExoplanet(object)
     ? "exoplanet"
     : isStar(object)
@@ -156,11 +149,26 @@ export function SaveButton({
     : "small-body";
 
   const canonicalId = catalogObjectId(objectType, object.id);
+  const cachedSavedObjectId = savedStatusCache.get(canonicalId);
+  const initialSavedState = cachedSavedObjectId === undefined
+    ? { isSaved: initialIsSaved, savedObjectId: initialSavedObjectId }
+    : { isSaved: cachedSavedObjectId !== null, savedObjectId: cachedSavedObjectId };
+  const resetKey = `${canonicalId}:${initialIsSaved}:${initialSavedObjectId ?? "none"}`;
+  const [activeResetKey, setActiveResetKey] = useState(resetKey);
+  const [isSaved, setIsSaved] = useState(initialSavedState.isSaved);
+  const [savedObjectId, setSavedObjectId] = useState<number | null>(
+    initialSavedState.savedObjectId
+  );
+  const [isLoading, setIsLoading] = useState(false);
+
+  if (activeResetKey !== resetKey) {
+    setActiveResetKey(resetKey);
+    setIsSaved(initialSavedState.isSaved);
+    setSavedObjectId(initialSavedState.savedObjectId);
+    setIsLoading(false);
+  }
 
   useEffect(() => {
-    setIsSaved(initialIsSaved);
-    setSavedObjectId(initialSavedObjectId);
-
     if (initialIsSaved) {
       broadcastSavedStatus(canonicalId, initialSavedObjectId);
     }
@@ -168,13 +176,6 @@ export function SaveButton({
 
   useEffect(() => {
     if (!isLoaded || !isSignedIn) return;
-
-    const cached = savedStatusCache.get(canonicalId);
-    if (cached !== undefined) {
-      setSavedObjectId(cached);
-      setIsSaved(cached !== null);
-      return;
-    }
 
     const unsubscribe = subscribeSavedStatus(canonicalId, (nextSavedObjectId) => {
       setSavedObjectId(nextSavedObjectId);

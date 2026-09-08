@@ -10,6 +10,8 @@ const AD_ELIGIBLE_PATHS = new Set([
   "/learn/reading-space-weather",
   "/learn/understanding-asteroid-flybys",
   "/learn/trappist-1-comparison",
+  "/learn/2023-bu-close-approach",
+  "/learn/may-2024-geomagnetic-storm",
 ]);
 
 export const NO_ADS_MARKER_ATTRIBUTE = "data-no-ads";

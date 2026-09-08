@@ -1,6 +1,6 @@
 # Google AdSense rollout
 
-Last updated: 2026-09-06
+Last updated: 2026-09-07
 
 This runbook covers the external configuration and production verification for
 the single manual responsive unit below the Cosmic Index footer. Code rollout
@@ -15,6 +15,8 @@ The manual unit is eligible only on the homepage and these complete guides:
 - `/learn/reading-space-weather`
 - `/learn/understanding-asteroid-flybys`
 - `/learn/trappist-1-comparison`
+- `/learn/2023-bu-close-approach`
+- `/learn/may-2024-geomagnetic-storm`
 
 `src/lib/adsense.ts` uses exact paths. Catalog lists, object details, and all
 space-weather dashboards are excluded, including empty results, sparse records,
@@ -59,7 +61,10 @@ the configured Pro price or user database is unavailable.
    with **Consent**, **Do not consent**, and **Manage options**.
 5. Publish a US state regulations message targeting all current and future
    supported states.
-6. Enable Google's advertising and analytics consent-mode integration.
+6. Enable Google's advertising consent-mode integration. Keep its analytics
+   consent integration disabled. Cosmic Index's Analytics settings control
+   `analytics_storage`, and two analytics-choice controllers can overwrite each
+   other's state.
 7. Register `https://cosmicindex.dev/privacy` as the privacy-policy URL.
 8. Request site review and wait until the site status is **Ready**.
 9. Create one responsive display unit named
@@ -86,7 +91,15 @@ when testing privacy messages. Verify:
 - Pro users and active or trialing configured-price subscribers receive no ad
   element and no `adsbygoogle.push` call.
 - An anonymous ad disappears immediately when sign-in begins resolving.
-- Declined-consent behavior follows the published Google message configuration.
+- Declined advertising-consent behavior follows the published Google message
+  configuration. The site's separate Analytics settings do not replace
+  Google's certified advertising CMP.
+- Before analytics acceptance, confirm the site queues denied Google consent
+  defaults before any publisher or analytics script. Accepting analytics may
+  then load Google Analytics and Vercel Analytics. Declining or withdrawing
+  must stop later analytics events, including in another open tab. Google's
+  [`ga-disable` guidance](https://developers.google.com/tag-platform/security/guides/privacy)
+  documents the property-level collection control used on withdrawal.
 - Mobile and desktop layouts remain non-sticky and do not obscure content.
 - Privacy, FAQ, user, settings, waitlist, documentation, sitemap, 404, and error
   screens contain no ad unit.

@@ -1,8 +1,7 @@
 "use client";
 
-import { GoogleAnalytics } from "@next/third-parties/google";
 import { useQuery } from "@tanstack/react-query";
-import { Analytics } from "@vercel/analytics/react";
+import { Analytics, type BeforeSendEvent } from "@vercel/analytics/react";
 import Script from "next/script";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
@@ -15,6 +14,7 @@ import {
 } from "@/lib/adsense";
 import { queryKeys } from "@/lib/query-keys";
 import { GuideEngagementTracking } from "@/components/learn/guide-engagement-tracking";
+import { analyticsCollectionAllowed, initializeAnalyticsConsent, useAnalyticsConsent } from "@/components/analytics-consent";
 
 const adEligibilityResponseSchema = z
   .object({
@@ -217,6 +217,9 @@ export function GooglePublisherServices({
   const [publisherScriptReady, setPublisherScriptReady] = useState(false);
   const routeEligible = isAdEligiblePath(pathname);
   const telemetryAllowed = shouldRenderSiteTelemetry(pathname);
+  const analyticsConsent = useAnalyticsConsent();
+
+  useEffect(() => initializeAnalyticsConsent(googleAnalyticsId), [googleAnalyticsId]);
 
   const eligibility = useQuery({
     queryKey: queryKeys.adsenseEligibility(auth.userId ?? "unknown"),
@@ -248,11 +251,11 @@ export function GooglePublisherServices({
 
   if (!telemetryAllowed) return null;
 
-  const analyticsReady = !adsense.enabled || publisherScriptReady;
+  const analyticsReady = analyticsConsent === "granted";
 
   return (
     <>
-      {adsense.enabled && adsense.clientId ? (
+      {analyticsConsent !== "loading" && adsense.enabled && adsense.clientId ? (
         <Script
           id="google-publisher-services"
           src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${encodeURIComponent(adsense.clientId)}`}
@@ -270,13 +273,39 @@ export function GooglePublisherServices({
         />
       ) : null}
 
-      <Analytics />
+      {analyticsReady ? <Analytics beforeSend={filterAnalyticsEvent} /> : null}
       {analyticsReady && googleAnalyticsId ? (
-        <>
-          <GoogleAnalytics gaId={googleAnalyticsId} />
-          <GuideEngagementTracking />
-        </>
+        <GoogleAnalyticsServices key={googleAnalyticsId} id={googleAnalyticsId} />
       ) : null}
     </>
   );
+}
+
+function GoogleAnalyticsServices({ id }: { id: string }) {
+  const [scriptReady, setScriptReady] = useState(false);
+
+  return (
+    <>
+      <Script
+        id="google-analytics-init"
+        dangerouslySetInnerHTML={{
+          __html: `window.dataLayer=window.dataLayer||[];window.gtag=function(){window.dataLayer.push(arguments)};window.gtag('js',new Date());window.gtag('config','${id}');`,
+        }}
+      />
+      <Script
+        id="google-analytics-sdk"
+        src={`https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(id)}`}
+        strategy="afterInteractive"
+        onLoad={() => setScriptReady(true)}
+        onReady={() => setScriptReady(true)}
+      />
+      {scriptReady ? <GuideEngagementTracking /> : null}
+    </>
+  );
+}
+
+// This callback remains effective even after the loaded SDK outlives its React
+// component. Withdrawing consent must also stop automatic page-view events.
+function filterAnalyticsEvent(event: BeforeSendEvent): BeforeSendEvent | null {
+  return analyticsCollectionAllowed() ? event : null;
 }

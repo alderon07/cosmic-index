@@ -90,6 +90,8 @@ describe("AdSense route allowlist", () => {
     "/learn/reading-space-weather",
     "/learn/understanding-asteroid-flybys",
     "/learn/trappist-1-comparison",
+    "/learn/2023-bu-close-approach",
+    "/learn/may-2024-geomagnetic-storm",
   ])("allows %s", (pathname) => {
     expect(isAdEligiblePath(pathname)).toBe(true);
   });

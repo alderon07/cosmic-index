@@ -92,7 +92,10 @@ export default async function SpaceWeatherPage() {
             theme="space-weather"
             defaultOpen
           />
-          <GuideLink slug="reading-space-weather" />
+          <div className="flex flex-col items-start">
+            <GuideLink slug="reading-space-weather" />
+            <GuideLink slug="may-2024-geomagnetic-storm" />
+          </div>
         </section>
 
         {/* Client-rendered dashboard with React Query auto-refresh */}

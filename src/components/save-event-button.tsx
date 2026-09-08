@@ -108,19 +108,24 @@ export function SaveEventButton({
   className,
 }: SaveEventButtonProps) {
   const { isLoaded, isSignedIn } = useAppAuth();
-  const [isSaved, setIsSaved] = useState(false);
-  const [savedObjectId, setSavedObjectId] = useState<number | null>(null);
+  const cachedSavedObjectId = savedEventStatusCache.get(canonicalId);
+  const [activeCanonicalId, setActiveCanonicalId] = useState(canonicalId);
+  const [isSaved, setIsSaved] = useState(cachedSavedObjectId != null);
+  const [savedObjectId, setSavedObjectId] = useState<number | null>(
+    cachedSavedObjectId ?? null
+  );
   const [isLoading, setIsLoading] = useState(false);
+
+  if (activeCanonicalId !== canonicalId) {
+    const nextCachedSavedObjectId = savedEventStatusCache.get(canonicalId);
+    setActiveCanonicalId(canonicalId);
+    setIsSaved(nextCachedSavedObjectId != null);
+    setSavedObjectId(nextCachedSavedObjectId ?? null);
+    setIsLoading(false);
+  }
 
   useEffect(() => {
     if (!isLoaded || !isSignedIn) return;
-
-    const cached = savedEventStatusCache.get(canonicalId);
-    if (cached !== undefined) {
-      setSavedObjectId(cached);
-      setIsSaved(cached !== null);
-      return;
-    }
 
     const unsubscribe = subscribeSavedEventStatus(canonicalId, (nextSavedObjectId) => {
       setSavedObjectId(nextSavedObjectId);

@@ -21,11 +21,12 @@ export function SearchBar({
   debounceMs = 300,
 }: SearchBarProps) {
   const [localValue, setLocalValue] = useState(value);
+  const [lastExternalValue, setLastExternalValue] = useState(value);
 
-  // Sync local value with external value
-  useEffect(() => {
+  if (lastExternalValue !== value) {
+    setLastExternalValue(value);
     setLocalValue(value);
-  }, [value]);
+  }
 
   // Debounced onChange
   useEffect(() => {

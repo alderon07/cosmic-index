@@ -40,6 +40,51 @@ export default function LearnPage() {
         </p>
       </header>
       <ReadingList />
+      <section
+        id="latest-investigations"
+        aria-labelledby="latest-investigations-title"
+        className="mb-10 rounded-lg border border-primary/30 bg-primary/5 p-5 sm:p-7"
+      >
+        <p className="font-mono text-xs uppercase tracking-widest text-primary">
+          Latest investigations
+        </p>
+        <h2
+          id="latest-investigations-title"
+          className="mt-3 font-display text-xl sm:text-2xl"
+        >
+          Work through two real events
+        </h2>
+        <div className="mt-5 grid gap-5 md:grid-cols-2">
+          <article>
+            <h3 className="font-medium">
+              <Link
+                href="/learn/2023-bu-close-approach"
+                className="text-primary underline underline-offset-4"
+              >
+                2023 BU close-approach forecast
+              </Link>
+            </h3>
+            <p className="mt-2 text-sm leading-7 text-muted-foreground">
+              Convert a surface clearance to a geocentric distance without
+              hiding the forecast date or rounded inputs.
+            </p>
+          </article>
+          <article>
+            <h3 className="font-medium">
+              <Link
+                href="/learn/may-2024-geomagnetic-storm"
+                className="text-primary underline underline-offset-4"
+              >
+                May 2024 geomagnetic storm
+              </Link>
+            </h3>
+            <p className="mt-2 text-sm leading-7 text-muted-foreground">
+              Put a watch, an observed G5 storm, and later solar flares on one
+              UTC timeline.
+            </p>
+          </article>
+        </div>
+      </section>
       <div className="divide-y divide-border border-y border-border">
         {GUIDES.map((guide, index) => (
           <article
@@ -78,6 +123,32 @@ export default function LearnPage() {
           </article>
         ))}
       </div>
+      <section
+        id="site-updates"
+        aria-labelledby="site-updates-title"
+        className="mt-10 max-w-3xl border-l-2 border-primary/40 pl-5"
+      >
+        <h2 id="site-updates-title" className="font-display text-lg">
+          What changed
+        </h2>
+        <article className="mt-4 text-sm leading-7 text-muted-foreground">
+          <time dateTime="2026-09-07" className="font-mono text-xs uppercase tracking-widest text-primary">
+            September 7, 2026
+          </time>
+          <p className="mt-2">
+            New investigations explain{" "}
+            <Link href="/learn/2023-bu-close-approach" className="text-primary underline underline-offset-4">
+              2023 BU&apos;s flyby distance
+            </Link>{" "}
+            and{" "}
+            <Link href="/learn/may-2024-geomagnetic-storm" className="text-primary underline underline-offset-4">
+              the order of events during the May 2024 storm
+            </Link>
+            . Follow the calculations, inspect the diagrams, and check the
+            original sources.
+          </p>
+        </article>
+      </section>
       <section
         className="mt-10 max-w-3xl space-y-3 text-sm leading-7 text-muted-foreground"
         aria-labelledby="editorial-notes"

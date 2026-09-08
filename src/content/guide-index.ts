@@ -35,6 +35,24 @@ export const GUIDES = [
     toolHref: "/close-approaches",
     toolLabel: "Explore close approaches",
   },
+  {
+    slug: "2023-bu-close-approach",
+    title: "2023 BU: reconstruct a close-approach forecast",
+    description:
+      "Convert a reported surface clearance into a geocentric distance, then see why the reference point and source date belong with the number.",
+    topic: "Investigation / Small bodies",
+    toolHref: "/small-bodies?query=2023%20BU",
+    toolLabel: "Find 2023 BU in the small-body catalog",
+  },
+  {
+    slug: "may-2024-geomagnetic-storm",
+    title: "May 2024: build a space-weather timeline",
+    description:
+      "Separate a geomagnetic watch, an observed G5 storm, and a later solar flare by converting their timestamps to one time standard.",
+    topic: "Investigation / Space weather",
+    toolHref: "/space-weather/events",
+    toolLabel: "Explore space-weather events",
+  },
 ] as const;
 
 export type GuideSlug = (typeof GUIDES)[number]["slug"];

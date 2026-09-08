@@ -4,6 +4,7 @@ import GuidePage, {
   generateMetadata,
   generateStaticParams,
 } from "./[slug]/page";
+import LearnPage from "./page";
 import { GUIDES } from "@/content/guide-index";
 import { GUIDE_ARTICLES } from "@/content/guides/articles";
 
@@ -12,6 +13,9 @@ const SOURCE_HOSTS = new Set([
   "exoplanetarchive.ipac.caltech.edu",
   "www.swpc.noaa.gov",
   "cneos.jpl.nasa.gov",
+  "www.jpl.nasa.gov",
+  "ssd-api.jpl.nasa.gov",
+  "www.spaceweather.gov",
 ]);
 
 describe("public field guides", () => {
@@ -57,6 +61,38 @@ describe("public field guides", () => {
     expect(html).toContain('id="earth-interval"');
     expect(html).toContain("20");
     expect(html).toContain("4.9");
+  });
+
+  it("renders the 2023 BU investigation with reproducible distance conversions and an accessible diagram", async () => {
+    const html = renderToStaticMarkup(await GuidePage({ params: Promise.resolve({ slug: "2023-bu-close-approach" }) }));
+    expect(html).toContain("3,600 kilometers above Earth&#x27;s surface");
+    expect(html).toContain("3,600 + 6,371 = 9,971 kilometers");
+    expect(html).toContain("about 10,000 kilometers from Earth&#x27;s center");
+    expect(html).toContain("0.0259 lunar distances");
+    expect(html).toContain("0.00937");
+    expect(html).toContain('<svg');
+    expect(html).toContain('aria-label="Diagram of the reported 2023 BU flyby distance"');
+    expect(html).toContain('aria-label="Scrollable distance diagram"');
+  });
+
+  it("renders the May 2024 storm investigation as a sourced event timeline", async () => {
+    const html = renderToStaticMarkup(await GuidePage({ params: Promise.resolve({ slug: "may-2024-geomagnetic-storm" }) }));
+    expect(html).toContain("May 9");
+    expect(html).toContain("May 10 at 22:54 UTC");
+    expect(html).toContain("May 14");
+    expect(html).toContain("G5");
+    expect(html).toContain("A later X5.8 flare occurred on May 11 at 01:23 UTC");
+    expect(html).toContain("An X8.7 flare occurred on May 14");
+    expect(html).toContain('aria-label="Timeline of the May 2024 space-weather investigation"');
+  });
+
+  it("lists dated investigations and verifiable site updates", () => {
+    const html = renderToStaticMarkup(<LearnPage />);
+    expect(html).toContain('id="latest-investigations"');
+    expect(html).toContain('href="/learn/2023-bu-close-approach"');
+    expect(html).toContain('href="/learn/may-2024-geomagnetic-storm"');
+    expect(html).toContain('id="site-updates"');
+    expect(html).toContain("September 7, 2026");
   });
 
   it.each(["unpublished", "constructor", "__proto__"])(

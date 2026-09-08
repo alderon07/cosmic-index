@@ -20,6 +20,8 @@ describe("main sitemap metadata route", () => {
       "https://cosmicindex.dev/learn/comparing-exoplanets",
       "https://cosmicindex.dev/learn/reading-space-weather",
       "https://cosmicindex.dev/learn/understanding-asteroid-flybys",
+      "https://cosmicindex.dev/learn/2023-bu-close-approach",
+      "https://cosmicindex.dev/learn/may-2024-geomagnetic-storm",
       "https://cosmicindex.dev/space-weather",
       "https://cosmicindex.dev/space-weather/events",
       "https://cosmicindex.dev/space-weather/alerts",

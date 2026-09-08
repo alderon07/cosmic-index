@@ -128,7 +128,16 @@ describe("GET /api/v1/space-weather", () => {
     expect(body.pagination.mode).toBe("none");
     expect(body.pagination.hasMore).toBe(false);
     expect(body.meta.totalAvailable).toBe(1);
-    expect(seenEndpoints.sort()).toEqual(["CME", "FLR", "GST", "HSS", "IPS", "SEP"]);
+    expect([...new Set(seenEndpoints)].sort()).toEqual([
+      "CME",
+      "FLR",
+      "GST",
+      "HSS",
+      "IPS",
+      "SEP",
+    ]);
+    expect(seenEndpoints.filter((endpoint) => endpoint === "CME")).toHaveLength(7);
+    expect(seenEndpoints.filter((endpoint) => endpoint !== "CME")).toHaveLength(5);
   });
 
   it("returns pagination mode 'offset' when page is present", async () => {

@@ -52,24 +52,40 @@ export function SavedSearchControls({
   const [saveName, setSaveName] = useState("");
   const [refreshNotice, setRefreshNotice] = useState<string | null>(null);
 
-  const loadSearches = useCallback(async (): Promise<boolean> => {
-    if (!auth.isSignedIn) return false;
+  const fetchSearches = useCallback(async (): Promise<SavedSearchItem[] | null> => {
+    if (!auth.isSignedIn) return null;
 
     try {
       const response = await fetch(`/api/user/saved-searches?category=${category}`);
-      if (!response.ok) return false;
+      if (!response.ok) return null;
       const data = await response.json();
-      setSearches(Array.isArray(data.searches) ? data.searches : []);
-      return true;
+      return Array.isArray(data.searches) ? data.searches : [];
     } catch {
       // Ignore load errors; UI stays available for current browse session.
-      return false;
+      return null;
     }
   }, [auth.isSignedIn, category]);
 
+  const loadSearches = useCallback(async (): Promise<boolean> => {
+    const nextSearches = await fetchSearches();
+    if (nextSearches === null) return false;
+    setSearches(nextSearches);
+    return true;
+  }, [fetchSearches]);
+
   useEffect(() => {
-    void loadSearches();
-  }, [loadSearches]);
+    let isCancelled = false;
+
+    void fetchSearches().then((nextSearches) => {
+      if (!isCancelled && nextSearches !== null) {
+        setSearches(nextSearches);
+      }
+    });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [fetchSearches]);
 
   useEffect(() => {
     if (!refreshNotice || isRefreshing) return;

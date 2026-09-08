@@ -11,6 +11,7 @@ import { buildBreadcrumbJsonLd } from "@/lib/seo";
 import { OrbitComparison } from "@/components/learn/orbit-comparison";
 import { PlanetSizeComparison } from "@/components/learn/planet-size-comparison";
 import { SaveGuideButton } from "@/components/learn/reading-list";
+import { InvestigationDiagram } from "@/components/learn/investigation-diagrams";
 
 interface GuidePageProps {
   params: Promise<{ slug: string }>;
@@ -202,6 +203,7 @@ export default async function GuidePage({ params }: GuidePageProps) {
                 ) : null}
                 {guide.slug === "trappist-1-comparison" && section.id === "source-snapshot" ? <PlanetSizeComparison /> : null}
                 {guide.slug === "trappist-1-comparison" && section.id === "orbital-calendar" ? <OrbitComparison /> : null}
+                <InvestigationDiagram guide={guide.slug} section={section.id} />
               </section>
             ))}
           </div>

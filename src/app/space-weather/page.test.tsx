@@ -47,6 +47,7 @@ describe("SpaceWeatherOverviewPage", () => {
     expect(html).toContain("Track space weather in near real time");
     expect(html).toContain("What is space weather?");
     expect(html).toContain("About this data");
+    expect(html).toContain('href="/learn/may-2024-geomagnetic-storm"');
     expect(html).toContain('"@type":"CollectionPage"');
     expect(html).toContain("/space-weather/alerts");
     expect(html).toContain("/space-weather/geomagnetic");

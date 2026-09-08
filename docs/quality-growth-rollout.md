@@ -1,9 +1,10 @@
 # Publish and measure the field-guide improvements
 
-This release gives first-time readers a complete TRAPPIST-1 comparison and a
-browser-local reading list. It preserves mass labels in Compare, adds publisher
-and methods information, and makes field guides available in the main navigation.
-It does not guarantee AdSense approval or a revenue increase.
+This release gives first-time readers a complete TRAPPIST-1 comparison, two
+sourced investigations, and a browser-local reading list. It preserves mass
+labels in Compare, adds publisher and methods information, and makes field
+guides available in the main navigation. It does not guarantee AdSense approval
+or a revenue increase.
 
 ## Verify the deployment
 
@@ -23,9 +24,11 @@ It does not guarantee AdSense approval or a revenue increase.
 
 ## Measure useful interactions
 
-The existing Google Analytics integration now receives these events when it is
-configured and initialized. Each includes only the published `guide_slug`, in
-addition to the analytics platform's normal event context.
+The Google Analytics integration receives these events only after the visitor
+accepts the site's optional Analytics settings and the analytics script loads.
+This choice is separate from Google's certified advertising CMP. Each event
+includes only the published `guide_slug`, in addition to the analytics
+platform's normal event context.
 
 | Event | Trigger | Interpretation |
 | --- | --- | --- |
@@ -39,7 +42,8 @@ or the saved reading list. Ad blockers, unavailable analytics, and consent choic
 can affect coverage. They do not block the feature itself.
 
 1. Verify events in GA4 Realtime after a production deployment with analytics
-   configured. Use an appropriate consent choice for the test session.
+   configured. Accept analytics in the site's Analytics settings for the test
+   session. Do not use the advertising CMP to set analytics consent.
 2. Register `guide_slug` as an event-scoped custom dimension if breakdowns by
    guide are needed. Mark `guide_tool_open` as a key event if starting a catalog
    investigation is the chosen activation measure.
@@ -57,8 +61,8 @@ can affect coverage. They do not block the feature itself.
 
 Use Search Console queries and guide-to-catalog behavior to choose the next
 case study. Extend a topic when readers ask a concrete question the current
-guide does not answer. Good candidates are a documented asteroid flyby and a
-historical space-weather sequence with matched timestamps.
+guide does not answer. The published 2023 BU and May 2024 investigations provide
+the source and calculation pattern for future cases.
 
 For every case study, retain source URLs, a checked date, units, assumptions,
 and calculations. Add an annotated figure and a direct next step into existing
