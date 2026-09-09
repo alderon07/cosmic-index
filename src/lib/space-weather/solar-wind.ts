@@ -1,4 +1,5 @@
 import { CACHE_KEYS, CACHE_TTL, withCache } from "@/lib/cache";
+import { z } from "zod";
 import type {
   SpaceWeatherSolarWindImfPoint,
   SpaceWeatherSolarWindImfSnapshot,
@@ -15,13 +16,41 @@ import type {
 const SWPC_SITE_BASE_URL = "https://www.swpc.noaa.gov";
 const SWPC_SERVICES_BASE_URL = "https://services.swpc.noaa.gov";
 const SOLAR_WIND_FETCH_TIMEOUT_MS = 8_000;
+const MAX_SWPC_RESPONSE_BYTES = 6 * 1024 * 1024;
+const MAX_RTSW_RECORDS = 10_000;
+const SIX_HOURS_MS = 6 * 60 * 60 * 1_000;
 
 const REALTIME_SOLAR_WIND_PRODUCT_URL = `${SWPC_SITE_BASE_URL}/products/real-time-solar-wind`;
-const PLASMA_URL = `${SWPC_SERVICES_BASE_URL}/products/solar-wind/plasma-6-hour.json`;
-const IMF_URL = `${SWPC_SERVICES_BASE_URL}/products/solar-wind/mag-6-hour.json`;
+const PLASMA_URL = `${SWPC_SERVICES_BASE_URL}/json/rtsw/rtsw_wind_1m.json`;
+const IMF_URL = `${SWPC_SERVICES_BASE_URL}/json/rtsw/rtsw_mag_1m.json`;
 const PROPAGATED_URL = `${SWPC_SERVICES_BASE_URL}/products/geospace/propagated-solar-wind-1-hour.json`;
 
 type RawSwpcTable = unknown[][];
+
+const NullableRtswNumberSchema = z.number().finite().nullable();
+
+const RtswWindRowSchema = z.object({
+  time_tag: z.string(),
+  active: z.literal(true),
+  source: z.string().min(1),
+  proton_density: NullableRtswNumberSchema,
+  proton_speed: NullableRtswNumberSchema,
+  proton_temperature: NullableRtswNumberSchema,
+});
+
+const RtswMagRowSchema = z.object({
+  time_tag: z.string(),
+  active: z.literal(true),
+  source: z.string().min(1),
+  bx_gsm: NullableRtswNumberSchema,
+  by_gsm: NullableRtswNumberSchema,
+  bz_gsm: NullableRtswNumberSchema,
+  phi_gsm: NullableRtswNumberSchema,
+  theta_gsm: NullableRtswNumberSchema,
+  bt: NullableRtswNumberSchema,
+});
+
+const RtswPayloadSchema = z.array(z.unknown()).max(MAX_RTSW_RECORDS);
 
 function uniqueWarnings(warnings: Array<string | undefined>): string[] | undefined {
   const values = Array.from(new Set(warnings.filter(Boolean))) as string[];
@@ -67,7 +96,7 @@ function buildSourceMeta(
   };
 }
 
-async function fetchWithTimeout(input: string): Promise<Response> {
+async function fetchJson(input: string): Promise<unknown> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), SOLAR_WIND_FETCH_TIMEOUT_MS);
 
@@ -81,15 +110,46 @@ async function fetchWithTimeout(input: string): Promise<Response> {
       throw new Error(`SWPC request failed (${response.status})`);
     }
 
-    return response;
+    const contentLength = parseNumberOrNull(response.headers.get("content-length"));
+    if (contentLength !== null && contentLength > MAX_SWPC_RESPONSE_BYTES) {
+      throw new Error("SWPC response exceeded the allowed size");
+    }
+
+    if (!response.body) {
+      throw new Error("SWPC response body was empty");
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let totalBytes = 0;
+    let jsonText = "";
+
+    while (true) {
+      const chunk = await reader.read();
+      if (chunk.done) break;
+
+      totalBytes += chunk.value.byteLength;
+      if (totalBytes > MAX_SWPC_RESPONSE_BYTES) {
+        await reader.cancel();
+        throw new Error("SWPC response exceeded the allowed size");
+      }
+      jsonText += decoder.decode(chunk.value, { stream: true });
+    }
+    jsonText += decoder.decode();
+
+    return JSON.parse(jsonText);
   } finally {
     clearTimeout(timeoutId);
+    controller.abort();
   }
 }
 
 async function fetchJsonTable(input: string): Promise<RawSwpcTable> {
-  const response = await fetchWithTimeout(input);
-  return response.json() as Promise<RawSwpcTable>;
+  const payload = await fetchJson(input);
+  if (!Array.isArray(payload)) {
+    throw new Error("SWPC table was invalid");
+  }
+  return payload;
 }
 
 function parseTableRows(table: RawSwpcTable): {
@@ -115,28 +175,51 @@ function indexColumns(header: string[]): Record<string, number> {
   return Object.fromEntries(header.map((value, index) => [value, index]));
 }
 
+function trailingSixHours<T extends { observedAt: string }>(points: T[]): T[] {
+  const chronological = [...points].sort((left, right) =>
+    left.observedAt.localeCompare(right.observedAt));
+  const newest = chronological.at(-1);
+  if (!newest) return [];
+
+  const cutoffMs = Date.parse(newest.observedAt) - SIX_HOURS_MS;
+  return chronological.filter((point) => Date.parse(point.observedAt) >= cutoffMs);
+}
+
+function parseRtswPayload(payload: unknown): unknown[] {
+  const parsed = RtswPayloadSchema.safeParse(payload);
+  if (!parsed.success || parsed.data.length === 0) {
+    throw new Error("SWPC real-time solar wind payload was invalid or empty");
+  }
+  return parsed.data;
+}
+
 export async function fetchSolarWindPlasmaSnapshot(): Promise<SpaceWeatherSolarWindPlasmaSnapshot> {
   return withCache(
     CACHE_KEYS.SPACE_WEATHER_SOLAR_WIND_PLASMA,
     CACHE_TTL.SPACE_WEATHER_SOLAR_WIND_PLASMA,
     async () => {
-      const table = await fetchJsonTable(PLASMA_URL);
-      const { header, rows } = parseTableRows(table);
-      const columns = indexColumns(header);
+      const payload = parseRtswPayload(await fetchJson(PLASMA_URL));
+      const points = payload
+        .map((value): SpaceWeatherSolarWindPoint | null => {
+          const parsed = RtswWindRowSchema.safeParse(value);
+          if (!parsed.success) return null;
 
-      const trend = rows
-        .map((row): SpaceWeatherSolarWindPoint | null => {
-          const observedAt = toIsoOrNull(String(row[columns.time_tag] ?? ""));
+          const observedAt = toIsoOrNull(parsed.data.time_tag);
           if (!observedAt) return null;
 
           return {
             observedAt,
-            densityPerCc: parseNumberOrNull(row[columns.density]),
-            speedKms: parseNumberOrNull(row[columns.speed]),
-            temperatureK: parseNumberOrNull(row[columns.temperature]),
+            densityPerCc: parsed.data.proton_density ?? null,
+            speedKms: parsed.data.proton_speed ?? null,
+            temperatureK: parsed.data.proton_temperature ?? null,
           };
         })
         .filter((point): point is SpaceWeatherSolarWindPoint => point !== null);
+      const trend = trailingSixHours(points);
+
+      if (trend.length === 0) {
+        throw new Error("SWPC real-time solar wind payload had no valid active plasma records");
+      }
 
       const currentValue = trend.at(-1) ?? null;
 
@@ -159,26 +242,31 @@ export async function fetchSolarWindImfSnapshot(): Promise<SpaceWeatherSolarWind
     CACHE_KEYS.SPACE_WEATHER_SOLAR_WIND_IMF,
     CACHE_TTL.SPACE_WEATHER_SOLAR_WIND_IMF,
     async () => {
-      const table = await fetchJsonTable(IMF_URL);
-      const { header, rows } = parseTableRows(table);
-      const columns = indexColumns(header);
+      const payload = parseRtswPayload(await fetchJson(IMF_URL));
+      const points = payload
+        .map((value): SpaceWeatherSolarWindImfPoint | null => {
+          const parsed = RtswMagRowSchema.safeParse(value);
+          if (!parsed.success) return null;
 
-      const trend = rows
-        .map((row): SpaceWeatherSolarWindImfPoint | null => {
-          const observedAt = toIsoOrNull(String(row[columns.time_tag] ?? ""));
+          const observedAt = toIsoOrNull(parsed.data.time_tag);
           if (!observedAt) return null;
 
           return {
             observedAt,
-            bxNt: parseNumberOrNull(row[columns.bx_gsm]),
-            byNt: parseNumberOrNull(row[columns.by_gsm]),
-            bzNt: parseNumberOrNull(row[columns.bz_gsm]),
-            btNt: parseNumberOrNull(row[columns.bt]),
-            lonGsmDeg: parseNumberOrNull(row[columns.lon_gsm]),
-            latGsmDeg: parseNumberOrNull(row[columns.lat_gsm]),
+            bxNt: parsed.data.bx_gsm ?? null,
+            byNt: parsed.data.by_gsm ?? null,
+            bzNt: parsed.data.bz_gsm ?? null,
+            btNt: parsed.data.bt ?? null,
+            lonGsmDeg: parsed.data.phi_gsm ?? null,
+            latGsmDeg: parsed.data.theta_gsm ?? null,
           };
         })
         .filter((point): point is SpaceWeatherSolarWindImfPoint => point !== null);
+      const trend = trailingSixHours(points);
+
+      if (trend.length === 0) {
+        throw new Error("SWPC real-time solar wind payload had no valid active IMF records");
+      }
 
       const currentValue = trend.at(-1) ?? null;
 
@@ -324,7 +412,7 @@ export async function buildSpaceWeatherSolarWindSnapshot(): Promise<SpaceWeather
   ]);
 
   const snapshot: SpaceWeatherSolarWindSnapshot | null =
-    plasma || imf
+    plasma || imf || propagated
       ? {
           current,
           plasma,

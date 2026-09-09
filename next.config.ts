@@ -1,4 +1,4 @@
-import { withSentryConfig } from "@sentry/nextjs";
+import { withSentryConfig } from "@sentry/nextjs/config";
 import type { NextConfig } from "next";
 import { createRequire } from "node:module";
 
