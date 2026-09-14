@@ -10,6 +10,7 @@ import {
   Circle,
   CircleDot,
   Rocket,
+  Shuffle,
   Star,
   Sun,
   Telescope,
@@ -105,6 +106,17 @@ export default function HomePage() {
                   <Link href="/small-bodies">
                     <CircleDot className="h-5 w-5" />
                     Track Small Bodies
+                  </Link>
+                </Button>
+                <Button
+                  asChild
+                  size="lg"
+                  variant="outline"
+                  className="border-orange-200/35 bg-orange-950/30 text-orange-50 hover:border-orange-200/60 hover:bg-orange-300/10"
+                >
+                  <Link href="/random-object" prefetch={false}>
+                    <Shuffle className="h-5 w-5" />
+                    Random Object
                   </Link>
                 </Button>
               </div>
