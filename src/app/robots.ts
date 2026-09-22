@@ -30,11 +30,6 @@ export default function robots(): MetadataRoute.Robots {
         disallow: ["/api/"],
       },
     ],
-    sitemap: [
-      `${BASE_URL}/sitemap.xml`,
-      `${BASE_URL}/sitemap-exoplanets`,
-      `${BASE_URL}/sitemap-stars`,
-      `${BASE_URL}/sitemap-small-bodies`,
-    ],
+    sitemap: [`${BASE_URL}/sitemap.xml`],
   };
 }

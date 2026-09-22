@@ -1,6 +1,7 @@
 import type { GuideArticle } from "./types";
 
 export const understandingAsteroidFlybys: GuideArticle = {
+  publishedAt: "2026-09-05",
   introduction:
     "A close-approach table is a list of predicted encounters. Distance, speed, size, and monitoring classification answer different questions. Reading them separately helps you describe an interesting flyby without making an unsupported claim about impact risk.",
   sections: [

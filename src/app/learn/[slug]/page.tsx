@@ -17,6 +17,15 @@ interface GuidePageProps {
   params: Promise<{ slug: string }>;
 }
 
+const GUIDE_DATE_FORMATTER = new Intl.DateTimeFormat("en-US", {
+  dateStyle: "long",
+  timeZone: "UTC",
+});
+
+function formatGuideDate(date: string): string {
+  return GUIDE_DATE_FORMATTER.format(new Date(`${date}T00:00:00Z`));
+}
+
 export const dynamicParams = false;
 
 export function generateStaticParams() {
@@ -69,6 +78,7 @@ export default async function GuidePage({ params }: GuidePageProps) {
         mainEntityOfPage: `${BASE_URL}/learn/${guide.slug}`,
         author: { "@type": "Organization", name: "Cosmic Index", url: `${BASE_URL}/about` },
         publisher: { "@type": "Organization", name: "Cosmic Index", url: BASE_URL },
+        datePublished: article.publishedAt,
         ...(article.updatedAt ? { dateModified: article.updatedAt } : {}),
         citation: [...new Set(article.sections.flatMap((section) => section.sources?.map((source) => source.href) ?? []))],
       }} />
@@ -85,7 +95,8 @@ export default async function GuidePage({ params }: GuidePageProps) {
         </p>
         <p className="mt-5 text-sm text-muted-foreground">
           By <Link href="/about" className="text-primary underline underline-offset-4">Cosmic Index</Link>. Worked examples with primary sources.
-          {article.updatedAt ? <> Updated <time dateTime={article.updatedAt}>{new Intl.DateTimeFormat("en-US", { dateStyle: "long", timeZone: "UTC" }).format(new Date(`${article.updatedAt}T00:00:00Z`))}</time>.</> : null}
+          {" "}Published <time dateTime={article.publishedAt}>{formatGuideDate(article.publishedAt)}</time>.
+          {article.updatedAt ? <> Updated <time dateTime={article.updatedAt}>{formatGuideDate(article.updatedAt)}</time>.</> : null}
         </p>
         <SaveGuideButton slug={guide.slug} />
       </header>

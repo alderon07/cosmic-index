@@ -1,6 +1,7 @@
 import type { GuideArticle } from "./types";
 
 export const readingSpaceWeather: GuideArticle = {
+  publishedAt: "2026-09-05",
   introduction:
     "A busy solar-event feed does not automatically mean a geomagnetic storm is happening at Earth. Cosmic Index brings several observing systems together, but they look at different parts of the Sun-Earth connection. Read them in sequence to understand what has been observed and what still needs confirmation.",
   sections: [

@@ -3,6 +3,7 @@ import {
   FooterAdUnit,
   getFooterAdVisibility,
   initializeAdsenseElement,
+  shouldLoadAdsenseScript,
   shouldRenderSiteTelemetry,
 } from "@/components/ads/google-publisher-services";
 import { createElement } from "react";
@@ -73,6 +74,43 @@ describe("privacy telemetry exclusion", () => {
     expect(shouldRenderSiteTelemetry("/privacy")).toBe(false);
     expect(shouldRenderSiteTelemetry("/privacy/choices")).toBe(false);
     expect(shouldRenderSiteTelemetry("/")).toBe(true);
+  });
+});
+
+describe("AdSense publisher script", () => {
+  it("loads only on explicit editorial inventory", () => {
+    expect(
+      shouldLoadAdsenseScript({
+        servingEnabled: true,
+        routeEligible: true,
+        hasNoAdsMarker: false,
+      })
+    ).toBe(true);
+
+    expect(
+      shouldLoadAdsenseScript({
+        servingEnabled: true,
+        routeEligible: false,
+        hasNoAdsMarker: false,
+      })
+    ).toBe(false);
+  });
+
+  it("fails closed when serving is disabled or a no-ads marker is present", () => {
+    expect(
+      shouldLoadAdsenseScript({
+        servingEnabled: false,
+        routeEligible: true,
+        hasNoAdsMarker: false,
+      })
+    ).toBe(false);
+    expect(
+      shouldLoadAdsenseScript({
+        servingEnabled: true,
+        routeEligible: true,
+        hasNoAdsMarker: true,
+      })
+    ).toBe(false);
   });
 });
 

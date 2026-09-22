@@ -5,7 +5,6 @@ const ADSENSE_SLOT_ID_PATTERN = /^\d{10}$/;
 // including sparse records and empty or failed upstream responses. Adding a
 // route elsewhere must not automatically opt it into monetization.
 const AD_ELIGIBLE_PATHS = new Set([
-  "/",
   "/learn/comparing-exoplanets",
   "/learn/reading-space-weather",
   "/learn/understanding-asteroid-flybys",

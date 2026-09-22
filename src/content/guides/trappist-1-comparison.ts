@@ -1,8 +1,8 @@
 import type { GuideArticle } from "./types";
-import { TRAPPIST_PLANETS, TRAPPIST_SNAPSHOT_DATE } from "../trappist-comparison";
+import { TRAPPIST_PLANETS } from "../trappist-comparison";
 
 export const trappistComparison: GuideArticle = {
-  updatedAt: TRAPPIST_SNAPSHOT_DATE,
+  publishedAt: "2026-09-07",
   introduction: "TRAPPIST-1 b and e orbit the same star, yet their calendars look very different. In 30 Earth days, b completes about 20 orbits while e completes about five. Their radii differ by only about 21%. Work through that contrast here, then open the catalog to investigate the rest of the system.",
   sections: [
     {

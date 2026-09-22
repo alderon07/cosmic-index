@@ -7,7 +7,8 @@ import { Breadcrumbs } from "@/components/breadcrumbs";
 import { BASE_URL } from "@/lib/config";
 import { THEMES } from "@/lib/theme";
 import { JsonLd } from "@/components/seo/json-ld";
-import { buildBreadcrumbJsonLd } from "@/lib/seo";
+import { buildBreadcrumbJsonLd, buildRobots } from "@/lib/seo";
+import { shouldIndexCatalogDetail } from "@/lib/catalog-index-policy";
 import {
   loadExoplanetDetail,
   loadExoplanetSystemContext,
@@ -82,6 +83,7 @@ export async function generateMetadata({
     alternates: {
       canonical: `${BASE_URL}/exoplanets/${id}`,
     },
+    robots: buildRobots(shouldIndexCatalogDetail("exoplanet", id)),
   };
 }
 

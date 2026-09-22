@@ -1,7 +1,7 @@
 import type { GuideArticle } from "./types";
 
 export const may2024GeomagneticStorm: GuideArticle = {
-  updatedAt: "2026-09-07",
+  publishedAt: "2026-09-08",
   introduction:
     "During May 2024, forecasts, geomagnetic observations, and new solar eruptions arrived close together. A clean timeline prevents a later flare from becoming the cause of an earlier storm. This investigation converts local timestamps to UTC and marks what each source knew at the time.",
   sections: [

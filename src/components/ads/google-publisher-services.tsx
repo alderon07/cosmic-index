@@ -40,6 +40,12 @@ interface FooterAdVisibilityState {
   publisherScriptReady: boolean;
 }
 
+interface AdsenseScriptVisibilityState {
+  servingEnabled: boolean;
+  routeEligible: boolean;
+  hasNoAdsMarker: boolean;
+}
+
 interface GooglePublisherServicesProps {
   adsense: AdsenseConfig;
   googleAnalyticsId: string | null;
@@ -53,6 +59,14 @@ declare global {
 
 export function shouldRenderSiteTelemetry(pathname: string): boolean {
   return pathname !== "/privacy" && !pathname.startsWith("/privacy/");
+}
+
+export function shouldLoadAdsenseScript({
+  servingEnabled,
+  routeEligible,
+  hasNoAdsMarker,
+}: AdsenseScriptVisibilityState): boolean {
+  return servingEnabled && routeEligible && !hasNoAdsMarker;
 }
 
 export function getFooterAdVisibility({
@@ -252,10 +266,15 @@ export function GooglePublisherServices({
   if (!telemetryAllowed) return null;
 
   const analyticsReady = analyticsConsent === "granted";
+  const loadAdsenseScript = shouldLoadAdsenseScript({
+    servingEnabled: adsense.enabled,
+    routeEligible,
+    hasNoAdsMarker,
+  });
 
   return (
     <>
-      {analyticsConsent !== "loading" && adsense.enabled && adsense.clientId ? (
+      {analyticsConsent !== "loading" && loadAdsenseScript && adsense.clientId ? (
         <Script
           id="google-publisher-services"
           src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${encodeURIComponent(adsense.clientId)}`}

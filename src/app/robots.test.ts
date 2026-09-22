@@ -27,9 +27,6 @@ describe("robots metadata route", () => {
     });
     expect(result.sitemap).toEqual([
       "https://cosmicindex.dev/sitemap.xml",
-      "https://cosmicindex.dev/sitemap-exoplanets",
-      "https://cosmicindex.dev/sitemap-stars",
-      "https://cosmicindex.dev/sitemap-small-bodies",
     ]);
   });
 });

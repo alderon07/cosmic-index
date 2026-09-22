@@ -1,7 +1,7 @@
 import type { GuideArticle } from "./types";
 
 export const asteroid2023BuCloseApproach: GuideArticle = {
-  updatedAt: "2026-09-07",
+  publishedAt: "2026-09-08",
   introduction:
     "A January 2023 NASA/JPL forecast placed asteroid 2023 BU about 3,600 kilometers above Earth's surface at closest approach. Close-approach tables usually measure from Earth's center. This investigation converts between those reference points and shows why a precise-looking lunar-distance value can overstate the source precision.",
   sections: [

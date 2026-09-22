@@ -22,16 +22,13 @@ function smallBody(overrides: Partial<SmallBodyData> = {}): SmallBodyData {
 }
 
 describe("shouldIndexSmallBody", () => {
-  it("indexes priority and distinctive catalog records", () => {
-    expect(shouldIndexSmallBody(smallBody({ isPha: true }))).toBe(true);
-    expect(shouldIndexSmallBody(smallBody({ isNeo: true }))).toBe(true);
-    expect(shouldIndexSmallBody(smallBody({ bodyKind: "comet" }))).toBe(true);
-    expect(shouldIndexSmallBody(smallBody({ displayName: "Pallas" }))).toBe(true);
-    expect(shouldIndexSmallBody(smallBody({ diameterKm: 12, discoveredYear: 1984 }))).toBe(true);
-  });
-
-  it("does not index an unnamed, low-information main-belt record", () => {
+  it("does not treat upstream importance or data completeness as editorial review", () => {
     expect(shouldIndexSmallBody(smallBody())).toBe(false);
     expect(shouldIndexSmallBody(smallBody({ displayName: "144898" }))).toBe(false);
+    expect(shouldIndexSmallBody(smallBody({ isPha: true }))).toBe(false);
+    expect(shouldIndexSmallBody(smallBody({ isNeo: true }))).toBe(false);
+    expect(shouldIndexSmallBody(smallBody({ bodyKind: "comet" }))).toBe(false);
+    expect(shouldIndexSmallBody(smallBody({ displayName: "Pallas" }))).toBe(false);
+    expect(shouldIndexSmallBody(smallBody({ diameterKm: 12, discoveredYear: 1984 }))).toBe(false);
   });
 });

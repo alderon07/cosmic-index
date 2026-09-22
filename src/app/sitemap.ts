@@ -1,6 +1,16 @@
 import type { MetadataRoute } from "next";
 import { GUIDES } from "@/content/guide-index";
+import {
+  getCuratedCatalogPaths,
+  type CatalogDetailKind,
+} from "@/lib/catalog-index-policy";
 import { BASE_URL } from "@/lib/config";
+
+const CATALOG_KINDS: readonly CatalogDetailKind[] = [
+  "exoplanet",
+  "star",
+  "small-body",
+];
 
 export default function sitemap(): MetadataRoute.Sitemap {
   // Main static pages
@@ -47,14 +57,10 @@ export default function sitemap(): MetadataRoute.Sitemap {
     {
       url: `${BASE_URL}/space-weather/geomagnetic`,
     },
+    ...CATALOG_KINDS.flatMap((kind) =>
+      getCuratedCatalogPaths(kind).map((path) => ({ url: `${BASE_URL}${path}` })),
+    ),
   ];
 
   return staticPages;
 }
-
-// Note: Dynamic sitemaps for individual objects are available at:
-// - /sitemap-exoplanets (all exoplanets)
-// - /sitemap-stars (all indexed stars)
-// - /sitemap-small-bodies (NEOs and PHAs)
-//
-// These can be submitted to Google Search Console alongside /sitemap.xml

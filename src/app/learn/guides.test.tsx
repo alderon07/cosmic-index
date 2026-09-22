@@ -36,6 +36,11 @@ describe("public field guides", () => {
       expect(html).toContain(`href="${guide.toolHref}"`);
       expect(html).toContain("<caption");
       expect(html).toContain('"@type":"Article"');
+      expect(html).toContain(`"datePublished":"${GUIDE_ARTICLES[guide.slug].publishedAt}"`);
+      expect(html).toContain(
+        `<time dateTime="${GUIDE_ARTICLES[guide.slug].publishedAt}">`,
+      );
+      expect(html).toContain("Published");
       expect(html).toContain('href="/about"');
       expect(html).toContain("Save for later");
       for (const section of GUIDE_ARTICLES[guide.slug].sections) {
@@ -50,6 +55,15 @@ describe("public field guides", () => {
       }
     },
   );
+
+  it("gives every guide a valid publication date", () => {
+    for (const article of Object.values(GUIDE_ARTICLES)) {
+      expect(article.publishedAt).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      expect(Number.isNaN(Date.parse(`${article.publishedAt}T00:00:00Z`))).toBe(
+        false,
+      );
+    }
+  });
 
   it("renders the real case study with source values and usable catalog links before hydration", async () => {
     const html = renderToStaticMarkup(await GuidePage({ params: Promise.resolve({ slug: "trappist-1-comparison" }) }));

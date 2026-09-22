@@ -12,8 +12,9 @@ import { enrichStarWithStellarParameters } from "@/lib/stellar-parameters";
 import { BASE_URL } from "@/lib/config";
 import { THEMES } from "@/lib/theme";
 import { JsonLd } from "@/components/seo/json-ld";
-import { buildBreadcrumbJsonLd } from "@/lib/seo";
+import { buildBreadcrumbJsonLd, buildRobots } from "@/lib/seo";
 import { buildStarJsonLd } from "@/lib/star-seo";
+import { shouldIndexCatalogDetail } from "@/lib/catalog-index-policy";
 
 interface StarDetailPageProps {
   params: Promise<{ id: string }>;
@@ -79,6 +80,7 @@ export async function generateMetadata({
     alternates: {
       canonical: `${BASE_URL}/stars/${id}`,
     },
+    robots: buildRobots(shouldIndexCatalogDetail("star", id)),
   };
 }
 

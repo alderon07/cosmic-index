@@ -11,6 +11,7 @@ export interface GuideSection {
 }
 
 export interface GuideArticle {
+  publishedAt: string;
   updatedAt?: string;
   introduction: string;
   sections: GuideSection[];

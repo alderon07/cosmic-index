@@ -85,7 +85,6 @@ describe("AdSense configuration", () => {
 
 describe("AdSense route allowlist", () => {
   it.each([
-    "/",
     "/learn/comparing-exoplanets",
     "/learn/reading-space-weather",
     "/learn/understanding-asteroid-flybys",
@@ -97,6 +96,7 @@ describe("AdSense route allowlist", () => {
   });
 
   it.each([
+    "/",
     "/exoplanets",
     "/exoplanets/kepler-22-b",
     "/stars",

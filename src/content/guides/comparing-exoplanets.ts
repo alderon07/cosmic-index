@@ -1,6 +1,7 @@
 import type { GuideArticle } from "./types";
 
 export const comparingExoplanets: GuideArticle = {
+  publishedAt: "2026-09-05",
   introduction:
     "A useful planet comparison starts with a question you can answer from the measurements. Which world has a shorter year? Which has a larger measured radius? Whether either world could support life is a different question, and a catalog row rarely settles it. This walkthrough shows how to separate a calculation from an interpretation.",
   sections: [
