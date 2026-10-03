@@ -5,6 +5,10 @@ export default function robots(): MetadataRoute.Robots {
   return {
     rules: [
       {
+        userAgent: "AhrefsBot",
+        disallow: "/",
+      },
+      {
         userAgent: "*",
         allow: "/",
         disallow: ["/api/"],
