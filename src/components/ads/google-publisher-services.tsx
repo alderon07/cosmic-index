@@ -40,11 +40,7 @@ interface FooterAdVisibilityState {
   publisherScriptReady: boolean;
 }
 
-interface AdsenseScriptVisibilityState {
-  servingEnabled: boolean;
-  routeEligible: boolean;
-  hasNoAdsMarker: boolean;
-}
+type AdsenseScriptVisibilityState = Omit<FooterAdVisibilityState, "publisherScriptReady">;
 
 interface GooglePublisherServicesProps {
   adsense: AdsenseConfig;
@@ -61,12 +57,9 @@ export function shouldRenderSiteTelemetry(pathname: string): boolean {
   return pathname !== "/privacy" && !pathname.startsWith("/privacy/");
 }
 
-export function shouldLoadAdsenseScript({
-  servingEnabled,
-  routeEligible,
-  hasNoAdsMarker,
-}: AdsenseScriptVisibilityState): boolean {
-  return servingEnabled && routeEligible && !hasNoAdsMarker;
+// Publisher code can activate account-level formats; apply entitlement checks before loading it.
+export function shouldLoadAdsenseScript(state: AdsenseScriptVisibilityState): boolean {
+  return getFooterAdVisibility({ ...state, publisherScriptReady: true });
 }
 
 export function getFooterAdVisibility({
@@ -221,6 +214,7 @@ export function FooterAdUnit({
   );
 }
 
+// Load optional telemetry and publisher code only after their separate eligibility checks.
 export function GooglePublisherServices({
   adsense,
   googleAnalyticsId,
@@ -270,6 +264,11 @@ export function GooglePublisherServices({
     servingEnabled: adsense.enabled,
     routeEligible,
     hasNoAdsMarker,
+    authLoaded: auth.isLoaded,
+    isSignedIn: auth.isSignedIn,
+    eligibilityResolved: eligibility.isSuccess,
+    eligibilityFetching: eligibility.isFetching,
+    canShowAds: eligibility.data?.canShowAds === true,
   });
 
   return (

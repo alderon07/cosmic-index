@@ -1,6 +1,6 @@
 # Google AdSense rollout
 
-Last updated: 2026-09-07
+Last updated: 2026-10-08
 
 This runbook covers the external configuration and production verification for
 the single manual responsive unit below the Cosmic Index footer. Code rollout
@@ -9,7 +9,7 @@ or mutate production data.
 
 ## Content inventory
 
-The manual unit is eligible only on the homepage and these complete guides:
+The manual unit is eligible only on these complete guides:
 
 - `/learn/comparing-exoplanets`
 - `/learn/reading-space-weather`
@@ -29,8 +29,11 @@ The guides contain original worked examples, primary-source links, and links
 back to the tools. Catalog education opens by default, and exoplanet detail
 pages explain measurement limits and derived size and period comparisons.
 These changes do not establish AdSense approval. After deploying, inspect the
-public pages and request another review of the low-value-content rejection in
-AdSense. Keep serving disabled until Google marks the site Ready.
+public pages and read the actual rejection details in AdSense before requesting
+another review. The October 5 notification does not identify a rejection
+category; do not treat low-value content as a confirmed diagnosis. See
+`docs/adsense-review-investigation.md` for the current evidence and remaining
+account checks. Keep serving disabled until Google marks the site Ready.
 
 ## Environment configuration
 
@@ -87,9 +90,13 @@ when testing privacy messages. Verify:
 
 - Anonymous visitors receive one below-footer unit only on the exact editorial
   paths above. Catalog, search, and dashboard pages contain no unit.
-- Free signed-in users receive the unit only after the database check succeeds.
+- Free signed-in users load publisher code and receive the unit only after the
+  database check succeeds. Initial unresolved authentication, Pro entitlement,
+  and failed or refetching eligibility checks do not load publisher code.
 - Pro users and active or trialing configured-price subscribers receive no ad
-  element and no `adsbygoogle.push` call.
+  element and no `adsbygoogle.push` call. A script previously loaded for an
+  anonymous or free visitor cannot be unloaded on sign-in, so Auto ads must
+  remain disabled in the account.
 - An anonymous ad disappears immediately when sign-in begins resolving.
 - Declined advertising-consent behavior follows the published Google message
   configuration. The site's separate Analytics settings do not replace

@@ -81,6 +81,7 @@ describe("AdSense publisher script", () => {
   it("loads only on explicit editorial inventory", () => {
     expect(
       shouldLoadAdsenseScript({
+        ...baseState,
         servingEnabled: true,
         routeEligible: true,
         hasNoAdsMarker: false,
@@ -89,6 +90,7 @@ describe("AdSense publisher script", () => {
 
     expect(
       shouldLoadAdsenseScript({
+        ...baseState,
         servingEnabled: true,
         routeEligible: false,
         hasNoAdsMarker: false,
@@ -99,6 +101,7 @@ describe("AdSense publisher script", () => {
   it("fails closed when serving is disabled or a no-ads marker is present", () => {
     expect(
       shouldLoadAdsenseScript({
+        ...baseState,
         servingEnabled: false,
         routeEligible: true,
         hasNoAdsMarker: false,
@@ -106,11 +109,31 @@ describe("AdSense publisher script", () => {
     ).toBe(false);
     expect(
       shouldLoadAdsenseScript({
+        ...baseState,
         servingEnabled: true,
         routeEligible: true,
         hasNoAdsMarker: true,
       })
     ).toBe(false);
+  });
+
+  it.each([
+    { authLoaded: false },
+    { isSignedIn: true },
+    { isSignedIn: true, eligibilityResolved: true, canShowAds: false },
+    { isSignedIn: true, eligibilityResolved: true, canShowAds: true, eligibilityFetching: true },
+  ])("does not load publisher code before entitlement permits it: %o", (override) => {
+    expect(shouldLoadAdsenseScript({ ...baseState, ...override })).toBe(false);
+  });
+
+  it("loads for confirmed free users without waiting for the script itself", () => {
+    expect(shouldLoadAdsenseScript({
+      ...baseState,
+      isSignedIn: true,
+      eligibilityResolved: true,
+      canShowAds: true,
+      publisherScriptReady: false,
+    })).toBe(true);
   });
 });
 

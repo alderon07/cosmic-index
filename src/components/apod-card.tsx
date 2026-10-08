@@ -16,6 +16,7 @@ interface APODCardProps {
   initialError?: string | null;
 }
 
+// Show the daily feed when available and preserve a useful path to its source on failure.
 export function APODCard({ className, initialApod = null, initialError = null }: APODCardProps) {
   const [apod, setApod] = useState<APODData | null>(initialApod);
   const [loading, setLoading] = useState(!initialApod && !initialError);
@@ -46,7 +47,26 @@ export function APODCard({ className, initialApod = null, initialError = null }:
   }
 
   if (error || !apod) {
-    return null; // Gracefully hide if APOD unavailable
+    return (
+      <Card className={`border border-orange-200/25 bg-[#1b130e]/85 text-orange-100 ${className ?? ""}`}>
+        <CardContent className="p-4 sm:p-6">
+          <p className="font-medium">Today&apos;s picture is unavailable</p>
+          <p className="mt-2 text-sm leading-relaxed text-orange-100/80">
+            The daily feed couldn&apos;t be loaded. You can still view the picture
+            and its explanation on NASA&apos;s APOD page.
+          </p>
+          <a
+            href="https://science.nasa.gov/apod/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-4 inline-flex items-center gap-1 text-sm text-orange-300 underline underline-offset-4 hover:text-orange-200"
+          >
+            View on NASA APOD
+            <ExternalLink aria-hidden="true" className="h-3 w-3" />
+          </a>
+        </CardContent>
+      </Card>
+    );
   }
 
   // Format date for display
