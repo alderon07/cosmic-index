@@ -68,6 +68,7 @@ function formatDateTime(isoString: string): { date: string; time: string } {
         month: "long",
         day: "numeric",
         year: "numeric",
+        timeZone: "UTC",
       }),
       time: d.toLocaleTimeString("en-US", {
         hour: "2-digit",
@@ -75,6 +76,7 @@ function formatDateTime(isoString: string): { date: string; time: string } {
         second: "2-digit",
         hour12: false,
         timeZoneName: "short",
+        timeZone: "UTC",
       }),
     };
   } catch {
