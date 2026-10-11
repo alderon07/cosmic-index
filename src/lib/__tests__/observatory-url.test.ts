@@ -29,8 +29,12 @@ describe("Observatory navigation contracts", () => {
 
   it("allows source links only from the upstream hosts Observatory uses", () => {
     expect(ObservatorySourceUrlSchema.safeParse("https://api.nasa.gov/DONKI/CME").success).toBe(true);
+    expect(ObservatorySourceUrlSchema.safeParse("https://ccmc.gsfc.nasa.gov/DONKI/view/Alert/48723/1").success).toBe(true);
+    expect(ObservatorySourceUrlSchema.safeParse("https://kauai.ccmc.gsfc.nasa.gov/DONKI/view/Alert/48723/1").success).toBe(true);
     expect(ObservatorySourceUrlSchema.safeParse("https://services.swpc.noaa.gov/products/foo.json").success).toBe(true);
     expect(ObservatorySourceUrlSchema.safeParse("https://evil.example/nasa").success).toBe(false);
     expect(ObservatorySourceUrlSchema.safeParse("http://api.nasa.gov/DONKI/CME").success).toBe(false);
+    expect(ObservatorySourceUrlSchema.safeParse("http://ccmc.gsfc.nasa.gov/DONKI/").success).toBe(false);
+    expect(ObservatorySourceUrlSchema.safeParse("https://ccmc.gsfc.nasa.gov.evil.example/DONKI/").success).toBe(false);
   });
 });

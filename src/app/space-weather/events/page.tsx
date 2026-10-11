@@ -103,7 +103,7 @@ export default async function SpaceWeatherEventsPage({
     description: SPACE_WEATHER_EVENTS_DESCRIPTION,
     path: "/space-weather/events",
     sourceName: "NASA DONKI",
-    sourceUrl: "https://kauai.ccmc.gsfc.nasa.gov/DONKI/",
+    sourceUrl: "https://ccmc.gsfc.nasa.gov/DONKI/",
   });
 
   return (

@@ -26,7 +26,7 @@ export default function AboutPage() {
           <ul className="mt-4 list-disc space-y-3 pl-5">
             <li><a href="https://exoplanetarchive.ipac.caltech.edu/" className={linkStyle}>NASA Exoplanet Archive</a> supplies exoplanets and their host stars. The stars catalog covers known exoplanet hosts, not every star in the sky.</li>
             <li><a href="https://ssd.jpl.nasa.gov/" className={linkStyle}>JPL Solar System Dynamics</a> and <a href="https://cneos.jpl.nasa.gov/" className={linkStyle}>CNEOS</a> supply small-body properties, close approaches, and fireball reports.</li>
-            <li><a href="https://kauai.ccmc.gsfc.nasa.gov/DONKI/" className={linkStyle}>NASA DONKI</a> supplies space-weather event records. <a href="https://www.swpc.noaa.gov/" className={linkStyle}>NOAA SWPC</a> supplies operational monitoring products. Individual panels also attribute GFZ Hp30 and Kyoto AE data.</li>
+            <li><a href="https://ccmc.gsfc.nasa.gov/DONKI/" className={linkStyle}>NASA DONKI</a> supplies space-weather event records. <a href="https://www.swpc.noaa.gov/" className={linkStyle}>NOAA SWPC</a> supplies operational monitoring products. Individual panels also attribute GFZ Hp30 and Kyoto AE data.</li>
           </ul>
           <p className="mt-4">Follow the source link on a record for its scientific reference. Catalog searches use an indexed copy and shared caches. Retrieval time, event time, and publication time can differ. A cached page is not evidence that an observation has just happened.</p>
         </section>

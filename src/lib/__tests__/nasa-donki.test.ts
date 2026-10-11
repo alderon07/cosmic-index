@@ -1,3 +1,4 @@
+import { afterAll, beforeEach, describe, expect, it, jest } from "bun:test";
 import {
   __resetDonkiTransientStateForTests,
   DonkiUpstreamUnavailableError,
@@ -516,7 +517,7 @@ describe("notifications integration", () => {
             : input.url;
       requestedUrls.push(url);
 
-      if (url.includes("kauai.ccmc.gsfc.nasa.gov/DONKI/WS/get/notifications")) {
+      if (url.includes("ccmc.gsfc.nasa.gov/DONKI-API/get/notifications")) {
         return new Response("Service Unavailable", {
           status: 503,
           statusText: "Service Unavailable",
@@ -552,7 +553,7 @@ describe("notifications integration", () => {
 
     expect(result.notifications).toHaveLength(1);
     expect(
-      requestedUrls.some((url) => url.includes("kauai.ccmc.gsfc.nasa.gov/DONKI/WS/get/notifications")),
+      requestedUrls.some((url) => url.includes("ccmc.gsfc.nasa.gov/DONKI-API/get/notifications")),
     ).toBe(true);
     expect(requestedUrls.some((url) => url.includes("api.nasa.gov/DONKI/notifications"))).toBe(true);
   });
@@ -1054,7 +1055,7 @@ describe("DONKI upstream failure handling", () => {
     });
 
     expect(requestedUrls).toHaveLength(1);
-    expect(requestedUrls[0]).toContain("kauai.ccmc.gsfc.nasa.gov/DONKI/WS/get/FLR");
+    expect(requestedUrls[0]).toContain("ccmc.gsfc.nasa.gov/DONKI-API/get/FLR");
   });
 
   it("fails over event fetches to NASA when CCMC DONKI returns 503", async () => {
@@ -1070,7 +1071,7 @@ describe("DONKI upstream failure handling", () => {
             : input.url;
       requestedUrls.push(url);
 
-      if (url.includes("kauai.ccmc.gsfc.nasa.gov/DONKI/WS/get/FLR")) {
+      if (url.includes("ccmc.gsfc.nasa.gov/DONKI-API/get/FLR")) {
         return new Response("Service Unavailable", {
           status: 503,
           statusText: "Service Unavailable",
@@ -1105,8 +1106,131 @@ describe("DONKI upstream failure handling", () => {
     });
 
     expect(result.events).toHaveLength(1);
-    expect(requestedUrls.some((url) => url.includes("kauai.ccmc.gsfc.nasa.gov/DONKI/WS/get/FLR"))).toBe(true);
+    expect(requestedUrls.some((url) => url.includes("ccmc.gsfc.nasa.gov/DONKI-API/get/FLR"))).toBe(true);
     expect(requestedUrls.some((url) => url.includes("api.nasa.gov/DONKI/FLR"))).toBe(true);
+  });
+
+  it("keeps the timeout active while reading a stalled response body", async () => {
+    jest.useFakeTimers();
+    const requestedHosts: string[] = [];
+    const primarySignals: AbortSignal[] = [];
+    const { promise: started, resolve: bodyStarted } = Promise.withResolvers<void>();
+    globalThis.fetch = async (input: string | URL | Request, init?: RequestInit) => {
+      const url = new URL(input instanceof Request ? input.url : input);
+      requestedHosts.push(url.hostname);
+      if (url.hostname === "ccmc.gsfc.nasa.gov") {
+        if (init?.signal) primarySignals.push(init.signal);
+        return new Response(new ReadableStream({
+          start(controller) {
+            init?.signal?.addEventListener("abort", () => {
+              controller.error(new DOMException("Request aborted", "AbortError"));
+            }, { once: true });
+            bodyStarted();
+          },
+        }), { headers: { "Content-Type": "application/json" } });
+      }
+      return Response.json([{
+        activityID: "2026-09-17T01:24:00-IPS-001",
+        eventTime: "2026-09-17T01:24:00Z",
+      }]);
+    };
+
+    try {
+      const pending = fetchSpaceWeatherEventById("2026-09-17T01:24:00-IPS-001");
+      // Let fetch resolve its headers and begin consuming the stalled body.
+      await started;
+      await Promise.resolve();
+      await Promise.resolve();
+      jest.advanceTimersByTime(8_000);
+
+      expect((await pending)?.id).toBe("2026-09-17T01:24:00-IPS-001");
+      expect(primarySignals[0]?.aborted).toBe(true);
+      expect(requestedHosts).toEqual(["ccmc.gsfc.nasa.gov", "api.nasa.gov"]);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it.each([
+    ["HTML", "<!DOCTYPE html><html>API moved</html>", "text/html"],
+    ["malformed JSON", "{invalid-json", "application/json"],
+  ])("fails over IPS details when CCMC returns %s", async (_label, body, contentType) => {
+    const requestedUrls: URL[] = [];
+    const eventId = "2026-09-17T01:24:00-IPS-001";
+    globalThis.fetch = async (input: string | URL | Request) => {
+      const url = new URL(input instanceof Request ? input.url : input);
+      requestedUrls.push(url);
+      if (url.hostname === "ccmc.gsfc.nasa.gov") {
+        return new Response(body, { headers: { "Content-Type": contentType } });
+      }
+      return Response.json([{
+        activityID: eventId,
+        eventTime: "2026-09-17T01:24:00Z",
+        location: "Earth",
+      }]);
+    };
+
+    const event = await fetchSpaceWeatherEventById(eventId);
+
+    expect(event?.id).toBe(eventId);
+    expect(requestedUrls.map((url) => url.hostname)).toEqual([
+      "ccmc.gsfc.nasa.gov", "api.nasa.gov",
+    ]);
+    expect(requestedUrls[0].pathname).toBe("/DONKI-API/get/IPS");
+    expect(requestedUrls[0].searchParams.get("startDate")).toBe("2026-09-16");
+    expect(requestedUrls[0].searchParams.get("endDate")).toBe("2026-09-18");
+  });
+
+  it("fails over notifications when CCMC returns an HTML announcement", async () => {
+    const requestedHosts: string[] = [];
+    globalThis.fetch = async (input: string | URL | Request) => {
+      const url = new URL(input instanceof Request ? input.url : input);
+      requestedHosts.push(url.hostname);
+      if (url.hostname === "ccmc.gsfc.nasa.gov") {
+        return new Response("<!DOCTYPE html><html>API moved</html>", {
+          headers: { "Content-Type": "text/html" },
+        });
+      }
+      return Response.json([{
+        messageID: "20260917-AL-001",
+        messageType: "IPS",
+        messageIssueTime: "2026-09-17T02:00:00Z",
+        messageBody: "Interplanetary shock observed.",
+      }]);
+    };
+
+    const result = await fetchSpaceWeatherNotifications({
+      startDate: "2026-09-16", endDate: "2026-09-18", type: "all", limit: 10,
+    });
+
+    expect(result.notifications).toHaveLength(1);
+    expect(requestedHosts).toEqual(["ccmc.gsfc.nasa.gov", "api.nasa.gov"]);
+  });
+
+  it("reports upstream unavailability when both bases return HTML", async () => {
+    let requests = 0;
+    globalThis.fetch = async () => {
+      requests += 1;
+      return new Response("<!DOCTYPE html><html>Unavailable</html>", {
+        headers: { "Content-Type": "text/html" },
+      });
+    };
+
+    await expect(fetchSpaceWeatherEventById("2026-09-17T01:24:00-IPS-001"))
+      .rejects.toBeInstanceOf(DonkiUpstreamUnavailableError);
+    expect(requests).toBe(2);
+  });
+
+  it("does not fail over non-retryable authorization failures", async () => {
+    let requests = 0;
+    globalThis.fetch = async () => {
+      requests += 1;
+      return new Response("Forbidden", { status: 403 });
+    };
+
+    await expect(fetchSpaceWeatherEventById("2026-09-17T01:24:00-IPS-001"))
+      .rejects.toBeInstanceOf(DonkiUpstreamUnavailableError);
+    expect(requests).toBe(1);
   });
 
   it("applies base cooldown after retryable failures to reduce repeated pressure on failing upstreams", async () => {
@@ -1122,7 +1246,7 @@ describe("DONKI upstream failure handling", () => {
             : input.url;
       requestedUrls.push(url);
 
-      if (url.includes("kauai.ccmc.gsfc.nasa.gov/DONKI/WS/get/SEP")) {
+      if (url.includes("ccmc.gsfc.nasa.gov/DONKI-API/get/SEP")) {
         return new Response("Service Unavailable", {
           status: 503,
           statusText: "Service Unavailable",
@@ -1159,7 +1283,7 @@ describe("DONKI upstream failure handling", () => {
     });
 
     const ccmcSepCalls = requestedUrls.filter((url) =>
-      url.includes("kauai.ccmc.gsfc.nasa.gov/DONKI/WS/get/SEP")
+      url.includes("ccmc.gsfc.nasa.gov/DONKI-API/get/SEP")
     );
     const nasaSepCalls = requestedUrls.filter((url) => url.includes("api.nasa.gov/DONKI/SEP"));
 

@@ -32,7 +32,7 @@ export default async function SpaceWeatherPage() {
     description: SPACE_WEATHER_OVERVIEW_DESCRIPTION,
     path: "/space-weather",
     sourceName: "NASA DONKI",
-    sourceUrl: "https://kauai.ccmc.gsfc.nasa.gov/DONKI/",
+    sourceUrl: "https://ccmc.gsfc.nasa.gov/DONKI/",
     sourceDescription:
       "Space weather observatory overview combining NASA DONKI events with NOAA SWPC monitoring products for solar and geomagnetic conditions.",
     items: [
@@ -110,7 +110,7 @@ export default async function SpaceWeatherPage() {
             <p>
               Event data comes from NASA&apos;s{" "}
               <a
-                href="https://kauai.ccmc.gsfc.nasa.gov/DONKI/"
+                href="https://ccmc.gsfc.nasa.gov/DONKI/"
                 target="_blank"
                 rel="noreferrer"
                 className="text-aurora-violet underline-offset-4 hover:underline"

@@ -65,7 +65,7 @@ export default async function SpaceWeatherGeomagneticPage() {
     sourceDescription:
       "Geomagnetic monitoring products combining GFZ Potsdam Hp30 nowcast data, Kyoto WDC auroral electrojet quicklook data, and recent NASA DONKI disturbance events.",
     sourceCreatorName: "GFZ Potsdam, Kyoto WDC, and NASA CCMC",
-    sourceCreatorUrl: "https://kauai.ccmc.gsfc.nasa.gov/DONKI/",
+    sourceCreatorUrl: "https://ccmc.gsfc.nasa.gov/DONKI/",
   });
 
   return (

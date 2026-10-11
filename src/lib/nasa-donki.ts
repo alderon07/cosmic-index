@@ -18,7 +18,7 @@ import {
 import { withCache, CACHE_TTL, CACHE_KEYS, getCached, setCached } from "./cache";
 import { sanitizeExternalHttpUrl } from "./safe-url";
 
-const DONKI_CCMC_BASE_URL = "https://kauai.ccmc.gsfc.nasa.gov/DONKI/WS/get";
+const DONKI_CCMC_BASE_URL = "https://ccmc.gsfc.nasa.gov/DONKI-API/get";
 const DONKI_NASA_BASE_URL = "https://api.nasa.gov/DONKI";
 
 const API_TIMEOUT_MS = 8000;
@@ -64,6 +64,13 @@ export class DonkiUpstreamUnavailableError extends Error {
   constructor(message: string) {
     super(message);
     this.name = "DonkiUpstreamUnavailableError";
+  }
+}
+
+class DonkiInvalidResponseError extends Error {
+  constructor() {
+    super("DONKI API returned a non-JSON response");
+    this.name = "DonkiInvalidResponseError";
   }
 }
 
@@ -828,6 +835,7 @@ export function normalizeSpaceWeatherResultSet(
 }
 
 function isRetryableError(error: unknown): boolean {
+  if (error instanceof DonkiInvalidResponseError) return true;
   if (!(error instanceof Error)) return false;
   const message = error.message.toLowerCase();
   if (message.includes("timed out")) return true;
@@ -859,21 +867,23 @@ async function fetchWithTimeout<T>(url: string, timeoutMs = API_TIMEOUT_MS): Pro
       signal: controller.signal,
     });
 
-    clearTimeout(timeoutId);
-
     if (!response.ok) {
       throw new Error(`DONKI API error: ${response.status} ${response.statusText}`);
     }
 
     return await response.json();
   } catch (error) {
-    clearTimeout(timeoutId);
-
     if (error instanceof Error && error.name === "AbortError") {
       throw new Error("Request to DONKI API timed out");
     }
 
+    if (error instanceof SyntaxError) {
+      throw new DonkiInvalidResponseError();
+    }
+
     throw error;
+  } finally {
+    clearTimeout(timeoutId);
   }
 }
 

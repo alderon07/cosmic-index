@@ -2,6 +2,7 @@ import { z } from "zod";
 
 const SOURCE_HOSTS = new Set([
   "api.nasa.gov",
+  "ccmc.gsfc.nasa.gov",
   "kauai.ccmc.gsfc.nasa.gov",
   "services.swpc.noaa.gov",
   "www.swpc.noaa.gov",

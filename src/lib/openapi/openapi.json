@@ -1283,13 +1283,23 @@
       "get": {
         "operationId": "getSpaceWeatherEvent",
         "summary": "Get space weather event by ID",
-        "description": "Retrieve a single space weather event by its DONKI activity ID. Returns the event data along with computed severity level and reference links.",
+        "description": "Retrieve a single space weather event by its DONKI activity ID. Public endpoint using the UPSTREAM_DETAIL rate-limit policy and global client cap. Returns computed severity and reference links on the current NASA CCMC host. Upstream non-JSON responses trigger bounded base failover; unavailable data without a usable stale cache returns 503 with Retry-After: 60.",
         "tags": [
           "Space Weather"
         ],
         "parameters": [
           {
-            "$ref": "#/components/parameters/ResourceId"
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "DONKI activity ID, optionally percent-encoded. Invalid URI encoding, control characters, slashes, and IDs over 256 characters return 400. A valid ID absent from an available upstream returns 404.",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256,
+              "pattern": "^[^/\\\\\u0000-\u001f\u007f]+$",
+              "example": "2026-09-17T01:24:00-IPS-001"
+            }
           }
         ],
         "responses": {
@@ -1344,7 +1354,8 @@
                               "properties": {
                                 "donkiSearch": {
                                   "type": "string",
-                                  "format": "uri"
+                                  "format": "uri",
+                                  "example": "https://ccmc.gsfc.nasa.gov/DONKI/search/"
                                 },
                                 "noaaSwpc": {
                                   "type": "string",
@@ -1360,6 +1371,9 @@
                 }
               }
             }
+          },
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
           },
           "404": {
             "$ref": "#/components/responses/NotFound"

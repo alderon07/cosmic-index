@@ -208,7 +208,7 @@ export function SpaceWeatherDetail({ event, compact }: SpaceWeatherDetailProps) 
   const description = getEventDescription(event);
   const accent = getSpaceWeatherDetailAccent(event.eventType);
 
-  const donkiSearchUrl = "https://kauai.ccmc.gsfc.nasa.gov/DONKI/search/";
+  const donkiSearchUrl = "https://ccmc.gsfc.nasa.gov/DONKI/search/";
   const externalSourceLink = sanitizeExternalHttpUrl(
     (event as IPSEvent | HSSEvent | SEPEvent).sourceLink
   );

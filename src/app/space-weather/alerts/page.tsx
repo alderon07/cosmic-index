@@ -78,7 +78,7 @@ export default async function SpaceWeatherAlertsPage() {
     sourceDescription:
       "Operational space weather alerts merged from NOAA Space Weather Prediction Center bulletins and NASA DONKI event-linked notifications.",
     sourceCreatorName: "NOAA SWPC and NASA CCMC",
-    sourceCreatorUrl: "https://kauai.ccmc.gsfc.nasa.gov/DONKI/",
+    sourceCreatorUrl: "https://ccmc.gsfc.nasa.gov/DONKI/",
   });
 
   return (
