@@ -632,7 +632,7 @@ describe("DONKI upstream failure handling", () => {
       page: 1,
     });
 
-    expect(requestedUrls).toHaveLength(1);
+    expect(requestedUrls).toHaveLength(2);
     expect(requestedUrls[0]).toContain("startDate=2025-11-19");
     expect(result.meta.dateRange.start).toBe("2025-11-19");
     expect(result.meta.dateRange.end).toBe("2026-02-17");
@@ -675,7 +675,7 @@ describe("DONKI upstream failure handling", () => {
 
     expect(valid.meta.dateRange.start).toBe("2025-11-19");
     expect(valid.meta.warnings?.some((warning) => warning.includes("limited to 90 days"))).not.toBe(true);
-    expect(requestedUrls).toHaveLength(2);
+    expect(requestedUrls).toHaveLength(4);
   });
 
   it("uses a 90-day default event window when startDate is omitted", async () => {
@@ -701,7 +701,7 @@ describe("DONKI upstream failure handling", () => {
       page: 1,
     });
 
-    expect(requestedUrls).toHaveLength(1);
+    expect(requestedUrls).toHaveLength(2);
     expect(requestedUrls[0]).toContain("startDate=2025-11-19");
     expect(result.meta.dateRange.start).toBe("2025-11-19");
     expect(result.meta.dateRange.end).toBe("2026-02-17");
@@ -1108,6 +1108,54 @@ describe("DONKI upstream failure handling", () => {
     expect(result.events).toHaveLength(1);
     expect(requestedUrls.some((url) => url.includes("ccmc.gsfc.nasa.gov/DONKI-API/get/FLR"))).toBe(true);
     expect(requestedUrls.some((url) => url.includes("api.nasa.gov/DONKI/FLR"))).toBe(true);
+  });
+
+  it("splits the 90-day event window to satisfy CCMC's 60-day request limit", async () => {
+    const ranges: Array<{ startDate: string; endDate: string }> = [];
+    globalThis.fetch = async (input: string | URL | Request) => {
+      const url = new URL(input instanceof Request ? input.url : input);
+      const startDate = url.searchParams.get("startDate") ?? "";
+      const endDate = url.searchParams.get("endDate") ?? "";
+      const days = (Date.parse(endDate) - Date.parse(startDate)) / 86_400_000;
+      if (days > 60) return new Response("Date range cannot exceed 60 days.", { status: 400 });
+      ranges.push({ startDate, endDate });
+      return Response.json([{
+        flrID: `${startDate}T04:24:00-FLR-001`,
+        beginTime: `${startDate}T04:24:00Z`,
+        classType: "M1.0",
+      }]);
+    };
+
+    const result = await fetchSpaceWeather({
+      startDate: "2026-07-13", endDate: "2026-10-10", eventTypes: ["FLR"], limit: 21,
+    });
+
+    expect(ranges).toEqual([
+      { startDate: "2026-07-13", endDate: "2026-09-10" },
+      { startDate: "2026-09-11", endDate: "2026-10-10" },
+    ]);
+    expect(result.events.map((event) => event.id)).toEqual([
+      "2026-09-11T04:24:00-FLR-001", "2026-07-13T04:24:00-FLR-001",
+    ]);
+    expect(result.meta.dateRange).toEqual({ start: "2026-07-13", end: "2026-10-10" });
+  });
+
+  it("does not report an incomplete range as successful when the second window fails", async () => {
+    globalThis.fetch = async (input: string | URL | Request) => {
+      const url = new URL(input instanceof Request ? input.url : input);
+      if (url.searchParams.get("startDate") === "2026-09-11") {
+        return new Response("Unavailable", { status: 503 });
+      }
+      return Response.json([{
+        flrID: "2026-07-13T04:24:00-FLR-001",
+        beginTime: "2026-07-13T04:24:00Z",
+        classType: "M1.0",
+      }]);
+    };
+
+    await expect(fetchSpaceWeather({
+      startDate: "2026-07-13", endDate: "2026-10-10", eventTypes: ["FLR"], limit: 21,
+    })).rejects.toBeInstanceOf(DonkiUpstreamUnavailableError);
   });
 
   it("keeps the timeout active while reading a stalled response body", async () => {

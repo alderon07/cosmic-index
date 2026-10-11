@@ -137,7 +137,7 @@ describe("GET /api/v1/space-weather", () => {
       "SEP",
     ]);
     expect(seenEndpoints.filter((endpoint) => endpoint === "CME")).toHaveLength(7);
-    expect(seenEndpoints.filter((endpoint) => endpoint !== "CME")).toHaveLength(5);
+    expect(seenEndpoints.filter((endpoint) => endpoint !== "CME")).toHaveLength(10);
   });
 
   it("returns pagination mode 'offset' when page is present", async () => {
@@ -203,6 +203,6 @@ describe("GET /api/v1/space-weather", () => {
     const response = await GET(request);
 
     expect(response.status).toBe(200);
-    expect(seenEndpoints.sort()).toEqual(["HSS", "IPS", "SEP"]);
+    expect(seenEndpoints.sort()).toEqual(["HSS", "HSS", "IPS", "IPS", "SEP", "SEP"]);
   });
 });

@@ -27,6 +27,7 @@ const API_TIMEOUT_MS = 8000;
 const CME_TIMEOUT_MS = 25000;
 const CME_SHARD_TIMEOUT_MS = 12000;
 const CME_SHARD_WINDOW_DAYS = 14;
+const EVENT_SHARD_WINDOW_DAYS = 60;
 const CME_SHARD_FETCH_CONCURRENCY = 2;
 const DEFAULT_DAYS_BACK = 90;
 const MAX_EVENT_WINDOW_DAYS = 90;
@@ -967,6 +968,38 @@ async function fetchDonkiWithBaseFailover<T>(
   throw lastError instanceof Error ? lastError : new Error("DONKI request failed");
 }
 
+// CCMC limits each request to 60 days. Fetch windows sequentially to keep the
+// existing event-type concurrency limit and cache the complete range together.
+async function fetchDonkiEventWindows<T>(
+  endpoint: string,
+  startDate: string,
+  endDate: string,
+  extraParams: Record<string, string> | undefined,
+): Promise<DonkiFetchWithSourceResult<T[]>> {
+  const data: T[] = [];
+  let sourceBaseUrl = DONKI_CCMC_BASE_URL;
+  let usedFallbackBase = false;
+
+  for (const shard of buildDateShards(startDate, endDate, EVENT_SHARD_WINDOW_DAYS)) {
+    const fetched = await fetchDonkiWithBaseFailover<T[]>(
+      endpoint,
+      shard.startDate,
+      shard.endDate,
+      extraParams,
+    );
+    if (!Array.isArray(fetched.data)) {
+      throw new Error(`DONKI ${endpoint} endpoint returned a non-array response.`);
+    }
+    data.push(...fetched.data);
+    if (fetched.usedFallbackBase) {
+      sourceBaseUrl = fetched.sourceBaseUrl;
+      usedFallbackBase = true;
+    }
+  }
+
+  return { data, sourceBaseUrl, usedFallbackBase };
+}
+
 function getFetchFailureMessage(error: unknown): string {
   if (!(error instanceof Error)) return "Unknown upstream error";
   const cause = (error as { cause?: unknown }).cause;
@@ -1003,7 +1036,7 @@ async function fetchSolarFlaresRaw(startDate: string, endDate: string): Promise<
       cacheKey,
       async () =>
         withCache(cacheKey, CACHE_TTL.SPACE_WEATHER, async () => {
-          const fetched = await fetchDonkiWithBaseFailover<RawFLR[]>(
+          const fetched = await fetchDonkiEventWindows<RawFLR>(
             "FLR",
             startDate,
             endDate,
@@ -1182,7 +1215,7 @@ async function fetchGSTsRaw(startDate: string, endDate: string): Promise<DonkiTy
       cacheKey,
       async () =>
         withCache(cacheKey, CACHE_TTL.SPACE_WEATHER, async () => {
-          const fetched = await fetchDonkiWithBaseFailover<RawGST[]>(
+          const fetched = await fetchDonkiEventWindows<RawGST>(
             "GST",
             startDate,
             endDate,
@@ -1252,7 +1285,7 @@ async function fetchIPSRaw(startDate: string, endDate: string): Promise<DonkiTyp
       cacheKey,
       async () =>
         withCache(cacheKey, CACHE_TTL.SPACE_WEATHER, async () => {
-          const fetched = await fetchDonkiWithBaseFailover<RawIPS[]>(
+          const fetched = await fetchDonkiEventWindows<RawIPS>(
             "IPS",
             startDate,
             endDate,
@@ -1312,7 +1345,7 @@ async function fetchHSSRaw(startDate: string, endDate: string): Promise<DonkiTyp
       cacheKey,
       async () =>
         withCache(cacheKey, CACHE_TTL.SPACE_WEATHER, async () => {
-          const fetched = await fetchDonkiWithBaseFailover<RawHSS[]>(
+          const fetched = await fetchDonkiEventWindows<RawHSS>(
             "HSS",
             startDate,
             endDate,
@@ -1371,7 +1404,7 @@ async function fetchSEPRaw(startDate: string, endDate: string): Promise<DonkiTyp
       cacheKey,
       async () =>
         withCache(cacheKey, CACHE_TTL.SPACE_WEATHER, async () => {
-          const fetched = await fetchDonkiWithBaseFailover<RawSEP[]>(
+          const fetched = await fetchDonkiEventWindows<RawSEP>(
             "SEP",
             startDate,
             endDate,
