@@ -25,6 +25,17 @@ export interface NasaImagesResult {
   usedQuery: string;
 }
 
+function nasaImageUrl(value: string): string | null {
+  try {
+    const url = new URL(value);
+    if (!new Set(["http:", "https:"]).has(url.protocol) || url.username || url.password ||
+      !url.hostname.endsWith(".nasa.gov")) return null;
+    // Older NASA manifests still contain HTTP links to the same HTTPS assets.
+    url.protocol = "https:";
+    return url.toString();
+  } catch { return null; }
+}
+
 // ── Zod Schemas ────────────────────────────────────────────────────────────
 
 const NasaImageDataSchema = z.object({
@@ -247,7 +258,7 @@ async function fetchNasaImageSearch(
  * Results are individually cached for 24h.
  */
 async function fetchAssetManifest(nasaId: string): Promise<string | null> {
-  const cacheKey = `${CACHE_KEYS.NASA_IMAGES}:asset:${nasaId}`;
+  const cacheKey = `${CACHE_KEYS.NASA_IMAGES}:asset:v2:${nasaId}`;
   const cached = await getCached<string>(cacheKey);
   if (cached !== null) return cached;
 
@@ -274,7 +285,7 @@ async function fetchAssetManifest(nasaId: string): Promise<string | null> {
       return null;
     }
 
-    const urls = parsed.data.collection.items.map((item) => item.href);
+    const urls = parsed.data.collection.items.map((item) => nasaImageUrl(item.href)).filter((url): url is string => url !== null);
 
     // Pick the best available image by suffix preference
     const jpgUrls = urls.filter((u) => /\.jpe?g$/i.test(u));
@@ -286,7 +297,7 @@ async function fetchAssetManifest(nasaId: string): Promise<string | null> {
       null;
 
     if (pick) {
-      await setCached(pick, pick, CACHE_TTL.NASA_IMAGES);
+      await setCached(cacheKey, pick, CACHE_TTL.NASA_IMAGES);
     }
 
     return pick;
@@ -307,10 +318,10 @@ async function resolveFullImageUrls(
     if (!data) return null;
 
     // Thumbnail from search result links
-    const thumbnailUrl =
+    const thumbnailUrl = nasaImageUrl(
       item.links?.find((l) => l.rel === "preview")?.href ??
       item.links?.[0]?.href ??
-      "";
+      "");
 
     if (!thumbnailUrl) return null;
 
@@ -392,9 +403,11 @@ function buildImageSearchQueries(params: ImageSearchParams): string[] {
 export async function searchImagesForObjectWithTtl(
   params: ImageSearchParams
 ): Promise<NasaImagesResult> {
-  const cacheKey = `${CACHE_KEYS.NASA_IMAGES}:obj:${hashParams({
+  const cacheKey = `${CACHE_KEYS.NASA_IMAGES}:obj:v2:${hashParams({
     name: params.name,
     type: params.type,
+    hostStar: params.hostStar,
+    bodyKind: params.bodyKind,
   })}`;
 
   // Check cache manually to handle different TTLs
@@ -403,9 +416,11 @@ export async function searchImagesForObjectWithTtl(
 
   const queries = buildImageSearchQueries(params);
 
+  let hadSuccessfulSearch = false;
   for (const query of queries) {
     const response = await fetchNasaImageSearch(query, MAX_IMAGES);
     if (!response) continue;
+    hadSuccessfulSearch = true;
 
     const relevant = filterRelevantItems(response.collection.items, params);
     const totalHits = response.collection.metadata?.total_hits ?? relevant.length;
@@ -427,6 +442,6 @@ export async function searchImagesForObjectWithTtl(
     totalHits: 0,
     usedQuery: queries[0] ?? params.name,
   };
-  await setCached(cacheKey, emptyResult, CACHE_TTL.NASA_IMAGES_EMPTY);
+  if (hadSuccessfulSearch) await setCached(cacheKey, emptyResult, CACHE_TTL.NASA_IMAGES_EMPTY);
   return emptyResult;
 }

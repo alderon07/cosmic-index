@@ -841,11 +841,12 @@ export interface APODData {
   mediaType: "image" | "video";
   copyright?: string;
   thumbnailUrl?: string;  // For videos
+  sourceUrl?: string;     // Canonical NASA Science article
 }
 
 // Zod schema for APOD API route validation
-export const APODQuerySchema = z.object({
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format").optional(),
+export const APODQuerySchema = z.strictObject({
+  date: z.iso.date("Date must be a valid calendar date in YYYY-MM-DD format").optional(),
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════

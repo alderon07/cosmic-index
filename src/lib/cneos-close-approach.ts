@@ -1,3 +1,4 @@
+import { fetchJpl } from "./jpl-fetch";
 import {
   CloseApproach,
   CloseApproachQueryParams,
@@ -148,7 +149,7 @@ async function fetchPhaDesignations(
 
     let response: Response;
     try {
-      response = await fetch(`${CAD_API_URL}?${params.toString()}`, {
+      response = await fetchJpl(`${CAD_API_URL}?${params.toString()}`, {
         headers: { Accept: "application/json" },
         signal: controller.signal,
       });
@@ -319,7 +320,7 @@ export async function fetchCloseApproaches(
     const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
 
     try {
-      const response = await fetch(url, {
+      const response = await fetchJpl(url, {
         headers: { Accept: "application/json" },
         signal: controller.signal,
       });

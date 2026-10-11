@@ -16,6 +16,9 @@ import { z } from "zod";
 import { mapPlanetaryParameters } from "./planetary-parameters";
 
 const BASE_URL = "https://exoplanetarchive.ipac.caltech.edu/TAP/sync";
+class TapHttpError extends Error {
+  constructor(public readonly status: number, message: string) { super(message); }
+}
 const EXOPLANET_BROWSE_COLUMNS = [
   "pl_name", "hostname", "discoverymethod", "disc_year", "disc_facility",
   "pl_orbper", "pl_rade", "pl_bmasse", "pl_bmassprov",
@@ -323,17 +326,15 @@ export async function executeTAPQuery(
         signal: controller.signal,
       });
 
-      const text = await response.text().catch(() => "");
+      const text = await response.text();
 
       if (!response.ok) {
-        const err = new Error(
+        const err = new TapHttpError(response.status,
           `NASA TAP error: ${response.status} ${response.statusText}\nQuery: ${query}\nBody: ${text.slice(
             0,
             1200
           )}`
         );
-        // Retry only on 5xx
-        if (response.status >= 500 && attempt < MAX_ATTEMPTS) throw err;
         throw err;
       }
 
@@ -358,7 +359,8 @@ export async function executeTAPQuery(
 
       const shouldRetry =
         attempt < MAX_ATTEMPTS &&
-        (isAbort || isConnectTimeout || typeof code === "string" || /fetch failed/i.test(errObj?.message ?? ""));
+        (err instanceof TapHttpError ? err.status >= 500 :
+          isAbort || isConnectTimeout || typeof code === "string" || /fetch failed/i.test(errObj?.message ?? ""));
 
       if (!shouldRetry) {
         throw new Error(

@@ -9,6 +9,7 @@ function isValidVideoId(id: string | null): id is string {
 function extractYouTubeVideoId(videoUrl: string): string | null {
   try {
     const parsed = new URL(videoUrl);
+    if (parsed.protocol !== "https:" || parsed.username || parsed.password) return null;
     const host = parsed.hostname.toLowerCase();
     const path = parsed.pathname;
 
@@ -49,6 +50,7 @@ function extractYouTubeVideoId(videoUrl: string): string | null {
 function extractVimeoVideoId(videoUrl: string): string | null {
   try {
     const parsed = new URL(videoUrl);
+    if (parsed.protocol !== "https:" || parsed.username || parsed.password) return null;
     const host = parsed.hostname.toLowerCase();
     const segments = parsed.pathname.split("/").filter(Boolean);
     const isVimeoHost = host === "vimeo.com" || host === "www.vimeo.com" || host === "player.vimeo.com";
@@ -71,7 +73,11 @@ function extractVimeoVideoId(videoUrl: string): string | null {
 }
 
 function isDirectVideoFileUrl(url: string): boolean {
-  return /\.(mp4|webm|ogg|mov|m4v)(?:[?#].*)?$/i.test(url);
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === "https:" && !parsed.username && !parsed.password &&
+      parsed.hostname.endsWith(".nasa.gov") && /\.(mp4|webm|ogg|mov|m4v)$/i.test(parsed.pathname);
+  } catch { return false; }
 }
 
 export function deriveApodVideoThumbnail(videoUrl: string): string | undefined {

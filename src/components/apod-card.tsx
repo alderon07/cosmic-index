@@ -27,18 +27,20 @@ export function APODCard({ className, initialApod = null, initialError = null }:
       return;
     }
 
+    const controller = new AbortController();
     async function fetchApod() {
       try {
-        const data = await apiFetch<APODData>("/apod");
+        const data = await apiFetch<APODData>("/apod", { signal: controller.signal });
         setApod(data);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load");
+        if (!controller.signal.aborted) setError(err instanceof Error ? err.message : "Failed to load");
       } finally {
-        setLoading(false);
+        if (!controller.signal.aborted) setLoading(false);
       }
     }
 
     fetchApod();
+    return () => controller.abort();
   }, [initialApod, initialError]);
 
   if (loading) {
@@ -46,11 +48,20 @@ export function APODCard({ className, initialApod = null, initialError = null }:
   }
 
   if (error || !apod) {
-    return null; // Gracefully hide if APOD unavailable
+    return (
+      <Card className={`border border-orange-200/25 bg-[#1b130e]/85 text-orange-100 ${className ?? ""}`}>
+        <CardContent className="flex flex-col items-start gap-3 py-6">
+          <p role="status">NASA’s picture feed is temporarily unavailable.</p>
+          <a href="https://science.nasa.gov/apod/" target="_blank" rel="noopener noreferrer"
+            className="text-sm text-orange-300 underline underline-offset-4">Browse APOD on NASA</a>
+        </CardContent>
+      </Card>
+    );
   }
 
   // Format date for display
-  const displayDate = new Date(apod.date + "T00:00:00").toLocaleDateString("en-US", {
+  const displayDate = new Date(apod.date + "T00:00:00Z").toLocaleDateString("en-US", {
+    timeZone: "UTC",
     weekday: "long",
     year: "numeric",
     month: "long",
@@ -77,11 +88,11 @@ export function APODCard({ className, initialApod = null, initialError = null }:
 
   return (
     <Card
-      className={`border border-orange-200/25 bg-[#1b130e]/85 text-orange-100 shadow-[inset_0_0_0_1px_rgba(255,180,120,0.14)] scanlines overflow-hidden min-w-0 max-w-full ${className ?? ""}`}
+      className={`border border-orange-200/25 bg-[#1b130e]/85 text-orange-100 shadow-[inset_0_0_0_1px_rgba(255,180,120,0.14)] scanlines overflow-hidden min-w-0 max-w-full py-0 gap-0 ${className ?? ""}`}
     >
       <div className="grid md:grid-cols-2 gap-0">
         {/* Image Section */}
-        <div className="relative aspect-video md:aspect-auto md:min-h-[320px] bg-[#0d0907]">
+        <div className="relative aspect-square md:aspect-auto md:min-h-[360px] bg-[#0d0907]">
           {isVideo && videoSource ? (
             videoSource.kind === "iframe" ? (
               <iframe
@@ -94,7 +105,7 @@ export function APODCard({ className, initialApod = null, initialError = null }:
               />
             ) : (
               <video
-                className="absolute inset-0 h-full w-full object-cover"
+                className="absolute inset-0 h-full w-full object-contain"
                 controls
                 playsInline
                 preload="metadata"
@@ -110,20 +121,17 @@ export function APODCard({ className, initialApod = null, initialError = null }:
                 src={imageSrc}
                 alt={apod.title}
                 fill
-                className="object-cover"
+                className="object-contain"
                 sizes="(max-width: 768px) 100vw, 50vw"
-                priority
               />
               {/* Video overlay indicator */}
               {isVideo && (
-                <div className="absolute inset-0 flex items-center justify-center bg-void-black/40">
+                <a href={apod.sourceUrl ?? "https://science.nasa.gov/apod/"} target="_blank" rel="noopener noreferrer" aria-label="Watch video on NASA" className="absolute inset-0 flex items-center justify-center bg-void-black/40">
                   <div className="w-16 h-16 rounded-full border border-orange-200/35 bg-orange-400/85 flex items-center justify-center">
                     <Play className="w-8 h-8 text-black ml-1" />
                   </div>
-                </div>
+                </a>
               )}
-              {/* Gradient overlay for text readability on mobile */}
-              <div className="absolute inset-0 bg-gradient-to-t from-[#0f0b08]/85 via-transparent to-transparent md:hidden" />
             </>
           ) : isVideo ? (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-void-black/70 p-6 text-center">
@@ -132,7 +140,7 @@ export function APODCard({ className, initialApod = null, initialError = null }:
               </div>
               <p className="text-sm text-orange-100/80">Video preview unavailable</p>
               <a
-                href={apod.imageUrl}
+                href={apod.sourceUrl ?? "https://science.nasa.gov/apod/"}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1 rounded-md border border-orange-300/45 bg-orange-500/15 px-3 py-1.5 text-xs text-orange-100 transition-colors hover:bg-orange-500/25"
@@ -147,23 +155,13 @@ export function APODCard({ className, initialApod = null, initialError = null }:
             </div>
           )}
 
-          {/* Mobile title overlay */}
-          <div className="absolute bottom-0 left-0 right-0 p-4 md:hidden">
-            <Badge variant="outline" className="mb-2 border-orange-300/45 bg-orange-500/15 text-orange-100">
-              <Calendar className="w-3 h-3 mr-1" />
-              {displayDate}
-            </Badge>
-            <h3 className="font-display text-lg text-orange-50 line-clamp-2">
-              {apod.title}
-            </h3>
-          </div>
+
         </div>
 
         {/* Content Section */}
         <CardContent className="p-4 sm:p-6 flex flex-col min-w-0">
-          {/* Header - Desktop only */}
-          <div className="hidden md:block mb-4">
-            <div className="flex items-start justify-between gap-4 mb-3">
+          <div className="mb-4">
+            <div className="flex items-start justify-between gap-2 flex-wrap mb-3">
               <Badge variant="outline" className="shrink-0 border-orange-300/45 bg-orange-500/15 text-orange-100">
                 <Calendar className="w-3 h-3 mr-1" />
                 Astronomy Picture of the Day
@@ -183,47 +181,27 @@ export function APODCard({ className, initialApod = null, initialError = null }:
             </p>
           </div>
 
-          {/* Explanation - Full text on desktop, truncated on mobile */}
-          <div className="flex-1 overflow-y-auto">
-            {/* Desktop: full text */}
-            <p className="hidden md:block text-sm text-orange-100/80 leading-relaxed">
-              {apod.explanation}
-            </p>
-            {/* Mobile: truncated with expand/collapse */}
-            <div className="md:hidden">
-              <p className="text-sm text-orange-100/80 leading-relaxed">
-                {displayExplanation}
-              </p>
-              {needsTruncation && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="mt-2 h-auto p-0 text-orange-300 hover:bg-orange-400/10 hover:text-orange-200"
-                  onClick={() => setExpanded(!expanded)}
-                >
-                  {expanded ? (
-                    <>
-                      Show less <ChevronUp className="w-4 h-4 ml-1" />
-                    </>
-                  ) : (
-                    <>
-                      Read more <ChevronDown className="w-4 h-4 ml-1" />
-                    </>
-                  )}
-                </Button>
-              )}
-            </div>
+          <div className="flex-1">
+            <p className="text-sm text-orange-100/80 leading-relaxed">{displayExplanation}</p>
+            {needsTruncation && (
+              <Button variant="ghost" size="sm" aria-expanded={expanded}
+                className="mt-2 h-auto p-0 text-orange-300 hover:bg-orange-400/10 hover:text-orange-200"
+                onClick={() => setExpanded(!expanded)}>
+                {expanded ? <>Show less <ChevronUp className="w-4 h-4 ml-1" /></>
+                  : <>Read more <ChevronDown className="w-4 h-4 ml-1" /></>}
+              </Button>
+            )}
           </div>
 
           {/* Footer */}
           <div className="mt-4 flex flex-col gap-2 border-t border-orange-200/20 pt-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="text-xs text-orange-100/60 min-w-0 break-words">
               {apod.copyright && (
-                <span>&copy; {apod.copyright}</span>
+                <span>Credit: {apod.copyright}</span>
               )}
             </div>
             <a
-              href={`https://apod.nasa.gov/apod/ap${apod.date.replace(/-/g, "").slice(2)}.html`}
+              href={apod.sourceUrl ?? "https://science.nasa.gov/apod/"}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-1 text-xs text-orange-300 transition-colors hover:text-orange-200 shrink-0"
@@ -243,16 +221,16 @@ export function APODCardSkeleton({ className }: { className?: string }) {
     "animate-pulse rounded bg-gradient-to-r from-muted/30 via-muted/45 to-muted/30";
 
   return (
-    <Card className={`border border-orange-200/25 bg-[#1b130e]/85 overflow-hidden ${className}`}>
+    <Card className={`border border-orange-200/25 bg-[#1b130e]/85 overflow-hidden py-0 gap-0 ${className ?? ""}`}>
       <div className="grid md:grid-cols-2 gap-0">
         {/* Image Skeleton */}
         <div
-          className={`relative aspect-video md:aspect-auto md:min-h-[320px] rounded-none ${neutralSkeletonClass}`}
+          className={`relative aspect-square md:aspect-auto md:min-h-[360px] rounded-none ${neutralSkeletonClass}`}
         />
 
         {/* Content Skeleton */}
         <div className="p-4 sm:p-6 flex flex-col">
-          <div className="hidden md:block mb-4">
+          <div className="mb-4">
             <div className={`h-5 w-48 mb-3 ${neutralSkeletonClass}`} />
             <div className={`h-7 w-3/4 mb-2 ${neutralSkeletonClass}`} />
             <div className={`h-4 w-40 ${neutralSkeletonClass}`} />

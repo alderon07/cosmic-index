@@ -1,122 +1,123 @@
-import { APODData } from "./types";
+import { z } from "zod";
+import type { APODData } from "./types";
 import { withCache, CACHE_TTL, CACHE_KEYS } from "./cache";
-import { deriveApodVideoThumbnail } from "./apod-media";
+import { deriveApodVideoThumbnail, getApodVideoSource } from "./apod-media";
 
-const APOD_API_URL = "https://api.nasa.gov/planetary/apod";
-const API_TIMEOUT_MS = 15000;
-let hasWarnedMissingNasaApiKey = false;
+// NASA moved APOD to the public NASA Science feed in September 2026.
+const APOD_API_URL = "https://science.nasa.gov/wp-json/wp/v2/apod-basic";
+const API_TIMEOUT_MS = 15_000;
 
-// Use NASA_API_KEY if available, otherwise fall back to DEMO_KEY
-// Note: DEMO_KEY has rate limits (30 req/hour, 50 req/day)
-// For production, get a free key from https://api.nasa.gov/
-function getApiKey(): string {
-  const apiKey = process.env.NASA_API_KEY?.trim();
-  if (apiKey) return apiKey;
-
-  if (process.env.NODE_ENV === "production" && !hasWarnedMissingNasaApiKey) {
-    hasWarnedMissingNasaApiKey = true;
-    console.warn(
-      "[APOD] NASA_API_KEY is not configured in production; falling back to DEMO_KEY with stricter rate limits."
-    );
+export class ApodFeedError extends Error {
+  constructor(public readonly kind: "unavailable" | "contract" | "not-found", message: string) {
+    super(message);
+    this.name = "ApodFeedError";
   }
-
-  return "DEMO_KEY";
 }
 
-// Raw response from NASA APOD API
-interface APODRawResponse {
-  date: string;
-  title: string;
-  explanation: string;
-  url: string;
-  hdurl?: string;
-  media_type: "image" | "video";
-  copyright?: string;
-  thumbnail_url?: string;
+function isNasaUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" && !url.username && !url.password &&
+      (url.hostname === "nasa.gov" || url.hostname.endsWith(".nasa.gov"));
+  } catch { return false; }
 }
 
-// Transform raw API response to our internal format
-function transformAPODResponse(raw: APODRawResponse): APODData {
-  const thumbnailUrl =
-    raw.thumbnail_url ??
-    (raw.media_type === "video" ? deriveApodVideoThumbnail(raw.url) : undefined);
+const EntrySchema = z.object({
+  date: z.iso.date(),
+  title: z.string().min(1).max(1000),
+  explanation: z.string().max(100_000),
+  permalink: z.string().refine(isNasaUrl),
+  media_type: z.enum(["image", "video"]),
+  hdurl: z.string().nullish(),
+  credit: z.string().max(10_000).nullish(),
+  copyright: z.string().max(10_000).nullish(),
+  basic_html: z.string().max(300_000).optional(),
+});
 
-  return {
-    date: raw.date,
-    title: raw.title,
-    explanation: raw.explanation,
-    imageUrl: raw.url,
-    imageUrlHd: raw.hdurl,
-    mediaType: raw.media_type,
-    copyright: raw.copyright,
-    thumbnailUrl,
+function decodeEntities(value: string): string {
+  const entities: Record<string, string> = {
+    amp: "&", quot: '"', apos: "'", lt: "<", gt: ">", nbsp: " ",
+    rsquo: "’", lsquo: "‘", ldquo: "“", rdquo: "”", ndash: "–", mdash: "—",
   };
-}
-
-// Fetch APOD for a specific date (or today if not specified)
-// date format: YYYY-MM-DD
-export async function fetchAPOD(date?: string): Promise<APODData> {
-  // Build cache key - use date or "today" for current day
-  const cacheDate = date || "today";
-  const cacheKey = `${CACHE_KEYS.APOD}:${cacheDate}`;
-
-  return withCache(cacheKey, CACHE_TTL.APOD, async () => {
-    const params = new URLSearchParams({
-      api_key: getApiKey(),
-    });
-
-    if (date) {
-      params.set("date", date);
-    }
-
-    // For videos, request thumbnail
-    params.set("thumbs", "true");
-
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
-
-    try {
-      const response = await fetch(`${APOD_API_URL}?${params.toString()}`, {
-        headers: {
-          Accept: "application/json",
-          "User-Agent": "cosmic-index/1.0",
-        },
-        signal: controller.signal,
-        cache: "no-store",
-      });
-
-      if (!response.ok) {
-        const text = await response.text().catch(() => "");
-
-        // Handle specific NASA API errors
-        if (response.status === 400) {
-          throw new Error(`Invalid date or request: ${text.slice(0, 200)}`);
-        }
-        if (response.status === 429) {
-          throw new Error("NASA API rate limit exceeded. Please try again later.");
-        }
-
-        throw new Error(
-          `NASA APOD API error: ${response.status} ${response.statusText}`
-        );
-      }
-
-      const data: APODRawResponse = await response.json();
-      return transformAPODResponse(data);
-    } finally {
-      clearTimeout(timeout);
-    }
+  return value.replace(/&(#x[\da-f]+|#\d+|[a-z]+);/gi, (match: string, entity: string) => {
+    if (!entity.startsWith("#")) return entities[entity.toLowerCase()] ?? match;
+    const code = entity.toLowerCase().startsWith("#x")
+      ? parseInt(entity.slice(2), 16) : parseInt(entity.slice(1), 10);
+    return code > 0 && code <= 0x10ffff && !(code >= 0xd800 && code <= 0xdfff)
+      ? String.fromCodePoint(code) : match;
   });
 }
 
-// Get today's date in YYYY-MM-DD format (in NASA's timezone - US Eastern)
-export function getTodayDateString(): string {
-  // NASA updates APOD around midnight Eastern Time
-  // Use UTC-5 as approximation (doesn't account for DST perfectly)
-  const now = new Date();
-  const easternOffset = -5 * 60; // -5 hours in minutes
-  const localOffset = now.getTimezoneOffset();
-  const easternTime = new Date(now.getTime() + (localOffset + easternOffset) * 60 * 1000);
+function plainText(html: string): string {
+  return decodeEntities(html
+    .replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1\s*>/gi, "")
+    .replace(/<[^>]*>/g, " "))
+    .replace(/\s+/g, " ").replace(/\s+([.,;:!?])/g, "$1").trim();
+}
 
-  return easternTime.toISOString().split("T")[0];
+function transformEntry(raw: z.infer<typeof EntrySchema>): APODData {
+  const image = raw.hdurl && isNasaUrl(raw.hdurl) ? raw.hdurl : undefined;
+  let videoUrl: string | undefined;
+  if (raw.media_type === "video") {
+    // The feed's url is an article. Extract approved media without rendering its HTML.
+    for (const match of (raw.basic_html ?? "").matchAll(/<(?:iframe|video|source)\b[^>]*\bsrc\s*=\s*["']([^"']+)["']/gi)) {
+      const source = getApodVideoSource(decodeEntities(match[1]));
+      if (source) { videoUrl = source.src; break; }
+    }
+  } else if (!image) {
+    throw new ApodFeedError("contract", "NASA APOD feed returned an invalid image URL");
+  }
+
+  return {
+    date: raw.date,
+    title: plainText(raw.title),
+    explanation: plainText(raw.explanation).replace(/^Explanation:\s*/i, "")
+      .replace(/\s*Tomorrow['’]s picture:.*$/i, "").trim(),
+    imageUrl: videoUrl ?? image ?? raw.permalink,
+    imageUrlHd: image,
+    mediaType: raw.media_type,
+    copyright: plainText(raw.credit || raw.copyright || "") || undefined,
+    thumbnailUrl: raw.media_type === "video"
+      ? image ?? (videoUrl ? deriveApodVideoThumbnail(videoUrl) : undefined) : undefined,
+    sourceUrl: raw.permalink,
+  };
+}
+
+export async function fetchAPOD(date?: string): Promise<APODData> {
+  if (date && !z.iso.date().safeParse(date).success) throw new Error("Invalid APOD date");
+  // Discard legacy cached responses and roll the latest key over in NASA's time zone.
+  const cacheKey = `${CACHE_KEYS.APOD}:v2:${date ?? `latest:${getTodayDateString()}`}`;
+  return withCache(cacheKey, CACHE_TTL.APOD, async () => {
+    const url = date ? `${APOD_API_URL}/${date.replace(/-/g, "").slice(2)}`
+      : `${APOD_API_URL}/?per_page=1`;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
+    try {
+      const response = await fetch(url, {
+        headers: { Accept: "application/json", "User-Agent": "cosmic-index/1.0 (https://cosmicindex.dev)" },
+        signal: controller.signal, cache: "no-store",
+      });
+      if (response.status === 404) throw new ApodFeedError("not-found", "NASA has no APOD for this date");
+      if (!response.ok) throw new ApodFeedError("unavailable", `NASA APOD feed error: ${response.status}`);
+      const payload: unknown = await response.json();
+      const raw: unknown = Array.isArray(payload) ? payload[0] : payload;
+      if (!raw) throw new ApodFeedError("not-found", "NASA has no APOD for this date");
+      const parsed = EntrySchema.safeParse(raw);
+      if (!parsed.success) throw new ApodFeedError("contract", "NASA APOD feed returned an invalid response");
+      if (date && parsed.data.date !== date) throw new ApodFeedError("contract", "NASA APOD feed returned the wrong date");
+      return transformEntry(parsed.data);
+    } catch (error) {
+      if (error instanceof ApodFeedError) throw error;
+      throw new ApodFeedError(error instanceof SyntaxError ? "contract" : "unavailable",
+        controller.signal.aborted ? "NASA APOD feed timed out" : "NASA APOD feed could not be read");
+    } finally { clearTimeout(timeout); }
+  });
+}
+
+export function getTodayDateString(now = new Date()): string {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York", year: "numeric", month: "2-digit", day: "2-digit",
+  }).formatToParts(now);
+  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((value) => value.type === type)!.value;
+  return `${part("year")}-${part("month")}-${part("day")}`;
 }

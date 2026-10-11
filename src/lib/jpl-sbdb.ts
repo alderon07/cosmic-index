@@ -12,6 +12,8 @@ import {
 import { withCache, CACHE_TTL, CACHE_KEYS, hashParams } from "./cache";
 import { DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE } from "./constants";
 import { limitConcurrency } from "./concurrency";
+import { fetchJpl } from "./jpl-fetch";
+import { z } from "zod";
 
 const QUERY_API_URL = "https://ssd-api.jpl.nasa.gov/sbdb_query.api";
 const LOOKUP_API_URL = "https://ssd-api.jpl.nasa.gov/sbdb.api";
@@ -70,7 +72,12 @@ export function isContractMismatch(error: unknown): boolean {
 // Check if error is a timeout or upstream failure
 export function isUpstreamFailure(error: unknown): boolean {
   if (error instanceof Error) {
+    const cause = error.cause;
+    const causeCode = cause && typeof cause === "object" && "code" in cause ? cause.code : undefined;
     return (
+      error.name === "AbortError" ||
+      /fetch failed|connection failed/i.test(error.message) ||
+      (typeof causeCode === "string" && /^(UND_ERR_|ECONN|ETIMEDOUT|ENOTFOUND|EAI_AGAIN)/.test(causeCode)) ||
       error.message.includes("timed out") ||
       error.message.includes("500") ||
       error.message.includes("502") ||
@@ -121,13 +128,25 @@ interface SBDBLookupResponse {
   };
 }
 
-// Response for lookup API with multiple matches (300 status)
-interface SBDBLookupListResponse {
-  signature: { source: string; version: string };
-  list: Array<{ name: string; pdes: string }>;
-  message: string;
-  count: number;
-  code: string;
+const LookupSchema = z.object({
+  object: z.object({
+    spkid: z.string(), fullname: z.string().min(1), kind: z.string(),
+    des: z.string().min(1), name: z.string().nullish().transform((value) => value ?? null), prefix: z.string().nullable(),
+    neo: z.boolean(), pha: z.boolean(),
+    orbit_class: z.object({ code: z.string(), name: z.string() }),
+  }).passthrough(),
+  phys_par: z.array(z.object({ name: z.string(), value: z.string() }).passthrough()).optional(),
+  discovery: z.object({
+    date: z.string().nullish().transform((value) => value ?? undefined),
+    location: z.string().nullish().transform((value) => value ?? undefined),
+    who: z.string().nullish().transform((value) => value ?? undefined),
+  }).passthrough().optional(),
+}).passthrough();
+
+function parseLookup(data: unknown): SBDBLookupResponse {
+  const parsed = LookupSchema.safeParse(data);
+  if (!parsed.success) throw new Error("Invalid JPL lookup response structure");
+  return parsed.data as unknown as SBDBLookupResponse;
 }
 
 // Sanitize and validate query string
@@ -395,12 +414,12 @@ async function searchWithLookupFallback(
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), LOOKUP_TIMEOUT_MS);
 
-  if (signal) {
-    signal.addEventListener("abort", () => controller.abort(), { once: true });
-  }
+  const cancel = () => controller.abort();
+  if (signal?.aborted) cancel();
+  else signal?.addEventListener("abort", cancel, { once: true });
 
   try {
-    const response = await fetch(url.toString(), {
+    const response = await fetchJpl(url.toString(), {
       headers: { Accept: "application/json" },
       signal: controller.signal,
     });
@@ -416,10 +435,12 @@ async function searchWithLookupFallback(
 
     if (response.status === 300) {
       // Multiple matches - fetch each one (limit to first 20 to avoid overloading)
-      const listData = data as SBDBLookupListResponse;
+      const parsedList = z.object({ list: z.array(z.object({ pdes: z.string().min(1) })) }).safeParse(data);
+      if (!parsedList.success) throw new Error("Invalid JPL lookup list response structure");
+      const listData = parsedList.data;
       const matchesToFetch = listData.list.slice(0, 20);
 
-      // Limit to 5 concurrent fetches to prevent resource exhaustion
+      // Submit lookup requests sequentially under the SSD fair-use policy
       const tasks = matchesToFetch.map((match) => async () => {
         try {
           // Use fetchSmallBodyByIdentifier to get full details
@@ -430,7 +451,7 @@ async function searchWithLookupFallback(
         }
       });
 
-      const results = await limitConcurrency(tasks, 5);
+      const results = await limitConcurrency(tasks, 1);
 
       return results
         .filter((obj): obj is SmallBodyData => obj !== null)
@@ -448,9 +469,9 @@ async function searchWithLookupFallback(
         });
     }
 
-    if (response.ok && "object" in data) {
+    if (response.ok && data && typeof data === "object" && "object" in data) {
       // Single match - transform it
-      const detail = await fetchSmallBodyByIdentifierDirect(data.object.des, signal);
+      const detail = await fetchSmallBodyByIdentifierDirect(parseLookup(data).object.des, signal);
       if (!detail) return [];
 
       // Apply filters
@@ -466,6 +487,9 @@ async function searchWithLookupFallback(
     clearTimeout(timeoutId);
     if (signal?.aborted) throw new Error("Request cancelled");
     throw error;
+  } finally {
+    clearTimeout(timeoutId);
+    signal?.removeEventListener("abort", cancel);
   }
 }
 
@@ -484,12 +508,12 @@ async function fetchSmallBodyByIdentifierDirect(
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), LOOKUP_TIMEOUT_MS);
 
-  if (signal) {
-    signal.addEventListener("abort", () => controller.abort(), { once: true });
-  }
+  const cancel = () => controller.abort();
+  if (signal?.aborted) cancel();
+  else signal?.addEventListener("abort", cancel, { once: true });
 
   try {
-    const response = await fetch(url.toString(), {
+    const response = await fetchJpl(url.toString(), {
       headers: { Accept: "application/json" },
       signal: controller.signal,
     });
@@ -510,7 +534,7 @@ async function fetchSmallBodyByIdentifierDirect(
     }
 
     // Transform using same logic as fetchSmallBodyByIdentifier
-    const typedData = data as SBDBLookupResponse;
+    const typedData = parseLookup(data);
     const obj = typedData.object;
     const kind = parseBodyKind(obj.kind, obj.des, obj.fullname);
 
@@ -601,6 +625,9 @@ async function fetchSmallBodyByIdentifierDirect(
     clearTimeout(timeoutId);
     if (signal?.aborted) throw new Error("Request cancelled");
     throw error;
+  } finally {
+    clearTimeout(timeoutId);
+    signal?.removeEventListener("abort", cancel);
   }
 }
 
@@ -617,16 +644,16 @@ async function fetchSmallBodiesPrimary(
   const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
 
   // If external signal aborts, abort our controller too
-  if (signal) {
-    signal.addEventListener("abort", () => controller.abort(), { once: true });
-  }
+  const cancel = () => controller.abort();
+  if (signal?.aborted) cancel();
+  else signal?.addEventListener("abort", cancel, { once: true });
 
   let status = 0;
   let contentType: string | null = null;
   let responseText = "";
 
   try {
-    const response = await fetch(url, {
+    const response = await fetchJpl(url, {
       headers: {
         Accept: "application/json",
       },
@@ -683,6 +710,11 @@ async function fetchSmallBodiesPrimary(
     // Validate response structure
     if (!data || typeof data !== "object") {
       throw new Error("Invalid JPL API response: expected object");
+    }
+
+    if (data.count === "0") {
+      return { objects: [], total: 0, page: Math.max(1, params.page || 1),
+        limit: Math.min(Math.max(1, params.limit || DEFAULT_PAGE_SIZE), MAX_PAGE_SIZE), hasMore: false };
     }
 
     if (!Array.isArray(data.fields)) {
@@ -759,6 +791,9 @@ async function fetchSmallBodiesPrimary(
       throw error;
     }
     throw new Error("Unknown error occurred while fetching small bodies");
+  } finally {
+    clearTimeout(timeoutId);
+    signal?.removeEventListener("abort", cancel);
   }
 }
 
@@ -856,7 +891,7 @@ export async function fetchSmallBodyByIdentifier(identifier: string): Promise<Sm
 
     let data: unknown;
     try {
-      const response = await fetch(url.toString(), {
+      const response = await fetchJpl(url.toString(), {
         headers: {
           Accept: "application/json",
         },
@@ -889,7 +924,7 @@ export async function fetchSmallBodyByIdentifier(identifier: string): Promise<Sm
       }
 
       // At this point, data is validated and contains an object
-      const typedData = data as SBDBLookupResponse;
+      const typedData = parseLookup(data);
 
       // Validate object structure
       if (!typedData.object || typeof typedData.object !== "object") {

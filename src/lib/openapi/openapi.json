@@ -1394,7 +1394,7 @@
       "get": {
         "operationId": "getApod",
         "summary": "Get Astronomy Picture of the Day",
-        "description": "Retrieve the NASA Astronomy Picture of the Day. Optionally specify a date to retrieve a historical APOD. The archive begins on 1995-06-16; future dates are not allowed.",
+        "description": "Retrieve the latest published NASA Science Astronomy Picture of the Day, or a specific archive date. Publication may lag the current date. Public endpoint with BROWSE rate limits. Unknown query parameters are rejected; archive dates start on 1995-06-16 and cannot be in the future in America/New_York.",
         "tags": [
           "APOD"
         ],
@@ -1402,10 +1402,11 @@
           {
             "name": "date",
             "in": "query",
-            "description": "Date for the APOD in YYYY-MM-DD format. Defaults to today. Must be between 1995-06-16 and today.",
+            "description": "Valid calendar date in YYYY-MM-DD format, between 1995-06-16 and today in America/New_York. Omit for the latest published entry.",
             "schema": {
               "type": "string",
-              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+              "format": "date"
             },
             "example": "2024-12-25"
           }
@@ -1447,6 +1448,12 @@
           },
           "503": {
             "$ref": "#/components/responses/UpstreamUnavailable"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "502": {
+            "$ref": "#/components/responses/ContractMismatch"
           }
         }
       }
@@ -4757,12 +4764,17 @@
           },
           "copyright": {
             "type": "string",
-            "description": "Copyright holder, if the APOD is not in the public domain."
+            "description": "Plain-text media credit or copyright notice supplied by NASA."
           },
           "thumbnailUrl": {
             "type": "string",
             "format": "uri",
             "description": "Thumbnail URL (primarily for video APODs)."
+          },
+          "sourceUrl": {
+            "type": "string",
+            "format": "uri",
+            "description": "Canonical HTTPS NASA Science article for this entry."
           }
         }
       },

@@ -1,3 +1,4 @@
+import { fetchJpl } from "./jpl-fetch";
 import {
   FireballEvent,
   FireballQueryParams,
@@ -74,7 +75,7 @@ export function getEnergySizeCategory(
 
   // Fallback to radiated energy (rough estimate: impact ≈ 2× radiated)
   if (radiatedEnergyJ !== undefined) {
-    const estimatedKt = (radiatedEnergyJ * 2) / 4.184e12; // Convert J×10¹⁰ to kt
+    const estimatedKt = (radiatedEnergyJ * 1e10 * 2) / 4.184e12; // Convert J×10¹⁰ to kt
     if (estimatedKt < 0.1) return "Small meteor";
     if (estimatedKt < 1) return "Large meteor";
     if (estimatedKt < 10) return "Significant";
@@ -225,7 +226,7 @@ export async function fetchFireballs(
     const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
 
     try {
-      const response = await fetch(url, {
+      const response = await fetchJpl(url, {
         headers: { Accept: "application/json" },
         signal: controller.signal,
       });

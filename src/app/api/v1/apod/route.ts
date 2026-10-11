@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { fetchAPOD } from "@/lib/nasa-apod";
+import { ApodFeedError, fetchAPOD, getTodayDateString } from "@/lib/nasa-apod";
 import { APODQuerySchema } from "@/lib/types";
 import { getCacheControlHeader, CACHE_TTL } from "@/lib/cache";
 import { initRequest, withRateLimit, validateParams } from "@/lib/api-middleware";
@@ -20,11 +20,7 @@ export async function GET(request: NextRequest) {
 
   // Validate date is not in the future
   if (date) {
-    const requestedDate = new Date(date);
-    const today = new Date();
-    today.setHours(23, 59, 59, 999);
-
-    if (requestedDate > today) {
+    if (date > getTodayDateString()) {
       return apiError(
         ErrorCode.INVALID_DATE_RANGE,
         "Cannot request APOD for a future date.",
@@ -35,8 +31,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const apodStart = new Date("1995-06-16");
-    if (requestedDate < apodStart) {
+    if (date < "1995-06-16") {
       return apiError(
         ErrorCode.INVALID_DATE_RANGE,
         "APOD archive starts from 1995-06-16.",
@@ -56,6 +51,14 @@ export async function GET(request: NextRequest) {
       ...rateLimit.headers,
     });
   } catch (error) {
+    if (error instanceof ApodFeedError) {
+      const code = error.kind === "not-found" ? ErrorCode.NOT_FOUND
+        : error.kind === "contract" ? ErrorCode.CONTRACT_MISMATCH : ErrorCode.UPSTREAM_UNAVAILABLE;
+      return apiError(code, error.kind === "not-found" ? error.message
+        : "NASA APOD is temporarily unavailable. Please try again later.",
+        ERROR_STATUS[code], requestId, undefined,
+        { ...rateLimit.headers, ...(error.kind === "unavailable" ? { "Retry-After": "60" } : {}) });
+    }
     return handleRouteError(error, requestId, rateLimit.headers);
   }
 }
