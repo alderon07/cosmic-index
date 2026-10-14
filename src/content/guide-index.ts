@@ -10,9 +10,9 @@ export const GUIDES = [
   },
   {
     slug: "comparing-exoplanets",
-    title: "Compare exoplanets without mistaking size for habitability",
+    title: "Which exoplanets survive a mass-and-radius filter?",
     description:
-      "Work through radius, mass, and orbital period comparisons, then check what the measurements leave unanswered.",
+      "Analyze 6,445 NASA default records to see how missing measurements change a planet comparison, with counts, a chart, and a reproducible query.",
     topic: "Exoplanets",
     toolHref: "/exoplanets",
     toolLabel: "Open the exoplanet catalog",
@@ -46,9 +46,9 @@ export const GUIDES = [
   },
   {
     slug: "may-2024-geomagnetic-storm",
-    title: "May 2024: build a space-weather timeline",
+    title: "May 2024: from solar eruptions to a G5 storm",
     description:
-      "Separate a geomagnetic watch, an observed G5 storm, and a later solar flare by converting their timestamps to one time standard.",
+      "Reconstruct the arrival and escalation of the May 2024 storm, compare source timestamps, and separate physical evidence from event associations.",
     topic: "Investigation / Space weather",
     toolHref: "/space-weather/events",
     toolLabel: "Explore space-weather events",

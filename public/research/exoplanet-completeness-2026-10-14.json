@@ -1,0 +1,20 @@
+{
+  "retrievedAt": "2026-10-14T21:28:22.906Z",
+  "query": "select pl_name,discoverymethod,pl_rade,pl_radelim,pl_masse,pl_masselim,pl_msinie,pl_msinielim from ps where default_flag=1 order by pl_name",
+  "sourceUrl": "https://exoplanetarchive.ipac.caltech.edu/TAP/sync?query=select%20pl_name%2Cdiscoverymethod%2Cpl_rade%2Cpl_radelim%2Cpl_masse%2Cpl_masselim%2Cpl_msinie%2Cpl_msinielim%20from%20ps%20where%20default_flag%3D1%20order%20by%20pl_name&format=json",
+  "responseSha256": "8d6951de154ef74560371e423d403c3c2ab752987314080310107889ec4f6fdf",
+  "total": 6445,
+  "groups": [
+    { "method": "Transit", "total": 4781, "radius": 4753, "mass": 1376, "both": 1359, "minimumMass": 64 },
+    { "method": "Radial Velocity", "total": 1203, "radius": 28, "mass": 226, "both": 25, "minimumMass": 1007 },
+    { "method": "Microlensing", "total": 292, "radius": 0, "mass": 292, "both": 0, "minimumMass": 0 },
+    { "method": "Imaging", "total": 97, "radius": 30, "mass": 91, "both": 30, "minimumMass": 0 },
+    { "method": "Transit Timing Variations", "total": 29, "radius": 3, "mass": 27, "both": 3, "minimumMass": 1 },
+    { "method": "Eclipse Timing Variations", "total": 17, "radius": 0, "mass": 2, "both": 0, "minimumMass": 13 },
+    { "method": "Orbital Brightness Modulation", "total": 9, "radius": 3, "mass": 3, "both": 3, "minimumMass": 3 },
+    { "method": "Pulsar Timing", "total": 8, "radius": 0, "mass": 4, "both": 0, "minimumMass": 2 },
+    { "method": "Astrometry", "total": 6, "radius": 0, "mass": 6, "both": 0, "minimumMass": 1 },
+    { "method": "Pulsation Timing Variations", "total": 2, "radius": 0, "mass": 0, "both": 0, "minimumMass": 2 },
+    { "method": "Disk Kinematics", "total": 1, "radius": 0, "mass": 1, "both": 0, "minimumMass": 0 }
+  ]
+}

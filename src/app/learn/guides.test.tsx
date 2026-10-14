@@ -16,9 +16,20 @@ const SOURCE_HOSTS = new Set([
   "www.jpl.nasa.gov",
   "ssd-api.jpl.nasa.gov",
   "www.spaceweather.gov",
+  "www.noaa.gov",
+  "ccmc.gsfc.nasa.gov",
 ]);
 
 describe("public field guides", () => {
+  it("renders the dated completeness analysis and accessible source data without hydration", async () => {
+    const html = renderToStaticMarkup(await GuidePage({ params: Promise.resolve({ slug: "comparing-exoplanets" }) }));
+    expect(html).toContain('id="completeness-caption"');
+    expect(html).toContain('href="/research/exoplanet-completeness-2026-10-14.json"');
+    expect(html).toContain("6,445");
+    expect(html).toContain("95.7%");
+    expect(html).toContain("default_flag=1");
+    expect(html).toContain('"dateModified":"2026-10-14"');
+  });
   it("prebuilds all published guides", () => {
     expect(generateStaticParams()).toHaveLength(GUIDES.length);
   });
@@ -50,7 +61,7 @@ describe("public field guides", () => {
           const url = new URL(source.href);
           expect(url.protocol).toBe("https:");
           expect(SOURCE_HOSTS.has(url.hostname)).toBe(true);
-          expect(html).toContain(`href="${source.href}"`);
+          expect(html).toContain(`href="${source.href.replaceAll("&", "&amp;")}"`);
         }
       }
     },

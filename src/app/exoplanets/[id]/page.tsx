@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { cache } from "react";
 import { ExoplanetInterpretation } from "@/components/exoplanet-interpretation";
+import { CatalogResearch } from "@/components/learn/catalog-research";
 import { ObjectDetail } from "@/components/object-detail";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { BASE_URL } from "@/lib/config";
@@ -125,6 +126,7 @@ export default async function ExoplanetDetailPage({
           measurementContext={<ExoplanetInterpretation exoplanet={exoplanet} />}
         />
         <div className="mt-8">
+          <CatalogResearch name={exoplanet.displayName} />
           <ExoplanetSystemContext
             exoplanet={exoplanet}
             hostStar={hostStar}

@@ -52,9 +52,13 @@ export default function LearnPage() {
           id="latest-investigations-title"
           className="mt-3 font-display text-xl sm:text-2xl"
         >
-          Work through two real events
+          Investigate the selection and timing behind the numbers
         </h2>
         <div className="mt-5 grid gap-5 md:grid-cols-2">
+          <article>
+            <h3 className="font-medium"><Link href="/learn/comparing-exoplanets" className="text-primary underline underline-offset-4">Which planets have both mass and radius?</Link></h3>
+            <p className="mt-2 text-sm leading-7 text-muted-foreground">A dated analysis of 6,445 NASA records shows how requiring both fields changes the discovery-method mix. Inspect the counts and reproduce the query.</p>
+          </article>
           <article>
             <h3 className="font-medium">
               <Link
@@ -79,8 +83,8 @@ export default function LearnPage() {
               </Link>
             </h3>
             <p className="mt-2 text-sm leading-7 text-muted-foreground">
-              Put a watch, an observed G5 storm, and later solar flares on one
-              UTC timeline.
+              Connect an upstream shock record with NOAA&apos;s arrival and
+              escalation reports, and test which causal claims the timing supports.
             </p>
           </article>
         </div>
@@ -131,6 +135,10 @@ export default function LearnPage() {
         <h2 id="site-updates-title" className="font-display text-lg">
           What changed
         </h2>
+        <article className="mt-4 text-sm leading-7 text-muted-foreground">
+          <time dateTime="2026-10-14" className="font-mono text-xs uppercase tracking-widest text-primary">October 14, 2026</time>
+          <p className="mt-2">The exoplanet comparison now includes a dated completeness analysis, a chart, and a downloadable summary. The May 2024 reconstruction adds arrival evidence and source revisions. TRAPPIST-1 b and e have sourced research notes on their detail pages.</p>
+        </article>
         <article className="mt-4 text-sm leading-7 text-muted-foreground">
           <time dateTime="2026-09-07" className="font-mono text-xs uppercase tracking-widest text-primary">
             September 7, 2026
