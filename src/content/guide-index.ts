@@ -1,6 +1,14 @@
 // Keep article bodies out of client bundles that only need navigation metadata.
 export const GUIDES = [
   {
+    slug: "fireball-selection",
+    title: "Which fireballs disappear when you require velocity?",
+    description: "Inspect a retained 33-event CNEOS sample from 2025 to see how missing fields change a selection, with downloadable input rows and reproducible counts.",
+    topic: "Investigation / Fireballs",
+    toolHref: "/fireballs",
+    toolLabel: "Explore reported fireballs",
+  },
+  {
     slug: "trappist-1-comparison",
     title: "TRAPPIST-1 b and e: similar sizes, different years",
     description: "Compare two real planets with a scale diagram, a month of orbital motion, and calculations you can reproduce from NASA data.",

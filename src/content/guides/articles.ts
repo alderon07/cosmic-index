@@ -1,4 +1,5 @@
 import type { GuideSlug } from "../guide-index";
+import { fireballSelection } from "./fireball-selection";
 import { comparingExoplanets } from "./comparing-exoplanets";
 import { readingSpaceWeather } from "./reading-space-weather";
 import { understandingAsteroidFlybys } from "./understanding-asteroid-flybys";
@@ -8,6 +9,7 @@ import { asteroid2023BuCloseApproach } from "./2023-bu-close-approach";
 import { may2024GeomagneticStorm } from "./may-2024-geomagnetic-storm";
 
 export const GUIDE_ARTICLES: Record<GuideSlug, GuideArticle> = {
+  "fireball-selection": fireballSelection,
   "trappist-1-comparison": trappistComparison,
   "comparing-exoplanets": comparingExoplanets,
   "reading-space-weather": readingSpaceWeather,

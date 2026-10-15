@@ -13,6 +13,7 @@ import { PlanetSizeComparison } from "@/components/learn/planet-size-comparison"
 import { SaveGuideButton } from "@/components/learn/reading-list";
 import { InvestigationDiagram } from "@/components/learn/investigation-diagrams";
 import { ExoplanetCompleteness } from "@/components/learn/exoplanet-completeness";
+import { FireballCompleteness } from "@/components/learn/fireball-completeness";
 
 interface GuidePageProps {
   params: Promise<{ slug: string }>;
@@ -146,6 +147,7 @@ export default async function GuidePage({ params }: GuidePageProps) {
                   ))}
                 </div>
                 {guide.slug === "comparing-exoplanets" && section.id === "measurement-snapshot" ? <ExoplanetCompleteness /> : null}
+                {guide.slug === "fireball-selection" && section.id === "filter-results" ? <FireballCompleteness /> : null}
                 {section.table ? (
                   <div
                     className="mt-6 overflow-x-auto rounded-lg border border-border focus-visible:outline-2 focus-visible:outline-primary"

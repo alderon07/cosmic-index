@@ -56,6 +56,10 @@ export default function LearnPage() {
         </h2>
         <div className="mt-5 grid gap-5 md:grid-cols-2">
           <article>
+            <h3 className="font-medium"><Link href="/learn/fireball-selection" className="text-primary underline underline-offset-4">Which fireballs survive a velocity requirement?</Link></h3>
+            <p className="mt-2 text-sm leading-7 text-muted-foreground">Recount a retained 2025 sample and inspect the 11 records without complete velocity components. Download every input row.</p>
+          </article>
+          <article>
             <h3 className="font-medium"><Link href="/learn/comparing-exoplanets" className="text-primary underline underline-offset-4">Which planets have both mass and radius?</Link></h3>
             <p className="mt-2 text-sm leading-7 text-muted-foreground">A dated analysis of 6,445 NASA records shows how requiring both fields changes the discovery-method mix. Inspect the counts and reproduce the query.</p>
           </article>

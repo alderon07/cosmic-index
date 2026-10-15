@@ -9,6 +9,7 @@ import {
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { FireballCard, FireballCardSkeleton } from "@/components/fireball-card";
+import { FireballFilterContext } from "@/components/fireball-filter-context";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -311,6 +312,8 @@ export function FireballsPageClient({
           />
         </div>
       </div>
+
+      <FireballFilterContext reqLoc={reqLoc} reqAlt={reqAlt} reqVel={reqVel} />
 
       {/* Filters */}
       <div className="space-y-4 mb-8">

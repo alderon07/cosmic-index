@@ -21,6 +21,15 @@ const SOURCE_HOSTS = new Set([
 ]);
 
 describe("public field guides", () => {
+  it("renders the fireball investigation with retained inputs and filter counts", async () => {
+    const html = renderToStaticMarkup(await GuidePage({ params: Promise.resolve({ slug: "fireball-selection" }) }));
+    expect(html).toContain('id="fireball-completeness-caption"');
+    expect(html).toContain('href="/research/fireballs-2025-retrieved-2026-10-14.json"');
+    expect(html).toContain("22 of 33");
+    expect(html).toContain("66.7%");
+    expect(html).toContain("not a complete census");
+    expect(html).toContain('href="/fireballs"');
+  });
   it("renders the dated completeness analysis and accessible source data without hydration", async () => {
     const html = renderToStaticMarkup(await GuidePage({ params: Promise.resolve({ slug: "comparing-exoplanets" }) }));
     expect(html).toContain('id="completeness-caption"');
