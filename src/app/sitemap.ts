@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { GUIDES } from "@/content/guide-index";
+import { GUIDE_ARTICLES } from "@/content/guides/articles";
 import {
   getCuratedCatalogPaths,
   type CatalogDetailKind,
@@ -38,7 +39,10 @@ export default function sitemap(): MetadataRoute.Sitemap {
     },
     { url: `${BASE_URL}/learn` },
     { url: `${BASE_URL}/about` },
-    ...GUIDES.map((guide) => ({ url: `${BASE_URL}/learn/${guide.slug}` })),
+    ...GUIDES.map((guide) => ({
+      url: `${BASE_URL}/learn/${guide.slug}`,
+      lastModified: GUIDE_ARTICLES[guide.slug].updatedAt ?? GUIDE_ARTICLES[guide.slug].publishedAt,
+    })),
     {
       url: `${BASE_URL}/space-weather`,
     },

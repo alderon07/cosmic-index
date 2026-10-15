@@ -85,6 +85,7 @@ describe("AdSense configuration", () => {
 
 describe("AdSense route allowlist", () => {
   it.each([
+    "/learn/fireball-selection",
     "/learn/comparing-exoplanets",
     "/learn/reading-space-weather",
     "/learn/understanding-asteroid-flybys",

@@ -16,6 +16,7 @@ describe("main sitemap metadata route", () => {
       "https://cosmicindex.dev/faq",
       "https://cosmicindex.dev/learn",
       "https://cosmicindex.dev/about",
+      "https://cosmicindex.dev/learn/fireball-selection",
       "https://cosmicindex.dev/learn/trappist-1-comparison",
       "https://cosmicindex.dev/learn/comparing-exoplanets",
       "https://cosmicindex.dev/learn/reading-space-weather",
@@ -29,7 +30,10 @@ describe("main sitemap metadata route", () => {
       "https://cosmicindex.dev/space-weather/solar-wind",
       "https://cosmicindex.dev/space-weather/geomagnetic",
     ]);
-    expect(entries.every((entry) => entry.lastModified === undefined)).toBe(true);
+    expect(entries.find((entry) => entry.url.endsWith("/learn/fireball-selection"))?.lastModified).toBe("2026-10-14");
+    expect(entries.find((entry) => entry.url.endsWith("/learn/comparing-exoplanets"))?.lastModified).toBe("2026-10-14");
+    expect(entries.find((entry) => entry.url.endsWith("/learn/2023-bu-close-approach"))?.lastModified).toBe("2026-09-08");
+    expect(entries.filter((entry) => !entry.url.includes("/learn/")).every((entry) => entry.lastModified === undefined)).toBe(true);
     expect(entries.every((entry) => entry.changeFrequency === undefined)).toBe(true);
     expect(entries.every((entry) => entry.priority === undefined)).toBe(true);
   });

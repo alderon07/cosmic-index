@@ -126,7 +126,8 @@ describe("public field guides", () => {
     expect(html).toContain('href="/learn/2023-bu-close-approach"');
     expect(html).toContain('href="/learn/may-2024-geomagnetic-storm"');
     expect(html).toContain('id="site-updates"');
-    expect(html).toContain("September 7, 2026");
+    expect(html).toContain("September 8, 2026");
+    expect(html).toContain("The fireball investigation retains all 33 input records");
   });
 
   it.each(["unpublished", "constructor", "__proto__"])(

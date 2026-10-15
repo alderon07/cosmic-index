@@ -159,7 +159,7 @@ Pin `oapi-codegen` in module tools:
 
 ```bash
 cd cli
-go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@latest
+go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.7.1
 ```
 
 Code generation integration can target `../src/lib/openapi/openapi.json` in a follow-up once the desired generated surface is finalized.

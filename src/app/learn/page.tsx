@@ -142,10 +142,11 @@ export default function LearnPage() {
         <article className="mt-4 text-sm leading-7 text-muted-foreground">
           <time dateTime="2026-10-14" className="font-mono text-xs uppercase tracking-widest text-primary">October 14, 2026</time>
           <p className="mt-2">The exoplanet comparison now includes a dated completeness analysis, a chart, and a downloadable summary. The May 2024 reconstruction adds arrival evidence and source revisions. TRAPPIST-1 b and e have sourced research notes on their detail pages.</p>
+          <p className="mt-2">The fireball investigation retains all 33 input records from its 2025 sample, with downloadable data and an offline analysis script. The fireball catalog now explains what each measurement filter excludes.</p>
         </article>
         <article className="mt-4 text-sm leading-7 text-muted-foreground">
-          <time dateTime="2026-09-07" className="font-mono text-xs uppercase tracking-widest text-primary">
-            September 7, 2026
+          <time dateTime="2026-09-08" className="font-mono text-xs uppercase tracking-widest text-primary">
+            September 8, 2026
           </time>
           <p className="mt-2">
             New investigations explain{" "}
